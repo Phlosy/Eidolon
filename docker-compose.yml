@@ -1,0 +1,37 @@
+services:
+  server:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.server
+    # API stays internal to the compose network; only the web tier is published.
+    expose:
+      - "26881"
+    environment:
+      EIDOLON_API_HOST: 0.0.0.0
+      EIDOLON_API_PORT: "26881"
+      EIDOLON_DATABASE_URL: sqlite:///./data/eidolon.db
+      EIDOLON_WORKSPACE_ROOT: ./data/workspaces
+      EIDOLON_RUNTIME_MODE: mock
+      EIDOLON_CORS_ORIGINS: http://localhost:26880
+    volumes:
+      - eidolon-data:/app/data
+    networks:
+      - eidolon-internal
+
+  web:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.web
+    ports:
+      - "26880:26880"
+    depends_on:
+      - server
+    networks:
+      - eidolon-internal
+
+networks:
+  eidolon-internal:
+    driver: bridge
+
+volumes:
+  eidolon-data:

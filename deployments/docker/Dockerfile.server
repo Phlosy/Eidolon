@@ -1,0 +1,13 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+COPY apps/server/pyproject.toml apps/server/README.md ./
+COPY apps/server/app ./app
+COPY apps/server/migrations ./migrations
+
+RUN pip install --no-cache-dir .
+
+EXPOSE 26881
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "26881"]
