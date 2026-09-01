@@ -1,0 +1,115 @@
+{
+  "listTitle": "Employees",
+  "listDescription": "Every persistent agent on the roster.",
+  "emptyTitle": "No employees",
+  "emptyHint": "Seed the company to get started.",
+  "table": {
+    "name": "Name",
+    "role": "Role",
+    "status": "Status",
+    "runtime": "Runtime",
+    "currentTask": "Current task"
+  },
+  "status": {
+    "offline": "Offline",
+    "idle": "Idle",
+    "working": "Working",
+    "researching": "Researching",
+    "learning": "Learning",
+    "reflecting": "Reflecting",
+    "meeting": "In meeting",
+    "error": "Error"
+  },
+  "role": {
+    "ceo": "CEO",
+    "product_manager": "Product Manager",
+    "researcher": "Researcher",
+    "engineer": "Engineer",
+    "qa_engineer": "QA Engineer"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "runtime": "Runtime",
+    "activity": "Activity",
+    "workspace": "Workspace",
+    "memory": "Memory",
+    "knowledge": "Knowledge",
+    "skills": "Skills",
+    "learning": "Learning",
+    "performance": "Performance",
+    "career": "Career"
+  },
+  "profile": {
+    "id": "ID",
+    "role": "Role",
+    "slug": "Slug",
+    "runtime": "Runtime",
+    "workspacePath": "Workspace path",
+    "memoryNamespace": "Memory namespace",
+    "currentTask": "Current task"
+  },
+  "activity": {
+    "emptyTitle": "No activity yet"
+  },
+  "workspace": {
+    "note": "Paths are managed by the runtime and shown here read-only.",
+    "workspacePath": "Workspace path",
+    "dataPath": "Data path",
+    "noRuntimeTitle": "No runtime instance",
+    "noRuntimeHint": "Create a runtime to see its data path."
+  },
+  "memory": {
+    "emptyTitle": "No memories yet",
+    "emptyHint": "Entries appear as the employee works.",
+    "kind": {
+      "note": "Note",
+      "observation": "Observation",
+      "summary": "Summary"
+    }
+  },
+  "knowledge": {
+    "emptyTitle": "No private knowledge yet.",
+    "status": {
+      "active": "Active",
+      "proposed": "Proposed",
+      "rejected": "Rejected"
+    }
+  },
+  "skills": {
+    "emptyTitle": "No skills recorded yet.",
+    "table": {
+      "skill": "Skill",
+      "version": "Version",
+      "attempts": "Attempts",
+      "successRate": "Success rate",
+      "validation": "Validation"
+    },
+    "validation": {
+      "candidate": "Candidate",
+      "validated": "Validated",
+      "deprecated": "Deprecated"
+    }
+  },
+  "learning": {
+    "emptyTitle": "No learning records yet.",
+    "kind": {
+      "reflection": "Reflection",
+      "research": "Research"
+    },
+    "lesson": "Lesson:",
+    "solution": "Solution:",
+    "confidence": "Confidence {{value}}"
+  },
+  "performance": {
+    "emptyTitle": "No performance data",
+    "attempts": "Attempts",
+    "successes": "Successes",
+    "successRate": "Success rate",
+    "artifacts": "Artifacts",
+    "learningRecords": "Learning records"
+  },
+  "career": {
+    "emptyTitle": "No career events yet",
+    "emptyHint": "Milestones will appear over time."
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "listTitle": "Projects",
+  "listDescription": "Customer orders being executed by the company.",
+  "newProject": "New Project",
+  "emptyTitle": "No projects yet",
+  "emptyHint": "Place your first order with the New Project button.",
+  "noDescription": "No description",
+  "taskProgress": "{{done}}/{{total}} tasks",
+  "status": {
+    "requested": "Requested",
+    "planning": "Planning",
+    "in_progress": "In Progress",
+    "in_review": "In Review",
+    "completed": "Completed",
+    "cancelled": "Cancelled",
+    "rejected": "Rejected"
+  },
+  "taskStatus": {
+    "backlog": "Backlog",
+    "todo": "Todo",
+    "in_progress": "In Progress",
+    "in_review": "In Review",
+    "done": "Done",
+    "failed": "Failed",
+    "rejected": "Rejected"
+  },
+  "taskKind": {
+    "order_review": "Order Review",
+    "planning": "Planning",
+    "research": "Research",
+    "development": "Development",
+    "testing": "Testing",
+    "final_review": "Final Review",
+    "general": "General"
+  },
+  "milestones": "Milestones",
+  "milestonesEmpty": "No milestones yet.",
+  "workflow": "Workflow",
+  "workflowUnavailable": "Graph unavailable yet — it appears once tasks exist.",
+  "graphEmptyTitle": "No workflow graph yet",
+  "graphEmptyHint": "Tasks appear here once planning completes.",
+  "tasks": "Tasks",
+  "tasksEmpty": "No tasks yet.",
+  "tasksTable": {
+    "id": "ID",
+    "title": "Title",
+    "kind": "Kind",
+    "status": "Status",
+    "assignee": "Assignee",
+    "unassigned": "Unassigned"
+  },
+  "artifacts": "Artifacts",
+  "artifactsEmpty": "No artifacts produced yet.",
+  "createdAt": "Created {{time}}",
+  "updatedAt": "Updated {{time}}",
+  "dialog": {
+    "title": "New Project",
+    "description": "Place an order with the company. The CEO will review it first.",
+    "nameLabel": "Name",
+    "namePlaceholder": "Customer portal redesign",
+    "descriptionLabel": "Order description",
+    "descriptionPlaceholder": "Describe what you want the company to build…",
+    "submit": "Place order",
+    "submitting": "Placing order…",
+    "errorFallback": "Failed to create project"
+  }
+}

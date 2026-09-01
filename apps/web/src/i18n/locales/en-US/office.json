@@ -1,0 +1,9 @@
+{
+  "title": "Office",
+  "description": "The floor — every AI employee, live.",
+  "emptyTitle": "The office is empty",
+  "emptyHint": "No employees seeded yet.",
+  "memberCount_one": "{{count}} employee",
+  "memberCount_other": "{{count}} employees",
+  "unassigned": "Unassigned"
+}

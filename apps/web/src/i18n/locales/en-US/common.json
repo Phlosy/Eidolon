@@ -1,0 +1,22 @@
+{
+  "retry": "Retry",
+  "cancel": "Cancel",
+  "close": "Close",
+  "back": "Back",
+  "next": "Next",
+  "errorTitle": "Failed to load",
+  "errorFallback": "Something went wrong",
+  "notFound": {
+    "title": "Page not found",
+    "hint": "Check the URL."
+  },
+  "language": {
+    "label": "Language"
+  },
+  "time": {
+    "secondsAgo": "{{count}}s ago",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
+  }
+}

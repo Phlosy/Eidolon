@@ -1,0 +1,17 @@
+{
+  "dashboard": "仪表盘",
+  "office": "办公室",
+  "employees": "员工",
+  "projects": "项目",
+  "artifacts": "产物",
+  "settings": "设置",
+  "tagline": "自治 AI 组织运行时",
+  "defaultCompany": "Eidolon Studio",
+  "headerSubtitle": "AI 公司指挥中心",
+  "connection": {
+    "open": "实时",
+    "connecting": "连接中",
+    "closed": "离线"
+  },
+  "toggleTheme": "切换主题"
+}

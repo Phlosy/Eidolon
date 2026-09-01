@@ -1,0 +1,8 @@
+{
+  "title": "办公室",
+  "description": "楼层实况 —— 每位 AI 员工的实时状态。",
+  "emptyTitle": "办公室空无一人",
+  "emptyHint": "尚未初始化任何员工。",
+  "memberCount": "{{count}} 名员工",
+  "unassigned": "未分配"
+}

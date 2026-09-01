@@ -1,0 +1,22 @@
+{
+  "retry": "重试",
+  "cancel": "取消",
+  "close": "关闭",
+  "back": "上一步",
+  "next": "下一步",
+  "errorTitle": "加载失败",
+  "errorFallback": "出错了",
+  "notFound": {
+    "title": "页面不存在",
+    "hint": "请检查 URL。"
+  },
+  "language": {
+    "label": "语言"
+  },
+  "time": {
+    "secondsAgo": "{{count}} 秒前",
+    "minutesAgo": "{{count}} 分钟前",
+    "hoursAgo": "{{count}} 小时前",
+    "daysAgo": "{{count}} 天前"
+  }
+}

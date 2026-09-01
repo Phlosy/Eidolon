@@ -1,0 +1,62 @@
+{
+  "emptyTitle": "暂无动态",
+  "emptyHint": "事件将实时显示在此处。",
+  "company": {
+    "created": "公司已创建"
+  },
+  "employee": {
+    "created": "新员工加入",
+    "status_changed": "员工状态变更"
+  },
+  "project": {
+    "created": "收到新订单",
+    "started": "项目已启动",
+    "completed": "项目已完成"
+  },
+  "task": {
+    "created": "任务已创建",
+    "assigned": "任务已分配",
+    "started": "任务已开始",
+    "completed": "任务已完成",
+    "failed": "任务失败"
+  },
+  "runtime": {
+    "started": "运行时已启动",
+    "stopped": "运行时已停止",
+    "created": "运行时已创建",
+    "restarting": "运行时重启中",
+    "unhealthy": "运行时不健康",
+    "crashed": "运行时已崩溃",
+    "provider_changed": "运行时服务商已更换",
+    "update_available": "运行时有可用更新",
+    "updated": "运行时已更新",
+    "update_failed": "运行时更新失败",
+    "update_check_started": "运行时开始检查更新",
+    "deleted": "运行时已删除"
+  },
+  "provider": {
+    "created": "服务商已添加",
+    "updated": "服务商已更新",
+    "tested": "服务商已测试",
+    "enabled": "服务商已启用",
+    "disabled": "服务商已禁用",
+    "failed": "服务商测试失败",
+    "deleted": "服务商已删除"
+  },
+  "artifact": {
+    "created": "产物已生成"
+  },
+  "learning": {
+    "started": "学习已开始",
+    "completed": "学习已完成"
+  },
+  "knowledge": {
+    "created": "知识已收录",
+    "proposed": "知识晋升提议",
+    "promoted": "知识已晋升"
+  },
+  "skill": {
+    "created": "技能已发现",
+    "validated": "技能已验证"
+  }
+}

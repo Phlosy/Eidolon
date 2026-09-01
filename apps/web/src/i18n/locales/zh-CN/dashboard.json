@@ -1,0 +1,14 @@
+{
+  "title": "仪表盘",
+  "description": "公司脉搏 —— 人员、交付与运行时成本一览。",
+  "stats": {
+    "employeesOnline": "在线员工",
+    "employeesOnlineHint": "非离线",
+    "activeProjects": "进行中项目",
+    "tasksInProgress": "进行中任务",
+    "artifacts": "产物",
+    "runtimeCost": "运行时成本（模拟）",
+    "runtimeCostHint": "估算值"
+  },
+  "recentActivity": "最近动态"
+}

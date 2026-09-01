@@ -1,0 +1,71 @@
+{
+  "sectionTitle": "Providers",
+  "sectionDescription": "LLM providers available to employee runtimes. Keys are write-only; only the masked credential is ever shown.",
+  "add": "Add provider",
+  "emptyTitle": "No providers",
+  "emptyHint": "Add a provider to give runtimes a model.",
+  "editTitle": "Edit {{name}}",
+  "modelsTitle": "Models — {{name}}",
+  "modelsFallback": "Models",
+  "discoveryFailed": "Discovery failed",
+  "noModelsReturned": "No models returned — enter model names manually where needed.",
+  "scope": {
+    "company": "Company",
+    "employee": "Employee Private"
+  },
+  "noCredential": "No credential",
+  "inUse": "{{count}} in use",
+  "inUseTitle": "In use by {{count}} runtime(s)",
+  "connected": "Connected",
+  "connectedIn": "in {{ms}}ms",
+  "modelsCount": "{{count}} models",
+  "testFailed": "Test failed: {{error}}",
+  "unknownError": "unknown error",
+  "disabled": "Disabled",
+  "actions": {
+    "test": "Test",
+    "discoverModels": "Discover models",
+    "edit": "Edit",
+    "enable": "Enable",
+    "disable": "Disable",
+    "delete": "Delete",
+    "connected": "Connected",
+    "failed": "Failed"
+  },
+  "form": {
+    "name": "Name",
+    "providerType": "Provider type",
+    "baseUrl": "Base URL",
+    "baseUrlOptional": "Base URL (optional)",
+    "baseUrlPlaceholder": "https://api.example.com/v1",
+    "scope": "Scope",
+    "scopeCompany": "Company — shared with everyone",
+    "scopeEmployee": "Employee — private to one employee",
+    "ownerEmployee": "Owner employee",
+    "selectEmployee": "Select an employee…",
+    "apiKey": "API key",
+    "apiKeyKeep": "API key (leave empty to keep)",
+    "saveChanges": "Save changes",
+    "addProvider": "Add provider"
+  },
+  "selector": {
+    "selectProvider": "Select a provider…",
+    "privateSuffix": ", private"
+  },
+  "modelSelector": {
+    "placeholder": "Model name, e.g. gpt-4o-mini",
+    "discover": "Discover",
+    "selectProviderFirst": "Select a provider first.",
+    "discoveryFailedManual": "Discovery failed — enter the model name manually.",
+    "pickDiscovered": "Pick a discovered model…"
+  },
+  "type": {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "openrouter": "OpenRouter",
+    "deepseek": "DeepSeek",
+    "gemini": "Gemini",
+    "ollama": "Ollama",
+    "custom": "Custom"
+  }
+}

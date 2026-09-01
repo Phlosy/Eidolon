@@ -1,0 +1,149 @@
+{
+  "type": {
+    "mock": "Mock",
+    "hermes": "Hermes",
+    "openclaw": "OpenClaw",
+    "codex": "Codex",
+    "claude_code": "Claude Code",
+    "opencode": "OpenCode",
+    "custom": "自定义"
+  },
+  "instanceStatus": {
+    "created": "已创建",
+    "starting": "启动中",
+    "running": "运行中",
+    "idle": "空闲",
+    "stopping": "停止中",
+    "stopped": "已停止",
+    "unhealthy": "不健康",
+    "crashed": "已崩溃",
+    "error": "错误",
+    "deleting": "删除中"
+  },
+  "updateStatus": {
+    "idle": "空闲",
+    "checking": "检查中",
+    "available": "有更新",
+    "downloading": "下载中",
+    "updating": "更新中",
+    "verifying": "验证中",
+    "completed": "已完成",
+    "failed": "失败",
+    "rolled_back": "已回滚"
+  },
+  "compatibility": {
+    "verified": "已验证",
+    "unverified": "未验证",
+    "unknown": "未知"
+  },
+  "capability": {
+    "chat": "对话",
+    "task": "任务",
+    "filesystem": "文件系统",
+    "terminal": "终端",
+    "web": "网页",
+    "memory": "记忆",
+    "skills": "技能",
+    "scheduler": "调度器",
+    "streaming": "流式输出",
+    "artifacts": "产物"
+  },
+  "unsupported": "不支持",
+  "updateAvailable": "有可用更新",
+  "compatibilityUnverified": "兼容性未验证",
+  "card": {
+    "title": "{{type}} 运行时",
+    "version": "版本",
+    "latestVersion": "最新版本",
+    "providerModel": "服务商 / 模型",
+    "container": "容器",
+    "health": "健康状态",
+    "lastHealthcheck": "最近健康检查",
+    "workspace": "工作区",
+    "dataPath": "数据路径",
+    "resources": "资源",
+    "stop": "停止",
+    "restart": "重启",
+    "viewLogs": "查看日志",
+    "changeProvider": "更换服务商",
+    "checkUpdate": "检查更新",
+    "checking": "检查中…",
+    "resourcesValue": "{{cpu}} 核 · {{memory}} MB"
+  },
+  "logs": {
+    "title": "运行时日志",
+    "lastLines": "最近 {{count}} 行",
+    "live": "实时（3 秒）",
+    "refresh": "刷新",
+    "empty": "暂无日志。"
+  },
+  "tab": {
+    "noInstanceTitle": "无运行时实例",
+    "noInstanceHint": "创建一个运行时，为该员工提供在线环境。",
+    "createRuntime": "创建运行时",
+    "capabilitiesHeading": "能力 —— {{type}}"
+  },
+  "changeProvider": {
+    "title": "更换服务商",
+    "description": "为该运行时选择新的服务商与模型。",
+    "apply": "应用",
+    "applying": "应用中…"
+  },
+  "wizard": {
+    "title": "创建运行时",
+    "stepOf": "第 {{current}} 步，共 {{total}} 步 —— {{step}}",
+    "steps": {
+      "type": "运行时类型",
+      "deployment": "部署方式",
+      "provider": "服务商",
+      "model": "模型",
+      "resources": "资源",
+      "confirm": "确认"
+    },
+    "notImplemented": "尚未实现",
+    "deploymentMode": "部署方式：",
+    "dockerUnavailable": "Docker 不可用 —— 暂时无法创建该运行时。",
+    "createNewProvider": "+ 新建服务商",
+    "summary": {
+      "runtime": "运行时",
+      "deployment": "部署方式",
+      "provider": "服务商",
+      "model": "模型",
+      "cpuLimit": "CPU 上限",
+      "memoryLimit": "内存上限"
+    },
+    "cpuValue": "{{count}} 核",
+    "memoryValue": "{{count}} MB",
+    "create": "创建运行时",
+    "creating": "创建中…",
+    "providerNamePlaceholder": "服务商名称",
+    "apiKeyPlaceholder": "API 密钥",
+    "baseUrlPlaceholder": "Base URL（可选）",
+    "saveProvider": "保存服务商",
+    "saving": "保存中…"
+  },
+  "resources": {
+    "cpuLabel": "CPU 上限（核）",
+    "memoryLabel": "内存上限（MB）"
+  },
+  "updates": {
+    "title": "运行时更新",
+    "description": "各运行时类型的容器镜像。兼容性未验证或 Docker 不可用时会阻止更新。",
+    "checkNow": "立即检查更新",
+    "checking": "检查中…",
+    "emptyTitle": "暂无运行时镜像",
+    "emptyHint": "识别到运行时后镜像会在此显示。",
+    "table": {
+      "runtime": "运行时",
+      "installed": "已安装",
+      "latest": "最新",
+      "status": "状态",
+      "compatibility": "兼容性",
+      "usedBy": "使用数",
+      "checked": "检查时间"
+    },
+    "dockerUnavailable": "Docker 不可用",
+    "compatibilityUnverified": "兼容性未验证",
+    "update": "更新"
+  }
+}

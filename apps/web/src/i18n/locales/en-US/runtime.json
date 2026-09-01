@@ -1,0 +1,149 @@
+{
+  "type": {
+    "mock": "Mock",
+    "hermes": "Hermes",
+    "openclaw": "OpenClaw",
+    "codex": "Codex",
+    "claude_code": "Claude Code",
+    "opencode": "OpenCode",
+    "custom": "Custom"
+  },
+  "instanceStatus": {
+    "created": "Created",
+    "starting": "Starting",
+    "running": "Running",
+    "idle": "Idle",
+    "stopping": "Stopping",
+    "stopped": "Stopped",
+    "unhealthy": "Unhealthy",
+    "crashed": "Crashed",
+    "error": "Error",
+    "deleting": "Deleting"
+  },
+  "updateStatus": {
+    "idle": "Idle",
+    "checking": "Checking",
+    "available": "Available",
+    "downloading": "Downloading",
+    "updating": "Updating",
+    "verifying": "Verifying",
+    "completed": "Completed",
+    "failed": "Failed",
+    "rolled_back": "Rolled Back"
+  },
+  "compatibility": {
+    "verified": "Verified",
+    "unverified": "Unverified",
+    "unknown": "Unknown"
+  },
+  "capability": {
+    "chat": "Chat",
+    "task": "Task",
+    "filesystem": "Filesystem",
+    "terminal": "Terminal",
+    "web": "Web",
+    "memory": "Memory",
+    "skills": "Skills",
+    "scheduler": "Scheduler",
+    "streaming": "Streaming",
+    "artifacts": "Artifacts"
+  },
+  "unsupported": "Unsupported",
+  "updateAvailable": "Update Available",
+  "compatibilityUnverified": "Compatibility Unverified",
+  "card": {
+    "title": "{{type}} runtime",
+    "version": "Version",
+    "latestVersion": "Latest version",
+    "providerModel": "Provider / model",
+    "container": "Container",
+    "health": "Health",
+    "lastHealthcheck": "Last healthcheck",
+    "workspace": "Workspace",
+    "dataPath": "Data path",
+    "resources": "Resources",
+    "stop": "Stop",
+    "restart": "Restart",
+    "viewLogs": "View logs",
+    "changeProvider": "Change provider",
+    "checkUpdate": "Check update",
+    "checking": "Checking…",
+    "resourcesValue": "{{cpu}} cores · {{memory}} MB"
+  },
+  "logs": {
+    "title": "Runtime logs",
+    "lastLines": "Last {{count}} lines",
+    "live": "Live (3s)",
+    "refresh": "Refresh",
+    "empty": "No log lines."
+  },
+  "tab": {
+    "noInstanceTitle": "No runtime instance",
+    "noInstanceHint": "Create one to give this employee a live environment.",
+    "createRuntime": "Create runtime",
+    "capabilitiesHeading": "Capabilities — {{type}}"
+  },
+  "changeProvider": {
+    "title": "Change provider",
+    "description": "Select a new provider and model for this runtime.",
+    "apply": "Apply",
+    "applying": "Applying…"
+  },
+  "wizard": {
+    "title": "Create runtime",
+    "stepOf": "Step {{current}} of {{total}} — {{step}}",
+    "steps": {
+      "type": "Runtime type",
+      "deployment": "Deployment",
+      "provider": "Provider",
+      "model": "Model",
+      "resources": "Resources",
+      "confirm": "Confirm"
+    },
+    "notImplemented": "Not implemented",
+    "deploymentMode": "Deployment mode:",
+    "dockerUnavailable": "Docker unavailable — this runtime cannot be created right now.",
+    "createNewProvider": "+ Create new provider",
+    "summary": {
+      "runtime": "Runtime",
+      "deployment": "Deployment",
+      "provider": "Provider",
+      "model": "Model",
+      "cpuLimit": "CPU limit",
+      "memoryLimit": "Memory limit"
+    },
+    "cpuValue": "{{count}} cores",
+    "memoryValue": "{{count}} MB",
+    "create": "Create runtime",
+    "creating": "Creating…",
+    "providerNamePlaceholder": "Provider name",
+    "apiKeyPlaceholder": "API key",
+    "baseUrlPlaceholder": "Base URL (optional)",
+    "saveProvider": "Save provider",
+    "saving": "Saving…"
+  },
+  "resources": {
+    "cpuLabel": "CPU limit (cores)",
+    "memoryLabel": "Memory limit (MB)"
+  },
+  "updates": {
+    "title": "Runtime Updates",
+    "description": "Container images per runtime type. Updates are blocked when compatibility is unverified or Docker is unavailable.",
+    "checkNow": "Check for updates now",
+    "checking": "Checking…",
+    "emptyTitle": "No runtime images",
+    "emptyHint": "Images appear once runtimes are known.",
+    "table": {
+      "runtime": "Runtime",
+      "installed": "Installed",
+      "latest": "Latest",
+      "status": "Status",
+      "compatibility": "Compatibility",
+      "usedBy": "Used by",
+      "checked": "Checked"
+    },
+    "dockerUnavailable": "Docker unavailable",
+    "compatibilityUnverified": "Compatibility unverified",
+    "update": "Update"
+  }
+}

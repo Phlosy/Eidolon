@@ -1,0 +1,62 @@
+{
+  "emptyTitle": "No activity yet",
+  "emptyHint": "Events will appear here in real time.",
+  "company": {
+    "created": "Company created"
+  },
+  "employee": {
+    "created": "Employee joined",
+    "status_changed": "Employee status changed"
+  },
+  "project": {
+    "created": "New order received",
+    "started": "Project started",
+    "completed": "Project completed"
+  },
+  "task": {
+    "created": "Task created",
+    "assigned": "Task assigned",
+    "started": "Task started",
+    "completed": "Task completed",
+    "failed": "Task failed"
+  },
+  "runtime": {
+    "started": "Runtime started",
+    "stopped": "Runtime stopped",
+    "created": "Runtime created",
+    "restarting": "Runtime restarting",
+    "unhealthy": "Runtime unhealthy",
+    "crashed": "Runtime crashed",
+    "provider_changed": "Runtime provider changed",
+    "update_available": "Runtime update available",
+    "updated": "Runtime updated",
+    "update_failed": "Runtime update failed",
+    "update_check_started": "Runtime update check started",
+    "deleted": "Runtime deleted"
+  },
+  "provider": {
+    "created": "Provider added",
+    "updated": "Provider updated",
+    "tested": "Provider tested",
+    "enabled": "Provider enabled",
+    "disabled": "Provider disabled",
+    "failed": "Provider test failed",
+    "deleted": "Provider deleted"
+  },
+  "artifact": {
+    "created": "Artifact produced"
+  },
+  "learning": {
+    "started": "Learning started",
+    "completed": "Learning completed"
+  },
+  "knowledge": {
+    "created": "Knowledge captured",
+    "proposed": "Knowledge promotion proposed",
+    "promoted": "Knowledge promoted"
+  },
+  "skill": {
+    "created": "Skill discovered",
+    "validated": "Skill validated"
+  }
+}

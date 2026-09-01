@@ -1,0 +1,115 @@
+{
+  "listTitle": "员工",
+  "listDescription": "名册上的每一位持久化智能体。",
+  "emptyTitle": "暂无员工",
+  "emptyHint": "初始化公司以开始使用。",
+  "table": {
+    "name": "姓名",
+    "role": "角色",
+    "status": "状态",
+    "runtime": "运行时",
+    "currentTask": "当前任务"
+  },
+  "status": {
+    "offline": "离线",
+    "idle": "空闲",
+    "working": "工作中",
+    "researching": "调研中",
+    "learning": "学习中",
+    "reflecting": "复盘中",
+    "meeting": "会议中",
+    "error": "错误"
+  },
+  "role": {
+    "ceo": "CEO",
+    "product_manager": "产品经理",
+    "researcher": "研究员",
+    "engineer": "工程师",
+    "qa_engineer": "QA 工程师"
+  },
+  "tabs": {
+    "overview": "概览",
+    "runtime": "运行时",
+    "activity": "动态",
+    "workspace": "工作区",
+    "memory": "记忆",
+    "knowledge": "知识",
+    "skills": "技能",
+    "learning": "学习",
+    "performance": "绩效",
+    "career": "履历"
+  },
+  "profile": {
+    "id": "ID",
+    "role": "角色",
+    "slug": "标识",
+    "runtime": "运行时",
+    "workspacePath": "工作区路径",
+    "memoryNamespace": "记忆命名空间",
+    "currentTask": "当前任务"
+  },
+  "activity": {
+    "emptyTitle": "暂无动态"
+  },
+  "workspace": {
+    "note": "路径由运行时管理，此处为只读视图。",
+    "workspacePath": "工作区路径",
+    "dataPath": "数据路径",
+    "noRuntimeTitle": "无运行时实例",
+    "noRuntimeHint": "创建运行时后即可查看其数据路径。"
+  },
+  "memory": {
+    "emptyTitle": "暂无记忆",
+    "emptyHint": "条目会随着员工工作而出现。",
+    "kind": {
+      "note": "笔记",
+      "observation": "观察",
+      "summary": "摘要"
+    }
+  },
+  "knowledge": {
+    "emptyTitle": "暂无私有知识",
+    "status": {
+      "active": "生效中",
+      "proposed": "待审核",
+      "rejected": "已拒绝"
+    }
+  },
+  "skills": {
+    "emptyTitle": "暂无技能记录。",
+    "table": {
+      "skill": "技能",
+      "version": "版本",
+      "attempts": "尝试次数",
+      "successRate": "成功率",
+      "validation": "验证状态"
+    },
+    "validation": {
+      "candidate": "候选",
+      "validated": "已验证",
+      "deprecated": "已废弃"
+    }
+  },
+  "learning": {
+    "emptyTitle": "暂无学习记录。",
+    "kind": {
+      "reflection": "复盘",
+      "research": "调研"
+    },
+    "lesson": "教训：",
+    "solution": "方案：",
+    "confidence": "置信度 {{value}}"
+  },
+  "performance": {
+    "emptyTitle": "暂无绩效数据",
+    "attempts": "尝试次数",
+    "successes": "成功次数",
+    "successRate": "成功率",
+    "artifacts": "产物",
+    "learningRecords": "学习记录"
+  },
+  "career": {
+    "emptyTitle": "暂无履历事件",
+    "emptyHint": "里程碑会随时间出现。"
+  }
+}

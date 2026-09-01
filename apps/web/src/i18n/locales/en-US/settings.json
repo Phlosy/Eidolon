@@ -1,0 +1,25 @@
+{
+  "title": "Settings",
+  "description": "Runtime configuration, providers, and updates.",
+  "runtimeSection": "Runtime",
+  "rows": {
+    "companyName": "Company name",
+    "runtimeMode": "Runtime mode",
+    "workspaceRoot": "Workspace root",
+    "apiPort": "API port",
+    "webPort": "Web port",
+    "apiBaseUrl": "API base URL (frontend)"
+  },
+  "apiBaseUrlProxy": "same-origin (proxied at /api, /ws)",
+  "appearance": "Appearance",
+  "themeLine": "Theme — currently {{theme}}. Persisted locally.",
+  "theme": {
+    "dark": "dark",
+    "light": "light"
+  },
+  "switchTheme": "Switch to {{theme}}",
+  "language": "Language",
+  "languageHint": "Interface language. Persisted locally and applied immediately.",
+  "apiDocs": "API documentation",
+  "apiDocsText": "The backend serves interactive OpenAPI docs at <link>{{url}}/docs</link>."
+}

@@ -1,0 +1,25 @@
+{
+  "title": "设置",
+  "description": "运行时配置、服务商与更新。",
+  "runtimeSection": "运行时",
+  "rows": {
+    "companyName": "公司名称",
+    "runtimeMode": "运行模式",
+    "workspaceRoot": "工作区根目录",
+    "apiPort": "API 端口",
+    "webPort": "Web 端口",
+    "apiBaseUrl": "API 基础 URL（前端）"
+  },
+  "apiBaseUrlProxy": "同源（经 /api、/ws 代理）",
+  "appearance": "外观",
+  "themeLine": "主题 —— 当前为{{theme}}，保存在本地。",
+  "theme": {
+    "dark": "深色",
+    "light": "浅色"
+  },
+  "switchTheme": "切换为{{theme}}",
+  "language": "语言",
+  "languageHint": "界面语言，保存在本地，即时生效。",
+  "apiDocs": "API 文档",
+  "apiDocsText": "后端在 <link>{{url}}/docs</link> 提供交互式 OpenAPI 文档。"
+}

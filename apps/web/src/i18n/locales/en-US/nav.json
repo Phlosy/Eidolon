@@ -1,0 +1,17 @@
+{
+  "dashboard": "Dashboard",
+  "office": "Office",
+  "employees": "Employees",
+  "projects": "Projects",
+  "artifacts": "Artifacts",
+  "settings": "Settings",
+  "tagline": "Autonomous AI Organization Runtime",
+  "defaultCompany": "Eidolon Studio",
+  "headerSubtitle": "AI Company Command Center",
+  "connection": {
+    "open": "Live",
+    "connecting": "Connecting",
+    "closed": "Offline"
+  },
+  "toggleTheme": "Toggle theme"
+}

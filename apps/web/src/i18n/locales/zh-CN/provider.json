@@ -1,0 +1,71 @@
+{
+  "sectionTitle": "服务商",
+  "sectionDescription": "员工运行时可用的大模型服务商。密钥为只写，界面上只显示掩码后的凭据。",
+  "add": "添加服务商",
+  "emptyTitle": "暂无服务商",
+  "emptyHint": "添加服务商以让运行时可以使用模型。",
+  "editTitle": "编辑 {{name}}",
+  "modelsTitle": "模型 —— {{name}}",
+  "modelsFallback": "模型",
+  "discoveryFailed": "发现失败",
+  "noModelsReturned": "未返回任何模型 —— 请在需要处手动填写模型名称。",
+  "scope": {
+    "company": "公司",
+    "employee": "员工私有"
+  },
+  "noCredential": "无凭据",
+  "inUse": "被 {{count}} 处使用",
+  "inUseTitle": "正被 {{count}} 个运行时使用",
+  "connected": "已连接",
+  "connectedIn": "耗时 {{ms}}ms",
+  "modelsCount": "{{count}} 个模型",
+  "testFailed": "测试失败：{{error}}",
+  "unknownError": "未知错误",
+  "disabled": "已禁用",
+  "actions": {
+    "test": "测试",
+    "discoverModels": "发现模型",
+    "edit": "编辑",
+    "enable": "启用",
+    "disable": "禁用",
+    "delete": "删除",
+    "connected": "已连接",
+    "failed": "失败"
+  },
+  "form": {
+    "name": "名称",
+    "providerType": "服务商类型",
+    "baseUrl": "Base URL",
+    "baseUrlOptional": "Base URL（可选）",
+    "baseUrlPlaceholder": "https://api.example.com/v1",
+    "scope": "范围",
+    "scopeCompany": "公司 —— 所有人共享",
+    "scopeEmployee": "员工 —— 仅单个员工私有",
+    "ownerEmployee": "所属员工",
+    "selectEmployee": "选择员工…",
+    "apiKey": "API 密钥",
+    "apiKeyKeep": "API 密钥（留空则保持不变）",
+    "saveChanges": "保存更改",
+    "addProvider": "添加服务商"
+  },
+  "selector": {
+    "selectProvider": "选择服务商…",
+    "privateSuffix": "，私有"
+  },
+  "modelSelector": {
+    "placeholder": "模型名称，例如 gpt-4o-mini",
+    "discover": "发现",
+    "selectProviderFirst": "请先选择服务商。",
+    "discoveryFailedManual": "发现失败 —— 请手动输入模型名称。",
+    "pickDiscovered": "选择一个发现的模型…"
+  },
+  "type": {
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "openrouter": "OpenRouter",
+    "deepseek": "DeepSeek",
+    "gemini": "Gemini",
+    "ollama": "Ollama",
+    "custom": "自定义"
+  }
+}

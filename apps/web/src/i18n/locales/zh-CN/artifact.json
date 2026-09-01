@@ -1,0 +1,27 @@
+{
+  "listTitle": "产物",
+  "listDescription": "公司产出的一切 —— 文档、代码、报告。",
+  "filterAll": "全部",
+  "emptyTitle": "暂无产物",
+  "emptyHint": "任务完成后产物会在此出现。",
+  "backToList": "全部产物",
+  "projectLabel": "项目",
+  "updatedAt": "更新于 {{time}}",
+  "type": {
+    "prd": "PRD",
+    "research_report": "调研报告",
+    "architecture": "架构设计",
+    "source_code": "源代码",
+    "test_report": "测试报告",
+    "readme": "README",
+    "release": "发布",
+    "plan": "计划",
+    "other": "其他"
+  },
+  "status": {
+    "draft": "草稿",
+    "in_review": "评审中",
+    "approved": "已通过",
+    "rejected": "已拒绝"
+  }
+}

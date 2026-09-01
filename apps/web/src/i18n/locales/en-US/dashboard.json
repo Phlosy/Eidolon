@@ -1,0 +1,14 @@
+{
+  "title": "Dashboard",
+  "description": "Company pulse — headcount, delivery, and runtime cost at a glance.",
+  "stats": {
+    "employeesOnline": "Employees online",
+    "employeesOnlineHint": "not offline",
+    "activeProjects": "Active projects",
+    "tasksInProgress": "Tasks in progress",
+    "artifacts": "Artifacts",
+    "runtimeCost": "Runtime cost (mock)",
+    "runtimeCostHint": "estimated"
+  },
+  "recentActivity": "Recent activity"
+}
