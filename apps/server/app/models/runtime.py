@@ -1,0 +1,89 @@
+"""Runtime domain (v0.2): EmployeeBrain / RuntimeInstance / RuntimeImage.
+
+A RuntimeInstance is the persisted, per-employee execution environment
+(One Employee = One Persistent Agent). It survives restarts and is driven
+through the RuntimeInstanceManager; identity/memory/skills live outside it,
+so replacing an instance never touches them.
+"""
+
+from datetime import datetime
+
+from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.models.base import Base, TimestampMixin
+from app.models.enums import (
+    DeploymentMode,
+    HealthStatus,
+    ImageCompatibility,
+    ImageUpdateStatus,
+    RuntimeInstanceStatus,
+    RuntimeType,
+)
+
+
+class EmployeeBrain(TimestampMixin, Base):
+    """Persistent personality/goals/learning configuration per employee."""
+
+    __tablename__ = "employee_brains"
+
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), unique=True, index=True)
+    personality: Mapped[str] = mapped_column(Text, default="")
+    goals: Mapped[str] = mapped_column(Text, default="")
+    interests: Mapped[list] = mapped_column(JSON, default=list)
+    learning_policy: Mapped[dict] = mapped_column(JSON, default=dict)
+    memory_policy: Mapped[dict] = mapped_column(JSON, default=dict)
+    curiosity: Mapped[float] = mapped_column(default=0.5)
+
+
+class RuntimeInstance(TimestampMixin, Base):
+    __tablename__ = "runtime_instances"
+
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), unique=True, index=True)
+    runtime_type: Mapped[str] = mapped_column(String(50), default=RuntimeType.mock.value)
+    deployment_mode: Mapped[str] = mapped_column(String(50), default=DeploymentMode.mock.value)
+    container_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    container_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    image: Mapped[str] = mapped_column(String(300), default="")
+    image_tag: Mapped[str] = mapped_column(String(100), default="latest")
+    image_digest: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    runtime_version: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(50), default=RuntimeInstanceStatus.created.value, index=True
+    )
+    health_status: Mapped[str] = mapped_column(String(50), default=HealthStatus.unknown.value)
+    internal_host: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    internal_port: Mapped[int | None] = mapped_column(nullable=True)
+    workspace_path: Mapped[str] = mapped_column(String(500), default="")
+    data_path: Mapped[str] = mapped_column(String(500), default="")
+    model_binding_id: Mapped[int | None] = mapped_column(
+        ForeignKey("model_bindings.id"), nullable=True
+    )
+    cpu_limit: Mapped[float] = mapped_column(default=2.0)
+    memory_limit_mb: Mapped[int] = mapped_column(default=4096)
+    restart_policy: Mapped[str] = mapped_column(String(50), default="unless-stopped")
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    last_healthcheck_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
+class RuntimeImage(TimestampMixin, Base):
+    """Tracks a runtime image (per runtime_type) and its update state."""
+
+    __tablename__ = "runtime_images"
+
+    runtime_type: Mapped[str] = mapped_column(String(50), unique=True)
+    repository: Mapped[str] = mapped_column(String(300))
+    tag: Mapped[str] = mapped_column(String(100), default="latest")
+    digest: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    installed_version: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    latest_version: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    latest_digest: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    channel: Mapped[str] = mapped_column(String(50), default="stable")
+    update_available: Mapped[bool] = mapped_column(default=False)
+    compatibility_status: Mapped[str] = mapped_column(
+        String(50), default=ImageCompatibility.unknown.value
+    )
+    update_status: Mapped[str] = mapped_column(String(50), default=ImageUpdateStatus.idle.value)
+    last_checked_at: Mapped[datetime | None] = mapped_column(nullable=True)

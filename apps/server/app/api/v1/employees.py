@@ -1,0 +1,169 @@
+"""/employees + private sub-resources (memory / knowledge / skills / learning)."""
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.models.enums import KnowledgeScope
+from app.models.organization import Employee
+from app.repositories import events as event_repo
+from app.repositories import knowledge as knowledge_repo
+from app.repositories import organization as org_repo
+from app.schemas.knowledge import (
+    EventOut,
+    KnowledgeItemOut,
+    LearningPriorityOut,
+    LearningRecordOut,
+    MemoryEntryOut,
+    SkillOut,
+)
+from app.schemas.organization import (
+    EmployeeCreate,
+    EmployeeOut,
+    EmployeePatch,
+    EmployeePerformance,
+)
+from app.schemas.runtime import (
+    EmployeeBrainOut,
+    EmployeeBrainPatch,
+    EmployeeRuntimeCreate,
+    EmployeeRuntimeProviderPatch,
+    RuntimeInstanceOut,
+)
+from app.services import employees as employee_service
+from app.services import runtimes as runtime_service
+
+router = APIRouter(prefix="/employees", tags=["employees"])
+
+
+def _get_employee_or_404(db: Session, employee_id: int) -> Employee:
+    employee = org_repo.get_employee(db, employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail="employee not found")
+    return employee
+
+
+@router.get("", response_model=list[EmployeeOut])
+def list_employees(db: Session = Depends(get_db)) -> list[EmployeeOut]:
+    return [EmployeeOut.model_validate(e) for e in org_repo.list_employees(db)]
+
+
+@router.post("", response_model=EmployeeOut, status_code=201)
+def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)) -> EmployeeOut:
+    return EmployeeOut.model_validate(employee_service.create_employee(db, payload))
+
+
+@router.get("/{employee_id}", response_model=EmployeeOut)
+def get_employee(employee_id: int, db: Session = Depends(get_db)) -> EmployeeOut:
+    return EmployeeOut.model_validate(_get_employee_or_404(db, employee_id))
+
+
+@router.patch("/{employee_id}", response_model=EmployeeOut)
+def update_employee(
+    employee_id: int, payload: EmployeePatch, db: Session = Depends(get_db)
+) -> EmployeeOut:
+    employee = _get_employee_or_404(db, employee_id)
+    return EmployeeOut.model_validate(employee_service.update_employee(db, employee, payload))
+
+
+@router.get("/{employee_id}/memory", response_model=list[MemoryEntryOut])
+def get_memory(employee_id: int, db: Session = Depends(get_db)) -> list[MemoryEntryOut]:
+    employee = _get_employee_or_404(db, employee_id)
+    entries = knowledge_repo.list_memory_entries(db, employee.id)
+    return [MemoryEntryOut.model_validate(e) for e in entries]
+
+
+@router.get("/{employee_id}/knowledge", response_model=list[KnowledgeItemOut])
+def get_private_knowledge(
+    employee_id: int, db: Session = Depends(get_db)
+) -> list[KnowledgeItemOut]:
+    employee = _get_employee_or_404(db, employee_id)
+    items = knowledge_repo.list_knowledge_items(
+        db, scope=KnowledgeScope.private.value, employee_id=employee.id
+    )
+    return [KnowledgeItemOut.model_validate(i) for i in items]
+
+
+@router.get("/{employee_id}/skills", response_model=list[SkillOut])
+def get_skills(employee_id: int, db: Session = Depends(get_db)) -> list[SkillOut]:
+    employee = _get_employee_or_404(db, employee_id)
+    return [SkillOut.model_validate(s) for s in knowledge_repo.list_skills(db, employee.id)]
+
+
+@router.get("/{employee_id}/learning-records", response_model=list[LearningRecordOut])
+def get_learning_records(
+    employee_id: int, db: Session = Depends(get_db)
+) -> list[LearningRecordOut]:
+    employee = _get_employee_or_404(db, employee_id)
+    records = knowledge_repo.list_learning_records(db, employee.id)
+    return [LearningRecordOut.model_validate(r) for r in records]
+
+
+@router.get("/{employee_id}/learning-priorities", response_model=list[LearningPriorityOut])
+def get_learning_priorities(
+    employee_id: int, db: Session = Depends(get_db)
+) -> list[LearningPriorityOut]:
+    employee = _get_employee_or_404(db, employee_id)
+    priorities = knowledge_repo.list_learning_priorities(db, employee.id)
+    return [LearningPriorityOut.model_validate(p) for p in priorities]
+
+
+@router.get("/{employee_id}/activity", response_model=list[EventOut])
+def get_activity(employee_id: int, db: Session = Depends(get_db)) -> list[EventOut]:
+    employee = _get_employee_or_404(db, employee_id)
+    events = event_repo.list_events(db, limit=50, actor_employee_id=employee.id)
+    return [EventOut.model_validate(e) for e in events]
+
+
+@router.get("/{employee_id}/performance", response_model=EmployeePerformance)
+def get_performance(employee_id: int, db: Session = Depends(get_db)) -> EmployeePerformance:
+    _get_employee_or_404(db, employee_id)
+    return employee_service.get_performance(db, employee_id)
+
+
+# ---- v0.2: employee runtime + brain ----
+
+
+@router.get("/{employee_id}/runtime", response_model=RuntimeInstanceOut)
+def get_employee_runtime(employee_id: int, db: Session = Depends(get_db)) -> RuntimeInstanceOut:
+    employee = _get_employee_or_404(db, employee_id)
+    instance = runtime_service.get_employee_runtime(db, employee)
+    if instance is None:
+        raise HTTPException(status_code=404, detail="employee has no runtime instance")
+    return instance
+
+
+@router.post("/{employee_id}/runtime", response_model=RuntimeInstanceOut, status_code=201)
+async def create_employee_runtime(
+    employee_id: int, payload: EmployeeRuntimeCreate, db: Session = Depends(get_db)
+) -> RuntimeInstanceOut:
+    employee = _get_employee_or_404(db, employee_id)
+    return await runtime_service.create_employee_runtime(db, employee, payload)
+
+
+@router.patch("/{employee_id}/runtime/provider", response_model=RuntimeInstanceOut)
+async def update_employee_runtime_provider(
+    employee_id: int, payload: EmployeeRuntimeProviderPatch, db: Session = Depends(get_db)
+) -> RuntimeInstanceOut:
+    employee = _get_employee_or_404(db, employee_id)
+    return await runtime_service.change_runtime_provider(db, employee, payload)
+
+
+@router.delete("/{employee_id}/runtime", status_code=204)
+async def delete_employee_runtime(employee_id: int, db: Session = Depends(get_db)) -> None:
+    employee = _get_employee_or_404(db, employee_id)
+    await runtime_service.delete_employee_runtime(db, employee)
+
+
+@router.get("/{employee_id}/brain", response_model=EmployeeBrainOut)
+def get_employee_brain(employee_id: int, db: Session = Depends(get_db)) -> EmployeeBrainOut:
+    employee = _get_employee_or_404(db, employee_id)
+    return runtime_service.get_brain(db, employee)
+
+
+@router.patch("/{employee_id}/brain", response_model=EmployeeBrainOut)
+def update_employee_brain(
+    employee_id: int, payload: EmployeeBrainPatch, db: Session = Depends(get_db)
+) -> EmployeeBrainOut:
+    employee = _get_employee_or_404(db, employee_id)
+    return runtime_service.patch_brain(db, employee, payload)

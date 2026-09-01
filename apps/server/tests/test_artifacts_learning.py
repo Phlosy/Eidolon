@@ -1,0 +1,130 @@
+"""Artifacts as real files + learning retrieval injection (v0.2)."""
+
+import hashlib
+import time
+from pathlib import Path
+
+from app.core.config import settings
+from app.learning import retrieval
+from app.models.enums import KnowledgeScope
+from app.repositories import knowledge as knowledge_repo
+
+
+def _wait_for(predicate, timeout=30.0, interval=0.2):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if predicate():
+            return True
+        time.sleep(interval)
+    return False
+
+
+def test_artifact_written_to_disk_with_sha256(client):
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "artifact-file-check", "description": "验证 artifact 落盘"},
+    ).json()
+    content = "# Hello\n\nartifact body for sha256 check\n"
+    response = client.post(
+        "/api/v1/artifacts",
+        json={
+            "project_id": project["id"],
+            "type": "research_report",
+            "title": "File Check",
+            "content": content,
+        },
+    )
+    assert response.status_code == 201
+    artifact = response.json()
+    expected = hashlib.sha256(content.encode("utf-8")).hexdigest()
+    assert artifact["sha256"] == expected
+    path = Path(artifact["path"])
+    assert path.exists()
+    assert path.read_text(encoding="utf-8") == content
+    # research_report lands under docs/
+    assert path.parent == Path(settings.data_root) / "projects" / str(project["id"]) / "docs"
+
+
+def test_workflow_artifacts_materialized_with_session_link(client):
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "workflow-artifacts", "description": "全链路 artifact 落盘验证"},
+    ).json()
+
+    def done():
+        detail = client.get(f"/api/v1/projects/{project['id']}").json()
+        return detail["status"] == "completed"
+
+    assert _wait_for(done), "project did not complete"
+    detail = client.get(f"/api/v1/projects/{project['id']}").json()
+    artifacts = detail["artifacts"]
+    assert len(artifacts) >= 5  # order review, PRD, research, code, test report, release
+    for artifact in artifacts:
+        assert artifact["sha256"]
+        assert artifact["path"] and Path(artifact["path"]).exists()
+        assert artifact["work_session_id"] is not None
+        on_disk = Path(artifact["path"]).read_text(encoding="utf-8")
+        assert hashlib.sha256(on_disk.encode("utf-8")).hexdigest() == artifact["sha256"]
+
+
+def test_retrieval_matches_private_knowledge(db, employees_by_slug):
+    alice = employees_by_slug["alice"]
+    bob = employees_by_slug["bob"]
+    knowledge_repo.create_knowledge_item(
+        db,
+        scope=KnowledgeScope.private.value,
+        owner_employee_id=alice["id"],
+        title="onboarding portal 经验",
+        content="上次做过 onboarding portal，注意权限模型",
+        topic="onboarding portal",
+        confidence=0.9,
+        sources=[],
+    )
+    db.commit()
+
+    knowledge, skills = retrieval.retrieve_for_task(
+        db, alice["id"], "订单评审：onboarding portal", "构建 onboarding portal"
+    )
+    assert "onboarding portal" in knowledge
+
+    # private knowledge does not leak across employees
+    knowledge_bob, _ = retrieval.retrieve_for_task(
+        db, bob["id"], "订单评审：onboarding portal", "构建 onboarding portal"
+    )
+    assert "onboarding portal" not in knowledge_bob
+
+    # no overlap → no injection
+    none_hit, _ = retrieval.retrieve_for_task(db, alice["id"], " unrelated xyzzy", "")
+    assert "onboarding portal" not in none_hit
+
+
+def test_mock_runtime_weaves_prior_knowledge(client, db, employees_by_slug):
+    """End-to-end: private knowledge for the CEO shows up in the order-review artifact."""
+    alice = employees_by_slug["alice"]
+    marker_topic = f"zztopic-{int(time.time() * 1000)}"
+    knowledge_repo.create_knowledge_item(
+        db,
+        scope=KnowledgeScope.private.value,
+        owner_employee_id=alice["id"],
+        title=f"{marker_topic} 经验",
+        content="经验内容",
+        topic=marker_topic,
+        confidence=0.9,
+        sources=[],
+    )
+    db.commit()
+
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": f"{marker_topic} project", "description": "测试检索注入"},
+    ).json()
+
+    def order_review_done():
+        detail = client.get(f"/api/v1/projects/{project['id']}").json()
+        return any(a["type"] == "plan" for a in detail["artifacts"])
+
+    assert _wait_for(order_review_done), "order review artifact not produced"
+    detail = client.get(f"/api/v1/projects/{project['id']}").json()
+    plan = next(a for a in detail["artifacts"] if a["type"] == "plan")
+    assert "using prior knowledge" in plan["content"]
+    assert marker_topic in plan["content"]
