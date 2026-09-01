@@ -1,0 +1,28 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+*.log
+
+# Eidolon runtime data (workspaces, sqlite db, logs, pids)
+data/
+.run/
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
