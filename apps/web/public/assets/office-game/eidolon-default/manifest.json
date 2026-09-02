@@ -1,6 +1,6 @@
 {
   "id": "eidolon-default",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "tileSize": 32,
   "fallbacks": {
     "character": "employee-0",
@@ -14,7 +14,7 @@
       "source": "source/office-objects-concepts-v1.png",
       "author": "OpenAI image generation, directed by Eidolon",
       "license": "project-generated",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "tileSize": 32,
       "runtimePath": "runtime/office-tiles.png"
     },
@@ -22,20 +22,21 @@
       "id": "office-objects",
       "type": "atlas",
       "source": "source/office-objects-concepts-v1.png",
+      "sourceAdditions": "source/office-layout-additions-v2.png",
       "author": "OpenAI image generation, directed by Eidolon",
       "license": "project-generated",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "runtimePath": "runtime/office-objects.png",
       "dataPath": "runtime/office-objects.json"
     },
     {
       "id": "employees",
       "type": "spritesheet",
-      "source": "source/employee-concepts-v1.png",
+      "source": "source/employee-directional-v2.png",
       "author": "OpenAI image generation, directed by Eidolon",
       "license": "project-generated",
-      "version": "1.0.0",
-      "spriteSize": [32, 48],
+      "version": "2.0.0",
+      "spriteSize": [48, 64],
       "runtimePath": "runtime/employees.png"
     }
   ]

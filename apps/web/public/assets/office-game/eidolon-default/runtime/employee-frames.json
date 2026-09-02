@@ -1,18 +1,22 @@
 {
   "employee-0": {
     "row": 0,
-    "firstFrame": 0
+    "firstFrame": 0,
+    "frameCount": 32
   },
   "employee-1": {
     "row": 1,
-    "firstFrame": 16
+    "firstFrame": 32,
+    "frameCount": 32
   },
   "employee-2": {
     "row": 2,
-    "firstFrame": 32
+    "firstFrame": 64,
+    "frameCount": 32
   },
   "employee-3": {
     "row": 3,
-    "firstFrame": 48
+    "firstFrame": 96,
+    "frameCount": 32
   }
 }

@@ -8,6 +8,7 @@ import {
   EmployeeBehaviorSystem,
   type BehaviorDirective,
 } from "../systems/employee-behavior-system";
+import { resolveEmployeeDepth, resolveMovementDirection } from "../systems/employee-presentation";
 import { MeetingSystem } from "../systems/meeting-system";
 import { findGridPath, type GridPoint, type NavigationGrid } from "../systems/navigation-system";
 import {
@@ -22,6 +23,7 @@ type RuntimeEmployee = {
   sprite: EmployeeSprite;
   directive: BehaviorDirective;
   destination: GridPoint | null;
+  interaction: OfficeInteractionPoint | null;
 };
 
 function objectProperty(object: Phaser.Types.Tilemaps.TiledObject, name: string): unknown {
@@ -136,6 +138,7 @@ export class OfficeScene extends Phaser.Scene {
         facing: String(
           objectProperty(object, "facing") ?? "down",
         ) as OfficeInteractionPoint["facing"],
+        characterDepthOffset: Number(objectProperty(object, "characterDepthOffset") ?? 30),
       })) ?? []
     );
   }
@@ -180,7 +183,12 @@ export class OfficeScene extends Phaser.Scene {
         skinId,
         this.bridge,
       );
-      runtime = { sprite, directive: this.behavior.update(employee), destination: null };
+      runtime = {
+        sprite,
+        directive: this.behavior.update(employee),
+        destination: null,
+        interaction: null,
+      };
       this.employees.set(employee.id, runtime);
     } else {
       runtime.sprite.updateEmployee(employee);
@@ -203,29 +211,33 @@ export class OfficeScene extends Phaser.Scene {
     }
     if (!point) {
       runtime.destination = null;
+      runtime.interaction = null;
       runtime.sprite.playActivity(runtime.directive.animation);
       return;
     }
     runtime.destination = point.tile;
+    runtime.interaction = point;
     const current = {
       x: pixelToTile(runtime.sprite.x),
       y: pixelToTile(runtime.sprite.y),
     };
     const path = findGridPath(current, point.tile, this.grid);
     runtime.sprite.replacePath(path);
-    if (path.length <= 1) runtime.sprite.playActivity(runtime.directive.animation);
+    if (path.length <= 1) this.applyInteractionPose(runtime);
   }
 
   private moveEmployee(runtime: RuntimeEmployee, delta: number): void {
     const { sprite } = runtime;
     if (sprite.hoverPaused || sprite.path.length === 0) return;
     const target = tileCenter(sprite.path[0]);
+    const direction = resolveMovementDirection(sprite, target, sprite.facing);
+    sprite.playActivity("walk", direction);
     const distance = Phaser.Math.Distance.Between(sprite.x, sprite.y, target.x, target.y);
     if (distance <= 2) {
       sprite.setPosition(target.x, target.y);
       sprite.path.shift();
       if (sprite.path.length === 0) {
-        sprite.playActivity(runtime.directive.animation);
+        this.applyInteractionPose(runtime);
         if (runtime.directive.state === "OFFLINE") sprite.setVisible(false);
       }
     } else {
@@ -233,7 +245,13 @@ export class OfficeScene extends Phaser.Scene {
       sprite.x += ((target.x - sprite.x) / distance) * Math.min(speed, distance);
       sprite.y += ((target.y - sprite.y) / distance) * Math.min(speed, distance);
     }
-    sprite.setDepth(sprite.y + 30);
+    if (sprite.path.length > 0) sprite.setDepth(resolveEmployeeDepth(sprite.y));
+  }
+
+  private applyInteractionPose(runtime: RuntimeEmployee): void {
+    const { sprite, interaction } = runtime;
+    sprite.playActivity(runtime.directive.animation, interaction?.facing ?? sprite.facing);
+    sprite.setDepth(resolveEmployeeDepth(sprite.y, interaction?.characterDepthOffset));
   }
 
   private addAmbientEffects(): void {

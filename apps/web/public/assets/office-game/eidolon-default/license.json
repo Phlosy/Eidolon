@@ -15,6 +15,20 @@
       "license": "project-generated",
       "sourceUrl": null,
       "modification": "split into tiles and object atlas, background-normalized, resized with nearest-neighbor"
+    },
+    {
+      "source": "source/employee-directional-v2.png",
+      "author": "OpenAI image generation, directed by Eidolon",
+      "license": "project-generated",
+      "sourceUrl": null,
+      "modification": "cropped into directional idle, walk, and desk-free seated work frames; background-normalized; resized with nearest-neighbor"
+    },
+    {
+      "source": "source/office-layout-additions-v2.png",
+      "author": "OpenAI image generation, directed by Eidolon",
+      "license": "project-generated",
+      "sourceUrl": null,
+      "modification": "split into wall, side-wall, entrance, planter, rug, cabinet, and depth-layered workstation atlas frames"
     }
   ]
 }

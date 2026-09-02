@@ -3,13 +3,16 @@ import type { OfficeEventBridge } from "../../bridge/office-event-bridge";
 import type { OfficeEmployeeState } from "../../types/office-state";
 import {
   resolveEmployeeAnimation,
+  shouldMirrorEmployee,
   type EmployeeAnimationName,
 } from "../systems/animation-registry";
+import type { EmployeeFacingDirection } from "../systems/employee-presentation";
 import type { GridPoint } from "../systems/navigation-system";
 
 export class EmployeeSprite extends Phaser.GameObjects.Sprite {
   readonly path: GridPoint[] = [];
   targetAnimation: EmployeeAnimationName = "idle";
+  facing: EmployeeFacingDirection = "down";
   hoverPaused = false;
 
   constructor(
@@ -20,7 +23,7 @@ export class EmployeeSprite extends Phaser.GameObjects.Sprite {
     public readonly skinId: string,
     private readonly bridge: OfficeEventBridge,
   ) {
-    super(scene, x, y, "employees", Number(skinId.split("-").at(-1) ?? 0) * 16);
+    super(scene, x, y, "employees", Number(skinId.split("-").at(-1) ?? 0) * 32);
     scene.add.existing(this);
     this.setOrigin(0.5, 1).setInteractive({ cursor: "pointer", useHandCursor: true });
     this.playActivity("idle");
@@ -39,14 +42,20 @@ export class EmployeeSprite extends Phaser.GameObjects.Sprite {
     });
   }
 
-  playActivity(animation: EmployeeAnimationName): void {
+  playActivity(
+    animation: EmployeeAnimationName,
+    direction: EmployeeFacingDirection = this.facing,
+  ): void {
     this.targetAnimation = animation;
-    this.play(resolveEmployeeAnimation(this.skinId, animation), true);
+    this.facing = direction;
+    this.setFlipX(shouldMirrorEmployee(direction));
+    const key = resolveEmployeeAnimation(this.skinId, animation, direction);
+    if (this.anims.currentAnim?.key !== key) this.play(key, true);
   }
 
   replacePath(path: GridPoint[]): void {
     this.path.splice(0, this.path.length, ...path.slice(1));
-    if (this.path.length > 0) this.playActivity("walk");
+    if (this.path.length > 0) this.playActivity("walk", this.facing);
   }
 
   updateEmployee(employee: OfficeEmployeeState): void {

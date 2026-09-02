@@ -10,14 +10,16 @@ import json
 from collections import deque
 from pathlib import Path
 
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageOps
 
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK = ROOT / "apps/web/public/assets/office-game/eidolon-default"
 SOURCE = PACK / "source"
 RUNTIME = PACK / "runtime"
-FRAME = (32, 48)
+FRAME = (48, 64)
+POSE_COLUMNS = 8
+EMPLOYEE_ROWS = 4
 
 
 def color_distance(a: tuple[int, ...], b: tuple[int, ...]) -> int:
@@ -67,34 +69,58 @@ def fit_pixel(source: Image.Image, size: tuple[int, int], padding: int = 0) -> I
     return output
 
 
+def keep_rows(source: Image.Image, start: int, end: int) -> Image.Image:
+    output = Image.new("RGBA", source.size)
+    output.alpha_composite(source.crop((0, start, source.width, end)), (0, start))
+    return output
+
+
+def animation_frames(pose: Image.Image, *, mirror_stride: bool = False) -> list[Image.Image]:
+    frames: list[Image.Image] = []
+    for index in range(4):
+        frame = ImageOps.mirror(pose) if mirror_stride and index in (1, 3) else pose
+        if index in (1, 3):
+            shifted = Image.new("RGBA", FRAME)
+            shifted.alpha_composite(frame, (0, -1))
+            frame = shifted
+        frames.append(frame)
+    return frames
+
+
 def make_character_sheet(source: Image.Image) -> tuple[Image.Image, dict[str, dict[str, int]]]:
-    rows = [
-        {"idle": (18, 24, 116, 252), "walkA": (404, 24, 493, 252), "walkB": (500, 24, 590, 252), "work": (922, 70, 1028, 252), "meeting": (1162, 24, 1268, 252)},
-        {"idle": (18, 278, 116, 510), "walkA": (405, 275, 495, 510), "walkB": (500, 275, 590, 510), "work": (920, 320, 1026, 510), "meeting": (1160, 275, 1270, 510)},
-        {"idle": (18, 526, 116, 758), "walkA": (405, 525, 495, 758), "walkB": (500, 525, 590, 758), "work": (920, 570, 1026, 758), "meeting": (1160, 525, 1270, 758)},
-        {"idle": (18, 772, 116, 1010), "walkA": (405, 770, 495, 1010), "walkB": (500, 770, 590, 1010), "work": (920, 815, 1026, 1010), "meeting": (1160, 770, 1270, 1010)},
-    ]
-    sheet = Image.new("RGBA", (FRAME[0] * 16, FRAME[1] * len(rows)))
+    cell_width = source.width // POSE_COLUMNS
+    cell_height = source.height // EMPLOYEE_ROWS
+    sheet = Image.new("RGBA", (FRAME[0] * 32, FRAME[1] * EMPLOYEE_ROWS))
     registry: dict[str, dict[str, int]] = {}
 
-    for row_index, poses in enumerate(rows):
-        prepared = {
-            name: fit_pixel(transparent_crop(source, box), FRAME, padding=2)
-            for name, box in poses.items()
-        }
-        sequence = [
-            prepared["idle"], prepared["idle"], prepared["idle"], prepared["idle"],
-            prepared["walkA"], prepared["walkB"], prepared["walkA"], prepared["walkB"],
-            prepared["work"], prepared["work"], prepared["work"], prepared["work"],
-            prepared["meeting"], prepared["meeting"], prepared["meeting"], prepared["meeting"],
-        ]
+    for row_index in range(EMPLOYEE_ROWS):
+        poses: list[Image.Image] = []
+        for column in range(POSE_COLUMNS):
+            box = (
+                column * cell_width + 8,
+                row_index * cell_height + 8,
+                (column + 1) * cell_width - 8,
+                (row_index + 1) * cell_height - 8,
+            )
+            poses.append(fit_pixel(transparent_crop(source, box, threshold=60), FRAME, padding=2))
+
+        sequence = (
+            animation_frames(poses[0])
+            + animation_frames(poses[1])
+            + animation_frames(poses[2])
+            + animation_frames(poses[3], mirror_stride=True)
+            + animation_frames(poses[4], mirror_stride=True)
+            + [poses[2], poses[5], poses[2], poses[5]]
+            + animation_frames(poses[6])
+            + animation_frames(poses[7])
+        )
         for frame_index, frame in enumerate(sequence):
-            if frame_index % 4 in (1, 3):
-                shifted = Image.new("RGBA", FRAME)
-                shifted.alpha_composite(frame, (0, -1))
-                frame = shifted
             sheet.alpha_composite(frame, (frame_index * FRAME[0], row_index * FRAME[1]))
-        registry[f"employee-{row_index}"] = {"row": row_index, "firstFrame": row_index * 16}
+        registry[f"employee-{row_index}"] = {
+            "row": row_index,
+            "firstFrame": row_index * 32,
+            "frameCount": 32,
+        }
 
     return sheet, registry
 
@@ -117,7 +143,9 @@ def make_tiles(source: Image.Image) -> Image.Image:
     return tiles
 
 
-def make_object_atlas(source: Image.Image) -> tuple[Image.Image, dict[str, dict[str, int]]]:
+def make_object_atlas(
+    source: Image.Image, additions: Image.Image
+) -> tuple[Image.Image, dict[str, dict[str, int]]]:
     definitions = {
         "window": ((520, 16, 748, 216), (128, 96)),
         "door": ((772, 12, 910, 216), (64, 96)),
@@ -129,7 +157,15 @@ def make_object_atlas(source: Image.Image) -> tuple[Image.Image, dict[str, dict[
         "server-rack": ((1178, 610, 1324, 856), (64, 128)),
         "plant": ((1012, 456, 1204, 644), (96, 96)),
     }
-    atlas = Image.new("RGBA", (512, 512))
+    addition_definitions = {
+        "company-display": ((32, 126, 476, 396), (320, 128)),
+        "side-bookshelf": ((548, 48, 748, 520), (96, 192)),
+        "entrance-door": ((830, 60, 1124, 504), (128, 192)),
+        "corner-plant": ((1194, 106, 1514, 504), (128, 128)),
+        "blue-rug": ((846, 646, 1296, 922), (256, 160)),
+        "side-cabinet": ((1322, 548, 1528, 930), (96, 128)),
+    }
+    atlas = Image.new("RGBA", (1024, 768))
     frames: dict[str, dict[str, int]] = {}
     cursor_x = cursor_y = row_height = 0
 
@@ -144,19 +180,43 @@ def make_object_atlas(source: Image.Image) -> tuple[Image.Image, dict[str, dict[
         cursor_x += size[0]
         row_height = max(row_height, size[1])
 
+    addition_items = {
+        name: fit_pixel(transparent_crop(additions, box, threshold=22), size, padding=2)
+        for name, (box, size) in addition_definitions.items()
+    }
+    workstation = fit_pixel(
+        transparent_crop(additions, (26, 528, 446, 920), threshold=22),
+        (192, 128),
+        padding=2,
+    )
+    addition_items["workstation-back"] = keep_rows(workstation, 0, 70)
+    addition_items["workstation-front"] = keep_rows(workstation, 54, workstation.height)
+
+    for name, item in addition_items.items():
+        size = item.size
+        if cursor_x + size[0] > atlas.width:
+            cursor_x = 0
+            cursor_y += row_height
+            row_height = 0
+        atlas.alpha_composite(item, (cursor_x, cursor_y))
+        frames[name] = {"x": cursor_x, "y": cursor_y, "w": size[0], "h": size[1]}
+        cursor_x += size[0]
+        row_height = max(row_height, size[1])
+
     return atlas.crop((0, 0, atlas.width, cursor_y + row_height)), frames
 
 
 def main() -> None:
     RUNTIME.mkdir(parents=True, exist_ok=True)
-    characters = Image.open(SOURCE / "employee-concepts-v1.png")
+    characters = Image.open(SOURCE / "employee-directional-v2.png")
     objects = Image.open(SOURCE / "office-objects-concepts-v1.png")
+    additions = Image.open(SOURCE / "office-layout-additions-v2.png")
 
     character_sheet, character_registry = make_character_sheet(characters)
     character_sheet.save(RUNTIME / "employees.png", optimize=True)
 
     make_tiles(objects).save(RUNTIME / "office-tiles.png", optimize=True)
-    object_atlas, frames = make_object_atlas(objects)
+    object_atlas, frames = make_object_atlas(objects, additions)
     object_atlas.save(RUNTIME / "office-objects.png", optimize=True)
 
     atlas = {

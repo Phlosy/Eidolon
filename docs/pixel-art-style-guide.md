@@ -11,7 +11,7 @@ characters, proportions, palettes, maps, interface, or distinctive assets.
 
 - Perspective: orthogonal top-down / three-quarter RPG view.
 - Tile: 32×32 logical pixels everywhere.
-- Character frame: 32×48 logical pixels; feet align to the tile interaction point.
+- Character frame: 48×64 logical pixels; feet align to the tile interaction point.
 - Logical game resolution: 960×540.
 - Walls: two tiles high; doors: one tile wide and two tiles high.
 - Desks: two to three tiles wide; chairs and interaction anchors: one tile.
@@ -64,6 +64,10 @@ Required semantic animations:
 
 Each animation must have a registry fallback. Unknown direction or activity resolves to
 `employee.idle.down` rather than failing the scene.
+
+Workstation animation frames contain the seated character and chair only. Desks, monitors, and
+foreground desk edges remain separate map objects so characters can be depth-sorted between the
+rear equipment and front furniture instead of carrying a miniature workstation inside the sprite.
 
 ## Interface and accessibility
 

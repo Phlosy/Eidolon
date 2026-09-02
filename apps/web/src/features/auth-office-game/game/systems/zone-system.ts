@@ -27,6 +27,7 @@ export type OfficeInteractionPoint = {
   zoneId: string;
   tile: GridPoint;
   facing: "up" | "down" | "left" | "right";
+  characterDepthOffset?: number;
 };
 
 export class OfficeAssignmentService {

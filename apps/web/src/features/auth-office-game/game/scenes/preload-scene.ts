@@ -24,8 +24,8 @@ export class PreloadScene extends Phaser.Scene {
       `${ASSET_ROOT}/runtime/office-objects.json`,
     );
     this.load.spritesheet("employees", `${ASSET_ROOT}/runtime/employees.png`, {
-      frameWidth: 32,
-      frameHeight: 48,
+      frameWidth: 48,
+      frameHeight: 64,
     });
   }
 
