@@ -1,4 +1,5 @@
 import type { OfficeEmployeeState } from "../../types/office-state";
+import type { EmployeeFacingDirection } from "./employee-presentation";
 import type { GridPoint } from "./navigation-system";
 
 export type OfficeZoneType =
@@ -26,7 +27,7 @@ export type OfficeInteractionPoint = {
   type: InteractionPointType;
   zoneId: string;
   tile: GridPoint;
-  facing: "up" | "down" | "left" | "right";
+  facing: EmployeeFacingDirection;
   characterDepthOffset?: number;
 };
 

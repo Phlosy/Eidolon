@@ -23,7 +23,7 @@ export class EmployeeSprite extends Phaser.GameObjects.Sprite {
     public readonly skinId: string,
     private readonly bridge: OfficeEventBridge,
   ) {
-    super(scene, x, y, "employees", Number(skinId.split("-").at(-1) ?? 0) * 32);
+    super(scene, x, y, "employees");
     scene.add.existing(this);
     this.setOrigin(0.5, 1).setInteractive({ cursor: "pointer", useHandCursor: true });
     this.playActivity("idle");
@@ -46,11 +46,13 @@ export class EmployeeSprite extends Phaser.GameObjects.Sprite {
     animation: EmployeeAnimationName,
     direction: EmployeeFacingDirection = this.facing,
   ): void {
+    const key = resolveEmployeeAnimation(this.skinId, animation, direction);
+    if (this.facing === direction && this.anims.currentAnim?.key === key) return;
+
     this.targetAnimation = animation;
     this.facing = direction;
     this.setFlipX(shouldMirrorEmployee(direction));
-    const key = resolveEmployeeAnimation(this.skinId, animation, direction);
-    if (this.anims.currentAnim?.key !== key) this.play(key, true);
+    this.play(key, true);
   }
 
   replacePath(path: GridPoint[]): void {

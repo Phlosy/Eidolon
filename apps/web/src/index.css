@@ -81,15 +81,6 @@ a[href],
     22px 22px;
 }
 
-.auth-grid {
-  background-image:
-    linear-gradient(135deg, color-mix(in oklch, var(--primary) 7%, transparent), transparent 44%),
-    radial-gradient(var(--grid-dot) 1px, transparent 1px);
-  background-size:
-    auto,
-    22px 22px;
-}
-
 .auth-world-shell {
   isolation: isolate;
   color: #fff4da;
@@ -184,7 +175,6 @@ a[href],
     inset 0 0 0 1px rgb(127 166 184 / 24%),
     8px 8px 0 rgb(43 33 48 / 88%),
     16px 16px 36px rgb(0 0 0 / 34%);
-  backdrop-filter: blur(14px);
 }
 
 .auth-control-panel::after {
@@ -204,8 +194,6 @@ a[href],
 
 .auth-office-frame {
   --auth-office-ink: #2b2130;
-  --auth-office-frame: #5b3a3a;
-  --auth-office-frame-light: #8b5a3c;
   position: absolute;
   inset: 0;
   width: 100%;

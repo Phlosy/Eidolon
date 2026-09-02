@@ -164,10 +164,7 @@ def make_object_atlas(
 ) -> tuple[Image.Image, dict[str, dict[str, int]]]:
     definitions = {
         "window": ((520, 16, 748, 216), (128, 96)),
-        "door": ((772, 12, 910, 216), (64, 96)),
-        "desk": ((14, 245, 250, 456), (128, 96)),
         "meeting-table": ((858, 206, 1214, 450), (192, 128)),
-        "bookshelf": ((18, 622, 184, 846), (96, 128)),
         "coffee-station": ((382, 642, 588, 846), (128, 96)),
         "whiteboard": ((920, 636, 1156, 850), (128, 96)),
         "server-rack": ((1178, 610, 1324, 856), (64, 128)),
