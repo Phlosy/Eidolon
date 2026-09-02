@@ -4,7 +4,10 @@ import type { OfficeEmployeeState, OfficeStateSnapshot } from "../../types/offic
 import { EmployeeSprite } from "../entities/employee-sprite";
 import { OFFICE_TILE_SIZE } from "../config";
 import { registerEmployeeAnimations } from "../systems/animation-registry";
-import { EmployeeBehaviorSystem, type BehaviorDirective } from "../systems/employee-behavior-system";
+import {
+  EmployeeBehaviorSystem,
+  type BehaviorDirective,
+} from "../systems/employee-behavior-system";
 import { MeetingSystem } from "../systems/meeting-system";
 import { findGridPath, type GridPoint, type NavigationGrid } from "../systems/navigation-system";
 import {
@@ -91,7 +94,11 @@ export class OfficeScene extends Phaser.Scene {
     for (const runtime of this.employees.values()) this.moveEmployee(runtime, delta);
   }
 
-  private renderObjectLayer(map: Phaser.Tilemaps.Tilemap, layerName: string, baseDepth: number): void {
+  private renderObjectLayer(
+    map: Phaser.Tilemaps.Tilemap,
+    layerName: string,
+    baseDepth: number,
+  ): void {
     const layer = map.getObjectLayer(layerName);
     layer?.objects.forEach((object) => {
       const frame = String(objectProperty(object, "frame") ?? "plant");
@@ -126,7 +133,9 @@ export class OfficeScene extends Phaser.Scene {
         type: object.type as InteractionPointType,
         zoneId: String(objectProperty(object, "zone") ?? "shared"),
         tile: { x: pixelToTile(object.x), y: pixelToTile(object.y) },
-        facing: String(objectProperty(object, "facing") ?? "down") as OfficeInteractionPoint["facing"],
+        facing: String(
+          objectProperty(object, "facing") ?? "down",
+        ) as OfficeInteractionPoint["facing"],
       })) ?? []
     );
   }
@@ -163,7 +172,14 @@ export class OfficeScene extends Phaser.Scene {
       const entrance = this.assignment.pointFor("entrance")?.tile ?? { x: 27, y: 13 };
       const position = tileCenter({ x: entrance.x, y: Math.max(2, entrance.y - (index % 2)) });
       const skinId = `employee-${index % 4}`;
-      const sprite = new EmployeeSprite(this, position.x, position.y, employee, skinId, this.bridge);
+      const sprite = new EmployeeSprite(
+        this,
+        position.x,
+        position.y,
+        employee,
+        skinId,
+        this.bridge,
+      );
       runtime = { sprite, directive: this.behavior.update(employee), destination: null };
       this.employees.set(employee.id, runtime);
     } else {
@@ -177,8 +193,10 @@ export class OfficeScene extends Phaser.Scene {
     const { employee } = runtime.sprite;
     if (runtime.directive.state !== "MEETING") this.meetings.release(employee.id);
     let point: OfficeInteractionPoint | null = null;
-    if (runtime.directive.targetType === "workstation") point = this.assignment.workstationFor(employee);
-    else if (runtime.directive.targetType === "meeting-seat") point = this.meetings.claim(employee.id);
+    if (runtime.directive.targetType === "workstation")
+      point = this.assignment.workstationFor(employee);
+    else if (runtime.directive.targetType === "meeting-seat")
+      point = this.meetings.claim(employee.id);
     else if (runtime.directive.targetType !== "current") {
       point = this.assignment.pointFor(runtime.directive.targetType);
     }

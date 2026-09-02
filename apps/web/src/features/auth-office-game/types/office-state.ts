@@ -58,4 +58,3 @@ export type OfficeEmployeeInput = Omit<
   status?: string | null;
   visualProfile?: Partial<OfficeVisualProfile> | null;
 };
-

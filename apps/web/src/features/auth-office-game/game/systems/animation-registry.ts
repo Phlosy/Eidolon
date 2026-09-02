@@ -26,4 +26,3 @@ export function registerEmployeeAnimations(scene: Phaser.Scene, rowCount = 4): v
     }
   });
 }
-

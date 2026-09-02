@@ -13,6 +13,12 @@ vi.mock("../../features/auth/webauthn", () => ({
   signInWithPasskey: vi.fn(),
 }));
 
+vi.mock("../../features/auth-office-game/components/auth-office-game-canvas", () => ({
+  AuthOfficeGameCanvas: ({ label }: { label: string }) => (
+    <div role="img" aria-label={label} data-testid="auth-office-game-canvas" />
+  ),
+}));
+
 describe("LoginPage", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("zh-CN");
@@ -31,7 +37,7 @@ describe("LoginPage", () => {
       passwordLogin.compareDocumentPosition(passkeyLogin) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: "注册" })).toHaveAttribute("href", "/auth/register");
-    expect(screen.getByTestId("pixel-office-scene")).toHaveAccessibleName(/像素办公室场景/);
+    expect(screen.getByTestId("auth-office-game")).toHaveAccessibleName(/2D 像素办公室/);
   });
 
   it("lets people pause the looping office scene", () => {
@@ -45,7 +51,7 @@ describe("LoginPage", () => {
     expect(pause).toHaveAttribute("aria-pressed", "false");
     fireEvent.click(pause);
     expect(pause).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("pixel-office-scene")).toHaveClass("is-paused");
+    expect(screen.getByTestId("auth-office-game")).toHaveClass("is-paused");
   });
 
   it("introduces each employee and pauses that character while they speak", () => {

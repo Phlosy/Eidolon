@@ -1,15 +1,30 @@
 import { describe, expect, it } from "vitest";
 import type { OfficeEmployeeState } from "../../types/office-state";
-import { OfficeAssignmentService, type OfficeInteractionPoint, type OfficeZone } from "./zone-system";
+import {
+  OfficeAssignmentService,
+  type OfficeInteractionPoint,
+  type OfficeZone,
+} from "./zone-system";
 
 const zones: OfficeZone[] = [
   { id: "ceo", type: "CEO_OFFICE", bounds: { x: 0, y: 0, width: 4, height: 4 }, capacity: 1 },
-  { id: "engineering", type: "ENGINEERING", bounds: { x: 4, y: 0, width: 8, height: 4 }, capacity: 4 },
+  {
+    id: "engineering",
+    type: "ENGINEERING",
+    bounds: { x: 4, y: 0, width: 8, height: 4 },
+    capacity: 4,
+  },
   { id: "lounge", type: "LOUNGE", bounds: { x: 0, y: 4, width: 4, height: 4 }, capacity: 3 },
 ];
 const points: OfficeInteractionPoint[] = [
   { id: "ceo-desk", type: "workstation", zoneId: "ceo", tile: { x: 2, y: 2 }, facing: "up" },
-  { id: "eng-desk", type: "workstation", zoneId: "engineering", tile: { x: 6, y: 2 }, facing: "up" },
+  {
+    id: "eng-desk",
+    type: "workstation",
+    zoneId: "engineering",
+    tile: { x: 6, y: 2 },
+    facing: "up",
+  },
   { id: "coffee", type: "coffee", zoneId: "lounge", tile: { x: 2, y: 6 }, facing: "left" },
 ];
 
@@ -44,4 +59,3 @@ describe("OfficeAssignmentService", () => {
     expect(service.workstationFor(member)).toBe(service.workstationFor(member));
   });
 });
-

@@ -28,12 +28,17 @@ function isSafeRelativePath(path: string): boolean {
 }
 
 export function validateOfficeAssetManifest(value: unknown): OfficeAssetManifest {
-  if (!value || typeof value !== "object") throw new Error("Office asset manifest must be an object");
+  if (!value || typeof value !== "object")
+    throw new Error("Office asset manifest must be an object");
   const manifest = value as Partial<OfficeAssetManifest>;
   if (!manifest.id || !manifest.version || manifest.tileSize !== 32) {
     throw new Error("Office asset manifest requires an id, version, and 32px tile size");
   }
-  if (!manifest.fallbacks?.character || !manifest.fallbacks.animation || !manifest.fallbacks.object) {
+  if (
+    !manifest.fallbacks?.character ||
+    !manifest.fallbacks.animation ||
+    !manifest.fallbacks.object
+  ) {
     throw new Error("Office asset manifest requires character, animation, and object fallbacks");
   }
   if (!Array.isArray(manifest.assets) || manifest.assets.length === 0) {
@@ -42,12 +47,22 @@ export function validateOfficeAssetManifest(value: unknown): OfficeAssetManifest
 
   const ids = new Set<string>();
   for (const asset of manifest.assets) {
-    if (!asset.id || ids.has(asset.id)) throw new Error(`Duplicate or missing asset id: ${asset.id}`);
+    if (!asset.id || ids.has(asset.id))
+      throw new Error(`Duplicate or missing asset id: ${asset.id}`);
     ids.add(asset.id);
-    if (!allowedTypes.has(asset.type) || !asset.source || !asset.author || !asset.license || !asset.version) {
+    if (
+      !allowedTypes.has(asset.type) ||
+      !asset.source ||
+      !asset.author ||
+      !asset.license ||
+      !asset.version
+    ) {
       throw new Error(`Asset ${asset.id} is missing type or provenance`);
     }
-    if (!isSafeRelativePath(asset.runtimePath) || (asset.dataPath && !isSafeRelativePath(asset.dataPath))) {
+    if (
+      !isSafeRelativePath(asset.runtimePath) ||
+      (asset.dataPath && !isSafeRelativePath(asset.dataPath))
+    ) {
       throw new Error(`Asset ${asset.id} has an unsafe runtime path`);
     }
     if (asset.type === "tileset" && asset.tileSize !== manifest.tileSize) {
@@ -68,4 +83,3 @@ export function resolveOfficeAsset(
   if (!sameType) throw new Error(`Theme ${manifest.id} has no ${type} fallback`);
   return sameType;
 }
-

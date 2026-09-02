@@ -1,7 +1,10 @@
 import Phaser from "phaser";
 import type { OfficeEventBridge } from "../../bridge/office-event-bridge";
 import type { OfficeEmployeeState } from "../../types/office-state";
-import { resolveEmployeeAnimation, type EmployeeAnimationName } from "../systems/animation-registry";
+import {
+  resolveEmployeeAnimation,
+  type EmployeeAnimationName,
+} from "../systems/animation-registry";
 import type { GridPoint } from "../systems/navigation-system";
 
 export class EmployeeSprite extends Phaser.GameObjects.Sprite {
@@ -50,4 +53,3 @@ export class EmployeeSprite extends Phaser.GameObjects.Sprite {
     this.employee = employee;
   }
 }
-

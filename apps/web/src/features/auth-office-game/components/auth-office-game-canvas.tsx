@@ -10,12 +10,14 @@ export type AuthOfficeGameCanvasProps = {
 
 type DestroyableGame = { destroy: (removeCanvas: boolean, noReturn?: boolean) => void };
 
-export function AuthOfficeGameCanvas({
-  bridge,
-  initialState,
-  label,
-}: AuthOfficeGameCanvasProps) {
+export function AuthOfficeGameCanvas({ bridge, initialState, label }: AuthOfficeGameCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const initialStateRef = useRef(initialState);
+
+  useEffect(() => {
+    initialStateRef.current = initialState;
+    bridge.emit("office.state.replace", initialState);
+  }, [bridge, initialState]);
 
   useEffect(() => {
     let disposed = false;
@@ -23,7 +25,11 @@ export function AuthOfficeGameCanvas({
 
     void import("../game/create-game").then(({ createOfficeGame }) => {
       if (!hostRef.current) return;
-      const createdGame = createOfficeGame({ parent: hostRef.current, bridge, initialState });
+      const createdGame = createOfficeGame({
+        parent: hostRef.current,
+        bridge,
+        initialState: initialStateRef.current,
+      });
       if (disposed) createdGame.destroy(true);
       else game = createdGame;
     });
@@ -33,7 +39,7 @@ export function AuthOfficeGameCanvas({
       game?.destroy(true);
       bridge.clear();
     };
-  }, [bridge, initialState]);
+  }, [bridge]);
 
   return (
     <div

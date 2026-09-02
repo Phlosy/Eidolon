@@ -36,4 +36,3 @@ export class OfficeEventBridge {
     return this.listeners.get(name)?.size ?? 0;
   }
 }
-

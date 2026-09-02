@@ -23,4 +23,3 @@ describe("MeetingSystem", () => {
     expect(meetings.claim("bob")?.id).toBe("seat-1");
   });
 });
-

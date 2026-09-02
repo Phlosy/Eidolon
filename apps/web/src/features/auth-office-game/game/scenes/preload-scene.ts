@@ -10,7 +10,10 @@ export class PreloadScene extends Phaser.Scene {
   preload(): void {
     const progress = this.add.graphics().setDepth(1000);
     this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => {
-      progress.clear().fillStyle(0xf1ddbd, 0.85).fillRect(336, 266, 288 * value, 8);
+      progress
+        .clear()
+        .fillStyle(0xf1ddbd, 0.85)
+        .fillRect(336, 266, 288 * value, 8);
     });
     this.load.once(Phaser.Loader.Events.COMPLETE, () => progress.destroy());
     this.load.tilemapTiledJSON("office-map", `${ASSET_ROOT}/maps/office.json`);
@@ -30,4 +33,3 @@ export class PreloadScene extends Phaser.Scene {
     this.scene.start("auth-office-world");
   }
 }
-

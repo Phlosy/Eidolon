@@ -18,4 +18,3 @@ export class MeetingSystem {
     this.claims.delete(employeeId);
   }
 }
-

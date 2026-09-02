@@ -15,4 +15,3 @@ describe("OfficeEventBridge", () => {
     expect(bridge.listenerCount("office.employee.focus")).toBe(0);
   });
 });
-

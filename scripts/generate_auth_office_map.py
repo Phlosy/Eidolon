@@ -101,7 +101,7 @@ def main() -> None:
             floor[y * WIDTH + x] = 6 if (x + y) % 2 else 7
     for y in range(3, 9):
         for x in range(20, 28):
-            floor[y * WIDTH + x] = 8
+            floor[y * WIDTH + x] = 6
 
     furniture_back = [
         decor(100, "North window", "window", 168, 105, -80),

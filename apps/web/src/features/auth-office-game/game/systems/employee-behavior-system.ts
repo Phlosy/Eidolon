@@ -9,7 +9,10 @@ export type BehaviorDirective = {
   animation: "idle" | "walk" | "work" | "meeting";
 };
 
-const directiveForState: Record<OfficeBehaviorState, Omit<BehaviorDirective, "state" | "changed">> = {
+const directiveForState: Record<
+  OfficeBehaviorState,
+  Omit<BehaviorDirective, "state" | "changed">
+> = {
   SPAWN: { targetType: "entrance", animation: "walk" },
   IDLE: { targetType: "coffee", animation: "idle" },
   MOVING: { targetType: "current", animation: "walk" },
@@ -36,4 +39,3 @@ export class EmployeeBehaviorSystem {
     this.currentState.delete(employeeId);
   }
 }
-

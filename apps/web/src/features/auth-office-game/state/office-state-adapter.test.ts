@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { adaptOfficeEmployee, behaviorForStatus, createOfficeSnapshot } from "./office-state-adapter";
+import {
+  adaptOfficeEmployee,
+  behaviorForStatus,
+  createOfficeSnapshot,
+} from "./office-state-adapter";
 
 describe("office state adapter", () => {
   it("normalizes live employee data without leaking backend shape into Phaser", () => {
@@ -28,4 +32,3 @@ describe("office state adapter", () => {
     expect(behaviorForStatus("ERROR")).toBe("ERROR");
   });
 });
-

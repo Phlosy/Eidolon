@@ -2,7 +2,7 @@ import { Fingerprint, Globe2, Orbit } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "../../components/common/language-selector";
-import { PixelOfficeScene } from "./pixel-office-scene";
+import { AuthOfficeCover } from "../auth-office-game/components/auth-office-cover";
 
 export function AuthShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation("auth");
@@ -21,7 +21,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="auth-brand-content flex flex-1 flex-col justify-center gap-5 py-5 xl:gap-6">
-          <PixelOfficeScene />
+          <AuthOfficeCover />
           <div className="auth-brand-copy max-w-2xl">
             <p className="type-kicker text-primary">{t("shell.kicker")}</p>
             <h1 className="mt-4 text-4xl font-semibold leading-[1.05] tracking-[-.05em] xl:text-5xl">

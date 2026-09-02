@@ -4,7 +4,11 @@ export type NavigationGrid = { width: number; height: number; blocked: Set<strin
 const key = ({ x, y }: GridPoint) => `${x},${y}`;
 const distance = (a: GridPoint, b: GridPoint) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 
-export function findGridPath(start: GridPoint, target: GridPoint, grid: NavigationGrid): GridPoint[] {
+export function findGridPath(
+  start: GridPoint,
+  target: GridPoint,
+  grid: NavigationGrid,
+): GridPoint[] {
   if (grid.blocked.has(key(target))) return [];
 
   const open = new Map<string, GridPoint>([[key(start), start]]);
@@ -53,4 +57,3 @@ export function findGridPath(start: GridPoint, target: GridPoint, grid: Navigati
   }
   return [];
 }
-

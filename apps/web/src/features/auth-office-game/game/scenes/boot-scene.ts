@@ -10,4 +10,3 @@ export class BootScene extends Phaser.Scene {
     this.scene.start("auth-office-preload");
   }
 }
-

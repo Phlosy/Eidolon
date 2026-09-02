@@ -19,12 +19,7 @@ export type OfficeZone = {
 };
 
 export type InteractionPointType =
-  | "entrance"
-  | "workstation"
-  | "meeting-seat"
-  | "coffee"
-  | "bookshelf"
-  | "whiteboard";
+  "entrance" | "workstation" | "meeting-seat" | "coffee" | "bookshelf" | "whiteboard";
 
 export type OfficeInteractionPoint = {
   id: string;
@@ -62,11 +57,14 @@ export class OfficeAssignmentService {
       desiredZone = "LIBRARY";
     }
 
-    const zoneIds = new Set(this.zones.filter((zone) => zone.type === desiredZone).map((zone) => zone.id));
+    const zoneIds = new Set(
+      this.zones.filter((zone) => zone.type === desiredZone).map((zone) => zone.id),
+    );
     const occupied = new Set([...this.assignments.values()].map((point) => point.id));
     const chosen =
       this.points.find(
-        (point) => point.type === "workstation" && zoneIds.has(point.zoneId) && !occupied.has(point.id),
+        (point) =>
+          point.type === "workstation" && zoneIds.has(point.zoneId) && !occupied.has(point.id),
       ) ?? this.points.find((point) => point.type === "workstation" && !occupied.has(point.id));
     if (chosen) this.assignments.set(employee.id, chosen);
     return chosen ?? null;
@@ -80,4 +78,3 @@ export class OfficeAssignmentService {
     this.assignments.delete(employeeId);
   }
 }
-
