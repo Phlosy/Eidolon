@@ -10,7 +10,9 @@
 | 服务 | 端口 | 说明 |
 |---|---|---|
 | Metrics | 26890 | 未来 metrics/tracing 端点 |
-| Runtime debug | 26900–26999 | 预留端口段，供未来 runtime debug 发布使用 |
+| Runtime debug | 26900–26921 / 26923–26989 | 预留端口段，供未来 runtime debug 发布使用（避开 Gitea 的 26922/26990） |
+| Gitea SSH | 26922 | v0.3 阶段二（可选内置 Gitea，手动一键安装），仅发布到 127.0.0.1 loopback |
+| Gitea HTTP | 26990 | v0.3 阶段二（可选内置 Gitea，手动一键安装），仅发布到 127.0.0.1 loopback |
 | PostgreSQL | 5432 | 生产数据库 |
 | Redis | 6379 | 缓存/队列 |
 
