@@ -62,31 +62,7 @@ export function LoginPage() {
         </span>
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        className="mt-7 h-12 w-full border-primary/30 bg-primary/5"
-        disabled={!passkeysAvailable() || pending !== null}
-        onClick={passkeyLogin}
-      >
-        {pending === "passkey" ? (
-          <LoaderCircle className="h-4 w-4 animate-spin" />
-        ) : (
-          <Fingerprint className="h-4 w-4" />
-        )}
-        {t("login.passkey")}
-      </Button>
-      {!passkeysAvailable() ? (
-        <p className="mt-2 text-xs text-warning">{t("login.passkeyUnavailable")}</p>
-      ) : null}
-
-      <div className="my-6 flex items-center gap-3 text-[10px] uppercase tracking-[.16em] text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        {t("login.or")}
-        <span className="h-px flex-1 bg-border" />
-      </div>
-
-      <form onSubmit={submit} className="space-y-4">
+      <form onSubmit={submit} className="mt-7 space-y-4">
         <label className="block text-xs font-medium" htmlFor="login-email">
           {t("fields.email")}
           <span className="relative mt-2 block">
@@ -131,6 +107,28 @@ export function LoginPage() {
           <ArrowRight className="h-4 w-4" />
         </Button>
       </form>
+      <div className="my-6 flex items-center gap-3 text-[10px] uppercase tracking-[.16em] text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        {t("login.orPasskey")}
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-12 w-full border-primary/30 bg-primary/5"
+        disabled={!passkeysAvailable() || pending !== null}
+        onClick={passkeyLogin}
+      >
+        {pending === "passkey" ? (
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+        ) : (
+          <Fingerprint className="h-4 w-4" />
+        )}
+        {t("login.passkey")}
+      </Button>
+      {!passkeysAvailable() ? (
+        <p className="mt-2 text-xs text-warning">{t("login.passkeyUnavailable")}</p>
+      ) : null}
       <p className="mt-6 text-center text-xs text-muted-foreground">
         {t("login.newHere")}{" "}
         <Link to="/auth/register" className="font-medium text-primary hover:underline">
