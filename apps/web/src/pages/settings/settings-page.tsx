@@ -1,4 +1,15 @@
-import { Activity, Cpu, GitBranch, KeyRound, Moon, Palette, Settings, Sun } from "lucide-react";
+import {
+  Activity,
+  BookOpen,
+  Cpu,
+  GitBranch,
+  KeyRound,
+  Moon,
+  Palette,
+  Settings,
+  ShieldCheck,
+  Sun,
+} from "lucide-react";
 import { Trans, useTranslation } from "react-i18next";
 import { useSettings } from "../../hooks/useSystem";
 import { API_BASE_URL } from "../../api/client";
@@ -12,6 +23,8 @@ import { AccessPackagesSection } from "../../components/lifecycle/access-package
 import { GitSettingsSection } from "../../components/git/git-settings-section";
 import { RuntimeUpdatesSection } from "../../components/runtime/runtime-updates-section";
 import { useThemeStore } from "../../stores/theme";
+import { SecurityCenter } from "../../features/auth/security-center";
+import { TutorialCenter } from "../../components/tutorial/tutorial-center";
 
 function Row({ label, value }: { label: string; value: string | number }) {
   return (
@@ -41,15 +54,61 @@ export function SettingsPage() {
         description={t("settings:description")}
       />
 
-      <section className="command-panel relative overflow-hidden p-5 md:p-6"><div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between"><div><p className="type-kicker text-primary">{t("settings:console.kicker")}</p><h2 className="mt-2 text-2xl font-semibold tracking-tight">{t("settings:console.title")}</h2><p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">{t("settings:console.description")}</p></div><nav className="flex flex-wrap gap-2" aria-label={t("settings:console.navigation")}>{[[KeyRound, "providers", t("settings:console.providers")], [GitBranch, "git", t("settings:console.git")], [Cpu, "runtime", t("settings:console.runtime")], [Palette, "appearance", t("settings:console.appearance")]].map(([Icon, href, label]) => { const NavIcon = Icon as typeof KeyRound; return <a key={String(href)} href={`#${href}`} className="flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background/45 px-3 text-xs text-muted-foreground hover:border-border-active hover:text-foreground"><NavIcon className="h-3.5 w-3.5 text-primary" />{String(label)}</a>; })}</nav></div></section>
+      <section className="command-panel relative overflow-hidden p-5 md:p-6">
+        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="type-kicker text-primary">{t("settings:console.kicker")}</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+              {t("settings:console.title")}
+            </h2>
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">
+              {t("settings:console.description")}
+            </p>
+          </div>
+          <nav className="flex flex-wrap gap-2" aria-label={t("settings:console.navigation")}>
+            {[
+              [ShieldCheck, "security", t("auth:security.title")],
+              [BookOpen, "tutorial-center", t("auth:tutorial.center.title")],
+              [KeyRound, "providers", t("settings:console.providers")],
+              [GitBranch, "git", t("settings:console.git")],
+              [Cpu, "runtime", t("settings:console.runtime")],
+              [Palette, "appearance", t("settings:console.appearance")],
+            ].map(([Icon, href, label]) => {
+              const NavIcon = Icon as typeof KeyRound;
+              return (
+                <a
+                  key={String(href)}
+                  href={`#${href}`}
+                  className="flex min-h-10 items-center gap-2 rounded-xl border border-border bg-background/45 px-3 text-xs text-muted-foreground hover:border-border-active hover:text-foreground"
+                >
+                  <NavIcon className="h-3.5 w-3.5 text-primary" />
+                  {String(label)}
+                </a>
+              );
+            })}
+          </nav>
+        </div>
+      </section>
 
-      <div id="providers"><ProvidersOverviewTable /></div>
+      <SecurityCenter />
 
-      <div id="access"><AccessPackagesSection /></div>
+      <TutorialCenter />
 
-      <div id="git"><GitSettingsSection /></div>
+      <div id="providers">
+        <ProvidersOverviewTable />
+      </div>
 
-      <div id="runtime"><RuntimeUpdatesSection /></div>
+      <div id="access">
+        <AccessPackagesSection />
+      </div>
+
+      <div id="git">
+        <GitSettingsSection />
+      </div>
+
+      <div id="runtime">
+        <RuntimeUpdatesSection />
+      </div>
 
       <Card className="mb-6">
         <CardHeader>
@@ -134,7 +193,10 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-surface/70 px-4 py-3 text-xs text-muted-foreground"><Activity className="h-4 w-4 text-success" />{t("settings:console.liveNote")}</div>
+      <div className="flex items-center gap-2 rounded-xl border border-border bg-surface/70 px-4 py-3 text-xs text-muted-foreground">
+        <Activity className="h-4 w-4 text-success" />
+        {t("settings:console.liveNote")}
+      </div>
     </div>
   );
 }

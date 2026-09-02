@@ -25,10 +25,19 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
+  const csrf = document.cookie
+    .split("; ")
+    .find((value) => value.startsWith("eidolon_csrf="))
+    ?.split("=")[1];
   try {
     response = await fetch(`${API_BASE_URL}${API_PREFIX}${path}`, {
-      headers: { "Content-Type": "application/json" },
       ...init,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(csrf ? { "X-CSRF-Token": decodeURIComponent(csrf) } : {}),
+        ...init?.headers,
+      },
     });
   } catch {
     throw new ApiError(0, "Cannot reach the Eidolon API");
@@ -52,6 +61,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError(response.status, detail);
   }
 
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 

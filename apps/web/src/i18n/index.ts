@@ -15,6 +15,7 @@ import gitZh from "./locales/zh-CN/git.json";
 import settingsZh from "./locales/zh-CN/settings.json";
 import eventZh from "./locales/zh-CN/event.json";
 import lifecycleZh from "./locales/zh-CN/lifecycle.json";
+import authZh from "./locales/zh-CN/auth.json";
 
 import commonEn from "./locales/en-US/common.json";
 import navEn from "./locales/en-US/nav.json";
@@ -29,6 +30,7 @@ import gitEn from "./locales/en-US/git.json";
 import settingsEn from "./locales/en-US/settings.json";
 import eventEn from "./locales/en-US/event.json";
 import lifecycleEn from "./locales/en-US/lifecycle.json";
+import authEn from "./locales/en-US/auth.json";
 
 /**
  * Supported UI languages. Adding a language = create `locales/<code>/` with
@@ -58,6 +60,7 @@ export const NAMESPACES = [
   "settings",
   "event",
   "lifecycle",
+  "auth",
 ] as const;
 
 const resources = {
@@ -75,6 +78,7 @@ const resources = {
     settings: settingsZh,
     event: eventZh,
     lifecycle: lifecycleZh,
+    auth: authZh,
   },
   "en-US": {
     common: commonEn,
@@ -90,6 +94,7 @@ const resources = {
     settings: settingsEn,
     event: eventEn,
     lifecycle: lifecycleEn,
+    auth: authEn,
   },
 };
 

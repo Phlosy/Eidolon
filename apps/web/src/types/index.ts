@@ -523,15 +523,89 @@ export interface ReviewDecisionInput {
 
 export interface TutorialProgress {
   id: number;
+  user_id: number;
   company_id: number;
-  status: "not_started" | "active" | "skipped" | "completed";
+  tutorial_id: string;
+  status: "not_started" | "active" | "paused" | "skipped" | "completed";
+  current_stage: string;
   current_step: string;
   completed_steps: string[];
+  skipped_steps: string[];
   context: Record<string, number | string | boolean>;
   started_at: string | null;
   completed_at: string | null;
+  paused_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface HumanUser {
+  id: number;
+  email: string;
+  email_verified: boolean;
+  display_name: string;
+  avatar: string;
+  status: string;
+  onboarding_status: "not_started" | "in_progress" | "completed";
+  locale: string;
+  timezone: string;
+  last_login_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompanyMembership {
+  id: number;
+  user_id: number;
+  company_id: number;
+  role: "OWNER" | "ADMIN" | "MEMBER" | "VIEWER";
+}
+
+export interface AuthState {
+  user: HumanUser;
+  company: Company & { stage: "FOUNDING" | "OPERATING" };
+  membership: CompanyMembership;
+}
+
+export interface RegisterInput {
+  email: string;
+  password: string;
+  display_name?: string;
+  locale?: string;
+  timezone?: string;
+}
+
+export interface RegistrationResult {
+  email: string;
+  verification_required: boolean;
+  expires_at: string;
+  development_verification_token: string | null;
+}
+
+export interface UserSession {
+  id: number;
+  current: boolean;
+  created_at: string;
+  expires_at: string;
+  last_seen_at: string;
+  ip_address: string;
+  user_agent: string;
+}
+
+export interface Passkey {
+  id: number;
+  name: string;
+  transports: string[];
+  device_type: string;
+  backed_up: boolean;
+  created_at: string;
+  updated_at: string;
+  last_used_at: string | null;
+}
+
+export interface WebAuthnOptions {
+  challenge_id: number;
+  public_key: Record<string, unknown>;
 }
 
 export interface EmployeePerformance {

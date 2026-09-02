@@ -61,6 +61,44 @@ button:not(:disabled), a[href], [role="button"]:not([aria-disabled="true"]) { cu
   background-size: 88px 88px, 88px 88px, 22px 22px;
 }
 
+.auth-grid {
+  background-image:
+    linear-gradient(135deg, color-mix(in oklch, var(--primary) 7%, transparent), transparent 44%),
+    radial-gradient(var(--grid-dot) 1px, transparent 1px);
+  background-size:
+    auto,
+    22px 22px;
+}
+
+.auth-card {
+  position: relative;
+}
+.auth-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    120deg,
+    color-mix(in oklch, var(--primary) 8%, transparent),
+    transparent 32%
+  );
+}
+.auth-card > * {
+  position: relative;
+}
+
+@keyframes auth-orbit {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+.auth-orbit {
+  animation: auth-orbit 42s linear infinite;
+  transform-origin: center;
+}
+
 .command-panel {
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);

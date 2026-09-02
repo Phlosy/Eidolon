@@ -4,13 +4,20 @@ import {
   deferTutorialQa,
   getClassicSnakeTemplate,
   getTutorial,
+  getTutorialDefinition,
+  pauseTutorial,
   resumeTutorial,
   skipTutorial,
   startTutorial,
+  skipTutorialStep,
 } from "../api/tutorial";
 
 export function useTutorial() {
   return useQuery({ queryKey: ["tutorial"], queryFn: getTutorial, refetchInterval: 10_000 });
+}
+
+export function useTutorialDefinition() {
+  return useQuery({ queryKey: ["tutorial", "definition"], queryFn: getTutorialDefinition });
 }
 
 function useTutorialMutation(action: () => ReturnType<typeof startTutorial>) {
@@ -31,6 +38,18 @@ export function useSkipTutorial() {
 
 export function useResumeTutorial() {
   return useTutorialMutation(resumeTutorial);
+}
+
+export function usePauseTutorial() {
+  return useTutorialMutation(pauseTutorial);
+}
+
+export function useSkipTutorialStep() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: skipTutorialStep,
+    onSuccess: (data) => queryClient.setQueryData(["tutorial"], data),
+  });
 }
 
 export function useCompleteTutorialStep() {
