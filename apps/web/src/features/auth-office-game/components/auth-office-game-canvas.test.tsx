@@ -12,6 +12,7 @@ vi.mock("../game/create-game", () => ({ createOfficeGame }));
 describe("AuthOfficeGameCanvas", () => {
   it("creates one game for a mounted host and destroys it with the canvas on unmount", async () => {
     const bridge = new OfficeEventBridge();
+    const unsubscribe = bridge.on("office.employee.focus", vi.fn());
     const { unmount } = render(
       <AuthOfficeGameCanvas
         bridge={bridge}
@@ -28,5 +29,7 @@ describe("AuthOfficeGameCanvas", () => {
 
     unmount();
     expect(destroy).toHaveBeenCalledWith(true);
+    expect(bridge.listenerCount("office.employee.focus")).toBe(1);
+    unsubscribe();
   });
 });

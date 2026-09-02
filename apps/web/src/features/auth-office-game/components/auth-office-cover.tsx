@@ -66,7 +66,16 @@ export function AuthOfficeCover() {
     [bridge],
   );
 
-  useEffect(() => bridge.on("office.ready", () => setReady(true)), [bridge]);
+  useEffect(
+    () =>
+      bridge.on("office.ready", () => {
+        setReady(true);
+        bridge.emit("office.motion.set", { paused });
+      }),
+    [bridge, paused],
+  );
+
+  useEffect(() => () => bridge.clear(), [bridge]);
 
   useEffect(() => {
     bridge.emit("office.motion.set", { paused });

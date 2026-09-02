@@ -37,7 +37,6 @@ export function AuthOfficeGameCanvas({ bridge, initialState, label }: AuthOffice
     return () => {
       disposed = true;
       game?.destroy(true);
-      bridge.clear();
     };
   }, [bridge]);
 

@@ -186,6 +186,7 @@ export class OfficeScene extends Phaser.Scene {
       runtime.sprite.updateEmployee(employee);
       runtime.directive = this.behavior.update(employee);
     }
+    if (employee.status !== "OFFLINE") runtime.sprite.setVisible(true);
     if (runtime.directive.changed || runtime.destination === null) this.planEmployee(runtime);
   }
 
@@ -223,7 +224,10 @@ export class OfficeScene extends Phaser.Scene {
     if (distance <= 2) {
       sprite.setPosition(target.x, target.y);
       sprite.path.shift();
-      if (sprite.path.length === 0) sprite.playActivity(runtime.directive.animation);
+      if (sprite.path.length === 0) {
+        sprite.playActivity(runtime.directive.animation);
+        if (runtime.directive.state === "OFFLINE") sprite.setVisible(false);
+      }
     } else {
       const speed = (48 * delta) / 1000;
       sprite.x += ((target.x - sprite.x) / distance) * Math.min(speed, distance);
