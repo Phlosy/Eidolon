@@ -1,3 +1,13 @@
+from app.models.auth import (
+    CompanyMembership,
+    EmailVerificationToken,
+    PasskeyCredential,
+    PendingRegistration,
+    User,
+    UserAuditEvent,
+    UserSession,
+    WebAuthnChallenge,
+)
 from app.models.base import Base
 from app.models.drive import DriveCollaborator, DriveNode, DriveRevision
 from app.models.event import Event
@@ -87,6 +97,14 @@ __all__ = [
     "Task",
     "TaskDependency",
     "WorkSession",
+    "CompanyMembership",
+    "EmailVerificationToken",
+    "PasskeyCredential",
+    "PendingRegistration",
+    "User",
+    "UserAuditEvent",
+    "UserSession",
+    "WebAuthnChallenge",
     "Baseline",
     "ChangeRequest",
     "DeliveryPackage",

@@ -82,6 +82,7 @@ def migrate_artifacts_to_drive(db: Session) -> None:
             target.write_text(content, encoding="utf-8")
 
         node = DriveNode(
+            company_id=project.company_id,
             parent_id=parent.id,
             kind=DriveNodeKind.document.value,
             name=artifact.title,

@@ -3,6 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.request_context import get_request_identity
 from app.models.enums import WorkSessionStatus
 from app.models.project import (
     Artifact,
@@ -16,6 +17,9 @@ from app.models.project import (
 
 
 def list_projects(db: Session, company_id: int | None = None) -> list[Project]:
+    identity = get_request_identity()
+    if company_id is None and identity is not None:
+        company_id = identity.company_id
     stmt = select(Project).order_by(Project.id.desc())
     if company_id is not None:
         stmt = stmt.where(Project.company_id == company_id)
@@ -23,7 +27,11 @@ def list_projects(db: Session, company_id: int | None = None) -> list[Project]:
 
 
 def get_project(db: Session, project_id: int) -> Project | None:
-    return db.get(Project, project_id)
+    stmt = select(Project).where(Project.id == project_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.where(Project.company_id == identity.company_id)
+    return db.scalar(stmt)
 
 
 def create_project(db: Session, **fields) -> Project:
@@ -49,7 +57,13 @@ def list_milestones(db: Session, project_id: int) -> list[Milestone]:
 
 
 def get_milestone(db: Session, milestone_id: int) -> Milestone | None:
-    return db.get(Milestone, milestone_id)
+    stmt = select(Milestone).where(Milestone.id == milestone_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Project, Milestone.project_id == Project.id).where(
+            Project.company_id == identity.company_id
+        )
+    return db.scalar(stmt)
 
 
 def list_milestones_for_projects(db: Session, project_ids: list[int]) -> list[Milestone]:
@@ -65,7 +79,13 @@ def list_milestones_for_projects(db: Session, project_ids: list[int]) -> list[Mi
 
 
 def get_task(db: Session, task_id: int) -> Task | None:
-    return db.get(Task, task_id)
+    stmt = select(Task).where(Task.id == task_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Project, Task.project_id == Project.id).where(
+            Project.company_id == identity.company_id
+        )
+    return db.scalar(stmt)
 
 
 def list_tasks(db: Session, project_id: int) -> list[Task]:
@@ -165,6 +185,9 @@ def count_artifacts_by_author(db: Session, author_id: int) -> int:
 
 def list_messages(db: Session, project_id: int | None = None) -> list[Message]:
     stmt = select(Message).order_by(Message.id.desc()).limit(100)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.where(Message.company_id == identity.company_id)
     if project_id is not None:
         stmt = stmt.where(Message.project_id == project_id)
     return list(db.scalars(stmt))

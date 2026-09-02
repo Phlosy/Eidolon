@@ -5,9 +5,10 @@ knowledge_items are only readable through the owner's own queries — every
 function here filters by employee_id; there is intentionally no cross-employee read.
 """
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.core.request_context import get_request_identity
 from app.models.enums import KnowledgeScope
 from app.models.knowledge import (
     KnowledgeItem,
@@ -16,6 +17,7 @@ from app.models.knowledge import (
     MemoryEntry,
     Skill,
 )
+from app.models.organization import Department, Employee
 
 # ---- memory (strictly per-employee) ----
 
@@ -47,6 +49,18 @@ def list_knowledge_items(
     employee_id: int | None = None,
 ) -> list[KnowledgeItem]:
     stmt = select(KnowledgeItem).order_by(KnowledgeItem.id.desc())
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = (
+            stmt.outerjoin(Employee, KnowledgeItem.owner_employee_id == Employee.id)
+            .outerjoin(Department, KnowledgeItem.department_id == Department.id)
+            .where(
+                or_(
+                    Employee.company_id == identity.company_id,
+                    Department.company_id == identity.company_id,
+                )
+            )
+        )
     if scope is not None:
         stmt = stmt.where(KnowledgeItem.scope == scope)
     if topic is not None:
@@ -58,7 +72,20 @@ def list_knowledge_items(
 
 
 def get_knowledge_item(db: Session, item_id: int) -> KnowledgeItem | None:
-    return db.get(KnowledgeItem, item_id)
+    stmt = select(KnowledgeItem).where(KnowledgeItem.id == item_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = (
+            stmt.outerjoin(Employee, KnowledgeItem.owner_employee_id == Employee.id)
+            .outerjoin(Department, KnowledgeItem.department_id == Department.id)
+            .where(
+                or_(
+                    Employee.company_id == identity.company_id,
+                    Department.company_id == identity.company_id,
+                )
+            )
+        )
+    return db.scalar(stmt)
 
 
 def create_knowledge_item(db: Session, **fields) -> KnowledgeItem:

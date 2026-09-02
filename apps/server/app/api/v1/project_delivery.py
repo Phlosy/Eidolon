@@ -1,6 +1,6 @@
 """Formal project delivery lifecycle and review endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -111,8 +111,13 @@ def get_review(review_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/reviews/{review_id}/decision", response_model=ProjectLifecycleOut)
-def decide_review(review_id: int, payload: ReviewDecisionCreate, db: Session = Depends(get_db)):
+def decide_review(
+    review_id: int,
+    payload: ReviewDecisionCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     review = delivery_repo.get_review(db, review_id)
     if review is None:
         raise HTTPException(status_code=404, detail="review not found")
-    return delivery_service.decide_review(db, review, payload)
+    return delivery_service.decide_review(db, review, payload, request=request)

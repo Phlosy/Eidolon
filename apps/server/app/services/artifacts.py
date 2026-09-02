@@ -9,6 +9,7 @@ legacy ArtifactOut shape so old clients keep working
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
+from app.core.request_context import get_request_identity
 from app.models.drive import DriveNode
 from app.models.enums import DriveNodeKind, DriveZone
 from app.models.project import Project
@@ -54,6 +55,9 @@ def list_artifact_nodes(
         )
         .order_by(desc(DriveNode.id))
     )
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.where(DriveNode.company_id == identity.company_id)
     if project_id is not None:
         stmt = stmt.where(DriveNode.project_id == project_id)
     if artifact_type is not None:

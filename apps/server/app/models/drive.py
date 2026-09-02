@@ -19,6 +19,9 @@ from app.models.project import Project
 class DriveNode(TimestampMixin, Base):
     __tablename__ = "drive_nodes"
 
+    company_id: Mapped[int | None] = mapped_column(
+        ForeignKey("companies.id"), nullable=True, index=True
+    )
     parent_id: Mapped[int | None] = mapped_column(
         ForeignKey("drive_nodes.id"), nullable=True, index=True
     )

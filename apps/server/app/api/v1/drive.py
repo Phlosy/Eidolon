@@ -1,8 +1,4 @@
-"""/drive (v0.3). Frozen contract — docs/design-v0.3-workspace.md §4.
-
-No auth in MVP: the optional ``?employee_id=`` query param identifies the actor
-for the zone write-permission check (403 on violation); reads are open.
-"""
+"""/drive (v0.3). Protected company-scoped documents and folders."""
 
 import mimetypes
 

@@ -3,8 +3,11 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.request_context import get_request_identity
 from app.models.drive import DriveCollaborator, DriveNode, DriveRevision
 from app.models.enums import DriveNodeKind
+from app.models.organization import Employee
+from app.models.project import Project
 
 
 def list_nodes(
@@ -15,6 +18,9 @@ def list_nodes(
     doc_type: str | None = None,
 ) -> list[DriveNode]:
     stmt = select(DriveNode).order_by(DriveNode.id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.where(DriveNode.company_id == identity.company_id)
     if zone is not None:
         stmt = stmt.where(DriveNode.zone == zone)
     if project_id is not None:
@@ -27,14 +33,32 @@ def list_nodes(
 
 
 def get_node(db: Session, node_id: int) -> DriveNode | None:
-    return db.get(DriveNode, node_id)
+    stmt = select(DriveNode).where(DriveNode.id == node_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.where(DriveNode.company_id == identity.company_id)
+    return db.scalar(stmt)
 
 
 def get_node_by_path(db: Session, path: str) -> DriveNode | None:
-    return db.scalars(select(DriveNode).where(DriveNode.path == path)).first()
+    stmt = select(DriveNode).where(DriveNode.path == path)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.where(DriveNode.company_id == identity.company_id)
+    return db.scalars(stmt).first()
 
 
 def create_node(db: Session, **fields) -> DriveNode:
+    if "company_id" not in fields:
+        identity = get_request_identity()
+        if identity is not None:
+            fields["company_id"] = identity.company_id
+        elif fields.get("project_id") is not None:
+            project = db.get(Project, fields["project_id"])
+            fields["company_id"] = project.company_id if project else None
+        elif fields.get("owner_employee_id") is not None:
+            employee = db.get(Employee, fields["owner_employee_id"])
+            fields["company_id"] = employee.company_id if employee else None
     node = DriveNode(**fields)
     db.add(node)
     db.flush()

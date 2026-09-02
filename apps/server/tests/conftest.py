@@ -14,6 +14,9 @@ os.environ["EIDOLON_SECRET_KEY"] = "test-secret-key"
 # Legacy workflow tests exercise the original five-role autonomous team. Production
 # now defaults to an empty company and only seeds this demo workforce when opted in.
 os.environ["EIDOLON_SEED_DEMO_WORKFORCE"] = "true"
+# Existing domain tests predate human authentication. Auth-specific tests call
+# the auth endpoints explicitly; protected legacy routes retain their old seam.
+os.environ["EIDOLON_AUTH_REQUIRED"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -27,6 +30,16 @@ from app.repositories import organization as org_repo  # noqa: E402
 def client():
     with TestClient(app) as test_client:
         yield test_client
+
+
+@pytest.fixture(autouse=True)
+def clear_human_session_between_tests(client):
+    """The session-scoped app is shared, but browser cookies are test-local."""
+    for name in ("eidolon_session", "eidolon_csrf"):
+        client.cookies.delete(name)
+    yield
+    for name in ("eidolon_session", "eidolon_csrf"):
+        client.cookies.delete(name)
 
 
 @pytest.fixture()

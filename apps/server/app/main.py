@@ -1,11 +1,13 @@
 """FastAPI assembly: routers, CORS, WS, startup. See docs/architecture.md §8/§11."""
 
 import json
+import secrets
 from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -16,6 +18,7 @@ from app.providers.secrets.store import get_secret_store
 from app.runtimes.gateway import gateway
 from app.runtimes.manager import get_manager
 from app.runtimes.updates import get_update_service
+from app.services import auth as auth_service
 from app.services import lifecycle as lifecycle_service
 from app.services.drive_migration import migrate_artifacts_to_drive
 from app.services.seed import seed_default_company
@@ -47,7 +50,36 @@ async def lifespan(app: FastAPI):
     await gateway.stop_all()
 
 
-app = FastAPI(title="Eidolon Server", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="Eidolon Server", version="0.7.0", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def csrf_protection(request, call_next):
+    """Double-submit protection for authenticated cookie mutations.
+
+    Login, registration and discoverable passkey login do not yet have a
+    session, so they are intentionally outside this check.
+    """
+    exempt = {
+        "/api/v1/auth/register",
+        "/api/v1/auth/verify-email",
+        "/api/v1/auth/login",
+        "/api/v1/auth/passkeys/authentication/options",
+        "/api/v1/auth/passkeys/authentication/verify",
+    }
+    has_session = bool(request.cookies.get(settings.session_cookie_name))
+    if (
+        settings.auth_required
+        and has_session
+        and request.method in {"POST", "PUT", "PATCH", "DELETE"}
+        and request.url.path not in exempt
+    ):
+        cookie = request.cookies.get("eidolon_csrf", "")
+        header = request.headers.get("x-csrf-token", "")
+        if not cookie or not header or not secrets.compare_digest(cookie, header):
+            return JSONResponse(status_code=403, content={"detail": "CSRF validation failed"})
+    return await call_next(request)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,11 +99,25 @@ def health() -> dict:
 
 @app.websocket("/ws/events")
 async def ws_events(websocket: WebSocket) -> None:
+    company_id: int | None = None
+    if settings.auth_required:
+        with SessionLocal() as db:
+            resolved = auth_service.session_from_token(
+                db, websocket.cookies.get(settings.session_cookie_name)
+            )
+            if resolved is None:
+                await websocket.close(code=4401)
+                return
+            _, user = resolved
+            _, company = auth_service.primary_company(db, user.id)
+            company_id = company.id
     await websocket.accept()
     queue = bus.subscribe()
     try:
         while True:
             message = await queue.get()
+            if company_id is not None and message.get("company_id") not in {None, company_id}:
+                continue
             await websocket.send_text(json.dumps(message, default=str))
     except WebSocketDisconnect:
         pass

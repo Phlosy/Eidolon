@@ -3,6 +3,8 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.request_context import get_request_identity
+from app.models.project import Project
 from app.models.project_delivery import (
     Baseline,
     ChangeRequest,
@@ -42,7 +44,13 @@ def create_phase(db: Session, **fields) -> ProjectPhase:
 
 
 def get_phase(db: Session, phase_id: int) -> ProjectPhase | None:
-    return db.get(ProjectPhase, phase_id)
+    stmt = select(ProjectPhase).where(ProjectPhase.id == phase_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Project, ProjectPhase.project_id == Project.id).where(
+            Project.company_id == identity.company_id
+        )
+    return db.scalar(stmt)
 
 
 def list_phases(db: Session, project_id: int) -> list[ProjectPhase]:
@@ -60,7 +68,13 @@ def create_document(db: Session, **fields) -> DocumentArtifact:
 
 
 def get_document(db: Session, document_id: int) -> DocumentArtifact | None:
-    return db.get(DocumentArtifact, document_id)
+    stmt = select(DocumentArtifact).where(DocumentArtifact.id == document_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Project, DocumentArtifact.project_id == Project.id).where(
+            Project.company_id == identity.company_id
+        )
+    return db.scalar(stmt)
 
 
 def get_active_baseline_document_by_node(
@@ -109,7 +123,13 @@ def create_review(db: Session, **fields) -> ReviewMeeting:
 
 
 def get_review(db: Session, review_id: int) -> ReviewMeeting | None:
-    return db.get(ReviewMeeting, review_id)
+    stmt = select(ReviewMeeting).where(ReviewMeeting.id == review_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Project, ReviewMeeting.project_id == Project.id).where(
+            Project.company_id == identity.company_id
+        )
+    return db.scalar(stmt)
 
 
 def list_reviews(db: Session, project_id: int) -> list[ReviewMeeting]:
@@ -172,7 +192,13 @@ def list_change_requests(db: Session, project_id: int) -> list[ChangeRequest]:
 
 
 def get_change_request(db: Session, change_request_id: int) -> ChangeRequest | None:
-    return db.get(ChangeRequest, change_request_id)
+    stmt = select(ChangeRequest).where(ChangeRequest.id == change_request_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Project, ChangeRequest.project_id == Project.id).where(
+            Project.company_id == identity.company_id
+        )
+    return db.scalar(stmt)
 
 
 def next_change_sequence(db: Session, project_id: int) -> int:
@@ -201,8 +227,15 @@ def list_delivery_packages(db: Session, project_id: int) -> list[DeliveryPackage
     )
 
 
-def get_tutorial(db: Session, company_id: int) -> TutorialProgress | None:
-    return db.scalar(select(TutorialProgress).where(TutorialProgress.company_id == company_id))
+def get_tutorial(
+    db: Session, user_id: int, tutorial_id: str = "company-founding"
+) -> TutorialProgress | None:
+    return db.scalar(
+        select(TutorialProgress).where(
+            TutorialProgress.user_id == user_id,
+            TutorialProgress.tutorial_id == tutorial_id,
+        )
+    )
 
 
 def create_tutorial(db: Session, **fields) -> TutorialProgress:

@@ -3,23 +3,41 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.request_context import get_request_identity
+from app.models.organization import Employee
 from app.models.runtime import EmployeeBrain, RuntimeImage, RuntimeInstance
 
 # ---- runtime instances ----
 
 
 def list_instances(db: Session) -> list[RuntimeInstance]:
-    return list(db.scalars(select(RuntimeInstance).order_by(RuntimeInstance.id)))
+    stmt = select(RuntimeInstance).order_by(RuntimeInstance.id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Employee, RuntimeInstance.employee_id == Employee.id).where(
+            Employee.company_id == identity.company_id
+        )
+    return list(db.scalars(stmt))
 
 
 def get_instance(db: Session, instance_id: int) -> RuntimeInstance | None:
-    return db.get(RuntimeInstance, instance_id)
+    stmt = select(RuntimeInstance).where(RuntimeInstance.id == instance_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Employee, RuntimeInstance.employee_id == Employee.id).where(
+            Employee.company_id == identity.company_id
+        )
+    return db.scalar(stmt)
 
 
 def get_instance_for_employee(db: Session, employee_id: int) -> RuntimeInstance | None:
-    return db.scalars(
-        select(RuntimeInstance).where(RuntimeInstance.employee_id == employee_id)
-    ).first()
+    stmt = select(RuntimeInstance).where(RuntimeInstance.employee_id == employee_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Employee, RuntimeInstance.employee_id == Employee.id).where(
+            Employee.company_id == identity.company_id
+        )
+    return db.scalars(stmt).first()
 
 
 def list_instances_by_status(db: Session, statuses: list[str]) -> list[RuntimeInstance]:

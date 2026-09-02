@@ -363,5 +363,6 @@ class ChangeRequestStatus(StrEnum):
 class TutorialStatus(StrEnum):
     not_started = "not_started"
     active = "active"
+    paused = "paused"
     skipped = "skipped"
     completed = "completed"

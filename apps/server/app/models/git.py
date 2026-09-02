@@ -6,7 +6,7 @@ Eidolon never installs or manages these. Plaintext tokens are NEVER stored
 here — only a ``credential_ref`` into the secret store, same as Provider.
 """
 
-from sqlalchemy import JSON, String
+from sqlalchemy import JSON, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -16,6 +16,9 @@ from app.models.enums import GitPlatformType
 class GitConnection(TimestampMixin, Base):
     __tablename__ = "git_connections"
 
+    company_id: Mapped[int | None] = mapped_column(
+        ForeignKey("companies.id"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(200))
     platform_type: Mapped[str] = mapped_column(String(50), default=GitPlatformType.custom.value)
     base_url: Mapped[str] = mapped_column(String(500))

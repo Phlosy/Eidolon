@@ -15,6 +15,7 @@ class Company(TimestampMixin, Base):
     description: Mapped[str] = mapped_column(String(2000), default="")
     industry: Mapped[str] = mapped_column(String(200), default="")
     settings: Mapped[dict] = mapped_column(JSON, default=dict)
+    stage: Mapped[str] = mapped_column(String(30), default="FOUNDING")
 
     departments: Mapped[list["Department"]] = relationship(back_populates="company")
     employees: Mapped[list["Employee"]] = relationship(back_populates="company")

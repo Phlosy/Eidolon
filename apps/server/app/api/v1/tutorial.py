@@ -15,9 +15,24 @@ def get_tutorial(db: Session = Depends(get_db)):
     return tutorial_service.get_progress(db)
 
 
+@router.get("/definition")
+def get_tutorial_definition():
+    return tutorial_service.definition()
+
+
+@router.get("/center")
+def get_tutorial_center():
+    return tutorial_service.center()
+
+
 @router.post("/start", response_model=TutorialProgressOut)
 def start_tutorial(db: Session = Depends(get_db)):
     return tutorial_service.start(db)
+
+
+@router.post("/pause", response_model=TutorialProgressOut)
+def pause_tutorial(db: Session = Depends(get_db)):
+    return tutorial_service.pause(db)
 
 
 @router.post("/skip", response_model=TutorialProgressOut)
@@ -33,6 +48,11 @@ def resume_tutorial(db: Session = Depends(get_db)):
 @router.post("/steps/hire-qa/defer", response_model=TutorialProgressOut)
 def defer_qa(db: Session = Depends(get_db)):
     return tutorial_service.defer_qa(db)
+
+
+@router.post("/steps/{step}/skip", response_model=TutorialProgressOut)
+def skip_step(step: str, db: Session = Depends(get_db)):
+    return tutorial_service.skip_step(db, step)
 
 
 @router.post("/steps/{step}/complete", response_model=TutorialProgressOut)

@@ -16,6 +16,9 @@ from app.models.enums import ProviderScope, ProviderType
 class Provider(TimestampMixin, Base):
     __tablename__ = "providers"
 
+    company_id: Mapped[int | None] = mapped_column(
+        ForeignKey("companies.id"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(200))
     provider_type: Mapped[str] = mapped_column(String(50), default=ProviderType.custom.value)
     base_url: Mapped[str | None] = mapped_column(String(500), nullable=True)

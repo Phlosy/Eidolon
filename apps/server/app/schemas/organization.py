@@ -26,6 +26,7 @@ class CompanyOut(ORMModel):
     description: str
     industry: str
     settings: dict
+    stage: str = "FOUNDING"
     departments: list[DepartmentOut] = []
     created_at: datetime
     updated_at: datetime

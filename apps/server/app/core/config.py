@@ -46,6 +46,27 @@ class Settings(BaseSettings):
     # autonomous five-role team remains opt-in for development fixtures.
     seed_demo_workforce: bool = False
 
+    # v0.7 — human user authentication. Sessions are opaque, hashed server-side,
+    # and transported only in an HttpOnly cookie.
+    auth_required: bool = True
+    session_cookie_name: str = "eidolon_session"
+    session_ttl_hours: int = 24 * 30
+    cookie_secure: bool = False
+    email_delivery_mode: str = "console"  # console (local development) | smtp
+    email_verification_ttl_minutes: int = 30
+    web_app_url: str = "http://127.0.0.1:26880"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    smtp_starttls: bool = True
+    smtp_use_ssl: bool = False
+    webauthn_challenge_ttl_minutes: int = 5
+    webauthn_rp_id: str = "127.0.0.1"
+    webauthn_rp_name: str = "Eidolon"
+    webauthn_origin: str = "http://127.0.0.1:26880"
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

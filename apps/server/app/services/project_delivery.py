@@ -6,9 +6,10 @@ import json
 from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
+from app.core.request_context import get_request_identity
 from app.events.bus import bus
 from app.models.base import utcnow
 from app.models.enums import (
@@ -49,6 +50,7 @@ from app.schemas.project_delivery import (
     ReviewPackageOut,
     TraceabilityOut,
 )
+from app.services import auth as auth_service
 from app.services import drive as drive_service
 from app.services.document_generation import (
     DocumentSection,
@@ -271,7 +273,11 @@ def complete_phase(db: Session, project: Project, phase: ProjectPhase) -> Projec
 
 
 def decide_review(
-    db: Session, review: ReviewMeeting, payload: ReviewDecisionCreate
+    db: Session,
+    review: ReviewMeeting,
+    payload: ReviewDecisionCreate,
+    *,
+    request: Request | None = None,
 ) -> ProjectLifecycleOut:
     project = project_repo.get_project(db, review.project_id)
     if project is None:
@@ -287,6 +293,8 @@ def decide_review(
         raise HTTPException(status_code=409, detail="review was updated; reload before deciding")
     review.status = ReviewStatus.completed.value
     review.decision = decision
+    identity = get_request_identity()
+    review.acted_by_user_id = identity.user_id if identity else None
     review.comments = payload.comments
     review.action_items = [*payload.conditions, *payload.action_items]
     review.completed_at = utcnow()
@@ -315,6 +323,15 @@ def decide_review(
     else:
         gate.status = ProjectPhaseStatus.blocked.value
         project.status = ProjectStatus.rejected.value
+    if request is not None and identity is not None:
+        auth_service.record_audit_event(
+            db,
+            f"review.{decision}",
+            request=request,
+            user_id=identity.user_id,
+            company_id=identity.company_id,
+            metadata={"review_id": review.id, "project_id": project.id},
+        )
     db.commit()
     bus.publish(
         "review.decision",

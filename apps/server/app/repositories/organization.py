@@ -3,10 +3,14 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.request_context import get_request_identity
 from app.models.organization import Company, Department, Employee
 
 
 def get_default_company(db: Session) -> Company | None:
+    identity = get_request_identity()
+    if identity is not None:
+        return db.get(Company, identity.company_id)
     return db.scalars(select(Company).order_by(Company.id).limit(1)).first()
 
 
@@ -21,6 +25,9 @@ def get_department_by_slug(db: Session, company_id: int, slug: str) -> Departmen
 
 
 def list_employees(db: Session, company_id: int | None = None) -> list[Employee]:
+    identity = get_request_identity()
+    if company_id is None and identity is not None:
+        company_id = identity.company_id
     stmt = select(Employee).order_by(Employee.id)
     if company_id is not None:
         stmt = stmt.where(Employee.company_id == company_id)
@@ -28,11 +35,19 @@ def list_employees(db: Session, company_id: int | None = None) -> list[Employee]
 
 
 def get_employee(db: Session, employee_id: int) -> Employee | None:
-    return db.get(Employee, employee_id)
+    employee = db.get(Employee, employee_id)
+    identity = get_request_identity()
+    if employee is not None and identity is not None and employee.company_id != identity.company_id:
+        return None
+    return employee
 
 
 def get_employee_by_slug(db: Session, slug: str) -> Employee | None:
-    return db.scalars(select(Employee).where(Employee.slug == slug)).first()
+    stmt = select(Employee).where(Employee.slug == slug)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.where(Employee.company_id == identity.company_id)
+    return db.scalars(stmt).first()
 
 
 def get_employee_by_role(db: Session, company_id: int, role: str) -> Employee | None:

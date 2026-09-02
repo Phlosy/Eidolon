@@ -88,6 +88,7 @@ class ReviewMeetingOut(ORMModel):
     presenter_employee_id: int | None
     participants: dict
     decision: str | None
+    acted_by_user_id: int | None = None
     comments: str
     action_items: list
     completed_at: datetime | None
@@ -222,13 +223,18 @@ class TraceabilityOut(BaseModel):
 
 class TutorialProgressOut(ORMModel):
     id: int
+    user_id: int
     company_id: int
+    tutorial_id: str
     status: str
+    current_stage: str
     current_step: str
     completed_steps: list
+    skipped_steps: list
     context: dict
     started_at: datetime | None
     completed_at: datetime | None
+    paused_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

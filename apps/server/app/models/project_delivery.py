@@ -102,6 +102,7 @@ class ReviewMeeting(TimestampMixin, Base):
     )
     participants: Mapped[dict] = mapped_column(JSON, default=dict)
     decision: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    acted_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     comments: Mapped[str] = mapped_column(Text, default="")
     action_items: Mapped[list] = mapped_column(JSON, default=list)
     completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
@@ -184,15 +185,21 @@ class DeliveryPackage(TimestampMixin, Base):
 
 
 class TutorialProgress(TimestampMixin, Base):
-    __tablename__ = "tutorial_progress"
+    __tablename__ = "user_tutorial_progress"
+    __table_args__ = (UniqueConstraint("user_id", "tutorial_id"),)
 
-    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), unique=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
+    tutorial_id: Mapped[str] = mapped_column(String(80), default="company-founding")
     status: Mapped[str] = mapped_column(String(30), default=TutorialStatus.not_started.value)
+    current_stage: Mapped[str] = mapped_column(String(80), default="welcome")
     current_step: Mapped[str] = mapped_column(String(80), default="company_setup")
     completed_steps: Mapped[list] = mapped_column(JSON, default=list)
+    skipped_steps: Mapped[list] = mapped_column(JSON, default=list)
     context: Mapped[dict] = mapped_column(JSON, default=dict)
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    paused_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
 
 __all__ = [

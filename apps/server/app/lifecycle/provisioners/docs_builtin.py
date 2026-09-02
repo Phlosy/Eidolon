@@ -56,18 +56,24 @@ class CloudDocsProvisioner(ResourceProvisioner):
     # ---- folder helpers (idempotent) ----
 
     def _ensure_folder(
-        self, ctx: ProvisionContext, path: str, *, owner_employee_id: int | None = None
+        self,
+        ctx: ProvisionContext,
+        path: str,
+        *,
+        company_id: int,
+        owner_employee_id: int | None = None,
     ) -> DriveNode:
-        drive_service.ensure_zone_roots(ctx.db)
+        drive_service.ensure_zone_roots(ctx.db, company_id)
         node = drive_repo.get_node_by_path(ctx.db, path)
         if node is not None:
             return node
         parent_path, _, name = path.rpartition("/")
         parent = drive_repo.get_node_by_path(ctx.db, parent_path) if parent_path else None
         if parent is None and parent_path:
-            parent = self._ensure_folder(ctx, parent_path)
+            parent = self._ensure_folder(ctx, parent_path, company_id=company_id)
         node = drive_repo.create_node(
             ctx.db,
+            company_id=company_id,
             parent_id=parent.id if parent else None,
             kind=DriveNodeKind.folder.value,
             name=name,
@@ -104,8 +110,15 @@ class CloudDocsProvisioner(ResourceProvisioner):
         )
         if not created and account.status == ResourceAccountStatus.active.value:
             return ProvisionResult(account=account, detail="docs account already active")
-        personal_path = naming.personal_docs_path(employee.slug)
-        self._ensure_folder(ctx, personal_path, owner_employee_id=employee.id)
+        personal_path = drive_service.company_drive_path(
+            ctx.db, naming.personal_docs_path(employee.slug), employee.company_id
+        )
+        self._ensure_folder(
+            ctx,
+            personal_path,
+            company_id=employee.company_id,
+            owner_employee_id=employee.id,
+        )
         set_account_status(account, ResourceAccountStatus.active.value, "done")
         account.metadata_json = {**(account.metadata_json or {}), "personal_path": personal_path}
         ensure_asset(
@@ -167,13 +180,14 @@ class CloudDocsProvisioner(ResourceProvisioner):
         role = config.get("role", CollaboratorRole.viewer.value)
         if not path:
             return ProvisionResult(account=account, detail=f"no path in {entitlement.key} config")
+        path = drive_service.company_drive_path(ctx.db, path, employee.company_id)
         node = drive_repo.get_node_by_path(ctx.db, path)
         if node is None:
             if not config.get("create"):
                 return ProvisionResult(
                     account=account, detail=f"docs path does not exist yet: {path}"
                 )
-            node = self._ensure_folder(ctx, path)
+            node = self._ensure_folder(ctx, path, company_id=employee.company_id)
         outcome = self._set_collaborator(ctx, node, employee, role)
         mark_granted(account, entitlement.key)
         ctx.db.flush()
@@ -189,6 +203,7 @@ class CloudDocsProvisioner(ResourceProvisioner):
         )
         path = (entitlement.config or {}).get("path")
         if path:
+            path = drive_service.company_drive_path(ctx.db, path, employee.company_id)
             node = drive_repo.get_node_by_path(ctx.db, path)
             if node is not None:
                 collaborator = drive_repo.get_collaborator(ctx.db, node.id, employee.id)

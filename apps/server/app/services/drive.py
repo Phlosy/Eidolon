@@ -3,8 +3,8 @@
 Files are real on disk under ``{data_root}/drive/``; the DB only indexes them.
 Zone write rules (MVP, enforced here — docs/design-v0.3-workspace.md §2):
 projects zone → project members write, everyone reads; knowledge/skills/
-handbook → author writes, everyone reads. There is no auth yet, so endpoints
-pass an optional ``employee_id`` actor; when omitted the write is allowed.
+handbook → author writes, company members read. Endpoints may pass an
+``employee_id`` actor for employee-level author and project checks.
 """
 
 import hashlib
@@ -12,13 +12,17 @@ import re
 from pathlib import Path
 
 from fastapi import HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.request_context import get_request_identity
 from app.models.drive import DriveNode
 from app.models.enums import ArtifactType, DriveNodeKind, DriveZone
+from app.models.organization import Company
 from app.models.project import Project
 from app.repositories import drive as drive_repo
+from app.repositories import organization as org_repo
 from app.repositories import project as project_repo
 from app.repositories import project_delivery as delivery_repo
 
@@ -96,15 +100,30 @@ def _create_node(db: Session, *, path: str, on_disk: Path, **fields) -> DriveNod
 # ---- seed / project folder structure ----
 
 
-def ensure_zone_roots(db: Session) -> None:
+def company_drive_path(db: Session, path: str, company_id: int) -> str:
+    """Keep the original installation paths stable and namespace later companies."""
+    first_company_id = db.scalar(select(Company.id).order_by(Company.id).limit(1))
+    if company_id == first_company_id:
+        return path
+    suffix = path.removeprefix("drive/")
+    return f"drive/companies/{company_id}/{suffix}"
+
+
+def _zone_root_path(db: Session, zone: str, company_id: int | None = None) -> str:
+    identity = get_request_identity()
+    company_id = company_id or (identity.company_id if identity else None)
+    return company_drive_path(db, f"drive/{zone}", company_id) if company_id else f"drive/{zone}"
+
+
+def ensure_zone_roots(db: Session, company_id: int | None = None) -> None:
     """Idempotently create the four zone root folders (drive/{zone})."""
     for zone in ZONES:
-        path = f"drive/{zone}"
+        path = _zone_root_path(db, zone, company_id)
         if drive_repo.get_node_by_path(db, path) is None:
             _create_node(
                 db,
                 path=path,
-                on_disk=drive_root() / zone,
+                on_disk=Path(settings.data_root) / path,
                 parent_id=None,
                 kind=DriveNodeKind.folder.value,
                 name=zone,
@@ -116,7 +135,9 @@ def ensure_zone_roots(db: Session) -> None:
 def project_folder_name(db: Session, project: Project) -> str:
     """Deterministic, unique slug for a project's drive folder."""
     base = slugify(project.name, fallback=f"project-{project.id}")
-    existing = drive_repo.get_node_by_path(db, f"drive/projects/{base}")
+    existing = drive_repo.get_node_by_path(
+        db, f"{_zone_root_path(db, DriveZone.projects.value, project.company_id)}/{base}"
+    )
     if existing is not None and existing.project_id != project.id:
         return f"{base}-{project.id}"
     return base
@@ -124,14 +145,15 @@ def project_folder_name(db: Session, project: Project) -> str:
 
 def ensure_project_folders(db: Session, project: Project) -> dict[str, DriveNode]:
     """Create (idempotently) the project folder + docs/source/tests/release."""
-    ensure_zone_roots(db)
-    root = drive_repo.get_node_by_path(db, f"drive/projects/{project_folder_name(db, project)}")
+    ensure_zone_roots(db, project.company_id)
+    zone_path = _zone_root_path(db, DriveZone.projects.value, project.company_id)
+    root = drive_repo.get_node_by_path(db, f"{zone_path}/{project_folder_name(db, project)}")
     if root is None:
-        zone_root = drive_repo.get_node_by_path(db, "drive/projects")
+        zone_root = drive_repo.get_node_by_path(db, zone_path)
         root = _create_node(
             db,
-            path=_unique_path(db, f"drive/projects/{project_folder_name(db, project)}"),
-            on_disk=drive_root() / "projects" / project_folder_name(db, project),
+            path=_unique_path(db, f"{zone_path}/{project_folder_name(db, project)}"),
+            on_disk=abs_path(zone_root) / project_folder_name(db, project),
             parent_id=zone_root.id if zone_root else None,
             kind=DriveNodeKind.folder.value,
             name=project.name,
@@ -293,7 +315,7 @@ def create_uploaded_file(
             raise HTTPException(status_code=400, detail="parent belongs to a different zone")
         check_write_permission(db, parent, actor_employee_id)
     else:
-        parent = drive_repo.get_node_by_path(db, f"drive/{zone}")
+        parent = drive_repo.get_node_by_path(db, _zone_root_path(db, zone))
         if parent is None:  # pragma: no cover - ensure_zone_roots guarantees it
             raise HTTPException(status_code=404, detail="zone root not found")
 
@@ -408,7 +430,7 @@ def create_folder(
             raise HTTPException(status_code=400, detail="parent belongs to a different zone")
         check_write_permission(db, parent, actor_employee_id)
     else:
-        parent = drive_repo.get_node_by_path(db, f"drive/{zone}")
+        parent = drive_repo.get_node_by_path(db, _zone_root_path(db, zone))
         if parent is None:  # pragma: no cover - ensure_zone_roots guarantees it
             raise HTTPException(status_code=404, detail="zone root not found")
     path = _unique_path(db, f"{parent.path}/{slugify(name, fallback='folder')}")
@@ -443,9 +465,11 @@ def _is_project_member(db: Session, project_id: int | None, employee_id: int) ->
 
 
 def check_write_permission(db: Session, node: DriveNode, actor_employee_id: int | None) -> None:
-    """Raise 403 when the actor may not write this node. No actor → allow (no auth in MVP)."""
+    """Raise 403 when an optional AI employee actor may not write this node."""
     if actor_employee_id is None:
         return
+    if org_repo.get_employee(db, actor_employee_id) is None:
+        raise HTTPException(status_code=403, detail="employee does not belong to this company")
     if node.zone == DriveZone.projects.value:
         if node.project_id is not None and not _is_project_member(
             db, node.project_id, actor_employee_id

@@ -175,7 +175,8 @@ def _package_catalog() -> list[dict]:
 
 def _get_department_or_404(db: Session, department_id: int) -> Department:
     department = db.get(Department, department_id)
-    if department is None:
+    company = org_repo.get_default_company(db)
+    if department is None or company is None or department.company_id != company.id:
         raise HTTPException(status_code=404, detail="department not found")
     return department
 

@@ -64,6 +64,7 @@ class EventBus:
         message = {
             "type": type,
             "data": data,
+            "company_id": company_id,
             "ts": datetime.now(UTC).isoformat(),
         }
         loop = self._loop

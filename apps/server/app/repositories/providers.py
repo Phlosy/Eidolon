@@ -1,13 +1,14 @@
 """Provider / model-binding repositories (v0.2).
 
 Scope enforcement lives HERE (repository level), not just in the API layer:
-company-scope providers are visible to everyone; employee-scope providers are
-only ever returned to their owner.
+company-scope providers are visible within the active company; employee-scope
+providers are only ever returned to their owner.
 """
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.request_context import get_request_identity
 from app.models.enums import ProviderScope
 from app.models.provider import ModelBinding, Provider
 
@@ -22,20 +23,26 @@ def _scope_filter(employee_id: int | None):
 
 
 def list_providers(db: Session, employee_id: int | None = None) -> list[Provider]:
-    return list(
-        db.scalars(select(Provider).where(_scope_filter(employee_id)).order_by(Provider.id))
-    )
+    stmt = select(Provider).where(_scope_filter(employee_id)).order_by(Provider.id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.where(Provider.company_id == identity.company_id)
+    return list(db.scalars(stmt))
 
 
 def get_provider(db: Session, provider_id: int) -> Provider | None:
-    return db.get(Provider, provider_id)
+    stmt = select(Provider).where(Provider.id == provider_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.where(Provider.company_id == identity.company_id)
+    return db.scalar(stmt)
 
 
 def get_provider_visible(
     db: Session, provider_id: int, employee_id: int | None = None
 ) -> Provider | None:
     """get_provider + scope check: employee-scope rows are owner-only."""
-    provider = db.get(Provider, provider_id)
+    provider = get_provider(db, provider_id)
     if provider is None:
         return None
     if provider.scope == ProviderScope.employee.value and provider.owner_employee_id != employee_id:
@@ -44,6 +51,9 @@ def get_provider_visible(
 
 
 def create_provider(db: Session, **fields) -> Provider:
+    identity = get_request_identity()
+    if identity is not None:
+        fields.setdefault("company_id", identity.company_id)
     provider = Provider(**fields)
     db.add(provider)
     db.flush()
