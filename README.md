@@ -6,11 +6,14 @@
 
 第一阶段主营业务：**AI Software Studio** —— 接受软件产品需求，由 AI 公司自主完成需求分析、调研、产品设计、技术设计、编码、测试、文档与交付。
 
-> 当前版本：**v0.2 (Persistent Workforce)**。默认仍以 Mock Runtime 运行，无需任何 API Key 即可体验完整流程；接入真实 Hermes / OpenClaw 容器见 [docs/runtime/](docs/runtime/)。
+> 当前版本包含 Human Authentication、空公司首次体验、Persistent Workforce 与 Formal Project Delivery。默认可以用明确标记的 Mock Runtime 完成教学；接入真实 Hermes / OpenClaw 容器见 [docs/runtime/](docs/runtime/)。
 
 ## Features
 
-- **虚拟公司开箱即用**：默认初始化一家 AI Software Studio，含 CEO / Product Manager / Researcher / Engineer / QA Engineer 五名持久员工
+- **真人账号与安全会话**：邮箱验证、Argon2id 密码、HttpOnly Cookie Session、CSRF、防重放挑战与设备撤销
+- **标准 Passkey / WebAuthn**：支持系统通行密钥与硬件安全密钥；服务器只保存公钥凭证
+- **空公司首次体验**：新用户获得零员工、零项目、零文档的 `FOUNDING` 公司，再通过真实业务流程亲手建立团队
+- **领域状态驱动教程**：引导可暂停、恢复、跳过；CEO、Runtime、Provider、Cloud Docs、Git、Snake 项目、Human Gate 与交付均由真实状态验证
 - **Employee ≠ Runtime**：员工身份、记忆、技能、经历与执行引擎完全解耦；Runtime 可整体替换
 - **One Employee = One Agent**：每个员工独占 Runtime Profile / Workspace / Memory namespace，杜绝记忆污染（有测试强制保证）
 - **Agent Runtime Gateway**：统一 Adapter 接口，内置完整 Mock Runtime；Hermes / OpenClaw Docker Adapter 已实现，Codex / Claude Code / OpenCode 接口预留
@@ -39,7 +42,7 @@ Runtime Adapter: Mock | Hermes | OpenClaw | Codex | Claude Code | OpenCode
 
 五条不可破坏的架构边界：`Employee ≠ Runtime`、`Private Memory ≠ Company Knowledge`、`Task ≠ Agent Session`、`Domain Logic ≠ API`、`Frontend ≠ Runtime`。
 
-详见 [docs/architecture.md](docs/architecture.md) 与 [docs/research.md](docs/research.md)。
+详见 [docs/architecture.md](docs/architecture.md)、[认证](docs/authentication.md)、[Passkey](docs/passkeys.md) 与 [首次引导](docs/user-onboarding.md)。
 
 ## Screenshots
 
