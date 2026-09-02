@@ -59,13 +59,15 @@ export class OfficeAssignmentService {
     }
 
     const zoneIds = new Set(
-      this.zones.filter((zone) => zone.type === desiredZone).map((zone) => zone.id),
+      this.zones.filter((zone) => zone.type === desiredZone).map((zone) => zone.id.toLowerCase()),
     );
     const occupied = new Set([...this.assignments.values()].map((point) => point.id));
     const chosen =
       this.points.find(
         (point) =>
-          point.type === "workstation" && zoneIds.has(point.zoneId) && !occupied.has(point.id),
+          point.type === "workstation" &&
+          zoneIds.has(point.zoneId.toLowerCase()) &&
+          !occupied.has(point.id),
       ) ?? this.points.find((point) => point.type === "workstation" && !occupied.has(point.id));
     if (chosen) this.assignments.set(employee.id, chosen);
     return chosen ?? null;

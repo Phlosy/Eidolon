@@ -12,7 +12,8 @@ characters, proportions, palettes, maps, interface, or distinctive assets.
 - Perspective: orthogonal top-down / three-quarter RPG view.
 - Tile: 32×32 logical pixels everywhere.
 - Character frame: 48×64 logical pixels; feet align to the tile interaction point.
-- Logical game resolution: 960×540.
+- Logical game resolution: 1280×720, cropped with cover behavior when the viewport aspect ratio
+  differs so the office still fills the complete desktop authentication screen.
 - Walls: two tiles high; doors: one tile wide and two tiles high.
 - Desks: two to three tiles wide; chairs and interaction anchors: one tile.
 - Rendering: nearest neighbor, anti-aliasing disabled, integer camera coordinates.

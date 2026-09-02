@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
-export const OFFICE_LOGICAL_WIDTH = 960;
-export const OFFICE_LOGICAL_HEIGHT = 540;
+export const OFFICE_LOGICAL_WIDTH = 1280;
+export const OFFICE_LOGICAL_HEIGHT = 720;
 export const OFFICE_TILE_SIZE = 32;
 
 export function createOfficeGameConfig(

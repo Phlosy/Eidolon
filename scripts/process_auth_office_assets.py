@@ -12,7 +12,6 @@ from pathlib import Path
 
 from PIL import Image, ImageEnhance, ImageOps
 
-
 ROOT = Path(__file__).resolve().parents[1]
 PACK = ROOT / "apps/web/public/assets/office-game/eidolon-default"
 SOURCE = PACK / "source"
@@ -26,7 +25,9 @@ def color_distance(a: tuple[int, ...], b: tuple[int, ...]) -> int:
     return sum(abs(a[index] - b[index]) for index in range(3))
 
 
-def transparent_crop(image: Image.Image, box: tuple[int, int, int, int], threshold: int = 18) -> Image.Image:
+def transparent_crop(
+    image: Image.Image, box: tuple[int, int, int, int], threshold: int = 18
+) -> Image.Image:
     crop = image.crop(box).convert("RGBA")
     width, height = crop.size
     pixels = crop.load()
@@ -43,7 +44,10 @@ def transparent_crop(image: Image.Image, box: tuple[int, int, int, int], thresho
         current = pixels[x, y]
         for next_x, next_y in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
             point = (next_x, next_y)
-            if not (0 <= next_x < width and 0 <= next_y < height) or point in background:
+            if (
+                not (0 <= next_x < width and 0 <= next_y < height)
+                or point in background
+            ):
                 continue
             if color_distance(current, pixels[next_x, next_y]) <= threshold:
                 background.add(point)
@@ -57,7 +61,9 @@ def transparent_crop(image: Image.Image, box: tuple[int, int, int, int], thresho
     return crop.crop(bounds) if bounds else crop
 
 
-def fit_pixel(source: Image.Image, size: tuple[int, int], padding: int = 0) -> Image.Image:
+def fit_pixel(
+    source: Image.Image, size: tuple[int, int], padding: int = 0
+) -> Image.Image:
     available = (max(1, size[0] - padding * 2), max(1, size[1] - padding * 2))
     scale = min(available[0] / source.width, available[1] / source.height)
     resized = source.resize(
@@ -65,7 +71,9 @@ def fit_pixel(source: Image.Image, size: tuple[int, int], padding: int = 0) -> I
         Image.Resampling.NEAREST,
     )
     output = Image.new("RGBA", size)
-    output.alpha_composite(resized, ((size[0] - resized.width) // 2, size[1] - padding - resized.height))
+    output.alpha_composite(
+        resized, ((size[0] - resized.width) // 2, size[1] - padding - resized.height)
+    )
     return output
 
 
@@ -75,7 +83,9 @@ def keep_rows(source: Image.Image, start: int, end: int) -> Image.Image:
     return output
 
 
-def animation_frames(pose: Image.Image, *, mirror_stride: bool = False) -> list[Image.Image]:
+def animation_frames(
+    pose: Image.Image, *, mirror_stride: bool = False
+) -> list[Image.Image]:
     frames: list[Image.Image] = []
     for index in range(4):
         frame = ImageOps.mirror(pose) if mirror_stride and index in (1, 3) else pose
@@ -87,7 +97,9 @@ def animation_frames(pose: Image.Image, *, mirror_stride: bool = False) -> list[
     return frames
 
 
-def make_character_sheet(source: Image.Image) -> tuple[Image.Image, dict[str, dict[str, int]]]:
+def make_character_sheet(
+    source: Image.Image,
+) -> tuple[Image.Image, dict[str, dict[str, int]]]:
     cell_width = source.width // POSE_COLUMNS
     cell_height = source.height // EMPLOYEE_ROWS
     sheet = Image.new("RGBA", (FRAME[0] * 32, FRAME[1] * EMPLOYEE_ROWS))
@@ -102,7 +114,9 @@ def make_character_sheet(source: Image.Image) -> tuple[Image.Image, dict[str, di
                 (column + 1) * cell_width - 8,
                 (row_index + 1) * cell_height - 8,
             )
-            poses.append(fit_pixel(transparent_crop(source, box, threshold=60), FRAME, padding=2))
+            poses.append(
+                fit_pixel(transparent_crop(source, box, threshold=60), FRAME, padding=2)
+            )
 
         sequence = (
             animation_frames(poses[0])
@@ -138,7 +152,9 @@ def make_tiles(source: Image.Image) -> Image.Image:
     ]
     tiles = Image.new("RGBA", (32 * len(boxes), 32))
     for index, box in enumerate(boxes):
-        tile = source.crop(box).convert("RGBA").resize((32, 32), Image.Resampling.NEAREST)
+        tile = (
+            source.crop(box).convert("RGBA").resize((32, 32), Image.Resampling.NEAREST)
+        )
         tiles.alpha_composite(ImageEnhance.Color(tile).enhance(0.78), (index * 32, 0))
     return tiles
 
@@ -190,7 +206,7 @@ def make_object_atlas(
         padding=2,
     )
     addition_items["workstation-back"] = keep_rows(workstation, 0, 70)
-    addition_items["workstation-front"] = keep_rows(workstation, 54, workstation.height)
+    addition_items["workstation-front"] = keep_rows(workstation, 74, workstation.height)
 
     for name, item in addition_items.items():
         size = item.size
@@ -233,7 +249,9 @@ def main() -> None:
         "meta": {"image": "office-objects.png", "scale": "1", "format": "RGBA8888"},
     }
     (RUNTIME / "office-objects.json").write_text(json.dumps(atlas, indent=2) + "\n")
-    (RUNTIME / "employee-frames.json").write_text(json.dumps(character_registry, indent=2) + "\n")
+    (RUNTIME / "employee-frames.json").write_text(
+        json.dumps(character_registry, indent=2) + "\n"
+    )
 
 
 if __name__ == "__main__":

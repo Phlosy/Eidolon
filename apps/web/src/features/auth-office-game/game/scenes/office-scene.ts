@@ -69,8 +69,10 @@ export class OfficeScene extends Phaser.Scene {
     map.createLayer("Foreground", tiles)?.setDepth(900);
 
     this.renderObjectLayer(map, "Wall Decoration", -80);
+    this.renderObjectLayer(map, "Furniture Back", -120);
     this.renderObjectLayer(map, "Furniture", 0);
     this.renderObjectLayer(map, "Furniture Front", 80);
+    this.addCompanyDisplay();
 
     const zones = this.readZones(map);
     const points = this.readInteractionPoints(map);
@@ -151,6 +153,15 @@ export class OfficeScene extends Phaser.Scene {
         if (tile.index >= 0) blocked.add(`${x},${y}`);
       }),
     );
+    map.getObjectLayer("Collision")?.objects.forEach((object) => {
+      const startX = pixelToTile(object.x);
+      const startY = pixelToTile(object.y);
+      const endX = startX + pixelToTile(object.width);
+      const endY = startY + pixelToTile(object.height);
+      for (let y = startY; y < endY; y += 1) {
+        for (let x = startX; x < endX; x += 1) blocked.add(`${x},${y}`);
+      }
+    });
     return { width: map.width, height: map.height, blocked };
   }
 
@@ -172,7 +183,7 @@ export class OfficeScene extends Phaser.Scene {
   private upsertEmployee(employee: OfficeEmployeeState, index: number): void {
     let runtime = this.employees.get(employee.id);
     if (!runtime) {
-      const entrance = this.assignment.pointFor("entrance")?.tile ?? { x: 27, y: 13 };
+      const entrance = this.assignment.pointFor("entrance")?.tile ?? { x: 26, y: 20 };
       const position = tileCenter({ x: entrance.x, y: Math.max(2, entrance.y - (index % 2)) });
       const skinId = `employee-${index % 4}`;
       const sprite = new EmployeeSprite(
@@ -255,10 +266,32 @@ export class OfficeScene extends Phaser.Scene {
   }
 
   private addAmbientEffects(): void {
-    const serverLight = this.add.circle(872, 216, 3, 0xd5aa52, 0.8).setDepth(300);
-    const windowLight = this.add.rectangle(390, 132, 250, 3, 0x7fa6b8, 0.16).setDepth(15);
+    const serverLight = this.add.circle(812, 322, 3, 0xd5aa52, 0.8).setDepth(300);
+    const windowLight = this.add.rectangle(150, 148, 112, 3, 0x7fa6b8, 0.16).setDepth(15);
     this.tweens.add({ targets: serverLight, alpha: 0.25, duration: 900, yoyo: true, repeat: -1 });
     this.tweens.add({ targets: windowLight, alpha: 0.08, duration: 2600, yoyo: true, repeat: -1 });
+  }
+
+  private addCompanyDisplay(): void {
+    this.add
+      .text(540, 87, "EIDOLON", {
+        color: "#f1ddbd",
+        fontFamily: "monospace",
+        fontSize: "28px",
+        fontStyle: "bold",
+        letterSpacing: 8,
+      })
+      .setOrigin(0.5)
+      .setDepth(110);
+    this.add
+      .text(540, 112, "AI COMPANY OS", {
+        color: "#7fa6b8",
+        fontFamily: "monospace",
+        fontSize: "10px",
+        letterSpacing: 3,
+      })
+      .setOrigin(0.5)
+      .setDepth(110);
   }
 
   private focusEmployee(employeeId: string | null): void {

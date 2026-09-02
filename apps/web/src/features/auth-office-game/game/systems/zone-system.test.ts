@@ -58,4 +58,12 @@ describe("OfficeAssignmentService", () => {
     const member = employee({ id: "stable" });
     expect(service.workstationFor(member)).toBe(service.workstationFor(member));
   });
+
+  it("matches map zone ids without depending on display-name casing", () => {
+    const service = new OfficeAssignmentService(
+      [zones[0], { ...zones[1], id: "Engineering" }],
+      [points[0], { ...points[1], zoneId: "engineering" }],
+    );
+    expect(service.workstationFor(employee({ id: "case-safe" }))?.id).toBe("eng-desk");
+  });
 });

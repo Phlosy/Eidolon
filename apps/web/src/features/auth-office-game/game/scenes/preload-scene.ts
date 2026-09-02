@@ -13,7 +13,7 @@ export class PreloadScene extends Phaser.Scene {
       progress
         .clear()
         .fillStyle(0xf1ddbd, 0.85)
-        .fillRect(336, 266, 288 * value, 8);
+        .fillRect(448, 354, 384 * value, 8);
     });
     this.load.once(Phaser.Loader.Events.COMPLETE, () => progress.destroy());
     this.load.tilemapTiledJSON("office-map", `${ASSET_ROOT}/maps/office.json`);

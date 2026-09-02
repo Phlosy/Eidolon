@@ -37,6 +37,7 @@ describe("LoginPage", () => {
       passwordLogin.compareDocumentPosition(passkeyLogin) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: "注册" })).toHaveAttribute("href", "/auth/register");
+    expect(screen.getByTestId("auth-shell")).toHaveClass("auth-world-shell");
     expect(screen.getByTestId("auth-office-game")).toHaveAccessibleName(/2D 像素办公室/);
   });
 

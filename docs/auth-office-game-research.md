@@ -18,7 +18,7 @@ events later without allowing Phaser to poll APIs or depend on React stores.
 | --- | --- | --- |
 | Renderer | Phaser 3 + TypeScript | Mature Canvas/WebGL scene, animation, input, camera, and tilemap lifecycle. |
 | Map | Tiled-compatible JSON, orthogonal, 32×32 tiles | Keeps authored layers and interaction metadata separate from rendering code. |
-| Resolution | 960×540 logical pixels | Fits the auth cover while preserving a roomy multi-zone office. |
+| Resolution | 1280×720 logical pixels | Fills the authentication viewport while preserving a roomy multi-zone office behind the form overlay. |
 | Scaling | `Phaser.Scale.FIT` + `CENTER_BOTH` | Preserves the logical aspect ratio inside responsive React layout. |
 | Pixel rendering | `pixelArt`, `roundPixels`, nearest-neighbor CSS | Avoids bilinear blur on high-DPI displays. |
 | Animation | Sprite sheets with an animation registry | One load per sheet; unknown animation names fall back safely to idle. |
@@ -35,7 +35,7 @@ events later without allowing Phaser to poll APIs or depend on React stores.
   Manager. Eidolon registers stable semantic names such as `employee.walk.down` rather than
   scattering frame indexes through entity code.
 - Phaser's Scale Manager provides `FIT` and `CENTER_BOTH`, so React reserves the aspect-ratio
-  box and Phaser scales its internal 960×540 world into it.
+  viewport and Phaser scales its internal 1280×720 world with cover behavior.
 - Tiled JSON is kept as source-controlled map data. No in-product map editor is introduced.
 
 References:
