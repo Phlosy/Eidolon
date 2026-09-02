@@ -65,4 +65,3 @@ References:
   shift.
 - Behavior decisions are event-driven and low frequency. Per-frame work is limited to movement,
   depth sorting, and small ambient effects.
-

@@ -73,4 +73,3 @@ Each animation must have a registry fallback. Unknown direction or activity reso
   result. No essential information is hover-only.
 - Motion pauses on explicit request, focus, document hiding, and `prefers-reduced-motion`.
 - Status is expressed through motion, icon shape, and short text—not color alone.
-

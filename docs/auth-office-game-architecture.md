@@ -72,4 +72,3 @@ animation every frame. A status transition issues a new directive and route.
 - React unmount calls `game.destroy(true)` and clears the bridge.
 - A future authenticated consumer can send `office.state.replace` and lifecycle events through
   the same bridge without changing entity or scene contracts.
-
