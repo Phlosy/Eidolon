@@ -47,4 +47,28 @@ describe("LoginPage", () => {
     expect(pause).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByTestId("pixel-office-scene")).toHaveClass("is-paused");
   });
+
+  it("introduces each employee and pauses that character while they speak", () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    const engineer = screen.getByRole("button", { name: /林舟，工程负责人/ });
+    expect(engineer).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.pointerEnter(engineer);
+    expect(engineer).toHaveAttribute("aria-expanded", "true");
+    expect(engineer).toHaveClass("is-speaking");
+    expect(screen.getByText("构建通过了，准备今天的发布。")).toBeInTheDocument();
+
+    fireEvent.pointerLeave(engineer);
+    expect(engineer).toHaveAttribute("aria-expanded", "false");
+
+    const operations = screen.getByRole("button", { name: /苏禾，运营负责人/ });
+    fireEvent.pointerEnter(operations);
+    expect(screen.getByText("客户反馈已整理，下午同步给团队。")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /陈默，项目负责人/ })).toBeInTheDocument();
+  });
 });
