@@ -1,61 +1,84 @@
-"""Artifact materialization (v0.2): every artifact is also a real file on disk.
+"""Artifact compat layer (v0.3).
 
-Files live under ``{data_root}/projects/{project_id}/{docs|source|tests|release}/``
-(directory by artifact type) and are named ``{type}-{title-slug}.md``. The DB
-row records the path, the sha256 of the content, and the producing work
-session. The ``content`` column stays the source of truth for the API.
+The ``artifacts`` table is deprecated and no longer written. Artifacts are now
+DriveNodes (kind=document, zone=projects); this module maps them back to the
+legacy ArtifactOut shape so old clients keep working
+(docs/design-v0.3-workspace.md §2 "Artifact 与 Drive 的关系").
 """
 
-import hashlib
-import re
-from pathlib import Path
-
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
-from app.models.enums import ArtifactType
-from app.models.project import Artifact
+from app.models.drive import DriveNode
+from app.models.enums import DriveNodeKind, DriveZone
+from app.models.project import Project
+from app.repositories import drive as drive_repo
+from app.schemas.project import ArtifactOut
+from app.services import drive as drive_service
 
-TYPE_TO_DIR = {
-    ArtifactType.prd.value: "docs",
-    ArtifactType.research_report.value: "docs",
-    ArtifactType.architecture.value: "docs",
-    ArtifactType.readme.value: "docs",
-    ArtifactType.plan.value: "docs",
-    ArtifactType.other.value: "docs",
-    ArtifactType.source_code.value: "source",
-    ArtifactType.test_report.value: "tests",
-    ArtifactType.release.value: "release",
-}
+# Re-export for callers that still reason in artifact types.
+TYPE_TO_DIR = drive_service.TYPE_TO_DIR
 
 
-def _slugify(text: str, fallback: str = "artifact") -> str:
-    slug = re.sub(r"[^0-9A-Za-z一-鿿]+", "-", text.lower()).strip("-")
-    return slug[:60] or fallback
-
-
-def artifact_dir(project_id: int, artifact_type: str) -> Path:
-    return (
-        Path(settings.data_root)
-        / "projects"
-        / str(project_id)
-        / TYPE_TO_DIR.get(artifact_type, "docs")
+def record_project_artifact(
+    db: Session,
+    project: Project,
+    *,
+    artifact_type: str,
+    title: str,
+    content: str,
+    author_id: int | None = None,
+    work_session_id: int | None = None,
+) -> DriveNode:
+    """Write a produced artifact into the project's drive folder (revision v1)."""
+    return drive_service.create_project_document(
+        db,
+        project,
+        doc_type=artifact_type,
+        title=title,
+        content=content,
+        owner_employee_id=author_id,
+        work_session_id=work_session_id,
     )
 
 
-def materialize_artifact(
-    db: Session, artifact: Artifact, work_session_id: int | None = None
-) -> Artifact:
-    """Write the artifact content to disk; set path/sha256/work_session_id."""
-    directory = artifact_dir(artifact.project_id, artifact.type)
-    directory.mkdir(parents=True, exist_ok=True)
-    filename = f"{artifact.type}-{_slugify(artifact.title)}.md"
-    path = directory / filename
-    path.write_text(artifact.content, encoding="utf-8")
+def list_artifact_nodes(
+    db: Session, project_id: int | None = None, artifact_type: str | None = None
+) -> list[DriveNode]:
+    stmt = (
+        select(DriveNode)
+        .where(
+            DriveNode.kind == DriveNodeKind.document.value,
+            DriveNode.zone == DriveZone.projects.value,
+            DriveNode.project_id.is_not(None),
+        )
+        .order_by(desc(DriveNode.id))
+    )
+    if project_id is not None:
+        stmt = stmt.where(DriveNode.project_id == project_id)
+    if artifact_type is not None:
+        stmt = stmt.where(DriveNode.doc_type == artifact_type)
+    return list(db.scalars(stmt))
 
-    artifact.path = str(path)
-    artifact.sha256 = hashlib.sha256(artifact.content.encode("utf-8")).hexdigest()
-    if work_session_id is not None:
-        artifact.work_session_id = work_session_id
-    db.flush()
-    return artifact
+
+def artifact_out(db: Session, node: DriveNode) -> ArtifactOut:
+    """Map a project-zone document node to the legacy artifact shape."""
+    project = db.get(Project, node.project_id) if node.project_id else None
+    revision = drive_repo.get_revision(db, node.id, node.current_version)
+    return ArtifactOut(
+        id=node.id,
+        company_id=project.company_id if project else 0,
+        project_id=node.project_id or 0,
+        task_id=None,  # deprecated going forward; kept in the response shape
+        type=node.doc_type or "other",
+        title=node.name,
+        content=drive_service.read_content(node) or "",
+        path=str(drive_service.abs_path(node)),
+        sha256=revision.sha256 if revision else None,
+        work_session_id=node.work_session_id,
+        version=node.current_version,
+        status="draft",
+        author_id=node.owner_employee_id,
+        created_at=node.created_at,
+        updated_at=node.updated_at,
+    )

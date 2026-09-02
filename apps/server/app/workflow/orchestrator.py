@@ -6,14 +6,13 @@ release pipeline. One running session per employee; queued tasks wait.
 """
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
 from app.events.bus import bus
 from app.learning import reflection, retrieval
 from app.models.enums import (
-    ArtifactStatus,
     EmployeeRole,
     EmployeeStatus,
     MilestoneStatus,
@@ -255,21 +254,18 @@ class Orchestrator:
                 ws.cost = {"duration_sec": round(duration, 3), "tokens": 0}
 
             artifact_ids = []
-            for item in produced:
-                artifact = project_repo.create_artifact(
+            # v0.3: artifacts are drive documents in the project folder
+            for item in produced if project is not None else []:
+                node = artifact_service.record_project_artifact(
                     db,
-                    company_id=company_id,
-                    project_id=task.project_id,
-                    task_id=task.id,
-                    type=item.type,
+                    project,
+                    artifact_type=item.type,
                     title=item.title,
                     content=item.content,
-                    status=ArtifactStatus.draft.value,
                     author_id=employee.id if employee else None,
+                    work_session_id=ws.id if ws else None,
                 )
-                # v0.2: artifacts are also real files on disk (path + sha256)
-                artifact_service.materialize_artifact(db, artifact, ws.id if ws else None)
-                artifact_ids.append((artifact.id, artifact.type, artifact.title))
+                artifact_ids.append((node.id, node.doc_type, node.name))
 
             if success:
                 task_service.transition_task(db, task, TaskStatus.in_review.value)
@@ -365,6 +361,7 @@ class Orchestrator:
                 pm = org_repo.get_employee_by_role(
                     db, company_id, EmployeeRole.product_manager.value
                 )
+                planning_start = project.planned_start_at or project.created_at
                 planning = task_service.create_task(
                     db,
                     project_id=project.id,
@@ -376,6 +373,8 @@ class Orchestrator:
                     acceptance_criteria="产出完整 PRD",
                     priority=9,
                     sequence=1,
+                    planned_start_at=planning_start + timedelta(days=1),
+                    planned_end_at=planning_start + timedelta(days=2),
                 )
                 db.flush()
                 events.append(("task.created", _task_summary(planning)))
@@ -393,6 +392,10 @@ class Orchestrator:
                 events.extend(self._unblock_dependents(db, task))
             elif task.kind == TaskKind.final_review.value:
                 project.status = ProjectStatus.completed.value
+                if task.milestone_id:
+                    milestone = db.get(Milestone, task.milestone_id)
+                    if milestone:
+                        milestone.status = MilestoneStatus.completed.value
                 events.append(("project.completed", {"id": project.id, "name": project.name}))
             db.commit()
         self._publish_advance_events(events, company_id, project.id)
@@ -402,15 +405,23 @@ class Orchestrator:
         """按模板生成 Milestones+Tasks 图：research→development→testing→final_review."""
         events: list[tuple[str, dict]] = []
         by_kind: dict[str, int] = {}
+        schedule_start = project.planned_start_at or project.created_at
+        schedule_windows = ((2, 5), (5, 11), (11, 15), (15, 18))
+        project.planned_start_at = schedule_start
+        project.planned_end_at = schedule_start + timedelta(days=18)
         for order, (milestone_name, kind, role, deps) in enumerate(GRAPH_TEMPLATE, start=1):
+            start_offset, end_offset = schedule_windows[order - 1]
+            assignee = org_repo.get_employee_by_role(db, project.company_id, role)
             milestone = project_repo.create_milestone(
                 db,
                 project_id=project.id,
                 name=milestone_name,
                 description=f"{milestone_name} 阶段",
                 order=order,
+                owner_id=assignee.id if assignee else None,
+                planned_start_at=schedule_start + timedelta(days=start_offset),
+                planned_end_at=schedule_start + timedelta(days=end_offset),
             )
-            assignee = org_repo.get_employee_by_role(db, project.company_id, role)
             task = task_service.create_task(
                 db,
                 project_id=project.id,
@@ -424,6 +435,8 @@ class Orchestrator:
                 priority=10 - order,
                 sequence=order + 1,
                 depends_on=[by_kind[d] for d in deps],
+                planned_start_at=schedule_start + timedelta(days=start_offset),
+                planned_end_at=schedule_start + timedelta(days=end_offset),
             )
             by_kind[kind] = task.id
             events.append(("task.created", _task_summary(task)))

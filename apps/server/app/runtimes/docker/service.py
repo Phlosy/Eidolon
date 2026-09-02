@@ -3,8 +3,10 @@
 Hard safety rules for runtime containers:
 - never privileged, never host PID/network mode;
 - never mount ``/`` or ``/var/run/docker.sock`` into a runtime container;
-- no host port publishing — the backend reaches containers over the private
-  ``eidolon-runtime-net`` docker network via container-name DNS.
+- no host port publishing for runtime containers — the backend reaches them
+  over the private ``eidolon-runtime-net`` docker network via container-name
+  DNS. Loopback-only (127.0.0.1) port bindings are allowed for builtin
+  services Eidolon itself manages (e.g. the optional Gitea container).
 
 Every method degrades gracefully when the Docker daemon is unavailable: the
 process must keep booting and runtime types simply report docker_available=false.
@@ -112,14 +114,21 @@ class DockerService:
         environment: dict[str, str] | None = None,
         volumes: dict[str, dict[str, str]] | None = None,
         network: str | None = None,
+        ports: dict[str, tuple[str, int]] | None = None,
         cpu_limit: float | None = None,
         memory_limit_mb: int | None = None,
         restart_policy: str = "unless-stopped",
         labels: dict[str, str] | None = None,
         command: str | list[str] | None = None,
     ) -> str | None:
-        """Create (not start) a hardened runtime container. Returns container id."""
+        """Create (not start) a hardened runtime container. Returns container id.
+
+        ``ports`` (docker-py style ``{"3000/tcp": ("127.0.0.1", 26990)}``) is
+        restricted to loopback bindings — runtime containers must never publish
+        ports; only builtin services (Gitea) may bind to 127.0.0.1.
+        """
         self._validate_volumes(volumes or {})
+        self._validate_ports(ports or {})
         kwargs: dict[str, Any] = {
             "name": name,
             "image": image,
@@ -131,6 +140,8 @@ class DockerService:
             "restart_policy": {"Name": restart_policy},
             "labels": {"eidolon.managed": "true", **(labels or {})},
         }
+        if ports:
+            kwargs["ports"] = ports
         if command is not None:
             kwargs["command"] = command
         if cpu_limit:
@@ -264,6 +275,13 @@ class DockerService:
             normalized = source.rstrip("/") or "/"
             if normalized in FORBIDDEN_BIND_SOURCES:
                 raise ValueError(f"forbidden bind-mount source: {source}")
+
+    @staticmethod
+    def _validate_ports(ports: dict[str, tuple[str, int]]) -> None:
+        for binding in ports.values():
+            host_ip = binding[0] if isinstance(binding, tuple) else None
+            if host_ip not in ("127.0.0.1", "::1"):
+                raise ValueError(f"port bindings must be loopback-only, got: {binding}")
 
 
 _service: DockerService | None = None

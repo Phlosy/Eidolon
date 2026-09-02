@@ -4,7 +4,7 @@ from sqlalchemy import JSON, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
-from app.models.enums import EmployeeRole, EmployeeStatus, RuntimeType
+from app.models.enums import EmployeeRole, EmployeeStatus, LifecycleStatus, RuntimeType
 
 
 class Company(TimestampMixin, Base):
@@ -43,6 +43,9 @@ class Employee(TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(200), default="")
     avatar: Mapped[str] = mapped_column(String(500), default="")
     status: Mapped[str] = mapped_column(String(50), default=EmployeeStatus.idle.value)
+    # v0.4: lifecycle state (docs/design-v0.4-lifecycle.md §1) + NamingPolicy username
+    lifecycle_status: Mapped[str] = mapped_column(String(50), default=LifecycleStatus.active.value)
+    username: Mapped[str | None] = mapped_column(String(100), nullable=True)
     runtime_type: Mapped[str] = mapped_column(String(50), default=RuntimeType.mock.value)
     runtime_config: Mapped[dict] = mapped_column(JSON, default=dict)
     workspace_path: Mapped[str] = mapped_column(String(500), unique=True)

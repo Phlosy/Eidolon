@@ -11,6 +11,9 @@ os.environ["EIDOLON_MOCK_TASK_SECONDS"] = "0.1"
 os.environ["EIDOLON_LOG_LEVEL"] = "WARNING"
 os.environ["EIDOLON_UPDATE_CHECK_ENABLED"] = "false"
 os.environ["EIDOLON_SECRET_KEY"] = "test-secret-key"
+# Legacy workflow tests exercise the original five-role autonomous team. Production
+# now defaults to an empty company and only seeds this demo workforce when opted in.
+os.environ["EIDOLON_SEED_DEMO_WORKFORCE"] = "true"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -86,6 +89,7 @@ class FakeDockerService:
         environment=None,
         volumes=None,
         network=None,
+        ports=None,
         cpu_limit=None,
         memory_limit_mb=None,
         restart_policy="unless-stopped",
@@ -100,6 +104,7 @@ class FakeDockerService:
             "environment": dict(environment or {}),
             "volumes": dict(volumes or {}),
             "network": network,
+            "ports": dict(ports or {}),
             "labels": dict(labels or {}),
             "command": command,
             "state": "created",
@@ -109,7 +114,8 @@ class FakeDockerService:
         return cid
 
     def start_container(self, container_id: str) -> bool:
-        c = self.containers.get(container_id)
+        cid = self.resolve(container_id)
+        c = self.containers.get(cid) if cid else None
         if c is None:
             return False
         if c["image"] in self.fail_healthcheck_images:
@@ -119,7 +125,8 @@ class FakeDockerService:
         return True
 
     def stop_container(self, container_id: str, timeout: int = 10) -> bool:
-        c = self.containers.get(container_id)
+        cid = self.resolve(container_id)
+        c = self.containers.get(cid) if cid else None
         if c is None:
             return False
         c["state"] = "exited"
@@ -129,28 +136,33 @@ class FakeDockerService:
         return self.stop_container(container_id) and self.start_container(container_id)
 
     def remove_container(self, container_id: str, force: bool = True) -> bool:
-        self.containers.pop(container_id, None)
+        cid = self.resolve(container_id)
+        if cid:
+            self.containers.pop(cid, None)
         return True
 
     def inspect_container(self, container_id: str):
-        c = self.containers.get(container_id)
+        cid = self.resolve(container_id)
+        c = self.containers.get(cid) if cid else None
         if c is None:
             return None
         return {
-            "Id": container_id,
+            "Id": cid,
             "Name": f"/{c['name']}",
             "Config": {"Image": c["image"]},
             "State": {"Status": c["state"], "Health": {"Status": c["health"]}},
         }
 
     def healthcheck_container(self, container_id: str):
-        c = self.containers.get(container_id)
+        cid = self.resolve(container_id)
+        c = self.containers.get(cid) if cid else None
         if c is None:
             return None
         return c["state"], c["health"]
 
     def get_logs(self, container_id: str, tail: int = 200) -> list[str]:
-        return list(self.containers.get(container_id, {}).get("logs", []))[-tail:]
+        cid = self.resolve(container_id)
+        return list(self.containers.get(cid, {}).get("logs", []))[-tail:] if cid else []
 
     def stream_logs(self, container_id: str, follow: bool = False):
         yield from self.get_logs(container_id)
@@ -159,6 +171,15 @@ class FakeDockerService:
         return 0, "fake-runtime 1.0.0"
 
     # -- test helpers --
+    def resolve(self, container_id_or_name: str):
+        """Accept a container id or name (real docker-py accepts both)."""
+        if container_id_or_name in self.containers:
+            return container_id_or_name
+        for cid, c in self.containers.items():
+            if c["name"] == container_id_or_name:
+                return cid
+        return None
+
     def crash(self, container_id: str) -> None:
         self.containers[container_id]["state"] = "exited"
         self.containers[container_id]["health"] = "none"

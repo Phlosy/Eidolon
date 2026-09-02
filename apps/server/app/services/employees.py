@@ -1,60 +1,82 @@
-"""Employee services."""
+"""Employee services.
 
-from pathlib import Path
+v0.4: employee creation routes through the lifecycle onboarding engine
+(services/lifecycle.onboard) — this module never talks to Gitea / Drive / the
+filesystem for provisioning. Hard delete is dev/test-only
+(EIDOLON_ALLOW_HARD_DELETE); the business flow is offboarding.
+"""
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.events.bus import bus
-from app.models.enums import EmployeeStatus
 from app.models.organization import Employee
+from app.repositories import drive as drive_repo
 from app.repositories import knowledge as knowledge_repo
+from app.repositories import lifecycle as lifecycle_repo
 from app.repositories import organization as org_repo
-from app.repositories import project as project_repo
 from app.runtimes.gateway import gateway
 from app.schemas.organization import EmployeeCreate, EmployeePatch, EmployeePerformance
-from app.services import seed
 
 
-def _slugify(name: str) -> str:
-    return "".join(c if c.isalnum() else "-" for c in name.lower()).strip("-")
+async def create_employee(db: Session, payload: EmployeeCreate) -> Employee:
+    """Compat shim for the pre-v0.4 POST /employees: runs the onboarding
+    engine with defaults (department falls back to the role's home department)."""
+    from app.schemas.lifecycle import OnboardRequest
+    from app.services import lifecycle as lifecycle_service
 
-
-def create_employee(db: Session, payload: EmployeeCreate) -> Employee:
     company = org_repo.get_default_company(db)
     if company is None:
         raise HTTPException(status_code=409, detail="no company seeded")
-    slug = payload.slug or _slugify(payload.name)
-    if org_repo.get_employee_by_slug(db, slug):
-        raise HTTPException(status_code=409, detail=f"employee slug already exists: {slug}")
-    workspace_path = f"{settings.workspace_root}/{slug}"
-    Path(workspace_path).mkdir(parents=True, exist_ok=True)
-    employee = org_repo.create_employee(
+    department_id = payload.department_id
+    if department_id is None:
+        dept_slug = lifecycle_service.ROLE_TO_DEPARTMENT_SLUG.get(payload.role.value)
+        department = (
+            org_repo.get_department_by_slug(db, company.id, dept_slug) if dept_slug else None
+        )
+        if department is None:
+            raise HTTPException(status_code=422, detail="department_id is required")
+        department_id = department.id
+    employee, _job = await lifecycle_service.onboard(
         db,
-        company_id=company.id,
-        department_id=payload.department_id,
-        name=payload.name,
-        slug=slug,
-        role=payload.role.value,
-        title=payload.title,
-        avatar=payload.avatar,
-        status=EmployeeStatus.idle.value,
-        runtime_type=payload.runtime_type.value,
-        runtime_config=payload.runtime_config,
-        workspace_path=workspace_path,
-        memory_namespace=f"emp_{slug}",
-    )
-    db.commit()
-    db.refresh(employee)
-    seed.ensure_employee_runtime_state(db)
-    bus.publish(
-        "employee.created",
-        {"id": employee.id, "name": employee.name, "role": employee.role},
-        company_id=company.id,
-        actor_employee_id=employee.id,
+        OnboardRequest(
+            name=payload.name,
+            slug=payload.slug,
+            title=payload.title,
+            role=payload.role,
+            department_id=department_id,
+            runtime_type=payload.runtime_type,
+        ),
     )
     return employee
+
+
+def delete_employee(db: Session, employee: Employee) -> None:
+    """Hard delete — 403 unless EIDOLON_ALLOW_HARD_DELETE=true (dev/test only).
+    Business UI must use offboarding; employee + history otherwise persist."""
+    if not settings.allow_hard_delete:
+        raise HTTPException(
+            status_code=403,
+            detail="hard delete is disabled; use POST /employees/{id}/offboard",
+        )
+    for row in lifecycle_repo.list_employee_packages(db, employee.id):
+        lifecycle_repo.delete_employee_package(db, row)
+    for job in lifecycle_repo.list_jobs(db, employee_id=employee.id):
+        for step in lifecycle_repo.list_steps(db, job.id):
+            db.delete(step)
+        db.delete(job)
+    for account in lifecycle_repo.list_accounts(db, employee.id):
+        db.delete(account)
+    for employment in lifecycle_repo.list_employments(db, employee.id):
+        db.delete(employment)
+    db.delete(employee)
+    db.commit()
+    bus.publish(
+        "employee.deleted",
+        {"id": employee.id, "name": employee.name},
+        company_id=employee.company_id,
+    )
 
 
 def update_employee(db: Session, employee: Employee, payload: EmployeePatch) -> Employee:
@@ -91,6 +113,6 @@ def get_performance(db: Session, employee_id: int) -> EmployeePerformance:
         attempts=attempts,
         success_count=success,
         success_rate=round(success / attempts, 4) if attempts else 0.0,
-        artifacts_count=project_repo.count_artifacts_by_author(db, employee_id),
+        artifacts_count=drive_repo.count_documents_by_owner(db, employee_id),
         learning_records_count=knowledge_repo.count_learning_records(db, employee_id),
     )

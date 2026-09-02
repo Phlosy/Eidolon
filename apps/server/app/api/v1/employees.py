@@ -23,6 +23,7 @@ from app.schemas.organization import (
     EmployeePatch,
     EmployeePerformance,
 )
+from app.schemas.provider import EmployeeProviderCreate, ProviderOut
 from app.schemas.runtime import (
     EmployeeBrainOut,
     EmployeeBrainPatch,
@@ -32,6 +33,7 @@ from app.schemas.runtime import (
 )
 from app.services import employees as employee_service
 from app.services import runtimes as runtime_service
+from app.services.providers import provider_service
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -49,13 +51,22 @@ def list_employees(db: Session = Depends(get_db)) -> list[EmployeeOut]:
 
 
 @router.post("", response_model=EmployeeOut, status_code=201)
-def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)) -> EmployeeOut:
-    return EmployeeOut.model_validate(employee_service.create_employee(db, payload))
+async def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)) -> EmployeeOut:
+    # v0.4 compat: routes through the onboarding engine with defaults
+    return EmployeeOut.model_validate(await employee_service.create_employee(db, payload))
 
 
 @router.get("/{employee_id}", response_model=EmployeeOut)
 def get_employee(employee_id: int, db: Session = Depends(get_db)) -> EmployeeOut:
     return EmployeeOut.model_validate(_get_employee_or_404(db, employee_id))
+
+
+@router.delete("/{employee_id}", status_code=204)
+def delete_employee(employee_id: int, db: Session = Depends(get_db)) -> None:
+    """v0.4: hard delete is 403 unless EIDOLON_ALLOW_HARD_DELETE=true; the
+    business flow is POST /employees/{id}/offboard (history is kept)."""
+    employee = _get_employee_or_404(db, employee_id)
+    employee_service.delete_employee(db, employee)
 
 
 @router.patch("/{employee_id}", response_model=EmployeeOut)
@@ -119,6 +130,24 @@ def get_activity(employee_id: int, db: Session = Depends(get_db)) -> list[EventO
 def get_performance(employee_id: int, db: Session = Depends(get_db)) -> EmployeePerformance:
     _get_employee_or_404(db, employee_id)
     return employee_service.get_performance(db, employee_id)
+
+
+# ---- v0.3: employee-owned providers ----
+
+
+@router.get("/{employee_id}/providers", response_model=list[ProviderOut])
+def list_employee_providers(employee_id: int, db: Session = Depends(get_db)) -> list[ProviderOut]:
+    """The employee's own accounts + company-scope shared ones (marked by scope)."""
+    _get_employee_or_404(db, employee_id)
+    return provider_service.list(db, employee_id)
+
+
+@router.post("/{employee_id}/providers", response_model=ProviderOut, status_code=201)
+def create_employee_provider(
+    employee_id: int, payload: EmployeeProviderCreate, db: Session = Depends(get_db)
+) -> ProviderOut:
+    _get_employee_or_404(db, employee_id)
+    return provider_service.create_for_employee(db, employee_id, payload)
 
 
 # ---- v0.2: employee runtime + brain ----

@@ -39,6 +39,7 @@ def test_project_workflow(client, employees_by_slug):
         "Verify",
         "Release",
     }
+    assert all(m["status"] == "completed" for m in detail["milestones"])
 
     # all expected artifact types were produced
     artifacts = client.get("/api/v1/artifacts", params={"project_id": project_id}).json()

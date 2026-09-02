@@ -41,8 +41,10 @@ def test_artifact_written_to_disk_with_sha256(client):
     path = Path(artifact["path"])
     assert path.exists()
     assert path.read_text(encoding="utf-8") == content
-    # research_report lands under docs/
-    assert path.parent == Path(settings.data_root) / "projects" / str(project["id"]) / "docs"
+    # v0.3: research_report lands under the project's drive docs/ folder
+    assert path.parent == (
+        Path(settings.data_root) / "drive" / "projects" / "artifact-file-check" / "docs"
+    )
 
 
 def test_workflow_artifacts_materialized_with_session_link(client):

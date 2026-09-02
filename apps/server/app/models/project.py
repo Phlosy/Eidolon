@@ -5,7 +5,7 @@ See docs/architecture.md §3.2.
 
 from datetime import datetime
 
-from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -30,6 +30,19 @@ class Project(TimestampMixin, Base):
     goal: Mapped[str] = mapped_column(Text, default="")
     owner_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
     source_order_text: Mapped[str] = mapped_column(Text, default="")
+    planned_start_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    planned_end_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    code: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    priority: Mapped[str] = mapped_column(String(30), default="medium")
+    customer: Mapped[str] = mapped_column(String(200), default="")
+    background: Mapped[str] = mapped_column(Text, default="")
+    objectives: Mapped[list] = mapped_column(JSON, default=list)
+    technical_requirements: Mapped[list] = mapped_column(JSON, default=list)
+    constraints: Mapped[list] = mapped_column(JSON, default=list)
+    deliverables: Mapped[list] = mapped_column(JSON, default=list)
+    review_configuration: Mapped[dict] = mapped_column(JSON, default=dict)
+    participants: Mapped[dict] = mapped_column(JSON, default=dict)
+    tutorial_accelerated: Mapped[bool] = mapped_column(Boolean, default=False)
 
     milestones: Mapped[list["Milestone"]] = relationship(back_populates="project")
     tasks: Mapped[list["Task"]] = relationship(back_populates="project")
@@ -44,6 +57,9 @@ class Milestone(TimestampMixin, Base):
     description: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(50), default=MilestoneStatus.pending.value)
     order: Mapped[int] = mapped_column(default=0)
+    owner_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
+    planned_start_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    planned_end_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
     project: Mapped[Project] = relationship(back_populates="milestones")
 
@@ -61,6 +77,13 @@ class Task(TimestampMixin, Base):
     assignee_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
     acceptance_criteria: Mapped[str] = mapped_column(Text, default="")
     sequence: Mapped[int] = mapped_column(default=0)
+    planned_start_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    planned_end_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    actual_start_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    actual_end_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    phase_id: Mapped[int | None] = mapped_column(
+        ForeignKey("project_phases.id"), nullable=True, index=True
+    )
 
     project: Mapped[Project] = relationship(back_populates="tasks")
     dependencies: Mapped[list["TaskDependency"]] = relationship(

@@ -1,7 +1,7 @@
 """Project repositories: projects / milestones / tasks / sessions / artifacts / messages."""
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.enums import WorkSessionStatus
 from app.models.project import (
@@ -48,6 +48,22 @@ def list_milestones(db: Session, project_id: int) -> list[Milestone]:
     )
 
 
+def get_milestone(db: Session, milestone_id: int) -> Milestone | None:
+    return db.get(Milestone, milestone_id)
+
+
+def list_milestones_for_projects(db: Session, project_ids: list[int]) -> list[Milestone]:
+    if not project_ids:
+        return []
+    return list(
+        db.scalars(
+            select(Milestone)
+            .where(Milestone.project_id.in_(project_ids))
+            .order_by(Milestone.project_id, Milestone.order)
+        )
+    )
+
+
 def get_task(db: Session, task_id: int) -> Task | None:
     return db.get(Task, task_id)
 
@@ -55,6 +71,19 @@ def get_task(db: Session, task_id: int) -> Task | None:
 def list_tasks(db: Session, project_id: int) -> list[Task]:
     return list(
         db.scalars(select(Task).where(Task.project_id == project_id).order_by(Task.sequence))
+    )
+
+
+def list_tasks_for_projects(db: Session, project_ids: list[int]) -> list[Task]:
+    if not project_ids:
+        return []
+    return list(
+        db.scalars(
+            select(Task)
+            .options(selectinload(Task.dependencies))
+            .where(Task.project_id.in_(project_ids))
+            .order_by(Task.project_id, Task.sequence)
+        )
     )
 
 

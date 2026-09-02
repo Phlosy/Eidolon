@@ -161,10 +161,45 @@ class HealthStatus(StrEnum):
     unknown = "unknown"
 
 
+# ---------- v0.3 (workspace / drive) ----------
+
+
+class DriveNodeKind(StrEnum):
+    folder = "folder"
+    document = "document"
+
+
+class DriveZone(StrEnum):
+    projects = "projects"
+    knowledge = "knowledge"
+    skills = "skills"
+    handbook = "handbook"
+
+
+class CollaboratorRole(StrEnum):
+    viewer = "viewer"
+    editor = "editor"
+
+
 class ImageCompatibility(StrEnum):
     verified = "verified"
     unverified = "unverified"
     unknown = "unknown"
+
+
+class GitPlatformType(StrEnum):
+    gitlab = "gitlab"
+    gitea = "gitea"
+    github = "github"  # GitHub Enterprise (self-hosted)
+    custom = "custom"
+
+
+class GitBuiltinStatus(StrEnum):
+    not_installed = "not_installed"
+    installing = "installing"
+    stopped = "stopped"
+    running = "running"
+    error = "error"
 
 
 class ImageUpdateStatus(StrEnum):
@@ -177,3 +212,156 @@ class ImageUpdateStatus(StrEnum):
     completed = "completed"
     failed = "failed"
     rolled_back = "rolled_back"
+
+
+# ---------- v0.4 (employee lifecycle) ----------
+
+
+class LifecycleStatus(StrEnum):
+    """Employee lifecycle (docs/design-v0.4-lifecycle.md §1). Distinct from
+    EmployeeStatus, which is the moment-to-moment work state."""
+
+    pending = "pending"
+    onboarding = "onboarding"
+    active = "active"
+    transferring = "transferring"
+    suspended = "suspended"
+    offboarding = "offboarding"
+    offboarded = "offboarded"
+
+
+class ResourceType(StrEnum):
+    workspace = "workspace"
+    docs = "docs"
+    git = "git"
+
+
+class ResourceAccountStatus(StrEnum):
+    pending = "pending"
+    provisioning = "provisioning"
+    active = "active"
+    suspended = "suspended"
+    failed = "failed"
+    deprovisioning = "deprovisioning"
+    deprovisioned = "deprovisioned"
+
+
+class EntitlementType(StrEnum):
+    role = "role"
+    group = "group"
+    permission = "permission"
+    resource_access = "resource_access"
+
+
+class PackageSource(StrEnum):
+    manual = "manual"
+    role = "role"
+    project = "project"
+
+
+class ProvisioningJobKind(StrEnum):
+    onboarding = "onboarding"
+    transfer = "transfer"
+    permission_change = "permission_change"
+    suspension = "suspension"
+    resumption = "resumption"
+    offboarding = "offboarding"
+
+
+class ProvisioningJobStatus(StrEnum):
+    pending = "pending"
+    running = "running"
+    done = "done"
+    partial = "partial"  # some steps failed; employee keeps previous lifecycle state
+    failed = "failed"
+
+
+class ProvisioningStepStatus(StrEnum):
+    pending = "pending"
+    running = "running"
+    done = "done"
+    failed = "failed"
+    skipped = "skipped"
+
+
+# ---------- v0.5 (guided company + project delivery lifecycle) ----------
+
+
+class ProjectPhaseType(StrEnum):
+    initiation = "initiation"
+    requirements_analysis = "requirements_analysis"
+    requirements_review = "requirements_review"
+    system_design = "system_design"
+    system_design_review = "system_design_review"
+    development = "development"
+    internal_testing = "internal_testing"
+    user_acceptance_testing = "user_acceptance_testing"
+    acceptance_review = "acceptance_review"
+    delivery = "delivery"
+    project_archive = "project_archive"
+
+
+class ProjectPhaseStatus(StrEnum):
+    pending = "pending"
+    ready = "ready"
+    in_progress = "in_progress"
+    waiting_review = "waiting_review"
+    changes_requested = "changes_requested"
+    approved = "approved"
+    completed = "completed"
+    blocked = "blocked"
+
+
+class ReviewType(StrEnum):
+    requirements_review = "requirements_review"
+    design_review = "design_review"
+    acceptance_review = "acceptance_review"
+    custom_review = "custom_review"
+
+
+class ReviewStatus(StrEnum):
+    preparing = "preparing"
+    waiting_for_customer = "waiting_for_customer"
+    completed = "completed"
+
+
+class ReviewDecision(StrEnum):
+    approved = "approved"
+    conditionally_approved = "conditionally_approved"
+    changes_requested = "changes_requested"
+    rejected = "rejected"
+
+
+class DocumentCategory(StrEnum):
+    internal = "internal"
+    formal = "formal"
+    review = "review"
+    delivery = "delivery"
+    source = "source"
+    build = "build"
+    test = "test"
+
+
+class BaselineType(StrEnum):
+    requirements = "requirements"
+    design = "design"
+    acceptance = "acceptance"
+
+
+class ChangeRequestStatus(StrEnum):
+    draft = "draft"
+    impact_analysis = "impact_analysis"
+    waiting_approval = "waiting_approval"
+    approved = "approved"
+    implementing = "implementing"
+    regression_test = "regression_test"
+    closed = "closed"
+    rejected = "rejected"
+    cancelled = "cancelled"
+
+
+class TutorialStatus(StrEnum):
+    not_started = "not_started"
+    active = "active"
+    skipped = "skipped"
+    completed = "completed"

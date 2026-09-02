@@ -17,6 +17,7 @@ from app.models.enums import (
 from app.models.organization import Company, Department, Employee
 from app.repositories import organization as org_repo
 from app.repositories import runtimes as runtime_repo
+from app.services import drive as drive_service
 
 COMPANY_SLUG = "eidolon-studio"
 
@@ -85,6 +86,9 @@ def ensure_employee_runtime_state(db: Session) -> None:
 
 
 def seed_default_company(db: Session) -> Company:
+    # v0.3: the four drive zone roots always exist
+    drive_service.ensure_zone_roots(db)
+    db.commit()
     company = db.query(Company).filter(Company.slug == COMPANY_SLUG).first()
     if company is not None:
         ensure_employee_runtime_state(db)
@@ -110,25 +114,26 @@ def seed_default_company(db: Session) -> Company:
         departments[slug] = department
 
     employees: list[Employee] = []
-    for name, slug, role, dept_slug, title in EMPLOYEES:
-        workspace_path = f"{settings.workspace_root}/{slug}"
-        Path(workspace_path).mkdir(parents=True, exist_ok=True)
-        employee = Employee(
-            company_id=company.id,
-            department_id=departments[dept_slug].id,
-            name=name,
-            slug=slug,
-            role=role,
-            title=title,
-            status=EmployeeStatus.idle.value,
-            runtime_type=RuntimeType.mock.value,
-            runtime_config={},
-            workspace_path=workspace_path,
-            memory_namespace=f"emp_{slug}",
-        )
-        db.add(employee)
-        db.flush()
-        employees.append(employee)
+    if settings.seed_demo_workforce:
+        for name, slug, role, dept_slug, title in EMPLOYEES:
+            workspace_path = f"{settings.workspace_root}/{slug}"
+            Path(workspace_path).mkdir(parents=True, exist_ok=True)
+            employee = Employee(
+                company_id=company.id,
+                department_id=departments[dept_slug].id,
+                name=name,
+                slug=slug,
+                role=role,
+                title=title,
+                status=EmployeeStatus.idle.value,
+                runtime_type=RuntimeType.mock.value,
+                runtime_config={},
+                workspace_path=workspace_path,
+                memory_namespace=f"emp_{slug}",
+            )
+            db.add(employee)
+            db.flush()
+            employees.append(employee)
 
     db.commit()
     db.refresh(company)

@@ -8,6 +8,7 @@ internal rework paths (e.g. done→todo on QA rejection).
 from sqlalchemy.orm import Session
 
 from app.events.bus import bus
+from app.models.base import utcnow
 from app.models.enums import TaskStatus
 from app.models.project import Task
 from app.repositories import project as project_repo
@@ -38,6 +39,16 @@ def transition_task(db: Session, task: Task, target: str, *, force: bool = False
     if not force and target not in ALLOWED_TRANSITIONS.get(task.status, set()):
         raise InvalidTransitionError(f"invalid task transition: {task.status} -> {target}")
     task.status = target
+    if target == TaskStatus.in_progress.value and task.actual_start_at is None:
+        task.actual_start_at = utcnow()
+    if target in {
+        TaskStatus.done.value,
+        TaskStatus.failed.value,
+        TaskStatus.rejected.value,
+    }:
+        task.actual_end_at = utcnow()
+    elif target == TaskStatus.todo.value:
+        task.actual_end_at = None
     db.flush()
     return task
 
@@ -56,6 +67,8 @@ def create_task(
     priority: int = 0,
     sequence: int = 0,
     depends_on: list[int] | None = None,
+    planned_start_at=None,
+    planned_end_at=None,
 ) -> Task:
     task = project_repo.create_task(
         db,
@@ -69,6 +82,8 @@ def create_task(
         acceptance_criteria=acceptance_criteria,
         priority=priority,
         sequence=sequence,
+        planned_start_at=planned_start_at,
+        planned_end_at=planned_end_at,
     )
     for dep_id in depends_on or []:
         project_repo.add_dependency(db, task_id=task.id, depends_on_id=dep_id)
@@ -115,6 +130,11 @@ def task_out(task: Task):
         assignee_id=task.assignee_id,
         acceptance_criteria=task.acceptance_criteria,
         sequence=task.sequence,
+        planned_start_at=task.planned_start_at,
+        planned_end_at=task.planned_end_at,
+        actual_start_at=task.actual_start_at,
+        actual_end_at=task.actual_end_at,
+        phase_id=task.phase_id,
         dependencies=task_dependencies(task),
         created_at=task.created_at,
         updated_at=task.updated_at,

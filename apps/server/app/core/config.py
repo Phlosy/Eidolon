@@ -33,6 +33,19 @@ class Settings(BaseSettings):
     openclaw_image: str = "ghcr.io/openclaw/openclaw:latest"
     runtime_network: str = "eidolon-runtime-net"
 
+    # v0.3 phase 2 — optional builtin Gitea (manual one-click install)
+    gitea_image: str = "gitea/gitea:1"
+
+    # v0.4 — employee lifecycle
+    # Admin API token for the builtin Gitea (a fresh install has no admin account;
+    # lifecycle git steps fail with "gitea admin not configured" until this is set).
+    gitea_admin_token: str | None = None
+    # dev/test escape hatch: allow DELETE /employees/{id} (business UI uses offboarding)
+    allow_hard_delete: bool = False
+    # Production starts as a newly founded, zero-employee company. The legacy
+    # autonomous five-role team remains opt-in for development fixtures.
+    seed_demo_workforce: bool = False
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

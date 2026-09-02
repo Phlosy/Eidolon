@@ -16,6 +16,8 @@ from app.providers.secrets.store import get_secret_store
 from app.runtimes.gateway import gateway
 from app.runtimes.manager import get_manager
 from app.runtimes.updates import get_update_service
+from app.services import lifecycle as lifecycle_service
+from app.services.drive_migration import migrate_artifacts_to_drive
 from app.services.seed import seed_default_company
 from app.workflow.orchestrator import orchestrator
 
@@ -28,6 +30,8 @@ async def lifespan(app: FastAPI):
     init_db()  # dev convenience; Alembic has the authoritative initial migration
     with SessionLocal() as db:
         seed_default_company(db)
+        migrate_artifacts_to_drive(db)  # v0.3: legacy artifacts -> drive_nodes
+        lifecycle_service.seed_lifecycle(db)  # v0.4: lifecycle seed + legacy backfill (§12)
         get_secret_store().register_existing(db)  # arm log/event redaction
     bus.attach_loop()
     orchestrator.start()

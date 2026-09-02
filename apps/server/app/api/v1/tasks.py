@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.events.bus import bus
 from app.models.enums import TaskStatus
 from app.repositories import project as project_repo
 from app.schemas.project import TaskOut, TaskPatch
 from app.services import tasks as task_service
+from app.services.schedules import InvalidScheduleError, apply_schedule_patch
 
 
 def _task_out(task) -> TaskOut:
@@ -32,6 +34,13 @@ def patch_task(task_id: int, payload: TaskPatch, db: Session = Depends(get_db)) 
         raise HTTPException(status_code=404, detail="task not found")
     data = payload.model_dump(exclude_unset=True)
     new_status = data.pop("status", None)
+    schedule_data = {
+        field: data.pop(field) for field in ("planned_start_at", "planned_end_at") if field in data
+    }
+    try:
+        apply_schedule_patch(task, schedule_data)
+    except InvalidScheduleError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     for field, value in data.items():
         setattr(task, field, value)
     if new_status is not None:
@@ -41,6 +50,16 @@ def patch_task(task_id: int, payload: TaskPatch, db: Session = Depends(get_db)) 
             raise HTTPException(status_code=400, detail=str(exc)) from exc
     db.commit()
     db.refresh(task)
+    project = project_repo.get_project(db, task.project_id)
+    if project is not None:
+        bus.publish(
+            "task.updated",
+            {"id": task.id, "status": task.status, "assignee_id": task.assignee_id},
+            company_id=project.company_id,
+            project_id=project.id,
+            task_id=task.id,
+            actor_employee_id=task.assignee_id,
+        )
     if new_status is not None:
         from app.workflow.orchestrator import orchestrator
 

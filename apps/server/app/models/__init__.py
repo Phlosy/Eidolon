@@ -1,11 +1,27 @@
 from app.models.base import Base
+from app.models.drive import DriveCollaborator, DriveNode, DriveRevision
 from app.models.event import Event
+from app.models.git import GitConnection
 from app.models.knowledge import (
     KnowledgeItem,
     LearningPriority,
     LearningRecord,
     MemoryEntry,
     Skill,
+)
+from app.models.lifecycle import (
+    AccessPackage,
+    AccessPackageItem,
+    AuditLog,
+    EmployeePackage,
+    Employment,
+    Entitlement,
+    Position,
+    ProvisioningJob,
+    ProvisioningStep,
+    ResourceAccount,
+    ResourceAsset,
+    ResourceProvider,
 )
 from app.models.organization import Company, Department, Employee
 from app.models.project import (
@@ -17,17 +33,38 @@ from app.models.project import (
     TaskDependency,
     WorkSession,
 )
+from app.models.project_delivery import (
+    Baseline,
+    ChangeRequest,
+    DeliveryPackage,
+    DocumentArtifact,
+    ProjectPhase,
+    ProjectRequirement,
+    ReviewMeeting,
+    ReviewPackage,
+    TutorialProgress,
+)
 from app.models.provider import ModelBinding, Provider, Secret
 from app.models.runtime import EmployeeBrain, RuntimeImage, RuntimeInstance
 
 __all__ = [
+    "AccessPackage",
+    "AccessPackageItem",
     "Artifact",
+    "AuditLog",
     "Base",
     "Company",
     "Department",
+    "DriveCollaborator",
+    "DriveNode",
+    "DriveRevision",
     "Employee",
     "EmployeeBrain",
+    "EmployeePackage",
+    "Employment",
+    "Entitlement",
     "Event",
+    "GitConnection",
     "KnowledgeItem",
     "LearningPriority",
     "LearningRecord",
@@ -35,8 +72,14 @@ __all__ = [
     "Message",
     "Milestone",
     "ModelBinding",
+    "Position",
     "Project",
     "Provider",
+    "ProvisioningJob",
+    "ProvisioningStep",
+    "ResourceAccount",
+    "ResourceAsset",
+    "ResourceProvider",
     "RuntimeImage",
     "RuntimeInstance",
     "Secret",
@@ -44,4 +87,13 @@ __all__ = [
     "Task",
     "TaskDependency",
     "WorkSession",
+    "Baseline",
+    "ChangeRequest",
+    "DeliveryPackage",
+    "DocumentArtifact",
+    "ProjectPhase",
+    "ProjectRequirement",
+    "ReviewMeeting",
+    "ReviewPackage",
+    "TutorialProgress",
 ]

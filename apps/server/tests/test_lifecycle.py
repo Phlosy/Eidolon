@@ -1,0 +1,590 @@
+"""Employee lifecycle (v0.4): onboard / transfer / suspend / resume / offboard,
+provisioning jobs + retry, naming, reconcile, audit, preview, seed migration."""
+
+import uuid
+from pathlib import Path
+
+import pytest
+from sqlalchemy import select
+
+from app.core.config import settings
+from app.lifecycle.naming import naming
+from app.lifecycle.provisioners.base import (
+    Drift,
+    ProvisionResult,
+    ResourceProvisioner,
+)
+from app.lifecycle.provisioners.common import (
+    apply_asset_target,
+    ensure_asset,
+    get_or_create_account,
+    mark_granted,
+    mark_revoked,
+    set_account_status,
+)
+from app.lifecycle.provisioners.registry import get_registry
+from app.models.enums import ResourceAccountStatus
+from app.models.lifecycle import AuditLog
+from app.repositories import lifecycle as lifecycle_repo
+from app.repositories import providers as provider_repo
+from app.repositories import runtimes as runtime_repo
+
+
+def _departments(client) -> dict:
+    company = client.get("/api/v1/company").json()
+    return {d["slug"]: d["id"] for d in company["departments"]}
+
+
+def _unique_slug(prefix: str) -> str:
+    return f"{prefix}-{uuid.uuid4().hex[:8]}"
+
+
+def _onboard(client, slug, dept_slug="engineering", role="engineer"):
+    response = client.post(
+        "/api/v1/employees/onboard",
+        json={
+            "name": slug.replace("-", " ").title(),
+            "slug": slug,
+            "title": "Software Engineer",
+            "role": role,
+            "department_id": _departments(client)[dept_slug],
+            "runtime_type": "mock",
+        },
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+class FakeGiteaProvisioner(ResourceProvisioner):
+    """In-memory git:gitea stand-in: accounts/team grants without a server."""
+
+    key = "git:gitea"
+    resource_type = "git"
+    capabilities = {
+        "account": True,
+        "groups": True,
+        "roles": False,
+        "permissions": True,
+        "asset_ownership": True,
+        "suspend": True,
+        "delete": False,
+    }
+
+    def __init__(self) -> None:
+        self.users: dict[str, dict] = {}
+
+    def available(self) -> bool:
+        return True
+
+    async def provision_employee(self, employee, entitlement, ctx):
+        account, _ = get_or_create_account(
+            ctx.db, employee, provider_key=self.key, resource_type=self.resource_type
+        )
+        if account.status == ResourceAccountStatus.active.value:
+            return ProvisionResult(account=account, detail="already active")
+        self.users.setdefault(employee.slug, {"active": True, "teams": set()})
+        account.external_account_id = f"fake-{employee.slug}"
+        set_account_status(account, ResourceAccountStatus.active.value, "done")
+        ensure_asset(
+            ctx.db, employee, provider_key=self.key, resource_type="repository", external_id=None
+        )
+        ctx.db.flush()
+        return ProvisionResult(account=account, detail="fake gitea user ready")
+
+    async def suspend_employee(self, employee, entitlement, ctx):
+        account, _ = get_or_create_account(
+            ctx.db, employee, provider_key=self.key, resource_type=self.resource_type
+        )
+        self.users.get(employee.slug, {})["active"] = False
+        set_account_status(account, ResourceAccountStatus.suspended.value, "done")
+        ctx.db.flush()
+        return ProvisionResult(account=account)
+
+    async def resume_employee(self, employee, entitlement, ctx):
+        account, _ = get_or_create_account(
+            ctx.db, employee, provider_key=self.key, resource_type=self.resource_type
+        )
+        self.users.get(employee.slug, {})["active"] = True
+        set_account_status(account, ResourceAccountStatus.active.value, "done")
+        ctx.db.flush()
+        return ProvisionResult(account=account)
+
+    async def deprovision_employee(self, employee, entitlement, ctx):
+        account, _ = get_or_create_account(
+            ctx.db, employee, provider_key=self.key, resource_type=self.resource_type
+        )
+        set_account_status(account, ResourceAccountStatus.deprovisioned.value, "done")
+        ctx.db.flush()
+        return ProvisionResult(account=account)
+
+    async def grant_entitlement(self, employee, entitlement, ctx):
+        account, _ = get_or_create_account(
+            ctx.db, employee, provider_key=self.key, resource_type=self.resource_type
+        )
+        team = (entitlement.config or {}).get("team", "members")
+        self.users.get(employee.slug, {}).setdefault("teams", set()).add(team)
+        mark_granted(account, entitlement.key)
+        ctx.db.flush()
+        return ProvisionResult(account=account)
+
+    async def revoke_entitlement(self, employee, entitlement, ctx):
+        account, _ = get_or_create_account(
+            ctx.db, employee, provider_key=self.key, resource_type=self.resource_type
+        )
+        team = (entitlement.config or {}).get("team", "members")
+        self.users.get(employee.slug, {}).get("teams", set()).discard(team)
+        mark_revoked(account, entitlement.key)
+        ctx.db.flush()
+        return ProvisionResult(account=account)
+
+    async def transfer_assets(self, employee, target, ctx):
+        count = apply_asset_target(ctx.db, employee, self.key, target)
+        return ProvisionResult(detail=f"transferred {count}")
+
+    async def reconcile(self, account, ctx):
+        return []
+
+
+@pytest.fixture()
+def gitea_down(monkeypatch):
+    """Force the real gitea provisioner to report 'not running' deterministically."""
+    provisioner = get_registry().provisioner_for("git:gitea")
+    monkeypatch.setattr(provisioner, "_builtin_status", lambda: "stopped")
+    return provisioner
+
+
+@pytest.fixture()
+def fake_gitea(monkeypatch):
+    fake = FakeGiteaProvisioner()
+    monkeypatch.setitem(get_registry()._provisioners, "git:gitea", fake)
+    return fake
+
+
+# ---- onboarding ----
+
+
+def test_onboard_partial_when_gitea_down(client, gitea_down):
+    body = _onboard(client, _unique_slug("onb"))
+    employee = body["employee"]
+    job = body["job"]
+    assert employee["lifecycle_status"] == "onboarding"
+    assert employee["username"] == employee["slug"]
+    assert job["kind"] == "onboarding"
+    assert job["status"] == "partial"
+    by_action_resource = {(s["action"], s["resource_type"]): s for s in job["steps"]}
+    assert by_action_resource[("provision", "workspace")]["status"] == "done"
+    assert by_action_resource[("provision", "docs")]["status"] == "done"
+    git_provision = by_action_resource[("provision", "git")]
+    assert git_provision["status"] == "failed"
+    assert "gitea" in git_provision["error"]
+    assert job["done_steps"] < job["total_steps"]
+    accounts = client.get(f"/api/v1/employees/{employee['id']}/accounts").json()
+    status_by_type = {a["resource_type"]: a["status"] for a in accounts}
+    assert status_by_type["workspace"] == "active"
+    assert status_by_type["docs"] == "active"
+    assert status_by_type["git"] == "failed"
+
+
+def test_onboard_persists_provider_model_and_brain(client, db, gitea_down):
+    slug = _unique_slug("guided")
+    response = client.post(
+        "/api/v1/employees/onboard",
+        json={
+            "name": "Guided CEO",
+            "slug": slug,
+            "title": "Chief Executive Officer",
+            "role": "ceo",
+            "department_id": _departments(client)["executive"],
+            "runtime_type": "mock",
+            "provider_name": "CEO OpenAI",
+            "provider_type": "openai",
+            "provider_api_key": "sk-guided-secret",
+            "model": "gpt-5.2",
+            "personality": "Decisive and strategic",
+            "goals": "Deliver durable customer value",
+            "learning_enabled": True,
+            "curiosity": 0.8,
+        },
+    )
+    assert response.status_code == 201, response.text
+    employee_id = response.json()["employee"]["id"]
+
+    brain = runtime_repo.get_brain(db, employee_id)
+    assert brain is not None
+    assert brain.personality == "Decisive and strategic"
+    assert brain.goals == "Deliver durable customer value"
+    assert brain.learning_policy["enabled"] is True
+    assert brain.curiosity == 0.8
+
+    binding = provider_repo.get_primary_binding(db, employee_id)
+    assert binding is not None
+    assert binding.model == "gpt-5.2"
+    instance = runtime_repo.get_instance_for_employee(db, employee_id)
+    assert instance is not None
+    assert instance.model_binding_id == binding.id
+    provider = provider_repo.get_provider(db, binding.provider_id)
+    assert provider is not None
+    assert provider.owner_employee_id == employee_id
+
+def test_retry_reruns_only_failed_steps(client, gitea_down):
+    body = _onboard(client, _unique_slug("retry"))
+    job = body["job"]
+    done_attempts = {s["id"]: s["attempts"] for s in job["steps"] if s["status"] == "done"}
+
+    retried = client.post(f"/api/v1/provisioning-jobs/{job['id']}/retry").json()
+    assert retried["status"] == "partial"  # gitea still down
+    for step in retried["steps"]:
+        if step["id"] in done_attempts:
+            assert step["attempts"] == done_attempts[step["id"]]  # untouched
+        else:
+            assert step["attempts"] == 2  # failed steps re-ran
+    failed = [s for s in retried["steps"] if s["status"] == "failed"]
+    assert failed and all(s["error"] for s in failed)
+    employee = client.get(f"/api/v1/employees/{body['employee']['id']}").json()
+    assert employee["lifecycle_status"] == "onboarding"  # unchanged while partial
+
+
+def test_onboard_active_with_fake_gitea(client, fake_gitea):
+    body = _onboard(client, _unique_slug("full"))
+    assert body["job"]["status"] == "done"
+    assert body["job"]["done_steps"] == body["job"]["total_steps"]
+    assert body["employee"]["lifecycle_status"] == "active"
+    assert body["employee"]["slug"] in fake_gitea.users
+
+    entitlements = client.get(f"/api/v1/employees/{body['employee']['id']}/entitlements").json()
+    keys = {e["entitlement"]["key"] for e in entitlements}
+    assert {
+        "workspace:private",
+        "workspace:dev",
+        "docs:company-read",
+        "docs:engineering",
+        "git:company-org-member",
+        "git:engineering-team",
+    } <= keys
+    base = next(e for e in entitlements if e["entitlement"]["key"] == "workspace:private")
+    assert any(s["package_name"] == "Base Employee" for s in base["sources"])
+
+
+def test_retry_completes_onboarding_once_gitea_available(client, gitea_down, monkeypatch):
+    body = _onboard(client, _unique_slug("late"))
+    assert body["job"]["status"] == "partial"
+    fake = FakeGiteaProvisioner()
+    monkeypatch.setitem(get_registry()._provisioners, "git:gitea", fake)
+
+    retried = client.post(f"/api/v1/provisioning-jobs/{body['job']['id']}/retry").json()
+    assert retried["status"] == "done"
+    employee = client.get(f"/api/v1/employees/{body['employee']['id']}").json()
+    assert employee["lifecycle_status"] == "active"
+
+
+# ---- transfer ----
+
+
+def test_transfer_diff_and_employment_history(client, fake_gitea):
+    body = _onboard(client, _unique_slug("xfer"))
+    employee_id = body["employee"]["id"]
+    research_id = _departments(client)["research"]
+
+    job = client.post(
+        f"/api/v1/employees/{employee_id}/transfer",
+        json={"department_id": research_id, "reason": "reorg"},
+    ).json()
+    assert job["kind"] == "transfer"
+    assert job["status"] == "done"
+    descriptions = {s["description"] for s in job["steps"]}
+    assert any(d.startswith("ADD docs:research") for d in descriptions)
+    assert any(d.startswith("ADD git:research-team") for d in descriptions)
+    assert any(d.startswith("REMOVE docs:engineering") for d in descriptions)
+    assert any(d.startswith("REMOVE git:engineering-team") for d in descriptions)
+    assert any(d.startswith("KEEP workspace:private") for d in descriptions)
+
+    employment = client.get(f"/api/v1/employees/{employee_id}/employment").json()
+    assert len(employment["history"]) == 2
+    old, new = employment["history"]
+    assert old["effective_to"] is not None
+    assert old["employment_status"] == "transferred"
+    assert new["effective_to"] is None
+    assert new["department_id"] == research_id
+    assert employment["current"]["id"] == new["id"]
+
+    employee = client.get(f"/api/v1/employees/{employee_id}").json()
+    assert employee["lifecycle_status"] == "active"
+    assert employee["department_id"] == research_id
+
+    # no duplicate entitlements after re-running the same transfer
+    again = client.post(
+        f"/api/v1/employees/{employee_id}/transfer", json={"department_id": research_id}
+    ).json()
+    assert again["status"] == "done"
+    assert all(s["action"] == "keep" for s in again["steps"])
+    entitlements = client.get(f"/api/v1/employees/{employee_id}/entitlements").json()
+    keys = [e["entitlement"]["key"] for e in entitlements]
+    assert len(keys) == len(set(keys))
+    assert "docs:research" in keys and "docs:engineering" not in keys
+    assert len(employment["history"]) == 2
+
+
+# ---- suspend / resume ----
+
+
+def test_suspend_resume_cycle(client, fake_gitea, db):
+    body = _onboard(client, _unique_slug("susp"))
+    employee_id = body["employee"]["id"]
+
+    job = client.post(
+        f"/api/v1/employees/{employee_id}/suspend", json={"reason": "gardening leave"}
+    ).json()
+    assert job["kind"] == "suspension"
+    assert job["status"] == "done"
+    employee = client.get(f"/api/v1/employees/{employee_id}").json()
+    assert employee["lifecycle_status"] == "suspended"
+    accounts = client.get(f"/api/v1/employees/{employee_id}/accounts").json()
+    assert accounts and all(a["status"] == "suspended" for a in accounts)
+    # runtime stopped, workspace preserved
+    instance = runtime_repo.get_instance_for_employee(db, employee_id)
+    assert instance.status == "stopped"
+    assert Path(employee["workspace_path"]).exists()
+
+    resumed = client.post(f"/api/v1/employees/{employee_id}/resume").json()
+    assert resumed["kind"] == "resumption"
+    assert resumed["status"] == "done"
+    employee = client.get(f"/api/v1/employees/{employee_id}").json()
+    assert employee["lifecycle_status"] == "active"
+    accounts = client.get(f"/api/v1/employees/{employee_id}/accounts").json()
+    assert all(a["status"] == "active" for a in accounts)
+    db.expire_all()
+    instance = runtime_repo.get_instance_for_employee(db, employee_id)
+    assert instance.status == "running"
+
+
+def test_suspend_rejects_offboarded(client, fake_gitea):
+    body = _onboard(client, _unique_slug("guard"))
+    employee_id = body["employee"]["id"]
+    client.post(f"/api/v1/employees/{employee_id}/offboard", json={})
+    response = client.post(f"/api/v1/employees/{employee_id}/suspend", json={})
+    assert response.status_code == 409
+
+
+# ---- offboard ----
+
+
+def test_offboard_transfers_assets_and_archives(client, fake_gitea):
+    slug = _unique_slug("offb")
+    body = _onboard(client, slug)
+    employee_id = body["employee"]["id"]
+    dept_id = body["employee"]["department_id"]
+
+    job = client.post(f"/api/v1/employees/{employee_id}/offboard", json={"reason": "left"}).json()
+    assert job["kind"] == "offboarding"
+    assert job["status"] == "done"
+
+    employee = client.get(f"/api/v1/employees/{employee_id}").json()
+    assert employee["lifecycle_status"] == "offboarded"
+
+    accounts = client.get(f"/api/v1/employees/{employee_id}/accounts").json()
+    assert accounts and all(a["status"] == "deprovisioned" for a in accounts)
+
+    # v1 default: assets → department (owner NULL + department in metadata)
+    # assets are no longer owned by the employee
+    assert client.get(f"/api/v1/employees/{employee_id}/assets").json() == []
+
+    # workspace archived
+    archives = list((Path(settings.data_root) / "archive").glob(f"{slug}-*.tar.gz"))
+    assert archives, "expected workspace archive tar in data/archive/"
+
+    # employee row + employment history survive
+    assert employee["slug"] == slug
+    employment = client.get(f"/api/v1/employees/{employee_id}/employment").json()
+    assert len(employment["history"]) == 1
+
+    # timeline shows the lifecycle events
+    timeline = client.get(f"/api/v1/employees/{employee_id}/timeline").json()
+    types = {e["type"] for e in timeline}
+    assert "employee.hired" in types
+    assert "employee.offboarded" in types
+    assert "asset.transferred" in types
+
+    # hard delete is forbidden by default
+    assert client.delete(f"/api/v1/employees/{employee_id}").status_code == 403
+    assert dept_id  # silence unused
+
+
+def test_offboard_to_another_employee(client, fake_gitea, db):
+    source = _onboard(client, _unique_slug("src"))["employee"]
+    target = _onboard(client, _unique_slug("dst"))["employee"]
+
+    job = client.post(
+        f"/api/v1/employees/{source['id']}/offboard",
+        json={"transfer_to": str(target["id"])},
+    ).json()
+    assert job["status"] == "done"
+    assets = lifecycle_repo.list_assets(db, owner_employee_id=target["id"])
+    transferred = [
+        a for a in assets if (a.metadata_json or {}).get("transferred_from") == source["id"]
+    ]
+    assert transferred, "expected source assets re-owned by target employee"
+
+
+# ---- naming ----
+
+
+def test_naming_policy_is_deterministic():
+    assert naming.username("Jane  Doe") == "jane-doe"
+    assert naming.username("Jane  Doe") == naming.username("Jane  Doe")
+    assert naming.gitea_username("jane-doe") == "jane-doe"
+    assert naming.gitea_email("jane-doe") == "jane-doe@eidolon.local"
+    assert naming.personal_docs_path("jane-doe") == "drive/knowledge/personal/jane-doe"
+
+
+# ---- reconcile ----
+
+
+def test_reconcile_reports_drift(client, fake_gitea, monkeypatch):
+    body = _onboard(client, _unique_slug("reco"))
+    employee_id = body["employee"]["id"]
+
+    clean = client.post(f"/api/v1/employees/{employee_id}/reconcile").json()
+    assert clean == {"drifts": []}
+
+    workspace = get_registry().provisioner_for("workspace:local")
+
+    async def fake_reconcile(account, ctx):
+        if account.resource_type == "workspace":
+            return [
+                Drift(
+                    account_id=account.id,
+                    resource_type="workspace",
+                    kind="missing",
+                    detail="workspace directory missing",
+                )
+            ]
+        return []
+
+    monkeypatch.setattr(workspace, "reconcile", fake_reconcile)
+    result = client.post(f"/api/v1/employees/{employee_id}/reconcile").json()
+    assert result["drifts"] == [
+        {
+            "account_id": result["drifts"][0]["account_id"],
+            "resource_type": "workspace",
+            "kind": "missing",
+            "detail": "workspace directory missing",
+        }
+    ]
+
+
+# ---- audit ----
+
+
+def test_audit_trail_records_before_after(client, fake_gitea, db):
+    body = _onboard(client, _unique_slug("audit"))
+    employee_id = body["employee"]["id"]
+    client.post(f"/api/v1/employees/{employee_id}/suspend", json={"reason": "audit check"})
+
+    rows = list(
+        db.scalars(
+            select(AuditLog).where(AuditLog.employee_id == employee_id).order_by(AuditLog.id)
+        )
+    )
+    actions = [r.action for r in rows]
+    assert "employee.hired" in actions
+    assert "employee.suspend" in actions
+    hired = next(r for r in rows if r.action == "employee.hired")
+    assert hired.actor == "user"
+    assert hired.before_json is None
+    assert hired.after_json["lifecycle_status"] == "onboarding"
+    suspended = next(r for r in rows if r.action == "employee.suspend")
+    assert suspended.reason == "audit check"
+    assert suspended.before_json["lifecycle_status"] == "active"
+    assert suspended.after_json["lifecycle_status"] == "suspended"
+
+
+# ---- preview ----
+
+
+def test_preview_computes_plan_without_writes(client, gitea_down, db):
+    departments = _departments(client)
+    employees_before = len(client.get("/api/v1/employees").json())
+    jobs_before = len(client.get("/api/v1/provisioning-jobs").json())
+
+    result = client.post(
+        "/api/v1/provisioning/preview", json={"department_id": departments["engineering"]}
+    ).json()
+    assert result["steps"]
+    by_resource = {}
+    for step in result["steps"]:
+        by_resource.setdefault(step["resource_type"], step)
+    assert by_resource["workspace"]["available"] is True
+    assert by_resource["docs"]["available"] is True
+    assert by_resource["git"]["available"] is False  # gitea not running → wizard can warn
+
+    assert len(client.get("/api/v1/employees").json()) == employees_before
+    assert len(client.get("/api/v1/provisioning-jobs").json()) == jobs_before
+
+
+# ---- seed / legacy migration (§12) ----
+
+
+def test_access_packages_seeded(client):
+    packages = client.get("/api/v1/access-packages").json()
+    slugs = {p["slug"] for p in packages}
+    assert slugs == {
+        "base-employee",
+        "ceo",
+        "product-manager",
+        "researcher",
+        "engineer",
+        "qa-engineer",
+    }
+    assert all(p["built_in"] for p in packages)
+    engineer = next(p for p in packages if p["slug"] == "engineer")
+    engineer_keys = {e["key"] for e in engineer["entitlements"]}
+    assert engineer_keys == {"git:engineering-team", "docs:engineering", "workspace:dev"}
+
+
+def test_legacy_employees_backfilled(client, db):
+    employees = {e["slug"]: e for e in client.get("/api/v1/employees").json()}
+    alice = employees["alice"]
+    assert alice["lifecycle_status"] == "active"
+    assert alice["username"] == "alice"
+
+    employment = client.get(f"/api/v1/employees/{alice['id']}/employment").json()
+    assert employment["current"] is not None
+    assert employment["current"]["employment_status"] == "active"
+
+    accounts = client.get(f"/api/v1/employees/{alice['id']}/accounts").json()
+    status_by_type = {a["resource_type"]: a["status"] for a in accounts}
+    assert status_by_type["workspace"] == "active"
+    assert status_by_type["docs"] == "active"
+
+    entitlements = client.get(f"/api/v1/employees/{alice['id']}/entitlements").json()
+    keys = {e["entitlement"]["key"] for e in entitlements}
+    assert {"workspace:private", "docs:company-read", "git:company-org-member"} <= keys
+
+    positions = client.get("/api/v1/positions").json()
+    titles = {p["title"] for p in positions}
+    assert {"CEO", "Product Manager", "Researcher", "Engineer", "QA Engineer"} <= titles
+
+
+def test_seed_lifecycle_is_idempotent(db):
+    from app.services.lifecycle import seed_lifecycle
+
+    before = len(lifecycle_repo.list_packages(db))
+    seed_lifecycle(db)
+    seed_lifecycle(db)
+    assert len(lifecycle_repo.list_packages(db)) == before
+
+
+# ---- compat: pre-v0.4 POST /employees routes through onboarding ----
+
+
+def test_compat_create_employee_routes_through_engine(client, gitea_down):
+    response = client.post(
+        "/api/v1/employees",
+        json={"name": f"Compat {_unique_slug('c')}", "role": "researcher"},
+    )
+    assert response.status_code == 201, response.text
+    employee = response.json()
+    assert employee["lifecycle_status"] == "onboarding"  # gitea down → partial
+    jobs = client.get(f"/api/v1/provisioning-jobs?employee_id={employee['id']}").json()
+    assert len(jobs) == 1
+    assert jobs[0]["kind"] == "onboarding"

@@ -1,15 +1,72 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.enums import ArtifactStatus, ArtifactType, TaskStatus
 from app.schemas.organization import ORMModel
 
 
+class RequirementCreate(BaseModel):
+    code: str | None = None
+    title: str
+    description: str = ""
+    priority: str = "should"
+    acceptance_criteria: str
+
+
+class ReviewConfiguration(BaseModel):
+    requirements_review: bool = True
+    design_review: bool = True
+    acceptance_review: bool = True
+    additional_reviews: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def mandatory_gates_cannot_be_disabled(self):
+        if not (self.requirements_review and self.design_review and self.acceptance_review):
+            raise ValueError("requirements, design and acceptance reviews are mandatory")
+        return self
+
+
+class ProjectParticipants(BaseModel):
+    customer_contact: str = ""
+    project_owner_employee_id: int | None = None
+    presenter_employee_id: int | None = None
+    reviewer_names: list[str] = Field(default_factory=list)
+    approver_names: list[str] = Field(default_factory=list)
+
+
 class ProjectCreate(BaseModel):
     name: str
-    description: str  # 原始需求 → source_order_text
+    # Legacy one-prompt intake remains accepted for API compatibility.
+    description: str = ""
     goal: str = ""
+    code: str | None = None
+    priority: str = "medium"
+    customer: str = ""
+    owner_id: int | None = None
+    background: str = ""
+    objectives: list[str] = Field(default_factory=list)
+    requirements: list[RequirementCreate] = Field(default_factory=list)
+    technical_requirements: list[str] = Field(default_factory=list)
+    constraints: list[str] = Field(default_factory=list)
+    deliverables: list[str] = Field(default_factory=list)
+    deadline: datetime | None = None
+    milestones: list[dict] = Field(default_factory=list)
+    review_configuration: ReviewConfiguration = Field(default_factory=ReviewConfiguration)
+    participants: ProjectParticipants = Field(default_factory=ProjectParticipants)
+    tutorial_accelerated: bool = False
+
+    @property
+    def is_structured(self) -> bool:
+        return bool(
+            self.code
+            or self.background
+            or self.objectives
+            or self.requirements
+            or self.technical_requirements
+            or self.constraints
+            or self.deliverables
+        )
 
 
 class ProjectOut(ORMModel):
@@ -21,6 +78,19 @@ class ProjectOut(ORMModel):
     goal: str
     owner_id: int | None
     source_order_text: str
+    planned_start_at: datetime | None = None
+    planned_end_at: datetime | None = None
+    code: str | None = None
+    priority: str = "medium"
+    customer: str = ""
+    background: str = ""
+    objectives: list = []
+    technical_requirements: list = []
+    constraints: list = []
+    deliverables: list = []
+    review_configuration: dict = {}
+    participants: dict = {}
+    tutorial_accelerated: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -32,6 +102,9 @@ class MilestoneOut(ORMModel):
     description: str
     status: str
     order: int
+    owner_id: int | None = None
+    planned_start_at: datetime | None = None
+    planned_end_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -48,6 +121,11 @@ class TaskOut(ORMModel):
     assignee_id: int | None
     acceptance_criteria: str
     sequence: int
+    planned_start_at: datetime | None = None
+    planned_end_at: datetime | None = None
+    actual_start_at: datetime | None = None
+    actual_end_at: datetime | None = None
+    phase_id: int | None = None
     # Not an ORM column (n-n via task_dependencies); populated explicitly by services.
     dependencies: list[int] = []
     created_at: datetime
@@ -61,6 +139,20 @@ class TaskPatch(BaseModel):
     priority: int | None = None
     assignee_id: int | None = None
     acceptance_criteria: str | None = None
+    planned_start_at: datetime | None = None
+    planned_end_at: datetime | None = None
+
+
+class ProjectPatch(BaseModel):
+    owner_id: int | None = None
+    planned_start_at: datetime | None = None
+    planned_end_at: datetime | None = None
+
+
+class MilestonePatch(BaseModel):
+    owner_id: int | None = None
+    planned_start_at: datetime | None = None
+    planned_end_at: datetime | None = None
 
 
 class ArtifactCreate(BaseModel):
@@ -95,6 +187,11 @@ class ProjectDetail(ProjectOut):
     milestones: list[MilestoneOut] = []
     tasks: list[TaskOut] = []
     artifacts: list[ArtifactOut] = []
+
+
+class ProjectTimeline(ProjectOut):
+    milestones: list[MilestoneOut] = []
+    tasks: list[TaskOut] = []
 
 
 class GraphNode(BaseModel):

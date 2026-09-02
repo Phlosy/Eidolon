@@ -9,10 +9,22 @@ class ProviderCreate(BaseModel):
     name: str
     provider_type: ProviderType
     base_url: str | None = None
-    scope: ProviderScope = ProviderScope.company
+    # v0.3: omitted scope resolves to "employee" when owner_employee_id is
+    # given, "company" otherwise.
+    scope: ProviderScope | None = None
     owner_employee_id: int | None = None
     api_key: str | None = None  # write-only; stored in the secret store
     metadata: dict = {}
+
+
+class EmployeeProviderCreate(BaseModel):
+    """POST /employees/{id}/providers — always scope=employee, owned by the employee."""
+
+    name: str
+    provider_type: ProviderType
+    base_url: str | None = None
+    api_key: str | None = None  # write-only; stored in the secret store
+    model: str | None = None  # when given, becomes the primary model binding
 
 
 class ProviderPatch(BaseModel):

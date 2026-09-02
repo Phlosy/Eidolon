@@ -17,6 +17,7 @@ from app.providers.secrets.store import LocalEncryptedSecretStore, get_secret_st
 from app.repositories import organization as org_repo
 from app.repositories import providers as provider_repo
 from app.schemas.provider import (
+    EmployeeProviderCreate,
     ProviderCreate,
     ProviderModelsOut,
     ProviderOut,
@@ -58,7 +59,13 @@ class ProviderService:
         return provider_out(db, provider)
 
     def create(self, db: Session, payload: ProviderCreate) -> ProviderOut:
-        if payload.scope == ProviderScope.employee.value:
+        # v0.3: default scope is employee when an owner is given, else company
+        scope = payload.scope or (
+            ProviderScope.employee
+            if payload.owner_employee_id is not None
+            else ProviderScope.company
+        )
+        if scope == ProviderScope.employee:
             if payload.owner_employee_id is None:
                 raise HTTPException(
                     status_code=422, detail="employee-scope providers require owner_employee_id"
@@ -75,7 +82,7 @@ class ProviderService:
             name=payload.name,
             provider_type=payload.provider_type.value,
             base_url=payload.base_url,
-            scope=payload.scope.value,
+            scope=scope.value,
             owner_employee_id=payload.owner_employee_id,
             enabled=True,
             credential_ref=credential_ref,
@@ -88,6 +95,37 @@ class ProviderService:
             actor_employee_id=provider.owner_employee_id,
         )
         return provider_out(db, provider)
+
+    def create_for_employee(
+        self, db: Session, employee_id: int, payload: EmployeeProviderCreate
+    ) -> ProviderOut:
+        """Employee-owned account (v0.3): scope=employee, key → SecretStore, and an
+        optional primary model binding when a model is given."""
+        if org_repo.get_employee(db, employee_id) is None:
+            raise HTTPException(status_code=404, detail="employee not found")
+        out = self.create(
+            db,
+            ProviderCreate(
+                name=payload.name,
+                provider_type=payload.provider_type,
+                base_url=payload.base_url,
+                scope=ProviderScope.employee,
+                owner_employee_id=employee_id,
+                api_key=payload.api_key,
+            ),
+        )
+        if payload.model:
+            provider_repo.clear_primary_flags(db, employee_id)
+            provider_repo.create_binding(
+                db,
+                employee_id=employee_id,
+                provider_id=out.id,
+                model=payload.model,
+                is_primary=True,
+                position=0,
+            )
+            db.commit()
+        return self.get(db, out.id, employee_id)
 
     def update(
         self, db: Session, provider_id: int, payload: ProviderPatch, employee_id: int | None = None

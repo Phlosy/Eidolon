@@ -62,6 +62,8 @@ class EmployeeOut(ORMModel):
     title: str
     avatar: str
     status: str
+    lifecycle_status: str = "active"
+    username: str | None = None
     runtime_type: str
     runtime_config: dict
     workspace_path: str

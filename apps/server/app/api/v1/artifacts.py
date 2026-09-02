@@ -1,10 +1,15 @@
-"""/artifacts"""
+"""/artifacts — v0.3 compat layer over drive documents.
+
+Same response shape as v0.2, backed by drive_nodes (kind=document,
+zone=projects). See docs/design-v0.3-workspace.md §2.
+"""
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.events.bus import bus
+from app.repositories import drive as drive_repo
 from app.repositories import project as project_repo
 from app.schemas.project import ArtifactCreate, ArtifactOut
 from app.services import artifacts as artifact_service
@@ -16,8 +21,8 @@ router = APIRouter(prefix="/artifacts", tags=["artifacts"])
 def list_artifacts(
     project_id: int | None = None, type: str | None = None, db: Session = Depends(get_db)
 ) -> list[ArtifactOut]:
-    artifacts = project_repo.list_artifacts(db, project_id=project_id, type=type)
-    return [ArtifactOut.model_validate(a) for a in artifacts]
+    nodes = artifact_service.list_artifact_nodes(db, project_id=project_id, artifact_type=type)
+    return [artifact_service.artifact_out(db, n) for n in nodes]
 
 
 @router.post("", response_model=ArtifactOut, status_code=201)
@@ -25,34 +30,30 @@ def create_artifact(payload: ArtifactCreate, db: Session = Depends(get_db)) -> A
     project = project_repo.get_project(db, payload.project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="project not found")
-    artifact = project_repo.create_artifact(
+    node = artifact_service.record_project_artifact(
         db,
-        company_id=project.company_id,
-        project_id=payload.project_id,
-        task_id=payload.task_id,
-        type=payload.type.value,
+        project,
+        artifact_type=payload.type.value,
         title=payload.title,
         content=payload.content,
-        status=payload.status.value,
         author_id=payload.author_id,
     )
-    artifact_service.materialize_artifact(db, artifact)
     db.commit()
-    db.refresh(artifact)
+    db.refresh(node)
     bus.publish(
         "artifact.created",
-        {"id": artifact.id, "type": artifact.type, "title": artifact.title},
+        {"id": node.id, "type": node.doc_type, "title": node.name},
         company_id=project.company_id,
-        actor_employee_id=artifact.author_id,
-        project_id=artifact.project_id,
-        task_id=artifact.task_id,
+        actor_employee_id=node.owner_employee_id,
+        project_id=node.project_id,
+        task_id=payload.task_id,
     )
-    return ArtifactOut.model_validate(artifact)
+    return artifact_service.artifact_out(db, node)
 
 
 @router.get("/{artifact_id}", response_model=ArtifactOut)
 def get_artifact(artifact_id: int, db: Session = Depends(get_db)) -> ArtifactOut:
-    artifact = project_repo.get_artifact(db, artifact_id)
-    if artifact is None:
+    node = drive_repo.get_node(db, artifact_id)
+    if node is None or node.kind != "document" or node.zone != "projects":
         raise HTTPException(status_code=404, detail="artifact not found")
-    return ArtifactOut.model_validate(artifact)
+    return artifact_service.artifact_out(db, node)
