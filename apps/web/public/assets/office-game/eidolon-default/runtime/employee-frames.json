@@ -1,0 +1,18 @@
+{
+  "employee-0": {
+    "row": 0,
+    "firstFrame": 0
+  },
+  "employee-1": {
+    "row": 1,
+    "firstFrame": 16
+  },
+  "employee-2": {
+    "row": 2,
+    "firstFrame": 32
+  },
+  "employee-3": {
+    "row": 3,
+    "firstFrame": 48
+  }
+}

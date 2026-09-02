@@ -1,0 +1,20 @@
+{
+  "theme": "eidolon-default",
+  "redistribution": "allowed-with-project",
+  "assets": [
+    {
+      "source": "source/employee-concepts-v1.png",
+      "author": "OpenAI image generation, directed by Eidolon",
+      "license": "project-generated",
+      "sourceUrl": null,
+      "modification": "cropped, background-normalized, palette-reduced, resized with nearest-neighbor"
+    },
+    {
+      "source": "source/office-objects-concepts-v1.png",
+      "author": "OpenAI image generation, directed by Eidolon",
+      "license": "project-generated",
+      "sourceUrl": null,
+      "modification": "split into tiles and object atlas, background-normalized, resized with nearest-neighbor"
+    }
+  ]
+}
