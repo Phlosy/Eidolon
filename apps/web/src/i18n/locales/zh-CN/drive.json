@@ -1,0 +1,119 @@
+{
+  "title": "云文档",
+  "description": "项目文件与公司文档的统一文件层级。",
+  "searchPlaceholder": "按名称搜索…",
+  "filterAll": "全部",
+  "expand": "展开",
+  "collapse": "折叠",
+  "folder": "文件夹",
+  "zone": {
+    "projects": "项目",
+    "knowledge": "知识",
+    "skills": "技能",
+    "handbook": "手册"
+  },
+  "docType": {
+    "prd": "PRD",
+    "research_report": "调研报告",
+    "architecture": "架构设计",
+    "source_file": "源代码",
+    "test_report": "测试报告",
+    "readme": "README",
+    "release": "发布物",
+    "note": "笔记",
+    "knowledge": "知识",
+    "skill_doc": "技能文档",
+    "handbook": "制度手册",
+    "docx": "Word 文档",
+    "pdf": "PDF"
+  },
+  "columns": {
+    "name": "名称",
+    "type": "类型",
+    "owner": "归属",
+    "version": "版本",
+    "updatedAt": "更新时间"
+  },
+  "emptyFolderTitle": "空文件夹",
+  "emptyFolderHint": "此文件夹内还没有内容。",
+  "noSelectionTitle": "未选择内容",
+  "noSelectionHint": "从左侧树中选择一个分区、文件夹或文档。",
+  "newFolder": {
+    "button": "新建文件夹",
+    "namePlaceholder": "文件夹名称",
+    "submit": "创建",
+    "selectFirst": "请先选择一个分区或文件夹"
+  },
+  "viewer": {
+    "owner": "归属",
+    "version": "版本",
+    "sha": "哈希",
+    "edit": "编辑",
+    "export": "导出",
+    "exporting": "导出中…",
+    "exportFormat": "导出格式",
+    "exportError": "文档导出失败。",
+    "loadingPreview": "正在生成预览…",
+    "previewError": "暂时无法预览此文档，但仍可导出原始文件。",
+    "pdfPreview": "PDF 预览",
+    "pdfPage": "PDF 第 {{page}} 页",
+    "pdfLimited": "预览最多显示前 50 页，可导出原始 PDF 查看其余页面。",
+    "presentationReady": "PowerPoint 汇报材料已就绪",
+    "presentationHint": "当前浏览器展示文件摘要（约 {{size}} KB）。请导出原生 PPTX 进行放映或编辑。",
+    "exportFormats": {
+      "markdown": "Markdown 原文（.md）",
+      "docx": "Word 文档（.docx）",
+      "pptx": "PowerPoint 演示文稿（.pptx）",
+      "pdf": "PDF 文档（.pdf）"
+    }
+  },
+  "revisions": {
+    "title": "版本历史",
+    "empty": "暂无版本记录。"
+  },
+  "edit": {
+    "contentLabel": "内容",
+    "messageLabel": "版本说明（可选）",
+    "messagePlaceholder": "本次修改…",
+    "save": "保存",
+    "saving": "保存中…"
+  },
+  "center": {
+    "kicker": "公司知识云",
+    "title": "云文档中心",
+    "description": "将项目产出、调研、知识、技能与公司记录统一纳入持久化生产系统。",
+    "documents": "文档",
+    "projectAssets": "项目资产",
+    "knowledgeAssets": "知识资产"
+  },
+  "workspace": {
+    "navigation": "云文档空间",
+    "allFiles": "全部文件",
+    "recent": "最近使用",
+    "spaces": "文档空间",
+    "cloudWorkspace": "公司云盘",
+    "createFolder": "新建文件夹",
+    "createFolderHint": "创建新的协作空间",
+    "recentHint": "继续最近的工作",
+    "projectsHint": "查看项目产出",
+    "knowledgeHint": "打开公司知识库",
+    "searchResults": "搜索结果",
+    "folders": "文件夹",
+    "documents": "文档",
+    "recentDocuments": "最近文档",
+    "noFolders": "当前位置暂无文件夹。",
+    "itemCount": "{{count}} 项内容",
+    "documentCount": "{{count}} 篇文档",
+    "filterType": "按文档类型筛选",
+    "sortName": "按名称",
+    "sortUpdated": "最近更新",
+    "listView": "列表视图",
+    "gridView": "网格视图",
+    "back": "返回上级文件夹",
+    "folderInteractionHint": "单击展开，双击或按 Enter 打开",
+    "upload": "上传文件",
+    "uploading": "上传中…",
+    "uploadHint": "支持 Markdown、DOCX、PDF，最大 20 MB",
+    "uploadError": "文件上传失败。"
+  }
+}

@@ -1,12 +1,14 @@
-import { get, patch } from "./client";
+import { get, patch, post } from "./client";
 import type {
   CompanyEvent,
+  CreateEmployeeProviderInput,
   Employee,
   EmployeePerformance,
   KnowledgeItem,
   LearningPriority,
   LearningRecord,
   MemoryEntry,
+  Provider,
   Skill,
 } from "../types";
 
@@ -48,4 +50,17 @@ export function getEmployeeActivity(id: number): Promise<CompanyEvent[]> {
 
 export function getEmployeePerformance(id: number): Promise<EmployeePerformance> {
   return get<EmployeePerformance>(`/employees/${id}/performance`);
+}
+
+/** The employee's own provider accounts plus company-shared ones (v0.3 ownership model). */
+export function listEmployeeProviders(id: number): Promise<Provider[]> {
+  return get<Provider[]>(`/employees/${id}/providers`);
+}
+
+/** Add a provider account (+ optional key/model) owned by this employee. */
+export function createEmployeeProvider(
+  id: number,
+  body: CreateEmployeeProviderInput,
+): Promise<Provider> {
+  return post<Provider>(`/employees/${id}/providers`, body);
 }

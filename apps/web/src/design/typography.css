@@ -1,0 +1,8 @@
+@theme {
+  --font-sans: "Inter Variable", Inter, "Noto Sans SC Variable", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-cjk: "Noto Sans SC Variable", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.type-display { font-size: clamp(2rem, 3.4vw, 4.25rem); font-weight: 650; letter-spacing: -0.055em; line-height: 0.96; }
+.type-kicker { font-family: var(--font-mono); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; }
+.type-telemetry { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.025em; }

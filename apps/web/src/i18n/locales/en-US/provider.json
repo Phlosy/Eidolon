@@ -1,6 +1,29 @@
 {
   "sectionTitle": "Providers",
   "sectionDescription": "LLM providers available to employee runtimes. Keys are write-only; only the masked credential is ever shown.",
+  "employeeSection": {
+    "title": "Provider Accounts",
+    "description": "This employee's own provider accounts and keys; company-shared accounts are marked with a scope badge.",
+    "add": "Add Provider Account",
+    "addDescription": "Add a provider account for this employee. The key is write-only and stored in the backend SecretStore.",
+    "emptyTitle": "No provider accounts",
+    "emptyHint": "Add an account so this employee's runtime can use a model."
+  },
+  "overview": {
+    "title": "Company Providers Overview",
+    "description": "Read-only company-wide overview — accounts are managed under Employee → Runtime.",
+    "emptyHint": "Accounts added under Employee → Runtime show up here.",
+    "enabled": "Enabled",
+    "columns": {
+      "name": "Name",
+      "type": "Type",
+      "scope": "Scope",
+      "owner": "Owner",
+      "inUse": "In use",
+      "status": "Status",
+      "actions": "Actions"
+    }
+  },
   "add": "Add provider",
   "emptyTitle": "No providers",
   "emptyHint": "Add a provider to give runtimes a model.",
@@ -45,12 +68,12 @@
     "selectEmployee": "Select an employee…",
     "apiKey": "API key",
     "apiKeyKeep": "API key (leave empty to keep)",
+    "modelOptional": "Model (optional)",
     "saveChanges": "Save changes",
     "addProvider": "Add provider"
   },
   "selector": {
-    "selectProvider": "Select a provider…",
-    "privateSuffix": ", private"
+    "selectProvider": "Select a provider…"
   },
   "modelSelector": {
     "placeholder": "Model name, e.g. gpt-4o-mini",

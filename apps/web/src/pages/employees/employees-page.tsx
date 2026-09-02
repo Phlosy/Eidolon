@@ -1,80 +1,181 @@
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { LayoutGrid, Rows3, Search, UserPlus, Users } from "lucide-react";
 import { useEmployees } from "../../hooks/useEmployees";
-import { StatusDot } from "../../components/common/status-dot";
-import { RuntimeBadge } from "../../components/runtime/runtime-badge";
+import { useCompany } from "../../hooks/useSystem";
+import { useRuntimeInstances } from "../../hooks/useRuntimes";
+import { useTutorial } from "../../hooks/useTutorial";
+import { Button } from "../../components/common/button";
+import { HireWizard } from "../../components/lifecycle/hire-wizard";
 import { EmptyState, ErrorState, PageHeader } from "../../components/common/states";
 import { Skeleton } from "../../components/common/skeleton";
-import { EMPLOYEE_STATUS_META } from "../../utils/status";
-import { enumLabel } from "../../utils/labels";
-import { eid } from "../../utils/format";
+import { EmployeeRosterCard } from "../../components/employee/employee-roster-card";
+import { cn } from "../../utils/cn";
+import type { EmployeeStatus } from "../../types";
 
 export function EmployeesPage() {
   const { t } = useTranslation();
   const employeesQuery = useEmployees();
-
+  const companyQuery = useCompany();
+  const runtimes = useRuntimeInstances().data ?? [];
+  const tutorial = useTutorial().data;
+  const [hireOpen, setHireOpen] = useState(false);
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState<EmployeeStatus | "all">("all");
+  const employees = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return (employeesQuery.data ?? []).filter(
+      (employee) =>
+        (status === "all" || employee.status === status) &&
+        (!query ||
+          `${employee.name} ${employee.title ?? ""} ${employee.role}`
+            .toLowerCase()
+            .includes(query)),
+    );
+  }, [employeesQuery.data, search, status]);
+  const departmentById = new Map(
+    (companyQuery.data?.departments ?? []).map((department) => [department.id, department]),
+  );
+  const runtimeByEmployee = new Map(runtimes.map((runtime) => [runtime.employee_id, runtime]));
+  const active = (employeesQuery.data ?? []).filter(
+    (employee) => employee.status !== "offline",
+  ).length;
+  const presetRole =
+    tutorial?.current_step === "hire_ceo"
+      ? "ceo"
+      : tutorial?.current_step === "hire_qa"
+        ? "qa_engineer"
+        : tutorial?.current_step === "hire_engineer"
+          ? "engineer"
+          : undefined;
+  const ceo = employeesQuery.data?.find((employee) => employee.role === "ceo");
   return (
-    <div>
-      <PageHeader title={t("employee:listTitle")} description={t("employee:listDescription")} />
+    <div className="space-y-5 panel-enter">
+      <PageHeader
+        icon={Users}
+        title={t("employee:listTitle")}
+        description={t("employee:listDescription")}
+        actions={
+          <Button
+            data-testid="hire-button"
+            data-tutorial-target="hire-employee"
+            onClick={() => setHireOpen(true)}
+          >
+            <UserPlus className="h-4 w-4" />
+            {t("lifecycle:actions.hire")}
+          </Button>
+        }
+      />
+      <section className="command-panel relative overflow-hidden p-4">
+        <div className="relative flex flex-wrap items-center gap-3">
+          <div className="mr-auto">
+            <p className="type-kicker text-primary">{t("employee:roster.commandRoster")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("employee:roster.summary", { active, total: employeesQuery.data?.length ?? 0 })}
+            </p>
+          </div>
+          <label className="relative min-w-[220px] flex-1 md:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("employee:roster.search")}
+              aria-label={t("employee:roster.search")}
+              className="h-11 w-full rounded-xl border border-border bg-background/55 pl-9 pr-3 text-sm outline-none focus:border-border-active focus:ring-2 focus:ring-primary/15"
+            />
+          </label>
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value as EmployeeStatus | "all")}
+            aria-label={t("employee:roster.filterStatus")}
+            className="h-11 rounded-xl border border-border bg-background/55 px-3 text-xs outline-none focus:border-border-active"
+          >
+            <option value="all">{t("employee:roster.allStatuses")}</option>
+            {(
+              [
+                "working",
+                "researching",
+                "learning",
+                "meeting",
+                "reflecting",
+                "idle",
+                "offline",
+                "error",
+              ] as EmployeeStatus[]
+            ).map((item) => (
+              <option key={item} value={item}>
+                {t(`employee:status.${item}`)}
+              </option>
+            ))}
+          </select>
+          <div className="flex rounded-xl border border-border bg-background/55 p-1">
+            <button
+              type="button"
+              onClick={() => setView("grid")}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-lg",
+                view === "grid" ? "bg-surface-interactive text-primary" : "text-muted-foreground",
+              )}
+              aria-label={t("employee:roster.gridView")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-lg",
+                view === "list" ? "bg-surface-interactive text-primary" : "text-muted-foreground",
+              )}
+              aria-label={t("employee:roster.listView")}
+            >
+              <Rows3 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </section>
       {employeesQuery.isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((item) => (
+            <Skeleton key={item} className="h-72 rounded-[var(--radius-panel)]" />
           ))}
         </div>
       ) : employeesQuery.isError ? (
         <ErrorState error={employeesQuery.error} onRetry={() => employeesQuery.refetch()} />
-      ) : (employeesQuery.data ?? []).length === 0 ? (
-        <EmptyState title={t("employee:emptyTitle")} hint={t("employee:emptyHint")} />
+      ) : employees.length === 0 ? (
+        <EmptyState title={t("employee:emptyTitle")} hint={t("employee:roster.noMatch")} />
+      ) : view === "grid" ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {employees.map((employee) => (
+            <EmployeeRosterCard
+              key={employee.id}
+              employee={employee}
+              department={departmentById.get(employee.department_id)}
+              runtime={runtimeByEmployee.get(employee.id)}
+              view="grid"
+            />
+          ))}
+        </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                <th className="px-4 py-2.5 font-medium">{t("employee:table.name")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("employee:table.role")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("employee:table.status")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("employee:table.runtime")}</th>
-                <th className="px-4 py-2.5 font-medium">{t("employee:table.currentTask")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employeesQuery.data!.map((employee) => (
-                <tr
-                  key={employee.id}
-                  className="border-b border-border/60 last:border-0 hover:bg-muted/40"
-                >
-                  <td className="px-4 py-2.5">
-                    <Link to={`/employees/${employee.id}`} className="font-medium hover:underline">
-                      {employee.name}
-                    </Link>
-                    <span className="ml-2 font-mono text-[11px] text-muted-foreground">
-                      {eid(employee.id)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">
-                    {employee.title ?? enumLabel(t, "employee:role", employee.role)}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <span className="flex items-center gap-1.5">
-                      <StatusDot status={employee.status} />
-                      <span className={EMPLOYEE_STATUS_META[employee.status].textClass}>
-                        {enumLabel(t, "employee:status", employee.status)}
-                      </span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <RuntimeBadge type={employee.runtime_type} />
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
-                    {employee.current_task_id != null ? eid(employee.current_task_id) : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="command-panel overflow-hidden">
+          {employees.map((employee) => (
+            <EmployeeRosterCard
+              key={employee.id}
+              employee={employee}
+              department={departmentById.get(employee.department_id)}
+              runtime={runtimeByEmployee.get(employee.id)}
+              view="list"
+            />
+          ))}
         </div>
       )}
+      <HireWizard
+        open={hireOpen}
+        onOpenChange={setHireOpen}
+        presetRole={presetRole}
+        presetManagerEmployeeId={presetRole === "ceo" ? null : (ceo?.id ?? null)}
+      />
     </div>
   );
 }

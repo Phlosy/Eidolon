@@ -1,10 +1,19 @@
 {
   "dashboard": "仪表盘",
+  "overview": "公司总览",
+  "productType": "AI 公司操作系统",
   "office": "办公室",
   "employees": "员工",
+  "departments": "部门",
   "projects": "项目",
-  "artifacts": "产物",
+  "cloudDocs": "云文档",
+  "git": "Git 工作区",
+  "knowledge": "知识库",
+  "runtime": "运行时",
+  "drive": "云文档",
   "settings": "设置",
+  "employeeWorkbench": "员工工作台",
+  "missionControl": "任务指挥",
   "tagline": "自治 AI 组织运行时",
   "defaultCompany": "Eidolon Studio",
   "headerSubtitle": "AI 公司指挥中心",
@@ -13,5 +22,24 @@
     "connecting": "连接中",
     "closed": "离线"
   },
-  "toggleTheme": "切换主题"
+  "toggleTheme": "切换主题",
+  "toggleSidebar": "切换侧边栏",
+  "openNavigation": "打开导航",
+  "closeNavigation": "关闭导航",
+  "primaryNavigation": "公司导航",
+  "globalSearch": "全局搜索",
+  "searchPlaceholder": "搜索公司内容…",
+  "notifications": "通知",
+  "create": "新建",
+  "collapse": "收起",
+  "companyLive": "公司在线",
+  "activeAgents": "名活跃员工",
+  "sections": {
+    "command": "指挥",
+    "workforce": "组织",
+    "work": "工作",
+    "assets": "资产",
+    "infrastructure": "基础设施",
+    "system": "系统"
+  }
 }

@@ -10,5 +10,60 @@
     "runtimeCost": "运行时成本（模拟）",
     "runtimeCostHint": "估算值"
   },
-  "recentActivity": "最近动态"
+  "recentActivity": "最近动态",
+  "viewAll": "查看名册",
+  "viewBoard": "查看任务板",
+  "hero": {
+    "companyLevel": "公司等级",
+    "operational": "运行正常",
+    "derived": "基于实时公司活动派生",
+    "commandCenter": "公司指挥中心",
+    "description": "由 AI 员工、任务、知识和执行基础设施组成的动态组织。",
+    "companyExperience": "公司经验",
+    "experienceSource": "累计 {{xp}} XP · 确定性派生指标",
+    "runtimeHealth": "运行时健康度"
+  },
+  "workforce": {
+    "kicker": "实时组织",
+    "title": "AI 员工名册",
+    "description": "查看谁在工作、学习、调研或等待下一项任务。",
+    "available": "可调度"
+  },
+  "projects": {
+    "kicker": "任务指挥",
+    "title": "活跃项目板",
+    "description": "根据真实任务与里程碑状态计算交付健康度。",
+    "empty": "暂无活跃项目，请创建公司的下一项任务。",
+    "unassigned": "未分配负责人",
+    "tasks": "已完成 {{done}}/{{total}} 项任务",
+    "blockers": "{{count}} 个阻塞项"
+  },
+  "pulse": {
+    "kicker": "运营时间线",
+    "title": "公司脉搏",
+    "description": "来自员工、项目、运行时、代码与文档的实时及历史信号。"
+  },
+  "infrastructure": {
+    "kicker": "基础设施",
+    "title": "运行时网络",
+    "health": "节点综合健康度",
+    "nodes": "活跃节点",
+    "incidents": "异常事件"
+  },
+  "assets": {
+    "kicker": "生产资产",
+    "title": "资产产出",
+    "total": "份公司文档已产出",
+    "project": "项目资产",
+    "knowledge": "知识资产"
+  },
+  "alerts": {
+    "kicker": "待关注队列",
+    "title": "告警中心",
+    "employeeErrors": "需要关注的员工",
+    "runtimeErrors": "运行时异常",
+    "offline": "离线员工",
+    "clear": "当前没有运营异常；离线员工仍会显示，以便安排调度。",
+    "review": "存在需要处理的运营问题，请先打开对应工作台确认。"
+  }
 }

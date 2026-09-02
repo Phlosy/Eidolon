@@ -8,7 +8,12 @@
     "role": "Role",
     "status": "Status",
     "runtime": "Runtime",
-    "currentTask": "Current task"
+    "currentTask": "Current task",
+    "department": "Department",
+    "position": "Position",
+    "manager": "Manager",
+    "employment": "Employment",
+    "provisioning": "Provisioning"
   },
   "status": {
     "offline": "Offline",
@@ -29,8 +34,12 @@
   },
   "tabs": {
     "overview": "Overview",
+    "employment": "Employment",
     "runtime": "Runtime",
     "activity": "Activity",
+    "accounts": "Accounts",
+    "access": "Access",
+    "assets": "Assets",
     "workspace": "Workspace",
     "memory": "Memory",
     "knowledge": "Knowledge",
@@ -43,6 +52,7 @@
     "id": "ID",
     "role": "Role",
     "slug": "Slug",
+    "lifecycleStatus": "Lifecycle",
     "runtime": "Runtime",
     "workspacePath": "Workspace path",
     "memoryNamespace": "Memory namespace",
@@ -111,5 +121,27 @@
   "career": {
     "emptyTitle": "No career events yet",
     "emptyHint": "Milestones will appear over time."
+  },
+  "roster": {
+    "commandRoster": "Workforce command roster",
+    "summary": "{{active}} of {{total}} AI employees active",
+    "search": "Search employees…",
+    "filterStatus": "Filter by status",
+    "allStatuses": "All statuses",
+    "gridView": "Grid view",
+    "listView": "List view",
+    "unassigned": "Unassigned",
+    "workload": "Derived workload",
+    "currentTask": "Current task #EID-{{id}}",
+    "available": "Available for assignment",
+    "manage": "Open workbench",
+    "noMatch": "No employees match the current filters."
+  },
+  "hero": {
+    "level": "LV.",
+    "currentMission": "Current mission",
+    "awaitingMission": "Awaiting assignment",
+    "experience": "Experience",
+    "derived": "Level and XP are derived from recorded performance and learning activity."
   }
 }

@@ -6,7 +6,28 @@
   },
   "employee": {
     "created": "Employee joined",
-    "status_changed": "Employee status changed"
+    "status_changed": "Employee status changed",
+    "hired": "Employee hired",
+    "onboarding_started": "Onboarding started",
+    "onboarding_completed": "Onboarding completed",
+    "transfer_started": "Transfer started",
+    "transferred": "Employee transferred",
+    "suspended": "Employee suspended",
+    "resumed": "Employee resumed",
+    "offboarding_started": "Offboarding started",
+    "offboarded": "Employee offboarded",
+    "access_granted": "Access granted",
+    "access_revoked": "Access revoked"
+  },
+  "resource": {
+    "provisioning_started": "Resource provisioning started",
+    "provisioned": "Resource provisioned",
+    "provisioning_failed": "Resource provisioning failed",
+    "suspended": "Resource suspended",
+    "deprovisioned": "Resource deprovisioned"
+  },
+  "asset": {
+    "transferred": "Asset transferred"
   },
   "project": {
     "created": "New order received",

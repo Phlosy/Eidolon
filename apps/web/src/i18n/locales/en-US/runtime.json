@@ -145,5 +145,21 @@
     "dockerUnavailable": "Docker unavailable",
     "compatibilityUnverified": "Compatibility unverified",
     "update": "Update"
+  },
+  "controlCenter": {
+    "title": "Infrastructure Control Center",
+    "description": "Live runtime nodes, model providers, container health, and image operations.",
+    "liveInfrastructure": "Live infrastructure",
+    "operational": "Systems operational",
+    "standby": "Infrastructure on standby",
+    "summary": "{{running}} of {{total}} runtime nodes are active.",
+    "activeNodes": "Active nodes",
+    "incidents": "Incidents",
+    "images": "Runtime images",
+    "nodesKicker": "Runtime network",
+    "nodesTitle": "Agent execution nodes",
+    "emptyTitle": "No runtime nodes",
+    "emptyHint": "Create a runtime from an employee workbench.",
+    "openWorkbench": "Open employee workbench"
   }
 }

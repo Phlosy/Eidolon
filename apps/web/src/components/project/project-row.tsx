@@ -24,7 +24,7 @@ export function ProjectRow({ project }: { project: Project }) {
   return (
     <Link
       to={`/projects/${project.id}`}
-      className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/20"
+      className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-lift"
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -42,7 +42,7 @@ export function ProjectRow({ project }: { project: Project }) {
         ) : (
           <>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
+              <div className="h-full rounded-full bg-status-working" style={{ width: `${pct}%` }} />
             </div>
             <p className="mt-1 text-right text-[11px] text-muted-foreground">
               {t("project:taskProgress", { done, total })}

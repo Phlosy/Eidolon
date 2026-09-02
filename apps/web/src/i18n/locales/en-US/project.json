@@ -24,6 +24,11 @@
     "failed": "Failed",
     "rejected": "Rejected"
   },
+  "milestoneStatus": {
+    "pending": "Not started",
+    "in_progress": "In progress",
+    "completed": "Completed"
+  },
   "taskKind": {
     "order_review": "Order Review",
     "planning": "Planning",
@@ -49,8 +54,8 @@
     "assignee": "Assignee",
     "unassigned": "Unassigned"
   },
-  "artifacts": "Artifacts",
-  "artifactsEmpty": "No artifacts produced yet.",
+  "files": "Files",
+  "filesEmpty": "No files in the project folder yet.",
   "createdAt": "Created {{time}}",
   "updatedAt": "Updated {{time}}",
   "dialog": {
@@ -63,5 +68,60 @@
     "submit": "Place order",
     "submitting": "Placing order…",
     "errorFallback": "Failed to create project"
+  },
+  "command": {
+    "boardKicker": "Company mission network",
+    "boardTitle": "Project Command Board",
+    "boardDescription": "Every active mission, its owner, delivery progress, assets, and blockers.",
+    "activeMissions": "Active missions",
+    "completedMissions": "Completed",
+    "mission": "Mission #EID-{{id}}",
+    "noBrief": "No mission brief has been provided.",
+    "missionProgress": "Mission progress",
+    "owner": "Owner",
+    "unassigned": "Unassigned",
+    "milestone": "Current milestone",
+    "noMilestone": "Awaiting plan",
+    "tasks": "Tasks",
+    "artifacts": "Artifacts",
+    "blockers": "Blockers",
+    "healthDerived": "Derived mission health"
+  },
+  "detail": {
+    "liveMission": "Live mission",
+    "milestonesKicker": "Delivery path",
+    "workflowKicker": "Mission workflow",
+    "workflowDescription": "The existing workflow graph reframed as the team's live execution map.",
+    "tasksKicker": "Execution queue"
+  },
+  "timeline": {
+    "companyTitle": "Company Portfolio Gantt",
+    "companyDescription": "See every project, milestone, task, and owner on one timeline. Live events update it immediately, with periodic reconciliation.",
+    "projectTitle": "Project Gantt",
+    "projectDescription": "Expand each milestone into its task plan, owner, and live execution status.",
+    "portfolioView": "Company portfolio",
+    "executionPlan": "Milestone execution plan",
+    "executionDescription": "Every milestone shows its child tasks, completion, and accountable owner.",
+    "project": "Project",
+    "milestone": "Milestone",
+    "task": "Task",
+    "preparation": "Preparation",
+    "taskCount": "{{count}} tasks",
+    "noChildTasks": "No tasks have been defined for this milestone",
+    "liveHint": "Live task state with a 15-second fallback refresh",
+    "updated": "Synced {{time}}",
+    "workBreakdown": "Project / milestone / task · Owner",
+    "today": "Today",
+    "zoom": "Timeline zoom",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "dayScale": "Day scale",
+    "weekScale": "Week scale",
+    "monthScale": "Month scale",
+    "expand": "Expand child work",
+    "collapse": "Collapse child work",
+    "gantt": "Gantt",
+    "cards": "Cards",
+    "empty": "No project plans to display"
   }
 }

@@ -1,0 +1,222 @@
+{
+  "status": {
+    "pending": "待入职",
+    "onboarding": "入职中",
+    "active": "在职",
+    "transferring": "调岗中",
+    "suspended": "已停职",
+    "offboarding": "离职处理中",
+    "offboarded": "已离职"
+  },
+  "actions": {
+    "hire": "招聘员工",
+    "transfer": "调岗",
+    "suspend": "停职",
+    "resume": "复职",
+    "offboard": "离职",
+    "jobInProgress": "有任务正在执行，暂不可操作"
+  },
+  "wizard": {
+    "title": "招聘员工",
+    "stepOf": "第 {{current}} / {{total}} 步 —— {{step}}",
+    "steps": {
+      "identity": "身份信息",
+      "department": "部门与职位",
+      "manager": "直属上级",
+      "runtime": "运行时",
+      "provider": "模型与 Provider",
+      "brain": "人格与学习",
+      "packages": "权限包",
+      "preview": "资源预检",
+      "hire": "确认入职"
+    },
+    "namePlaceholder": "姓名，例如 Ada",
+    "slugPlaceholder": "例如 ada-lovelace",
+    "slugHint": "唯一标识，用于账号与工作区命名。",
+    "titlePlaceholder": "头衔，例如 高级工程师",
+    "roleLabel": "角色",
+    "departmentLabel": "部门",
+    "positionLabel": "职位",
+    "noPosition": "（不指定职位）",
+    "managerLabel": "直属上级",
+    "noManager": "（无上级）",
+    "managerHint": "可选，之后可随时调整。",
+    "runtimeHint": "选择驱动该员工的运行时类型。",
+    "providerHint": "为这位员工绑定独立模型。可复用公司级 Provider、创建员工私有 Provider，或稍后配置。",
+    "providerModes": {
+      "existing": "已有 Provider",
+      "new": "新建独立配置",
+      "none": "稍后配置"
+    },
+    "providerLabel": "公司 Provider",
+    "selectProvider": "选择可用 Provider",
+    "noCompanyProvider": "当前还没有公司级 Provider。可以新建员工独立配置，或入职后在员工详情中添加。",
+    "providerNamePlaceholder": "配置名称，例如 CEO OpenAI",
+    "providerUrlPlaceholder": "Base URL（可选）",
+    "apiKeyPlaceholder": "API Key（可选）",
+    "apiKeyHint": "密钥只会提交一次，并由服务端加密保存；界面不会再次显示明文。",
+    "modelLabel": "模型",
+    "modelPlaceholder": "例如 gpt-5.2 或 claude-sonnet-4-5",
+    "providerLaterHint": "员工身份、工作区和 Runtime 仍会正常创建；可随后在员工详情中绑定 Provider 与模型。",
+    "personalityLabel": "Personality",
+    "goalsLabel": "长期目标",
+    "learningLabel": "启用持续学习",
+    "learningHint": "允许员工把复盘和交付经验沉淀到长期知识中。",
+    "curiosityLabel": "Curiosity",
+    "curiosityLow": "低",
+    "curiosityMedium": "中",
+    "curiosityHigh": "高",
+    "enabled": "已启用",
+    "disabled": "已停用",
+    "packagesHint": "勾选授予的权限包，已按角色预选默认值。",
+    "previewHint": "以下资源将被创建。不可用的资源不阻塞入职，可稍后重试。",
+    "previewEmpty": "该部门与权限包组合没有需要创建的资源。",
+    "previewAvailable": "可用",
+    "previewUnavailable": "不可用",
+    "unavailableWarning": "{{count}} 项资源当前不可用，入职后可在任务面板中重试。",
+    "summary": {
+      "name": "姓名",
+      "slug": "标识",
+      "title": "头衔",
+      "role": "角色",
+      "department": "部门",
+      "position": "职位",
+      "manager": "直属上级",
+      "runtime": "运行时",
+      "provider": "Provider",
+      "model": "模型",
+      "learning": "学习策略",
+      "packages": "权限包"
+    },
+    "hire": "确认入职",
+    "hiring": "正在入职…"
+  },
+  "job": {
+    "title": "资源开通任务",
+    "kind": {
+      "onboarding": "入职",
+      "transfer": "调岗",
+      "permission_change": "权限变更",
+      "suspension": "停职",
+      "resumption": "复职",
+      "offboarding": "离职"
+    },
+    "status": {
+      "pending": "排队中",
+      "running": "执行中",
+      "done": "已完成",
+      "partial": "部分完成",
+      "failed": "失败"
+    },
+    "stepStatus": {
+      "pending": "等待",
+      "running": "执行中",
+      "done": "完成",
+      "failed": "失败",
+      "skipped": "跳过"
+    },
+    "progress": "{{done}}/{{total}} 就绪",
+    "retry": "重试失败步骤",
+    "retrying": "正在重试…",
+    "emptyTitle": "暂无开通任务"
+  },
+  "employment": {
+    "currentTitle": "当前任职",
+    "historyTitle": "任职历史",
+    "department": "部门",
+    "position": "职位",
+    "manager": "直属上级",
+    "status": "状态",
+    "joinedAt": "入职日期",
+    "effectiveFrom": "生效日期",
+    "effectiveTo": "结束日期",
+    "present": "至今",
+    "emptyTitle": "暂无任职记录"
+  },
+  "accounts": {
+    "emptyTitle": "暂无资源账号",
+    "emptyHint": "账号会在入职开通后显示在此处。",
+    "lastSynced": "最近同步 {{time}}",
+    "neverSynced": "从未同步",
+    "reconcile": "检查漂移",
+    "reconciling": "正在检查…",
+    "noDrift": "未发现漂移，实际状态与期望一致。",
+    "driftTitle": "检测到 {{count}} 项漂移（仅检测，不自动修复）"
+  },
+  "accountStatus": {
+    "pending": "待开通",
+    "provisioning": "开通中",
+    "active": "正常",
+    "suspended": "已挂起",
+    "failed": "失败",
+    "deprovisioning": "回收中",
+    "deprovisioned": "已回收"
+  },
+  "access": {
+    "emptyTitle": "暂无有效权限",
+    "emptyHint": "权限来自所分配的权限包。",
+    "source": "来源：{{name}}",
+    "type": {
+      "role": "角色",
+      "group": "用户组",
+      "permission": "权限",
+      "resource_access": "资源访问"
+    }
+  },
+  "assets": {
+    "emptyTitle": "暂无资产",
+    "emptyHint": "员工创建的资源会记录在此处。",
+    "table": {
+      "type": "类型",
+      "externalId": "外部标识",
+      "owner": "属主",
+      "project": "项目",
+      "provider": "资源方"
+    }
+  },
+  "timeline": {
+    "title": "生命周期时间线",
+    "emptyTitle": "暂无生命周期事件"
+  },
+  "transfer": {
+    "title": "员工调岗",
+    "description": "调整部门、职位、上级与权限包；系统会自动计算权限差异并执行。",
+    "reasonPlaceholder": "调岗原因（可选）",
+    "submit": "确认调岗",
+    "submitting": "正在调岗…"
+  },
+  "suspend": {
+    "title": "停职",
+    "description": "将停止运行时、挂起外部账号并吊销会话；工作区、资产与历史全部保留，可随时复职。",
+    "reasonPlaceholder": "停职原因（可选）",
+    "confirm": "确认停职"
+  },
+  "resume": {
+    "title": "复职",
+    "description": "恢复该员工的运行时与外部账号访问。",
+    "confirm": "确认复职"
+  },
+  "offboard": {
+    "title": "员工离职",
+    "description": "停止工作、吊销凭据、回收账号，并转移名下资产。员工与历史记录永久保留。",
+    "warning": "离职不可撤销：外部账号将被回收，工作区将归档。",
+    "transferToLabel": "资产转移给",
+    "transferTo": {
+      "department": "所在部门（默认）",
+      "company": "公司",
+      "archive": "归档",
+      "employee": "指定员工"
+    },
+    "reasonPlaceholder": "离职原因（可选）",
+    "confirm": "确认离职",
+    "confirming": "正在办理离职…"
+  },
+  "packages": {
+    "settingsTitle": "权限包",
+    "settingsDescription": "入职时可分配的权限集合（只读）。",
+    "emptyTitle": "暂无权限包",
+    "builtIn": "内置",
+    "custom": "自定义",
+    "entitlementCount": "{{count}} 项权限"
+  }
+}

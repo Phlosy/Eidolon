@@ -8,7 +8,7 @@ import {
   useRuntimeTypes,
   useUpdateRuntimeProvider,
 } from "../../hooks/useRuntimes";
-import { useProviders } from "../../hooks/useProviders";
+import { useEmployeeProviders } from "../../hooks/useProviders";
 import { EmptyState, ErrorState } from "../common/states";
 import { Skeleton } from "../common/skeleton";
 import { Button } from "../common/button";
@@ -17,17 +17,19 @@ import { RuntimeCard } from "../runtime/runtime-card";
 import { RuntimeCapabilitiesGrid } from "../runtime/runtime-capabilities-grid";
 import { RuntimeCreateWizard } from "../runtime/runtime-create-wizard";
 import { RuntimeLogsViewer } from "../runtime/runtime-logs-viewer";
+import { EmployeeProvidersSection } from "../provider/employee-providers-section";
 import { ProviderSelector } from "../provider/provider-selector";
 import { ProviderModelSelector } from "../provider/provider-model-selector";
 import { enumLabel } from "../../utils/labels";
 
-/** Employee detail → Runtime tab: instance card, actions, logs, provider swap, create wizard. */
+/** Employee detail → Runtime tab: instance card, actions, logs, provider accounts, provider swap, create wizard. */
 export function RuntimeTab({ employeeId }: { employeeId: number }) {
   const { t } = useTranslation();
   const runtimeQuery = useEmployeeRuntime(employeeId);
   const typesQuery = useRuntimeTypes();
   const imagesQuery = useRuntimeImages();
-  const providersQuery = useProviders(employeeId);
+  // v0.3: the employee's own provider accounts (+ company-shared) are the source.
+  const providersQuery = useEmployeeProviders(employeeId);
   const action = useRuntimeAction(employeeId);
   const changeProvider = useUpdateRuntimeProvider(employeeId);
   const checkUpdates = useCheckRuntimeImageUpdates();
@@ -65,23 +67,26 @@ export function RuntimeTab({ employeeId }: { employeeId: number }) {
 
   if (!instance) {
     return (
-      <div className="space-y-3">
-        <EmptyState
-          title={t("runtime:tab.noInstanceTitle")}
-          hint={t("runtime:tab.noInstanceHint")}
-        />
-        <div>
-          <Button size="sm" onClick={() => setWizardOpen(true)}>
-            {t("runtime:tab.createRuntime")}
-          </Button>
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <EmptyState
+            title={t("runtime:tab.noInstanceTitle")}
+            hint={t("runtime:tab.noInstanceHint")}
+          />
+          <div>
+            <Button size="sm" onClick={() => setWizardOpen(true)}>
+              {t("runtime:tab.createRuntime")}
+            </Button>
+          </div>
+          <RuntimeCreateWizard
+            open={wizardOpen}
+            onOpenChange={setWizardOpen}
+            employeeId={employeeId}
+            runtimeTypes={typesQuery.data ?? []}
+            providers={providersQuery.data ?? []}
+          />
         </div>
-        <RuntimeCreateWizard
-          open={wizardOpen}
-          onOpenChange={setWizardOpen}
-          employeeId={employeeId}
-          runtimeTypes={typesQuery.data ?? []}
-          providers={providersQuery.data ?? []}
-        />
+        <EmployeeProvidersSection employeeId={employeeId} />
       </div>
     );
   }
@@ -110,6 +115,8 @@ export function RuntimeTab({ employeeId }: { employeeId: number }) {
           <RuntimeCapabilitiesGrid capabilities={typeInfo.capabilities} />
         </div>
       ) : null}
+
+      <EmployeeProvidersSection employeeId={employeeId} />
 
       <Dialog
         open={logsOpen}

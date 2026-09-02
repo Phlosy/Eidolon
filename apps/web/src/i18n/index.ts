@@ -8,11 +8,13 @@ import dashboardZh from "./locales/zh-CN/dashboard.json";
 import officeZh from "./locales/zh-CN/office.json";
 import employeeZh from "./locales/zh-CN/employee.json";
 import projectZh from "./locales/zh-CN/project.json";
-import artifactZh from "./locales/zh-CN/artifact.json";
+import driveZh from "./locales/zh-CN/drive.json";
 import runtimeZh from "./locales/zh-CN/runtime.json";
 import providerZh from "./locales/zh-CN/provider.json";
+import gitZh from "./locales/zh-CN/git.json";
 import settingsZh from "./locales/zh-CN/settings.json";
 import eventZh from "./locales/zh-CN/event.json";
+import lifecycleZh from "./locales/zh-CN/lifecycle.json";
 
 import commonEn from "./locales/en-US/common.json";
 import navEn from "./locales/en-US/nav.json";
@@ -20,11 +22,13 @@ import dashboardEn from "./locales/en-US/dashboard.json";
 import officeEn from "./locales/en-US/office.json";
 import employeeEn from "./locales/en-US/employee.json";
 import projectEn from "./locales/en-US/project.json";
-import artifactEn from "./locales/en-US/artifact.json";
+import driveEn from "./locales/en-US/drive.json";
 import runtimeEn from "./locales/en-US/runtime.json";
 import providerEn from "./locales/en-US/provider.json";
+import gitEn from "./locales/en-US/git.json";
 import settingsEn from "./locales/en-US/settings.json";
 import eventEn from "./locales/en-US/event.json";
+import lifecycleEn from "./locales/en-US/lifecycle.json";
 
 /**
  * Supported UI languages. Adding a language = create `locales/<code>/` with
@@ -47,11 +51,13 @@ export const NAMESPACES = [
   "office",
   "employee",
   "project",
-  "artifact",
+  "drive",
   "runtime",
   "provider",
+  "git",
   "settings",
   "event",
+  "lifecycle",
 ] as const;
 
 const resources = {
@@ -62,11 +68,13 @@ const resources = {
     office: officeZh,
     employee: employeeZh,
     project: projectZh,
-    artifact: artifactZh,
+    drive: driveZh,
     runtime: runtimeZh,
     provider: providerZh,
+    git: gitZh,
     settings: settingsZh,
     event: eventZh,
+    lifecycle: lifecycleZh,
   },
   "en-US": {
     common: commonEn,
@@ -75,11 +83,13 @@ const resources = {
     office: officeEn,
     employee: employeeEn,
     project: projectEn,
-    artifact: artifactEn,
+    drive: driveEn,
     runtime: runtimeEn,
     provider: providerEn,
+    git: gitEn,
     settings: settingsEn,
     event: eventEn,
+    lifecycle: lifecycleEn,
   },
 };
 

@@ -15,7 +15,7 @@ interface ProviderSelectorProps {
   id?: string;
 }
 
-/** Native select over enabled providers. Rendering is presentational; fetching is the caller's job. */
+/** Native select over enabled providers, with the scope marked per option. Rendering is presentational; fetching is the caller's job. */
 export function ProviderSelector({
   providers,
   value,
@@ -40,8 +40,8 @@ export function ProviderSelector({
       <option value="">{t("provider:selector.selectProvider")}</option>
       {choices.map((p) => (
         <option key={p.id} value={p.id}>
-          {p.name} ({enumLabel(t, "provider:type", p.provider_type)}
-          {p.scope === "employee" ? t("provider:selector.privateSuffix") : ""})
+          {p.name} ({enumLabel(t, "provider:type", p.provider_type)} ·{" "}
+          {t(`provider:scope.${p.scope}`)})
         </option>
       ))}
     </select>

@@ -1,0 +1,222 @@
+{
+  "status": {
+    "pending": "Pending",
+    "onboarding": "Onboarding",
+    "active": "Active",
+    "transferring": "Transferring",
+    "suspended": "Suspended",
+    "offboarding": "Offboarding",
+    "offboarded": "Offboarded"
+  },
+  "actions": {
+    "hire": "Hire Employee",
+    "transfer": "Transfer",
+    "suspend": "Suspend",
+    "resume": "Resume",
+    "offboard": "Offboard",
+    "jobInProgress": "A provisioning job is running; actions are paused"
+  },
+  "wizard": {
+    "title": "Hire Employee",
+    "stepOf": "Step {{current}} of {{total}} — {{step}}",
+    "steps": {
+      "identity": "Identity",
+      "department": "Department & Position",
+      "manager": "Manager",
+      "runtime": "Runtime",
+      "provider": "Model & Provider",
+      "brain": "Personality & Learning",
+      "packages": "Access Packages",
+      "preview": "Provisioning Preview",
+      "hire": "Hire"
+    },
+    "namePlaceholder": "Name, e.g. Ada",
+    "slugPlaceholder": "e.g. ada-lovelace",
+    "slugHint": "Unique handle used for account and workspace naming.",
+    "titlePlaceholder": "Title, e.g. Senior Engineer",
+    "roleLabel": "Role",
+    "departmentLabel": "Department",
+    "positionLabel": "Position",
+    "noPosition": "(No position)",
+    "managerLabel": "Manager",
+    "noManager": "(No manager)",
+    "managerHint": "Optional — you can change this later.",
+    "runtimeHint": "Pick the runtime type that powers this employee.",
+    "providerHint": "Bind an independent model to this employee. Reuse a company provider, create a private provider, or configure it later.",
+    "providerModes": {
+      "existing": "Existing provider",
+      "new": "New private setup",
+      "none": "Configure later"
+    },
+    "providerLabel": "Company provider",
+    "selectProvider": "Select a provider",
+    "noCompanyProvider": "No company provider is configured yet. Create a private setup or add one from the employee profile later.",
+    "providerNamePlaceholder": "Configuration name, e.g. CEO OpenAI",
+    "providerUrlPlaceholder": "Base URL (optional)",
+    "apiKeyPlaceholder": "API key (optional)",
+    "apiKeyHint": "The key is submitted once and encrypted by the server; plaintext is never displayed again.",
+    "modelLabel": "Model",
+    "modelPlaceholder": "e.g. gpt-5.2 or claude-sonnet-4-5",
+    "providerLaterHint": "Identity, workspace and runtime will still be provisioned. Bind a provider and model from the employee profile later.",
+    "personalityLabel": "Personality",
+    "goalsLabel": "Long-term goals",
+    "learningLabel": "Enable continuous learning",
+    "learningHint": "Let the employee retain retrospectives and delivery lessons as durable knowledge.",
+    "curiosityLabel": "Curiosity",
+    "curiosityLow": "Low",
+    "curiosityMedium": "Medium",
+    "curiosityHigh": "High",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "packagesHint": "Choose the access packages to grant; role defaults are pre-selected.",
+    "previewHint": "These resources will be provisioned. Unavailable ones do not block hiring and can be retried later.",
+    "previewEmpty": "Nothing to provision for this department/package combination.",
+    "previewAvailable": "Available",
+    "previewUnavailable": "Unavailable",
+    "unavailableWarning": "{{count}} resource(s) are currently unavailable; you can retry them from the job panel after hiring.",
+    "summary": {
+      "name": "Name",
+      "slug": "Slug",
+      "title": "Title",
+      "role": "Role",
+      "department": "Department",
+      "position": "Position",
+      "manager": "Manager",
+      "runtime": "Runtime",
+      "provider": "Provider",
+      "model": "Model",
+      "learning": "Learning policy",
+      "packages": "Access packages"
+    },
+    "hire": "Hire",
+    "hiring": "Hiring…"
+  },
+  "job": {
+    "title": "Provisioning job",
+    "kind": {
+      "onboarding": "Onboarding",
+      "transfer": "Transfer",
+      "permission_change": "Permission change",
+      "suspension": "Suspension",
+      "resumption": "Resumption",
+      "offboarding": "Offboarding"
+    },
+    "status": {
+      "pending": "Pending",
+      "running": "Running",
+      "done": "Done",
+      "partial": "Partial",
+      "failed": "Failed"
+    },
+    "stepStatus": {
+      "pending": "Pending",
+      "running": "Running",
+      "done": "Done",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "progress": "{{done}}/{{total}} ready",
+    "retry": "Retry failed steps",
+    "retrying": "Retrying…",
+    "emptyTitle": "No provisioning jobs yet"
+  },
+  "employment": {
+    "currentTitle": "Current employment",
+    "historyTitle": "Employment history",
+    "department": "Department",
+    "position": "Position",
+    "manager": "Manager",
+    "status": "Status",
+    "joinedAt": "Joined",
+    "effectiveFrom": "Effective from",
+    "effectiveTo": "Effective to",
+    "present": "Present",
+    "emptyTitle": "No employment records yet"
+  },
+  "accounts": {
+    "emptyTitle": "No resource accounts yet",
+    "emptyHint": "Accounts appear here once provisioning completes.",
+    "lastSynced": "Last synced {{time}}",
+    "neverSynced": "Never synced",
+    "reconcile": "Check drift",
+    "reconciling": "Checking…",
+    "noDrift": "No drift detected — actual state matches the desired state.",
+    "driftTitle": "{{count}} drift(s) detected (detection only, no auto-remediation)"
+  },
+  "accountStatus": {
+    "pending": "Pending",
+    "provisioning": "Provisioning",
+    "active": "Active",
+    "suspended": "Suspended",
+    "failed": "Failed",
+    "deprovisioning": "Deprovisioning",
+    "deprovisioned": "Deprovisioned"
+  },
+  "access": {
+    "emptyTitle": "No effective entitlements",
+    "emptyHint": "Entitlements come from assigned access packages.",
+    "source": "Source: {{name}}",
+    "type": {
+      "role": "Role",
+      "group": "Group",
+      "permission": "Permission",
+      "resource_access": "Resource access"
+    }
+  },
+  "assets": {
+    "emptyTitle": "No assets yet",
+    "emptyHint": "Resources created by the employee are recorded here.",
+    "table": {
+      "type": "Type",
+      "externalId": "External ID",
+      "owner": "Owner",
+      "project": "Project",
+      "provider": "Provider"
+    }
+  },
+  "timeline": {
+    "title": "Lifecycle timeline",
+    "emptyTitle": "No lifecycle events yet"
+  },
+  "transfer": {
+    "title": "Transfer employee",
+    "description": "Change department, position, manager, and access packages; the access diff is computed and applied automatically.",
+    "reasonPlaceholder": "Reason (optional)",
+    "submit": "Confirm transfer",
+    "submitting": "Transferring…"
+  },
+  "suspend": {
+    "title": "Suspend employee",
+    "description": "Stops the runtime, suspends external accounts, and revokes sessions. Workspace, assets, and history are preserved; you can resume anytime.",
+    "reasonPlaceholder": "Reason (optional)",
+    "confirm": "Confirm suspension"
+  },
+  "resume": {
+    "title": "Resume employee",
+    "description": "Restores the employee's runtime and external account access.",
+    "confirm": "Confirm resumption"
+  },
+  "offboard": {
+    "title": "Offboard employee",
+    "description": "Stops work, revokes credentials, deprovisions accounts, and transfers owned assets. The employee and all history are kept forever.",
+    "warning": "Offboarding is irreversible: external accounts are deprovisioned and the workspace is archived.",
+    "transferToLabel": "Transfer assets to",
+    "transferTo": {
+      "department": "Department (default)",
+      "company": "Company",
+      "archive": "Archive",
+      "employee": "Specific employee"
+    },
+    "reasonPlaceholder": "Reason (optional)",
+    "confirm": "Confirm offboarding",
+    "confirming": "Offboarding…"
+  },
+  "packages": {
+    "settingsTitle": "Access Packages",
+    "settingsDescription": "Entitlement bundles assignable at hire time (read-only).",
+    "emptyTitle": "No access packages",
+    "builtIn": "Built-in",
+    "custom": "Custom",
+    "entitlementCount": "{{count}} entitlements"
+  }
+}

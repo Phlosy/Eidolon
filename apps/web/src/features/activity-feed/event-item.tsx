@@ -1,22 +1,89 @@
-import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
+import {
+  Activity,
+  BookOpen,
+  Boxes,
+  Building2,
+  Cpu,
+  FileText,
+  FolderKanban,
+  GraduationCap,
+  HardDrive,
+  ListTodo,
+  Plug,
+  Sparkles,
+  User,
+  type LucideIcon,
+} from "lucide-react";
 import { formatRelativeTime } from "../../utils/format";
+import { eventLabel, payloadSummary } from "./event-utils";
 import type { CompanyEvent, StreamEvent } from "../../types";
 
-function eventLabel(t: TFunction, type: string): string {
-  const key = `event:${type}`;
-  const translated = t(key);
-  // Missing everywhere → i18next returns the key itself; show the raw type.
-  return translated === key ? type : translated;
+/** Event domain → icon + tinted chip (uses the --status-* tokens). */
+const EVENT_DOMAIN_META: Record<string, { icon: LucideIcon; chipClass: string }> = {
+  task: {
+    icon: ListTodo,
+    chipClass: "border-status-working/25 bg-status-working/10 text-status-working",
+  },
+  project: {
+    icon: FolderKanban,
+    chipClass: "border-status-reflecting/25 bg-status-reflecting/10 text-status-reflecting",
+  },
+  employee: {
+    icon: User,
+    chipClass: "border-status-meeting/25 bg-status-meeting/10 text-status-meeting",
+  },
+  runtime: {
+    icon: Cpu,
+    chipClass: "border-status-learning/25 bg-status-learning/10 text-status-learning",
+  },
+  provider: {
+    icon: Plug,
+    chipClass: "border-status-researching/25 bg-status-researching/10 text-status-researching",
+  },
+  artifact: { icon: FileText, chipClass: "border-accent/25 bg-accent/10 text-accent" },
+  learning: {
+    icon: GraduationCap,
+    chipClass: "border-status-learning/25 bg-status-learning/10 text-status-learning",
+  },
+  knowledge: {
+    icon: BookOpen,
+    chipClass: "border-status-researching/25 bg-status-researching/10 text-status-researching",
+  },
+  skill: {
+    icon: Sparkles,
+    chipClass: "border-status-reflecting/25 bg-status-reflecting/10 text-status-reflecting",
+  },
+  company: { icon: Building2, chipClass: "border-border bg-muted text-muted-foreground" },
+  resource: {
+    icon: Boxes,
+    chipClass: "border-status-researching/25 bg-status-researching/10 text-status-researching",
+  },
+  asset: {
+    icon: HardDrive,
+    chipClass: "border-status-meeting/25 bg-status-meeting/10 text-status-meeting",
+  },
+};
+
+const DEFAULT_EVENT_META = {
+  icon: Activity,
+  chipClass: "border-border bg-muted text-muted-foreground",
+};
+
+function eventDomainMeta(type: string) {
+  return EVENT_DOMAIN_META[type.split(".")[0]] ?? DEFAULT_EVENT_META;
 }
 
-function payloadSummary(data: Record<string, unknown>): string | null {
-  const candidates = ["title", "name", "employee_name", "project_name", "status"];
-  for (const key of candidates) {
-    const value = data[key];
-    if (typeof value === "string" && value.length > 0) return value;
-  }
-  return null;
+function EventChip({ type }: { type: string }) {
+  const meta = eventDomainMeta(type);
+  const Icon = meta.icon;
+  return (
+    <span
+      className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${meta.chipClass}`}
+    >
+      <Icon className="h-3 w-3" />
+    </span>
+  );
 }
 
 export function EventItem({ event }: { event: CompanyEvent }) {
@@ -24,7 +91,7 @@ export function EventItem({ event }: { event: CompanyEvent }) {
   const summary = payloadSummary(event.payload ?? {});
   return (
     <li className="flex items-start gap-3 py-2">
-      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/60" />
+      <EventChip type={event.type} />
       <div className="min-w-0 flex-1">
         <p className="text-sm">
           <span className="font-medium">{eventLabel(t, event.type)}</span>
@@ -42,8 +109,8 @@ export function StreamEventItem({ event }: { event: StreamEvent }) {
   const { t } = useTranslation();
   const summary = payloadSummary(event.data ?? {});
   return (
-    <li className="flex items-start gap-3 py-2">
-      <span className="status-pulse mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+    <li className="ticker-in flex items-start gap-3 py-2">
+      <EventChip type={event.type} />
       <div className="min-w-0 flex-1">
         <p className="text-sm">
           <span className="font-medium">{eventLabel(t, event.type)}</span>

@@ -21,5 +21,16 @@
   "language": "语言",
   "languageHint": "界面语言，保存在本地，即时生效。",
   "apiDocs": "API 文档",
-  "apiDocsText": "后端在 <link>{{url}}/docs</link> 提供交互式 OpenAPI 文档。"
+  "apiDocsText": "后端在 <link>{{url}}/docs</link> 提供交互式 OpenAPI 文档。",
+  "console": {
+    "kicker": "系统管理",
+    "title": "公司系统控制台",
+    "description": "管理支撑员工、权限、代码托管、运行时与界面的组织服务。",
+    "navigation": "设置分区",
+    "providers": "服务商",
+    "git": "Git",
+    "runtime": "运行时",
+    "appearance": "外观",
+    "liveNote": "系统配置已连接到当前 Eidolon 环境。"
+  }
 }

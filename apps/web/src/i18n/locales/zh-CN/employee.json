@@ -8,7 +8,12 @@
     "role": "角色",
     "status": "状态",
     "runtime": "运行时",
-    "currentTask": "当前任务"
+    "currentTask": "当前任务",
+    "department": "部门",
+    "position": "职位",
+    "manager": "上级",
+    "employment": "在职状态",
+    "provisioning": "资源开通"
   },
   "status": {
     "offline": "离线",
@@ -29,8 +34,12 @@
   },
   "tabs": {
     "overview": "概览",
+    "employment": "任职",
     "runtime": "运行时",
     "activity": "动态",
+    "accounts": "账号",
+    "access": "权限",
+    "assets": "资产",
     "workspace": "工作区",
     "memory": "记忆",
     "knowledge": "知识",
@@ -43,6 +52,7 @@
     "id": "ID",
     "role": "角色",
     "slug": "标识",
+    "lifecycleStatus": "在职状态",
     "runtime": "运行时",
     "workspacePath": "工作区路径",
     "memoryNamespace": "记忆命名空间",
@@ -111,5 +121,27 @@
   "career": {
     "emptyTitle": "暂无履历事件",
     "emptyHint": "里程碑会随时间出现。"
+  },
+  "roster": {
+    "commandRoster": "组织指挥名册",
+    "summary": "{{total}} 名 AI 员工中有 {{active}} 名活跃",
+    "search": "搜索员工…",
+    "filterStatus": "按状态筛选",
+    "allStatuses": "全部状态",
+    "gridView": "网格视图",
+    "listView": "列表视图",
+    "unassigned": "未分配部门",
+    "workload": "派生工作负载",
+    "currentTask": "当前任务 #EID-{{id}}",
+    "available": "可接受任务",
+    "manage": "打开工作台",
+    "noMatch": "当前筛选条件下没有员工。"
+  },
+  "hero": {
+    "level": "等级",
+    "currentMission": "当前任务",
+    "awaitingMission": "等待分配任务",
+    "experience": "经验",
+    "derived": "等级与 XP 根据已记录的绩效和学习活动派生。"
   }
 }

@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { RuntimeBadge } from "../runtime/runtime-badge";
 import { StatusDot } from "../common/status-dot";
+import { LifecycleStatusBadge } from "../lifecycle/lifecycle-status-badge";
 import { EMPLOYEE_STATUS_META } from "../../utils/status";
 import { enumLabel } from "../../utils/labels";
 import { eid, initials } from "../../utils/format";
@@ -49,6 +50,14 @@ export function ProfileSection({ employee }: { employee: Employee }) {
         <Field label={t("employee:profile.slug")} value={employee.slug} mono />
         <div className="min-w-0">
           <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+            {t("employee:profile.lifecycleStatus")}
+          </dt>
+          <dd className="mt-1">
+            <LifecycleStatusBadge status={employee.lifecycle_status} />
+          </dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
             {t("employee:profile.runtime")}
           </dt>
           <dd className="mt-1">
@@ -56,7 +65,11 @@ export function ProfileSection({ employee }: { employee: Employee }) {
           </dd>
         </div>
         <Field label={t("employee:profile.workspacePath")} value={employee.workspace_path} mono />
-        <Field label={t("employee:profile.memoryNamespace")} value={employee.memory_namespace} mono />
+        <Field
+          label={t("employee:profile.memoryNamespace")}
+          value={employee.memory_namespace}
+          mono
+        />
         <Field
           label={t("employee:profile.currentTask")}
           value={employee.current_task_id != null ? eid(employee.current_task_id) : "—"}

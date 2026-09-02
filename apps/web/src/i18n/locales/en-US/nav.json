@@ -1,10 +1,19 @@
 {
   "dashboard": "Dashboard",
+  "overview": "Overview",
+  "productType": "AI Company OS",
   "office": "Office",
   "employees": "Employees",
+  "departments": "Departments",
   "projects": "Projects",
-  "artifacts": "Artifacts",
+  "cloudDocs": "Cloud Docs",
+  "git": "Git Workspace",
+  "knowledge": "Knowledge",
+  "runtime": "Runtime",
+  "drive": "Drive",
   "settings": "Settings",
+  "employeeWorkbench": "Employee Workbench",
+  "missionControl": "Mission Control",
   "tagline": "Autonomous AI Organization Runtime",
   "defaultCompany": "Eidolon Studio",
   "headerSubtitle": "AI Company Command Center",
@@ -13,5 +22,24 @@
     "connecting": "Connecting",
     "closed": "Offline"
   },
-  "toggleTheme": "Toggle theme"
+  "toggleTheme": "Toggle theme",
+  "toggleSidebar": "Toggle sidebar",
+  "openNavigation": "Open navigation",
+  "closeNavigation": "Close navigation",
+  "primaryNavigation": "Company navigation",
+  "globalSearch": "Global search",
+  "searchPlaceholder": "Search company…",
+  "notifications": "Notifications",
+  "create": "Create",
+  "collapse": "Collapse",
+  "companyLive": "Company live",
+  "activeAgents": "active agents",
+  "sections": {
+    "command": "Command",
+    "workforce": "Workforce",
+    "work": "Work",
+    "assets": "Assets",
+    "infrastructure": "Infrastructure",
+    "system": "System"
+  }
 }

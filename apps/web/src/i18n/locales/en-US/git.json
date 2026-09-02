@@ -1,0 +1,74 @@
+{
+  "section": {
+    "title": "Git",
+    "description": "Built-in Gitea service and external Git platform connections. Eidolon only connects to external platforms — it never installs them."
+  },
+  "builtin": {
+    "title": "Gitea (Built-in)",
+    "description": "Self-hosted Git service for employee accounts and project repositories.",
+    "dockerUnavailable": "Docker unavailable — the built-in Gitea container cannot run.",
+    "install": "Install",
+    "installing": "Installing Gitea… (pulling the image and creating the container, this can take a few minutes)",
+    "installConfirmTitle": "Install built-in Gitea",
+    "installConfirmText": "This will pull the gitea/gitea image and create the container eidolon-gitea, listening on 127.0.0.1:26990 (Web) and 127.0.0.1:26922 (SSH).",
+    "installConfirmAction": "Install",
+    "start": "Start",
+    "stop": "Stop",
+    "openUi": "Open Gitea",
+    "version": "Version {{version}}",
+    "errorHint": "The built-in Gitea is in an error state — check the Docker daemon and try again.",
+    "status": {
+      "not_installed": "Not installed",
+      "installing": "Installing",
+      "stopped": "Stopped",
+      "running": "Running",
+      "error": "Error"
+    }
+  },
+  "connections": {
+    "title": "External connections",
+    "description": "Connect to existing Git platforms (GitLab, Gitea, GitHub Enterprise, or custom). Eidolon only connects to these platforms — it never installs them.",
+    "add": "Add Connection",
+    "emptyTitle": "No Git connections",
+    "emptyHint": "Add an external Git platform connection, or install the built-in Gitea above.",
+    "noCredential": "No credential",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "deleteConfirmTitle": "Delete {{name}}",
+    "deleteConfirmText": "Anything using this connection will lose access to the platform. This cannot be undone.",
+    "deleteConfirmAction": "Delete"
+  },
+  "test": {
+    "button": "Test Connection",
+    "ok": "Connected",
+    "okWithVersion": "Connected · {{version}}",
+    "latency": "{{ms}}ms",
+    "failed": "Connection failed: {{error}}",
+    "unknownError": "unknown error"
+  },
+  "form": {
+    "addTitle": "Add Connection",
+    "addDescription": "Connect to an existing Git platform. The token is write-only; only the masked credential is ever shown.",
+    "name": "Name",
+    "namePlaceholder": "Company GitLab",
+    "platform": "Platform",
+    "baseUrl": "Base URL",
+    "token": "Access token (optional)",
+    "tokenHint": "Write-only — only the masked credential is shown afterwards.",
+    "enabled": "Enable this connection",
+    "required": "Name and Base URL are required.",
+    "submit": "Add Connection",
+    "placeholders": {
+      "gitlab": "https://gitlab.example.com",
+      "gitea": "https://gitea.example.com",
+      "github": "https://github.example.com",
+      "custom": "https://git.example.com"
+    }
+  },
+  "platform": {
+    "gitlab": "GitLab",
+    "gitea": "Gitea",
+    "github": "GitHub Enterprise",
+    "custom": "Custom"
+  }
+}

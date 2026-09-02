@@ -1,7 +1,9 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { listArtifacts } from "../api/artifacts";
+import { listDriveTree } from "../api/drive";
 import { listEmployees, getEmployeePerformance } from "../api/employees";
 import { getProject, listProjects } from "../api/projects";
+import { deriveCompanyProgress } from "../utils/company-metrics";
+import type { ProjectDetail } from "../types";
 
 /**
  * Mock-mode cost estimate per runtime task attempt, in USD.
@@ -17,6 +19,10 @@ export interface DashboardStats {
   tasksInProgress: number;
   artifactsCount: number;
   runtimeCostUsd: number;
+  tasksTotal: number;
+  tasksCompleted: number;
+  projectDetails: ProjectDetail[];
+  companyProgress: ReturnType<typeof deriveCompanyProgress>;
   isLoading: boolean;
   isError: boolean;
 }
@@ -27,9 +33,10 @@ const IN_PROGRESS_TASK_STATUSES = new Set(["in_progress", "in_review"]);
 export function useDashboardStats(): DashboardStats {
   const employeesQuery = useQuery({ queryKey: ["employees"], queryFn: listEmployees });
   const projectsQuery = useQuery({ queryKey: ["projects"], queryFn: listProjects });
-  const artifactsQuery = useQuery({
-    queryKey: ["artifacts", {}],
-    queryFn: () => listArtifacts(),
+  // v0.3: artifacts live in the Drive as documents; count drive documents.
+  const driveQuery = useQuery({
+    queryKey: ["drive", "tree", { zone: null }],
+    queryFn: () => listDriveTree(),
   });
 
   const projects = projectsQuery.data ?? [];
@@ -49,10 +56,12 @@ export function useDashboardStats(): DashboardStats {
     })),
   });
 
-  const tasksInProgress = projectDetailQueries
-    .map((q) => q.data)
-    .flatMap((detail) => detail?.tasks ?? [])
-    .filter((task) => IN_PROGRESS_TASK_STATUSES.has(task.status)).length;
+  const projectDetails = projectDetailQueries.flatMap((query) => query.data ? [query.data] : []);
+  const allTasks = projectDetails.flatMap((detail) => detail.tasks);
+  const tasksInProgress = allTasks.filter((task) => IN_PROGRESS_TASK_STATUSES.has(task.status)).length;
+  const tasksCompleted = allTasks.filter((task) => task.status === "done").length;
+  const documents = (driveQuery.data ?? []).filter((node) => node.kind === "document").length;
+  const completedProjects = projects.filter((project) => project.status === "completed").length;
 
   const totalAttempts = performanceQueries
     .map((q) => q.data)
@@ -61,19 +70,23 @@ export function useDashboardStats(): DashboardStats {
   const isLoading =
     employeesQuery.isLoading ||
     projectsQuery.isLoading ||
-    artifactsQuery.isLoading ||
+    driveQuery.isLoading ||
     projectDetailQueries.some((q) => q.isLoading) ||
     performanceQueries.some((q) => q.isLoading);
 
-  const isError = employeesQuery.isError || projectsQuery.isError || artifactsQuery.isError;
+  const isError = employeesQuery.isError || projectsQuery.isError || driveQuery.isError;
 
   return {
     employeesOnline: employees.filter((e) => e.status !== "offline").length,
     employeesTotal: employees.length,
     activeProjects: projects.filter((p) => ACTIVE_PROJECT_STATUSES.has(p.status)).length,
     tasksInProgress,
-    artifactsCount: artifactsQuery.data?.length ?? 0,
+    artifactsCount: documents,
     runtimeCostUsd: totalAttempts * MOCK_COST_PER_ATTEMPT,
+    tasksTotal: allTasks.length,
+    tasksCompleted,
+    projectDetails,
+    companyProgress: deriveCompanyProgress({ employees: employees.length, completedProjects, documents, completedTasks: tasksCompleted }),
     isLoading,
     isError,
   };

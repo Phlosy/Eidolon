@@ -5,5 +5,17 @@
   "emptyHint": "No employees seeded yet.",
   "memberCount_one": "{{count}} employee",
   "memberCount_other": "{{count}} employees",
-  "unassigned": "Unassigned"
+  "unassigned": "Unassigned",
+  "tickerLabel": "Live feed",
+  "floorLive": "Office floor live",
+  "departmentZone": "Department zone",
+  "activeNow": "active now",
+  "quickPanel": "Employee quick panel",
+  "department": "Department",
+  "runtime": "Runtime",
+  "level": "Derived level",
+  "validatedSkills": "Validated skills",
+  "currentMission": "Current mission",
+  "awaitingMission": "Awaiting assignment",
+  "openWorkbench": "Open full workbench"
 }

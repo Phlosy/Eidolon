@@ -24,6 +24,11 @@
     "failed": "失败",
     "rejected": "已驳回"
   },
+  "milestoneStatus": {
+    "pending": "未开始",
+    "in_progress": "进行中",
+    "completed": "已完成"
+  },
   "taskKind": {
     "order_review": "订单评审",
     "planning": "规划",
@@ -49,8 +54,8 @@
     "assignee": "负责人",
     "unassigned": "未分配"
   },
-  "artifacts": "产物",
-  "artifactsEmpty": "尚未产出任何产物。",
+  "files": "文件",
+  "filesEmpty": "该项目文件夹内还没有文件。",
   "createdAt": "创建于 {{time}}",
   "updatedAt": "更新于 {{time}}",
   "dialog": {
@@ -63,5 +68,60 @@
     "submit": "下达订单",
     "submitting": "正在下单…",
     "errorFallback": "创建项目失败"
+  },
+  "command": {
+    "boardKicker": "公司任务网络",
+    "boardTitle": "项目指挥板",
+    "boardDescription": "查看每项活跃任务的负责人、交付进度、资产和阻塞项。",
+    "activeMissions": "活跃任务",
+    "completedMissions": "已完成",
+    "mission": "任务 #EID-{{id}}",
+    "noBrief": "尚未提供任务简报。",
+    "missionProgress": "任务进度",
+    "owner": "负责人",
+    "unassigned": "未分配",
+    "milestone": "当前里程碑",
+    "noMilestone": "等待规划",
+    "tasks": "任务",
+    "artifacts": "产物",
+    "blockers": "阻塞项",
+    "healthDerived": "派生任务健康度"
+  },
+  "detail": {
+    "liveMission": "实时任务",
+    "milestonesKicker": "交付路径",
+    "workflowKicker": "任务工作流",
+    "workflowDescription": "将现有工作流图转化为团队的实时执行地图。",
+    "tasksKicker": "执行队列"
+  },
+  "timeline": {
+    "companyTitle": "公司项目总甘特图",
+    "companyDescription": "将全部项目、里程碑、任务和负责人放在同一条时间轴上；任务变化会通过实时事件同步，并定时校准。",
+    "projectTitle": "项目甘特图",
+    "projectDescription": "按里程碑展开任务计划、负责人和当前执行状态。",
+    "portfolioView": "公司项目组合",
+    "executionPlan": "里程碑执行计划",
+    "executionDescription": "每个里程碑都展开显示细分任务、完成度与负责人。",
+    "project": "项目",
+    "milestone": "里程碑",
+    "task": "任务",
+    "preparation": "前期任务",
+    "taskCount": "{{count}} 项任务",
+    "noChildTasks": "该里程碑尚未拆分任务",
+    "liveHint": "来自实时任务状态；断线时每 15 秒自动校准",
+    "updated": "已于 {{time}} 同步",
+    "workBreakdown": "项目 / 里程碑 / 任务 · 负责人",
+    "today": "今天",
+    "zoom": "时间轴缩放",
+    "zoomIn": "放大时间轴",
+    "zoomOut": "缩小时间轴",
+    "dayScale": "日视图",
+    "weekScale": "周视图",
+    "monthScale": "月视图",
+    "expand": "展开下级任务",
+    "collapse": "收起下级任务",
+    "gantt": "甘特图",
+    "cards": "项目卡片",
+    "empty": "暂无可展示的项目计划"
   }
 }

@@ -10,5 +10,61 @@
     "runtimeCost": "Runtime cost (mock)",
     "runtimeCostHint": "estimated"
   },
-  "recentActivity": "Recent activity"
+  "recentActivity": "Recent activity",
+  "viewAll": "View roster",
+  "viewBoard": "View board",
+  "hero": {
+    "companyLevel": "Company LV.",
+    "operational": "Operational",
+    "derived": "Derived from live company activity",
+    "commandCenter": "Company command center",
+    "description": "A living organization of AI employees, missions, knowledge, and execution infrastructure.",
+    "companyExperience": "Company experience",
+    "experienceSource": "{{xp}} total XP · deterministic derived metric",
+    "runtimeHealth": "Runtime health"
+  },
+  "workforce": {
+    "kicker": "Live workforce",
+    "title": "AI employee roster",
+    "description": "Who is working, learning, researching, or waiting for the next mission.",
+    "available": "Available"
+  },
+  "projects": {
+    "kicker": "Mission control",
+    "title": "Active project board",
+    "description": "Delivery health calculated from real task and milestone state.",
+    "empty": "No active projects. Create the company's next mission.",
+    "unassigned": "Unassigned",
+    "tasks": "{{done}}/{{total}} tasks complete",
+    "blockers_one": "{{count}} blocker",
+    "blockers_other": "{{count}} blockers"
+  },
+  "pulse": {
+    "kicker": "Operations timeline",
+    "title": "Company pulse",
+    "description": "Live and historical signals from employees, projects, runtimes, code, and documents."
+  },
+  "infrastructure": {
+    "kicker": "Infrastructure",
+    "title": "Runtime network",
+    "health": "aggregate node health",
+    "nodes": "active nodes",
+    "incidents": "incidents"
+  },
+  "assets": {
+    "kicker": "Production",
+    "title": "Asset output",
+    "total": "company documents produced",
+    "project": "Project assets",
+    "knowledge": "Knowledge assets"
+  },
+  "alerts": {
+    "kicker": "Attention queue",
+    "title": "Alert center",
+    "employeeErrors": "Employees requiring attention",
+    "runtimeErrors": "Runtime incidents",
+    "offline": "Employees offline",
+    "clear": "No active operational incidents. Offline employees remain visible for scheduling context.",
+    "review": "Operational issues need review. Open the related workspace before taking action."
+  }
 }

@@ -6,7 +6,28 @@
   },
   "employee": {
     "created": "新员工加入",
-    "status_changed": "员工状态变更"
+    "status_changed": "员工状态变更",
+    "hired": "员工已入职",
+    "onboarding_started": "入职开通已开始",
+    "onboarding_completed": "入职开通已完成",
+    "transfer_started": "调岗已开始",
+    "transferred": "员工已调岗",
+    "suspended": "员工已停职",
+    "resumed": "员工已复职",
+    "offboarding_started": "离职流程已开始",
+    "offboarded": "员工已离职",
+    "access_granted": "权限已授予",
+    "access_revoked": "权限已回收"
+  },
+  "resource": {
+    "provisioning_started": "资源开通已开始",
+    "provisioned": "资源已开通",
+    "provisioning_failed": "资源开通失败",
+    "suspended": "资源已挂起",
+    "deprovisioned": "资源已回收"
+  },
+  "asset": {
+    "transferred": "资产已转移"
   },
   "project": {
     "created": "收到新订单",

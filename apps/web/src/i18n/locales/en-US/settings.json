@@ -21,5 +21,16 @@
   "language": "Language",
   "languageHint": "Interface language. Persisted locally and applied immediately.",
   "apiDocs": "API documentation",
-  "apiDocsText": "The backend serves interactive OpenAPI docs at <link>{{url}}/docs</link>."
+  "apiDocsText": "The backend serves interactive OpenAPI docs at <link>{{url}}/docs</link>.",
+  "console": {
+    "kicker": "System administration",
+    "title": "Company Systems Console",
+    "description": "Manage the organization services that power employees, access, source control, runtimes, and the interface.",
+    "navigation": "Settings sections",
+    "providers": "Providers",
+    "git": "Git",
+    "runtime": "Runtime",
+    "appearance": "Appearance",
+    "liveNote": "System configuration is connected to the current Eidolon environment."
+  }
 }

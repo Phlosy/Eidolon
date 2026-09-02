@@ -15,6 +15,8 @@ function makeEmployee(status: EmployeeStatus): Employee {
     title: "Senior Engineer",
     avatar: null,
     status,
+    lifecycle_status: "active",
+    username: "charlie",
     runtime_type: "mock",
     runtime_config: {},
     workspace_path: "data/workspaces/charlie",
@@ -38,14 +40,14 @@ describe("EmployeeCard", () => {
     renderCard("working");
     expect(screen.getByTestId("status-label")).toHaveTextContent("Working");
     const dots = screen.getAllByTestId("status-dot");
-    expect(dots[0]).toHaveClass("bg-emerald-500");
+    expect(dots[0]).toHaveClass("bg-status-working");
     expect(dots[0]).toHaveClass("status-pulse");
   });
 
   it("renders the researching status in blue", () => {
     renderCard("researching");
     expect(screen.getByTestId("status-label")).toHaveTextContent("Researching");
-    expect(screen.getAllByTestId("status-dot")[0]).toHaveClass("bg-blue-500");
+    expect(screen.getAllByTestId("status-dot")[0]).toHaveClass("bg-status-researching");
   });
 
   it("renders the offline status dimmed without a pulse", () => {
@@ -89,5 +91,24 @@ describe("EmployeeCard", () => {
     );
     expect(screen.getByText("Build the API")).toBeInTheDocument();
     expect(screen.getByText("#EID-42")).toBeInTheDocument();
+    // Live elapsed timer ticking next to the task id (anchored at created_at).
+    expect(screen.getByTestId("elapsed-timer")).toBeInTheDocument();
+  });
+
+  it("shows the pulsing avatar aura only for actively-working statuses", () => {
+    const { container, unmount } = render(
+      <MemoryRouter>
+        <EmployeeCard employee={makeEmployee("working")} />
+      </MemoryRouter>,
+    );
+    expect(container.querySelector(".pulse-ring")).not.toBeNull();
+    unmount();
+
+    const { container: idleContainer } = render(
+      <MemoryRouter>
+        <EmployeeCard employee={makeEmployee("idle")} />
+      </MemoryRouter>,
+    );
+    expect(idleContainer.querySelector(".pulse-ring")).toBeNull();
   });
 });

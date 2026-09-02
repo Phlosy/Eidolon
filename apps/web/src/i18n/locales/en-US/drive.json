@@ -1,0 +1,121 @@
+{
+  "title": "Drive",
+  "description": "One unified file hierarchy for project files and company documents.",
+  "searchPlaceholder": "Search by name…",
+  "filterAll": "All",
+  "expand": "Expand",
+  "collapse": "Collapse",
+  "folder": "Folder",
+  "zone": {
+    "projects": "Projects",
+    "knowledge": "Knowledge",
+    "skills": "Skills",
+    "handbook": "Handbook",
+    "docx": "Word document",
+    "pdf": "PDF"
+  },
+  "docType": {
+    "prd": "PRD",
+    "research_report": "Research Report",
+    "architecture": "Architecture",
+    "source_file": "Source File",
+    "test_report": "Test Report",
+    "readme": "README",
+    "release": "Release",
+    "note": "Note",
+    "knowledge": "Knowledge",
+    "skill_doc": "Skill Doc",
+    "handbook": "Handbook"
+  },
+  "columns": {
+    "name": "Name",
+    "type": "Type",
+    "owner": "Owner",
+    "version": "Version",
+    "updatedAt": "Updated"
+  },
+  "emptyFolderTitle": "Empty folder",
+  "emptyFolderHint": "There is nothing in this folder yet.",
+  "noSelectionTitle": "Nothing selected",
+  "noSelectionHint": "Pick a zone, folder, or document in the tree on the left.",
+  "newFolder": {
+    "button": "New folder",
+    "namePlaceholder": "Folder name",
+    "submit": "Create",
+    "selectFirst": "Select a zone or folder first"
+  },
+  "viewer": {
+    "owner": "Owner",
+    "version": "Version",
+    "sha": "SHA",
+    "edit": "Edit",
+    "export": "Export",
+    "exporting": "Exporting…",
+    "exportFormat": "Export format",
+    "exportError": "The document could not be exported.",
+    "loadingPreview": "Preparing preview…",
+    "previewError": "This document could not be previewed. You can still export the original file.",
+    "pdfPreview": "PDF preview",
+    "pdfPage": "PDF page {{page}}",
+    "pdfLimited": "Preview is limited to the first 50 pages. Export the original PDF to view the rest.",
+    "presentationReady": "PowerPoint review deck is ready",
+    "presentationHint": "This browser shows a file summary (about {{size}} KB). Export the native PPTX to present or edit it.",
+    "exportFormats": {
+      "markdown": "Markdown (.md)",
+      "docx": "Word document (.docx)",
+      "pptx": "PowerPoint presentation (.pptx)",
+      "pdf": "PDF document (.pdf)"
+    }
+  },
+  "revisions": {
+    "title": "Revision history",
+    "empty": "No revisions yet."
+  },
+  "edit": {
+    "contentLabel": "Content",
+    "messageLabel": "Revision message (optional)",
+    "messagePlaceholder": "What changed…",
+    "save": "Save",
+    "saving": "Saving…"
+  },
+  "center": {
+    "kicker": "Company knowledge cloud",
+    "title": "Cloud Document Center",
+    "description": "Project output, research, knowledge, skills, and company records in one durable production system.",
+    "documents": "Documents",
+    "projectAssets": "Project assets",
+    "knowledgeAssets": "Knowledge assets"
+  },
+  "workspace": {
+    "navigation": "Cloud workspace",
+    "allFiles": "All files",
+    "recent": "Recent",
+    "spaces": "Spaces",
+    "cloudWorkspace": "Company cloud drive",
+    "createFolder": "Create folder",
+    "createFolderHint": "Start a new workspace",
+    "recentHint": "Continue recent work",
+    "projectsHint": "Browse project output",
+    "knowledgeHint": "Open company knowledge",
+    "searchResults": "Search results",
+    "folders": "Folders",
+    "documents": "Documents",
+    "recentDocuments": "Recent documents",
+    "noFolders": "No folders in this location.",
+    "itemCount_one": "{{count}} item",
+    "itemCount_other": "{{count}} items",
+    "documentCount_one": "{{count}} document",
+    "documentCount_other": "{{count}} documents",
+    "filterType": "Filter by document type",
+    "sortName": "Name",
+    "sortUpdated": "Recently updated",
+    "listView": "List view",
+    "gridView": "Grid view",
+    "back": "Back to parent folder",
+    "folderInteractionHint": "Click to expand; double-click or press Enter to open",
+    "upload": "Upload file",
+    "uploading": "Uploading…",
+    "uploadHint": "Markdown, DOCX, or PDF, up to 20 MB",
+    "uploadError": "The file could not be uploaded."
+  }
+}

@@ -7,12 +7,33 @@ import {
   testProvider,
   updateProvider,
 } from "../api/providers";
-import type { CreateProviderInput, UpdateProviderInput } from "../types";
+import { createEmployeeProvider, listEmployeeProviders } from "../api/employees";
+import type { CreateEmployeeProviderInput, CreateProviderInput, UpdateProviderInput } from "../types";
 
 export function useProviders(employeeId?: number) {
   return useQuery({
     queryKey: ["providers", { employeeId: employeeId ?? null }],
     queryFn: () => listProviders(employeeId),
+  });
+}
+
+/**
+ * v0.3 main entry point: the employee's own accounts plus company-shared ones
+ * (GET /employees/{id}/providers).
+ */
+export function useEmployeeProviders(employeeId: number) {
+  return useQuery({
+    queryKey: ["employees", employeeId, "providers"],
+    queryFn: () => listEmployeeProviders(employeeId),
+  });
+}
+
+export function useCreateEmployeeProvider(employeeId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateEmployeeProviderInput) => createEmployeeProvider(employeeId, body),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["employees", employeeId, "providers"] }),
   });
 }
 

@@ -4,5 +4,17 @@
   "emptyTitle": "办公室空无一人",
   "emptyHint": "尚未初始化任何员工。",
   "memberCount": "{{count}} 名员工",
-  "unassigned": "未分配"
+  "unassigned": "未分配",
+  "tickerLabel": "实时动态",
+  "floorLive": "办公室实时楼层",
+  "departmentZone": "部门区域",
+  "activeNow": "当前活跃",
+  "quickPanel": "员工快捷面板",
+  "department": "部门",
+  "runtime": "运行时",
+  "level": "派生等级",
+  "validatedSkills": "已验证技能",
+  "currentMission": "当前任务",
+  "awaitingMission": "等待分配任务",
+  "openWorkbench": "打开完整工作台"
 }

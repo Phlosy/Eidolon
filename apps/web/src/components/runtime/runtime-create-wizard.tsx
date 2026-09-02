@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCreateEmployeeRuntime } from "../../hooks/useRuntimes";
-import { useCreateProvider } from "../../hooks/useProviders";
+import { useCreateEmployeeProvider } from "../../hooks/useProviders";
 import { Button } from "../common/button";
 import { Dialog } from "../common/dialog";
 import { Input } from "../common/input";
@@ -164,6 +164,7 @@ export function RuntimeCreateWizard({
           />
           {creatingProvider ? (
             <InlineProviderCreate
+              employeeId={employeeId}
               supportedTypes={selectedType?.supported_providers}
               onCancel={() => setCreatingProvider(false)}
               onCreated={(id) => {
@@ -276,16 +277,19 @@ function SummaryRow({ label, value, mono }: { label: string; value: string; mono
 
 /** Minimal inline create-new-provider form for the wizard's provider step. */
 function InlineProviderCreate({
+  employeeId,
   supportedTypes,
   onCreated,
   onCancel,
 }: {
+  employeeId: number;
   supportedTypes?: ProviderType[];
   onCreated: (id: number) => void;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const createProvider = useCreateProvider();
+  // v0.3: provider accounts belong to the employee (POST /employees/{id}/providers).
+  const createProvider = useCreateEmployeeProvider(employeeId);
   const busy = createProvider.isPending;
   const [name, setName] = useState("");
   const [providerType, setProviderType] = useState<ProviderType>(supportedTypes?.[0] ?? "openai");
@@ -299,7 +303,6 @@ function InlineProviderCreate({
       {
         name: name.trim(),
         provider_type: providerType,
-        scope: "company",
         ...(apiKey ? { api_key: apiKey } : {}),
         ...(baseUrl.trim() ? { base_url: baseUrl.trim() } : {}),
       },

@@ -45,7 +45,7 @@ export function ProviderCard({
   return (
     <div
       data-testid={`provider-card-${provider.id}`}
-      className="rounded-lg border border-border bg-card p-4"
+      className="rounded-lg border border-border bg-card p-4 shadow-card transition-shadow duration-200 hover:shadow-lift"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">

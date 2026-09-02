@@ -14,6 +14,9 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: webPort,
+    // Hard requirement: never silently drift to another port — fail loudly instead,
+    // so the API port (26881) can never be shadowed by a second dev server.
+    strictPort: true,
     proxy: {
       "/api": {
         target: `http://127.0.0.1:${apiPort}`,

@@ -145,5 +145,21 @@
     "dockerUnavailable": "Docker 不可用",
     "compatibilityUnverified": "兼容性未验证",
     "update": "更新"
+  },
+  "controlCenter": {
+    "title": "基础设施控制中心",
+    "description": "实时查看运行时节点、模型服务商、容器健康与镜像操作。",
+    "liveInfrastructure": "实时基础设施",
+    "operational": "系统运行正常",
+    "standby": "基础设施待命中",
+    "summary": "{{total}} 个运行时节点中有 {{running}} 个活跃。",
+    "activeNodes": "活跃节点",
+    "incidents": "异常事件",
+    "images": "运行时镜像",
+    "nodesKicker": "运行时网络",
+    "nodesTitle": "Agent 执行节点",
+    "emptyTitle": "暂无运行时节点",
+    "emptyHint": "请从员工工作台创建运行时。",
+    "openWorkbench": "打开员工工作台"
   }
 }
