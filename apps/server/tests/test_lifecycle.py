@@ -226,6 +226,7 @@ def test_onboard_persists_provider_model_and_brain(client, db, gitea_down):
     assert provider is not None
     assert provider.owner_employee_id == employee_id
 
+
 def test_retry_reruns_only_failed_steps(client, gitea_down):
     body = _onboard(client, _unique_slug("retry"))
     job = body["job"]
