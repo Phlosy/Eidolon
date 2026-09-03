@@ -16,6 +16,7 @@ import {
   useTutorialDefinition,
 } from "../../hooks/useTutorial";
 import type { TutorialTargetSnapshot } from "./target-registry";
+import { readTargetSnapshot } from "./target-registry";
 import { useTutorialTarget } from "./use-tutorial-target";
 import { moveReplay, stopReplay, useReplaySession } from "./tutorial-replay";
 
@@ -142,10 +143,11 @@ export function useTutorialEngine(): TutorialEngine {
     step && typeof step.metadata?.target_key === "string" ? step.metadata.target_key : null;
   const active = Boolean(step) && mode !== "hidden" && !excluded;
   const stepHints = uiHintsOf(step);
-  const [hintIndex, setHintIndex] = useState(0);
   // 惰性同步读取：如果 useState(false) + effect 里再设，首帧的自动导航 effect
   // 会赶在弹窗状态生效之前把用户从弹窗里拽走（实测过）。
   const [dialogOpen, setDialogOpen] = useState(modalOpen);
+  const [manualHint, setManualHint] = useState<number | null>(null);
+  const lastVisibleHint = useRef(0);
   useEffect(() => {
     // 之后靠 MutationObserver 跟进弹窗开关，不轮询
     const observer = new MutationObserver(() => setDialogOpen(modalOpen()));
@@ -154,10 +156,31 @@ export function useTutorialEngine(): TutorialEngine {
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    setHintIndex(0); // 换步骤就从第一条指引重新开始
+    // 换步骤就从"跟随向导"重新开始
+    setManualHint(null);
+    lastVisibleHint.current = 0;
   }, [step?.id]);
-  const hinting = active && dialogOpen && stepHints.length > 0 && step?.kind !== "INFORMATION";
-  const hint = hinting ? (stepHints[Math.min(hintIndex, stepHints.length - 1)] ?? null) : null;
+  const hintCandidate =
+    Boolean(step) && active && stepHints.length > 0 && step?.kind !== "INFORMATION";
+  // 向导每翻一步只渲染当前那一段 DOM，所以"此刻可见的指引目标"就是用户真正
+  // 所在的那一步 —— 用它自动跟随。
+  const visibleHintIndex = hintCandidate
+    ? stepHints.findIndex((item) => readTargetSnapshot({ id: item.targetId }).status === "visible")
+    : -1;
+  useEffect(() => {
+    // 向导步骤变了 → 放弃手翻，回到跟随。纯自动跟随会永远压掉手翻，两条路都得留。
+    if (visibleHintIndex >= 0 && visibleHintIndex !== lastVisibleHint.current) {
+      lastVisibleHint.current = visibleHintIndex;
+      setManualHint(null);
+    }
+  }, [visibleHintIndex]);
+  const hinting = hintCandidate && (dialogOpen || visibleHintIndex >= 0);
+  const hintFloor = visibleHintIndex >= 0 ? visibleHintIndex : lastVisibleHint.current;
+  const workingIndex = Math.min(
+    Math.max(0, manualHint ?? hintFloor),
+    Math.max(0, stepHints.length - 1),
+  );
+  const hint = hinting ? (stepHints[workingIndex] ?? null) : null;
   const snapshot = useTutorialTarget(
     active ? (hint ? hint.targetId : (step?.target_id ?? null)) : null,
     hint ? null : targetKey,
@@ -226,9 +249,10 @@ export function useTutorialEngine(): TutorialEngine {
     },
     hint,
     hints: stepHints,
-    hintIndex: hint ? Math.min(hintIndex, stepHints.length - 1) : -1,
-    nextHint: () => setHintIndex((value) => Math.min(value + 1, stepHints.length - 1)),
-    previousHint: () => setHintIndex((value) => Math.max(value - 1, 0)),
+    hintIndex: hint ? workingIndex : -1,
+    // 手翻以当前生效位置为基准，否则自动跟随会被旧索引拽回去
+    nextHint: () => setManualHint(Math.min(workingIndex + 1, Math.max(0, stepHints.length - 1))),
+    previousHint: () => setManualHint(Math.max(0, workingIndex - 1)),
     dismissError: clearError,
     replayNext: () => moveReplay(1),
     replayPrevious: () => moveReplay(-1),

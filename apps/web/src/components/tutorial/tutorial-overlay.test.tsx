@@ -365,6 +365,34 @@ describe("向导内部指引（ui_hints）", () => {
     };
   });
 
+  it("向导只渲染当前那一段时，光自动跟随到对应指引，不需要手动翻页", async () => {
+    progressFor("hire_ceo");
+    render(
+      <MemoryRouter initialEntries={["/employees"]}>
+        <Routes>
+          <Route
+            path="/employees"
+            element={
+              <div>
+                <div role="dialog" aria-modal="true" data-rect="100,50,500,600">
+                  {/* 模拟向导走到最后一步：只有 confirm 那块 DOM 存在 */}
+                  <button data-tutorial-target="wizard-confirm" data-rect="420,560,120,32">
+                    Hire
+                  </button>
+                </div>
+                <TutorialOverlay />
+              </div>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
+    expect(screen.queryByText(/Confirm identity first/i)).toBeNull();
+    const halo = document.querySelector('[data-tutorial-halo="true"]') as HTMLElement;
+    expect(halo.style.left).toBe("412px");
+  });
+
   it("招聘向导打开时，光跟随向导内部元素，而不是抱怨被弹窗挡住", async () => {
     progressFor("hire_ceo");
     render(
