@@ -52,11 +52,25 @@ endif
 .PHONY: install-server
 install-server:
 ifdef UV
-	cd $(SERVER_DIR) && uv sync --extra dev
+	@[ -d $(VENV) ] || (cd $(SERVER_DIR) && uv venv)
+	cd $(SERVER_DIR) && uv pip install -r requirements.lock
+	cd $(SERVER_DIR) && uv pip install -e . --no-deps
 else
 	$(PYTHON) -m venv $(VENV)
-	$(PIPBIN) install -e '$(SERVER_DIR)[dev]'
+	$(PIPBIN) install -r $(SERVER_DIR)/requirements.lock
+	$(PIPBIN) install -e '$(SERVER_DIR)' --no-deps
 endif
+
+## lock-server: 用当前 .venv 的实测版本重写后端 requirements.lock
+.PHONY: lock-server
+lock-server:
+ifdef UV
+	@cd $(SERVER_DIR) && uv pip freeze | grep -Ev '^(eidolon-server|-e )| @ |^#' | sort -f > requirements.lock
+else
+	@$(VENV)/bin/python -m pip freeze --exclude-editable | grep -Ev '^-e | @ ' | sort -f > $(SERVER_DIR)/requirements.lock
+endif
+	@git diff --stat -- $(SERVER_DIR)/requirements.lock | tail -1
+	@echo "已重写 $(SERVER_DIR)/requirements.lock（检查 diff 后一起提交）"
 
 .PHONY: install-web
 install-web:

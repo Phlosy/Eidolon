@@ -14,7 +14,10 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
-        run: pip install -e 'apps/server[dev]'
+        # 走 requirements.lock，和开发者用同一套版本；ruff/pytest 不再随手升到最新。
+        run: |
+          pip install -r apps/server/requirements.lock
+          pip install -e apps/server --no-deps
       - name: Ruff
         run: |
           ruff check apps/server/app apps/server/tests

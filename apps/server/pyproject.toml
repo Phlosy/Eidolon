@@ -33,7 +33,9 @@ dev = [
     "pillow>=11",
     "pytest>=8",
     "pytest-asyncio>=0.23",
-    "ruff>=0.4",
+    # 格式化器版本会改变 `ruff format --check` 的判定，不 pin 就会让 CI 红绿灯不可复现。
+    # 完整锁版本见 requirements.lock（CI 与 make install 都走它）。
+    "ruff~=0.16.5",
 ]
 
 [tool.setuptools.packages.find]

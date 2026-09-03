@@ -25,4 +25,6 @@ make run
 - 前端：TypeScript strict；页面组件只组装，业务组件进 `components/`；不允许巨型单文件组件。
 - 架构边界（见 `docs/architecture.md` §0）不可破坏：Employee≠Runtime、Private Memory≠Company Knowledge、Task≠Agent Session、Domain Logic≠API、Frontend≠Runtime。
 - 任何 secret 走 `.env`，禁止提交。
+- 改了 Python 依赖必须同步锁文件：`make install-server && make lock-server`，把
+  `pyproject.toml` 与 `requirements.lock` 一起提交（CI 只装 lock，lock 缺包会直接红）。
 - 新端口必须先登记 `docs/ports.md`。

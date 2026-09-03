@@ -8,8 +8,12 @@ Binding spec: [`docs/architecture.md`](../../docs/architecture.md).
 ```bash
 cd apps/server
 python3 -m venv .venv
-.venv/bin/pip install -e '.[dev]'        # or: .venv/bin/pip install -r requirements.lock
+.venv/bin/pip install -r requirements.lock   # 锁版本，与 CI / make install 完全一致
+.venv/bin/pip install -e . --no-deps         # 再以开发模式装进本项目
 ```
+
+改过 `pyproject.toml` 的依赖后，先 `make install-server` 装新版，再跑 `make lock-server`
+重写 `requirements.lock`，两份一起提交 —— 锁文件一旦没跟上，CI 会直接 `ModuleNotFoundError`。
 
 ## Run tests
 
