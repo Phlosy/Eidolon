@@ -39,10 +39,7 @@ export function ProvidersOverviewTable() {
         ) : providersQuery.isError ? (
           <ErrorState error={providersQuery.error} onRetry={() => providersQuery.refetch()} />
         ) : providers.length === 0 ? (
-          <EmptyState
-            title={t("provider:emptyTitle")}
-            hint={t("provider:overview.emptyHint")}
-          />
+          <EmptyState title={t("provider:emptyTitle")} hint={t("provider:overview.emptyHint")} />
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-sm">
@@ -54,7 +51,9 @@ export function ProvidersOverviewTable() {
                   <th className="px-3 py-2 font-medium">{t("provider:overview.columns.owner")}</th>
                   <th className="px-3 py-2 font-medium">{t("provider:overview.columns.inUse")}</th>
                   <th className="px-3 py-2 font-medium">{t("provider:overview.columns.status")}</th>
-                  <th className="px-3 py-2 font-medium">{t("provider:overview.columns.actions")}</th>
+                  <th className="px-3 py-2 font-medium">
+                    {t("provider:overview.columns.actions")}
+                  </th>
                 </tr>
               </thead>
               <tbody>

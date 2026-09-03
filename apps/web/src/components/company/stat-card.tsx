@@ -23,7 +23,14 @@ interface StatCardProps {
   loading?: boolean;
 }
 
-export function StatCard({ label, value, hint, icon: Icon, tone = "neutral", loading }: StatCardProps) {
+export function StatCard({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  tone = "neutral",
+  loading,
+}: StatCardProps) {
   const isNumeric = typeof value === "number";
   const counted = useCountUp(isNumeric ? value : 0);
 

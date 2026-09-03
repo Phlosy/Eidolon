@@ -41,9 +41,7 @@ export function RuntimeCapabilitiesGrid({ capabilities }: { capabilities: Runtim
               <span className="inline-block h-3 w-3 text-center leading-3">—</span>
             )}
             <span>{enumLabel(t, "runtime:capability", key)}</span>
-            {!supported ? (
-              <span className="text-[10px]">{t("runtime:unsupported")}</span>
-            ) : null}
+            {!supported ? <span className="text-[10px]">{t("runtime:unsupported")}</span> : null}
           </div>
         );
       })}

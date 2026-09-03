@@ -41,9 +41,7 @@ describe("LanguageSelector", () => {
     expect(select).toHaveValue("zh-CN");
 
     fireEvent.change(select, { target: { value: "en-US" } });
-    await waitFor(() =>
-      expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("en-US"),
-    );
+    await waitFor(() => expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("en-US"));
     expect(i18n.t("nav:dashboard")).toBe("Dashboard");
   });
 });

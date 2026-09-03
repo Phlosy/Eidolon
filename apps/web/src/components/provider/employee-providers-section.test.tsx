@@ -57,8 +57,6 @@ describe("EmployeeProvidersSection", () => {
 
   it("offers an Add Provider Account action", () => {
     render(<EmployeeProvidersSection employeeId={7} />);
-    expect(
-      screen.getByRole("button", { name: "Add Provider Account" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add Provider Account" })).toBeInTheDocument();
   });
 });

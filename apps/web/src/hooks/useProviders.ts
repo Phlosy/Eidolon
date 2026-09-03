@@ -8,7 +8,11 @@ import {
   updateProvider,
 } from "../api/providers";
 import { createEmployeeProvider, listEmployeeProviders } from "../api/employees";
-import type { CreateEmployeeProviderInput, CreateProviderInput, UpdateProviderInput } from "../types";
+import type {
+  CreateEmployeeProviderInput,
+  CreateProviderInput,
+  UpdateProviderInput,
+} from "../types";
 
 export function useProviders(employeeId?: number) {
   return useQuery({

@@ -1,20 +1,9 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ChevronDown,
-  ChevronRight,
-  File,
-  Folder,
-  FolderOpen,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, File, Folder, FolderOpen } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { buildDriveTree, type DriveTreeNode } from "../../utils/drive-tree";
-import {
-  DOC_TYPE_FALLBACK_META,
-  DOC_TYPE_META,
-  DRIVE_ZONES,
-  ZONE_META,
-} from "./constants";
+import { DOC_TYPE_FALLBACK_META, DOC_TYPE_META, DRIVE_ZONES, ZONE_META } from "./constants";
 import type { DriveNode, DriveZone } from "../../types";
 
 interface DriveTreeProps {

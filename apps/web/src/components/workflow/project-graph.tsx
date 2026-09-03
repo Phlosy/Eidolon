@@ -45,12 +45,7 @@ export function ProjectGraphView({ graph }: { graph: ProjectGraph }) {
   const { nodes, edges } = useMemo(() => toFlowGraph(graph), [graph]);
 
   if (nodes.length === 0) {
-    return (
-      <EmptyState
-        title={t("project:graphEmptyTitle")}
-        hint={t("project:graphEmptyHint")}
-      />
-    );
+    return <EmptyState title={t("project:graphEmptyTitle")} hint={t("project:graphEmptyHint")} />;
   }
 
   return (

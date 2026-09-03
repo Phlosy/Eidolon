@@ -119,9 +119,7 @@ export function RuntimeCreateWizard({
                   : "hover:bg-muted/50",
               )}
             >
-              <span className="font-medium">
-                {enumLabel(t, "runtime:type", typeInfo.type)}
-              </span>
+              <span className="font-medium">{enumLabel(t, "runtime:type", typeInfo.type)}</span>
               {!typeInfo.implemented ? (
                 <span className="ml-2 text-xs text-muted-foreground">
                   {t("runtime:wizard.notImplemented")}
@@ -140,8 +138,7 @@ export function RuntimeCreateWizard({
       {step === "deployment" ? (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            {t("runtime:wizard.deploymentMode")}{" "}
-            <span className="font-mono text-xs">docker</span>
+            {t("runtime:wizard.deploymentMode")} <span className="font-mono text-xs">docker</span>
           </p>
           {dockerBlocked ? (
             <p
@@ -247,9 +244,7 @@ export function RuntimeCreateWizard({
             onClick={submit}
             data-testid="wizard-create"
           >
-            {createRuntime.isPending
-              ? t("runtime:wizard.creating")
-              : t("runtime:wizard.create")}
+            {createRuntime.isPending ? t("runtime:wizard.creating") : t("runtime:wizard.create")}
           </Button>
         ) : (
           <Button

@@ -117,9 +117,7 @@ export function GitConnectionCard({ connection }: { connection: GitConnection })
             variant="destructive"
             size="sm"
             disabled={remove.isPending}
-            onClick={() =>
-              remove.mutate(connection.id, { onSuccess: () => setConfirmOpen(false) })
-            }
+            onClick={() => remove.mutate(connection.id, { onSuccess: () => setConfirmOpen(false) })}
           >
             {remove.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
             {t("git:connections.deleteConfirmAction")}

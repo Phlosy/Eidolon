@@ -4,9 +4,7 @@ import { describe, expect, it } from "vitest";
 import { BuiltinGiteaCard } from "./builtin-gitea-card";
 import type { GitBuiltinStatus, GitOverview } from "../../types";
 
-function makeBuiltin(
-  overrides: Partial<GitOverview["builtin"]> = {},
-): GitOverview["builtin"] {
+function makeBuiltin(overrides: Partial<GitOverview["builtin"]> = {}): GitOverview["builtin"] {
   return {
     docker_available: true,
     status: "not_installed" as GitBuiltinStatus,

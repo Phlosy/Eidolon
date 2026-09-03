@@ -72,10 +72,14 @@ export function RuntimeUpdatesSection() {
               <thead>
                 <tr className="border-b border-border text-left text-xs text-muted-foreground">
                   <th className="px-4 py-2.5 font-medium">{t("runtime:updates.table.runtime")}</th>
-                  <th className="px-4 py-2.5 font-medium">{t("runtime:updates.table.installed")}</th>
+                  <th className="px-4 py-2.5 font-medium">
+                    {t("runtime:updates.table.installed")}
+                  </th>
                   <th className="px-4 py-2.5 font-medium">{t("runtime:updates.table.latest")}</th>
                   <th className="px-4 py-2.5 font-medium">{t("runtime:updates.table.status")}</th>
-                  <th className="px-4 py-2.5 font-medium">{t("runtime:updates.table.compatibility")}</th>
+                  <th className="px-4 py-2.5 font-medium">
+                    {t("runtime:updates.table.compatibility")}
+                  </th>
                   <th className="px-4 py-2.5 font-medium">{t("runtime:updates.table.usedBy")}</th>
                   <th className="px-4 py-2.5 font-medium">{t("runtime:updates.table.checked")}</th>
                   <th className="px-4 py-2.5 font-medium" />

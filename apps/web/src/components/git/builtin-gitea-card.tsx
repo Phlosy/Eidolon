@@ -101,12 +101,7 @@ export function BuiltinGiteaCard({ builtin }: { builtin: BuiltinState }) {
               </Button>
             ) : null}
             {builtin.status === "running" ? (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={busy}
-                onClick={() => stop.mutate()}
-              >
+              <Button variant="outline" size="sm" disabled={busy} onClick={() => stop.mutate()}>
                 {t("git:builtin.stop")}
               </Button>
             ) : null}
@@ -127,9 +122,7 @@ export function BuiltinGiteaCard({ builtin }: { builtin: BuiltinState }) {
           <Button
             size="sm"
             disabled={install.isPending}
-            onClick={() =>
-              install.mutate(undefined, { onSuccess: () => setConfirmOpen(false) })
-            }
+            onClick={() => install.mutate(undefined, { onSuccess: () => setConfirmOpen(false) })}
           >
             {install.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
             {t("git:builtin.installConfirmAction")}

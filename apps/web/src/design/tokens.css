@@ -49,9 +49,11 @@
   --glow-success: 0 0 26px oklch(0.61 0.16 155 / 0.16);
   --radius-panel: 1.25rem;
   --radius-card: 0.875rem;
-  --shadow-panel: 0 18px 44px -28px oklch(0.18 0.04 255 / 0.28), 0 1px 2px oklch(0.18 0.04 255 / 0.06);
+  --shadow-panel:
+    0 18px 44px -28px oklch(0.18 0.04 255 / 0.28), 0 1px 2px oklch(0.18 0.04 255 / 0.06);
   --shadow-floating: 0 24px 70px -28px oklch(0.12 0.05 255 / 0.38);
-  --elevation-card: 0 1px 2px oklch(0.18 0.04 255 / 0.06), 0 8px 26px -22px oklch(0.18 0.04 255 / 0.24);
+  --elevation-card:
+    0 1px 2px oklch(0.18 0.04 255 / 0.06), 0 8px 26px -22px oklch(0.18 0.04 255 / 0.24);
   --elevation-lift: var(--shadow-floating);
   --grid-dot: oklch(0.25 0.03 258 / 0.07);
   --grid-line: oklch(0.25 0.03 258 / 0.045);

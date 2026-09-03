@@ -56,9 +56,11 @@ export function useDashboardStats(): DashboardStats {
     })),
   });
 
-  const projectDetails = projectDetailQueries.flatMap((query) => query.data ? [query.data] : []);
+  const projectDetails = projectDetailQueries.flatMap((query) => (query.data ? [query.data] : []));
   const allTasks = projectDetails.flatMap((detail) => detail.tasks);
-  const tasksInProgress = allTasks.filter((task) => IN_PROGRESS_TASK_STATUSES.has(task.status)).length;
+  const tasksInProgress = allTasks.filter((task) =>
+    IN_PROGRESS_TASK_STATUSES.has(task.status),
+  ).length;
   const tasksCompleted = allTasks.filter((task) => task.status === "done").length;
   const documents = (driveQuery.data ?? []).filter((node) => node.kind === "document").length;
   const completedProjects = projects.filter((project) => project.status === "completed").length;
@@ -86,7 +88,12 @@ export function useDashboardStats(): DashboardStats {
     tasksTotal: allTasks.length,
     tasksCompleted,
     projectDetails,
-    companyProgress: deriveCompanyProgress({ employees: employees.length, completedProjects, documents, completedTasks: tasksCompleted }),
+    companyProgress: deriveCompanyProgress({
+      employees: employees.length,
+      completedProjects,
+      documents,
+      completedTasks: tasksCompleted,
+    }),
     isLoading,
     isError,
   };

@@ -40,9 +40,7 @@ export function ActivityFeed({ limit = 30 }: { limit?: number }) {
 
   const historical = eventsQuery.data ?? [];
   if (historical.length === 0 && freshLive.length === 0) {
-    return (
-      <EmptyState title={t("event:emptyTitle")} hint={t("event:emptyHint")} />
-    );
+    return <EmptyState title={t("event:emptyTitle")} hint={t("event:emptyHint")} />;
   }
 
   return (

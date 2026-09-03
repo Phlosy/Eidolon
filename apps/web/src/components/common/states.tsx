@@ -17,8 +17,7 @@ export function EmptyState({ title, hint }: { title: string; hint?: string }) {
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   const { t } = useTranslation();
-  const message =
-    error instanceof Error ? error.message : t("common:errorFallback");
+  const message = error instanceof Error ? error.message : t("common:errorFallback");
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-[var(--radius-panel)] border border-danger/30 bg-danger/5 py-12 text-center">
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-danger/10">
@@ -63,9 +62,7 @@ export function PageHeader({
         ) : null}
         <div>
           <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-          {description ? (
-            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-          ) : null}
+          {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
         </div>
       </div>
       {actions}

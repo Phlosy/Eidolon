@@ -46,7 +46,6 @@ beforeEach(() => {
 });
 
 describe("i18n infrastructure", () => {
-
   it("registers the two officially supported languages", () => {
     const codes = SUPPORTED_LANGUAGES.map((l) => l.code);
     expect(codes).toContain("zh-CN");

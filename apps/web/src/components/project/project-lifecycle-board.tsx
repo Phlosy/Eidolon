@@ -135,8 +135,8 @@ export function ProjectLifecycleBoard({
               {lifecycle.project.status === "completed"
                 ? "项目已完成并归档"
                 : activePhase?.gate_required
-                ? phaseLabel[activePhase.phase_type]
-                : "等待团队完成当前阶段"}
+                  ? phaseLabel[activePhase.phase_type]
+                  : "等待团队完成当前阶段"}
             </h3>
           </section>
         )}

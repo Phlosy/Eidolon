@@ -32,12 +32,12 @@ export function PerformanceTab({ employeeId }: { employeeId: number }) {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       <Stat label={t("employee:performance.attempts")} value={perf.attempts} />
       <Stat label={t("employee:performance.successes")} value={perf.success_count} />
-      <Stat label={t("employee:performance.successRate")} value={formatPercent(perf.success_rate)} />
-      <Stat label={t("employee:performance.artifacts")} value={perf.artifacts_count} />
       <Stat
-        label={t("employee:performance.learningRecords")}
-        value={perf.learning_records_count}
+        label={t("employee:performance.successRate")}
+        value={formatPercent(perf.success_rate)}
       />
+      <Stat label={t("employee:performance.artifacts")} value={perf.artifacts_count} />
+      <Stat label={t("employee:performance.learningRecords")} value={perf.learning_records_count} />
     </div>
   );
 }

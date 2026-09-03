@@ -149,7 +149,9 @@ export function EmployeeCard({
               title={t("employee:performance.successes")}
             >
               <CheckCircle2 className="h-3 w-3 text-status-working" />
-              <span className="font-mono font-medium tabular-nums">{performance.success_count}</span>
+              <span className="font-mono font-medium tabular-nums">
+                {performance.success_count}
+              </span>
             </span>
             <span
               className="inline-flex items-center gap-1"
@@ -169,7 +171,9 @@ export function EmployeeCard({
             <span className="ml-auto h-1 w-14 overflow-hidden rounded-full bg-muted">
               <span
                 className="block h-full rounded-full bg-status-working transition-[width] duration-500"
-                style={{ width: `${Math.round(Math.max(0, Math.min(1, performance.success_rate)) * 100)}%` }}
+                style={{
+                  width: `${Math.round(Math.max(0, Math.min(1, performance.success_rate)) * 100)}%`,
+                }}
               />
             </span>
           </div>

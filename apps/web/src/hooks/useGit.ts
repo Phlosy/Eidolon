@@ -19,8 +19,7 @@ export function useGitOverview() {
   return useQuery({
     queryKey: ["git"],
     queryFn: getGitOverview,
-    refetchInterval: (query) =>
-      query.state.data?.builtin.status === "installing" ? 3_000 : false,
+    refetchInterval: (query) => (query.state.data?.builtin.status === "installing" ? 3_000 : false),
   });
 }
 

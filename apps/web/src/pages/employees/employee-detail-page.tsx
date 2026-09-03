@@ -119,7 +119,16 @@ export function EmployeeDetailPage() {
 
   return (
     <div className="space-y-5 panel-enter">
-      <EmployeeHero employee={employee} department={companyQuery.data?.departments.find((department) => department.id === employee.department_id)} runtime={runtimeQuery.data ?? undefined} task={taskQuery.data} performance={performanceQuery.data} actions={<LifecycleActions employee={employee} onJobStarted={setActiveJobId} />} />
+      <EmployeeHero
+        employee={employee}
+        department={companyQuery.data?.departments.find(
+          (department) => department.id === employee.department_id,
+        )}
+        runtime={runtimeQuery.data ?? undefined}
+        task={taskQuery.data}
+        performance={performanceQuery.data}
+        actions={<LifecycleActions employee={employee} onJobStarted={setActiveJobId} />}
+      />
 
       {panelJobId != null ? (
         <div className="mb-5">
@@ -145,43 +154,43 @@ export function EmployeeDetailPage() {
       </div>
 
       <Panel className="p-5 md:p-6">
-          {tab === "overview" ? (
-            <div className="space-y-6">
-              <ProfileSection employee={employee} />
-              <LifecycleTimeline employeeId={employeeId} />
-            </div>
-          ) : null}
-          {tab === "employment" ? <EmploymentTab employeeId={employeeId} /> : null}
-          {tab === "runtime" ? <RuntimeTab employeeId={employeeId} /> : null}
-          {tab === "activity" ? <EmployeeActivity employeeId={employeeId} /> : null}
-          {tab === "accounts" ? <AccountsTab employeeId={employeeId} /> : null}
-          {tab === "access" ? <AccessTab employeeId={employeeId} /> : null}
-          {tab === "assets" ? <AssetsTab employeeId={employeeId} /> : null}
-          {tab === "workspace" ? <WorkspaceTab employee={employee} /> : null}
-          {tab === "memory" ? <MemoryTab employeeId={employeeId} /> : null}
-          {tab === "knowledge" ? (
-            knowledgeQuery.isLoading ? (
-              <Skeleton className="h-32 w-full" />
-            ) : (
-              <KnowledgeList items={knowledgeQuery.data ?? []} />
-            )
-          ) : null}
-          {tab === "skills" ? (
-            skillsQuery.isLoading ? (
-              <Skeleton className="h-32 w-full" />
-            ) : (
-              <EmployeeSkillPanel skills={skillsQuery.data ?? []} />
-            )
-          ) : null}
-          {tab === "learning" ? (
-            learningQuery.isLoading ? (
-              <Skeleton className="h-32 w-full" />
-            ) : (
-              <LearningRecordsList records={learningQuery.data ?? []} />
-            )
-          ) : null}
-          {tab === "performance" ? <PerformanceTab employeeId={employeeId} /> : null}
-          {tab === "career" ? <CareerTab employeeId={employeeId} /> : null}
+        {tab === "overview" ? (
+          <div className="space-y-6">
+            <ProfileSection employee={employee} />
+            <LifecycleTimeline employeeId={employeeId} />
+          </div>
+        ) : null}
+        {tab === "employment" ? <EmploymentTab employeeId={employeeId} /> : null}
+        {tab === "runtime" ? <RuntimeTab employeeId={employeeId} /> : null}
+        {tab === "activity" ? <EmployeeActivity employeeId={employeeId} /> : null}
+        {tab === "accounts" ? <AccountsTab employeeId={employeeId} /> : null}
+        {tab === "access" ? <AccessTab employeeId={employeeId} /> : null}
+        {tab === "assets" ? <AssetsTab employeeId={employeeId} /> : null}
+        {tab === "workspace" ? <WorkspaceTab employee={employee} /> : null}
+        {tab === "memory" ? <MemoryTab employeeId={employeeId} /> : null}
+        {tab === "knowledge" ? (
+          knowledgeQuery.isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : (
+            <KnowledgeList items={knowledgeQuery.data ?? []} />
+          )
+        ) : null}
+        {tab === "skills" ? (
+          skillsQuery.isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : (
+            <EmployeeSkillPanel skills={skillsQuery.data ?? []} />
+          )
+        ) : null}
+        {tab === "learning" ? (
+          learningQuery.isLoading ? (
+            <Skeleton className="h-32 w-full" />
+          ) : (
+            <LearningRecordsList records={learningQuery.data ?? []} />
+          )
+        ) : null}
+        {tab === "performance" ? <PerformanceTab employeeId={employeeId} /> : null}
+        {tab === "career" ? <CareerTab employeeId={employeeId} /> : null}
       </Panel>
     </div>
   );
