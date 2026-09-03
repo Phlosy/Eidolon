@@ -43,6 +43,18 @@ def clear_human_session_between_tests(client):
 
 
 @pytest.fixture()
+def fake_gitea(monkeypatch):
+    """git:gitea 内存替身：让 onboarding 能真的走到 ACTIVE（见 tests/fake_gitea.py）。"""
+    from fake_gitea import FakeGiteaProvisioner
+
+    from app.lifecycle.provisioners.registry import get_registry
+
+    fake = FakeGiteaProvisioner()
+    monkeypatch.setitem(get_registry()._provisioners, "git:gitea", fake)
+    return fake
+
+
+@pytest.fixture()
 def db():
     with SessionLocal() as session:
         yield session

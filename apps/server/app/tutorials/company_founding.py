@@ -1,185 +1,182 @@
-"""Company-founding tutorial definition; it observes real business services."""
+"""Company-founding tutorial definition; it observes real business services.
+
+步骤只声明"要达成什么业务状态"（``requirement``）与"在界面上指向哪里"
+（``route`` / ``target_id`` / ``placement`` / ``interaction_mode``）。
+判定本身在 ``app.tutorials.requirements``，文案在 i18n（``title_key`` 等），
+这里不写任何完成规则，也不写任何页面特判。
+"""
+
+from app.tutorials.schema import INFORMATION, OPTIONAL, REQUIRED, step
 
 COMPANY_FOUNDING_TUTORIAL = {
     "id": "company-founding",
-    "version": 1,
-    "title": {"zh-CN": "建立你的 AI 公司", "en-US": "Found Your AI Company"},
+    "version": 2,
+    "title_key": "tutorials.companyFounding.title",
+    "kind": REQUIRED,
+    # 核心教程通关即代表公司可以进入经营；实战项目不在这里，
+    # 见 first_project_practice —— 跳过它不影响 OPERATING。
+    "sets_operating_stage": True,
+    # 核心教程不能被"一键跳过"：它靠真实业务状态通关；
+    # 可跳过的是单个 OPTIONAL_ACTION 步骤，以及整个实战教程。
+    "allow_skip": False,
     "stages": [
         {
             "id": "welcome",
-            "title": {"zh-CN": "认识公司", "en-US": "Meet your company"},
+            "title_key": "tutorials.stages.welcome",
             "steps": [
-                {
-                    "id": "company_setup",
-                    "route": "/",
-                    "target": "[data-tutorial='company-overview']",
-                    "requirement": "COMPANY_CREATED",
-                    "optional": False,
-                },
+                step(
+                    "company_setup",
+                    kind=INFORMATION,
+                    requirement="COMPANY_CREATED",
+                    route="/",
+                    target_id="company-overview",
+                    placement="right",
+                    interaction_mode="FOCUS_ONLY",
+                ),
             ],
         },
         {
             "id": "leadership",
-            "title": {"zh-CN": "招募 CEO", "en-US": "Hire a CEO"},
+            "title_key": "tutorials.stages.leadership",
             "steps": [
-                {
-                    "id": "hire_ceo",
-                    "route": "/employees",
-                    "requirement": "CEO_HIRED",
-                    "optional": False,
-                },
-                {
-                    "id": "configure_ceo",
-                    "route": "/employees",
-                    "requirement": "CEO_RUNTIME_CONFIGURED",
-                    "optional": False,
-                },
+                step(
+                    "hire_ceo",
+                    requirement="CEO_ACTIVE",
+                    route="/employees",
+                    target_id="hire-employee",
+                    placement="left",
+                    # 招聘向导内部的逐步指引：引擎按顺序聚光，但"完成"只由
+                    # CEO_ACTIVE 这个真实状态决定 —— 指引不是通关条件。
+                    metadata={
+                        "ui_hints": [
+                            {"target_id": "wizard-position-ceo", "text_key": "hints.pickCeo"},
+                            {"target_id": "wizard-runtime", "text_key": "hints.pickRuntime"},
+                            {"target_id": "wizard-provider", "text_key": "hints.pickProvider"},
+                            {"target_id": "wizard-model", "text_key": "hints.pickModel"},
+                            {"target_id": "wizard-access", "text_key": "hints.pickAccess"},
+                            {"target_id": "wizard-confirm", "text_key": "hints.confirmOnboard"},
+                        ]
+                    },
+                ),
+                step(
+                    "configure_ceo_runtime",
+                    requirement="CEO_RUNTIME_CONFIGURED",
+                    route="/employees",
+                    target_id="employee-runtime-tab",
+                    placement="top",
+                    interaction_mode="NON_BLOCKING",
+                ),
+                step(
+                    "configure_ceo_provider",
+                    requirement="CEO_PROVIDER_CONFIGURED",
+                    route="/employees",
+                    target_id="employee-provider-bind",
+                    placement="top",
+                    interaction_mode="NON_BLOCKING",
+                ),
+                step(
+                    "configure_company_resources",
+                    requirement="CEO_RESOURCES_PROVISIONED",
+                    route="/employees",
+                    target_id="employee-accounts-tab",
+                    placement="top",
+                    interaction_mode="NON_BLOCKING",
+                ),
             ],
         },
         {
             "id": "company_systems",
-            "title": {"zh-CN": "连接公司系统", "en-US": "Connect company systems"},
+            "title_key": "tutorials.stages.companySystems",
             "steps": [
-                {
-                    "id": "cloud_docs",
-                    "route": "/drive",
-                    "requirement": "COMPANY_DOCUMENT_CREATED",
-                    "optional": False,
-                },
-                {
-                    "id": "git_setup",
-                    "route": "/settings#git",
-                    "requirement": "GIT_CONFIGURED",
-                    "optional": True,
-                },
+                step(
+                    "cloud_docs",
+                    requirement="COMPANY_DOCUMENT_CREATED",
+                    route="/drive",
+                    target_id="create-document",
+                    placement="bottom",
+                ),
+                step(
+                    "git_setup",
+                    kind=OPTIONAL,
+                    requirement="GIT_CONFIGURED",
+                    route="/settings",
+                    target_id="git-connection-create",
+                    placement="top",
+                    interaction_mode="NON_BLOCKING",
+                ),
             ],
         },
         {
             "id": "team",
-            "title": {"zh-CN": "组建团队", "en-US": "Build the team"},
+            "title_key": "tutorials.stages.team",
             "steps": [
-                {
-                    "id": "hire_engineer",
-                    "route": "/employees",
-                    "requirement": "ENGINEER_HIRED",
-                    "optional": False,
-                },
-                {
-                    "id": "hire_qa",
-                    "route": "/employees",
-                    "requirement": "QA_HIRED",
-                    "optional": True,
-                },
-            ],
-        },
-        {
-            "id": "first_project",
-            "title": {"zh-CN": "第一个项目", "en-US": "First project"},
-            "steps": [
-                {
-                    "id": "create_project",
-                    "route": "/projects",
-                    "requirement": "FIRST_PROJECT_CREATED",
-                    "optional": False,
-                },
-            ],
-        },
-        {
-            "id": "reviews",
-            "title": {"zh-CN": "人类评审门", "en-US": "Human review gates"},
-            "steps": [
-                {
-                    "id": "requirements_review",
-                    "route": "/projects",
-                    "requirement": "REQUIREMENTS_APPROVED",
-                    "optional": False,
-                },
-                {
-                    "id": "design_review",
-                    "route": "/projects",
-                    "requirement": "DESIGN_APPROVED",
-                    "optional": False,
-                },
-            ],
-        },
-        {
-            "id": "production",
-            "title": {"zh-CN": "开发与测试", "en-US": "Build and test"},
-            "steps": [
-                {
-                    "id": "development",
-                    "route": "/projects",
-                    "requirement": "DEVELOPMENT_COMPLETED",
-                    "optional": False,
-                },
-                {
-                    "id": "testing",
-                    "route": "/projects",
-                    "requirement": "TESTING_COMPLETED",
-                    "optional": False,
-                },
-                {
-                    "id": "acceptance_review",
-                    "route": "/projects",
-                    "requirement": "ACCEPTANCE_APPROVED",
-                    "optional": False,
-                },
-            ],
-        },
-        {
-            "id": "delivery",
-            "title": {"zh-CN": "交付并进入经营", "en-US": "Deliver and operate"},
-            "steps": [
-                {
-                    "id": "delivery",
-                    "route": "/projects",
-                    "requirement": "DELIVERY_COMPLETED",
-                    "optional": False,
-                },
+                step(
+                    "hire_engineer",
+                    requirement="ENGINEER_ACTIVE",
+                    route="/employees",
+                    target_id="hire-employee",
+                    placement="left",
+                    # 渐进式披露：第二位员工只提醒关键差异，不再逐字段讲解
+                    metadata={
+                        "ui_hints": [
+                            {
+                                "target_id": "wizard-position-engineer",
+                                "text_key": "hints.pickEngineer",
+                            },
+                            {"target_id": "wizard-confirm", "text_key": "hints.confirmOnboard"},
+                        ]
+                    },
+                ),
+                step(
+                    "configure_engineer",
+                    requirement="ENGINEER_READY",
+                    route="/employees",
+                    target_id="employee-runtime-tab",
+                    placement="top",
+                    interaction_mode="NON_BLOCKING",
+                ),
+                step(
+                    "hire_qa",
+                    kind=OPTIONAL,
+                    requirement="QA_ACTIVE",
+                    route="/employees",
+                    target_id="hire-employee",
+                    placement="left",
+                ),
             ],
         },
     ],
 }
 
-TUTORIAL_CENTER = [
+# 教程库：状态各自独立，Replay 只做信息回顾，不重跑业务门禁
+TUTORIAL_LIBRARY = [
     {
-        "id": "ceo-setup",
-        "title": {"zh-CN": "CEO 设置", "en-US": "CEO Setup"},
-        "route": "/employees",
+        "id": "company-founding",
+        "title_key": "tutorials.library.companyFounding",
+        "route": "/",
+        "replayable": True,
     },
+    {
+        "id": "first-project-practice",
+        "title_key": "tutorials.library.firstProjectPractice",
+        "route": "/projects",
+        "replayable": True,
+        "practice": True,
+    },
+]
+
+# 兼容旧的 /tutorial/center 章节列表：章节仍然只是"去哪看"，不是进度门禁
+TUTORIAL_CENTER = [
+    {"id": "ceo-setup", "title_key": "tutorials.center.ceoSetup", "route": "/employees"},
     {
         "id": "employee-management",
-        "title": {"zh-CN": "员工管理", "en-US": "Employee Management"},
+        "title_key": "tutorials.center.employeeManagement",
         "route": "/employees",
     },
-    {
-        "id": "provider-setup",
-        "title": {"zh-CN": "Provider 设置", "en-US": "Provider Setup"},
-        "route": "/settings#providers",
-    },
-    {
-        "id": "cloud-docs",
-        "title": {"zh-CN": "云文档", "en-US": "Cloud Documents"},
-        "route": "/drive",
-    },
-    {
-        "id": "git",
-        "title": {"zh-CN": "Git 与仓库", "en-US": "Git & Repositories"},
-        "route": "/settings#git",
-    },
-    {
-        "id": "projects",
-        "title": {"zh-CN": "项目", "en-US": "Projects"},
-        "route": "/projects",
-    },
-    {
-        "id": "reviews",
-        "title": {"zh-CN": "真人评审", "en-US": "Human Reviews"},
-        "route": "/projects",
-    },
-    {
-        "id": "delivery",
-        "title": {"zh-CN": "交付", "en-US": "Delivery"},
-        "route": "/projects",
-    },
+    {"id": "provider-setup", "title_key": "tutorials.center.providerSetup", "route": "/settings"},
+    {"id": "cloud-docs", "title_key": "tutorials.center.cloudDocs", "route": "/drive"},
+    {"id": "git", "title_key": "tutorials.center.git", "route": "/settings"},
+    {"id": "projects", "title_key": "tutorials.center.projects", "route": "/projects"},
+    {"id": "reviews", "title_key": "tutorials.center.reviews", "route": "/projects"},
+    {"id": "delivery", "title_key": "tutorials.center.delivery", "route": "/projects"},
 ]

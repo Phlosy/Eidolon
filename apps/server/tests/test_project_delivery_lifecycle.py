@@ -264,13 +264,22 @@ def test_change_request_preserves_existing_baseline(client, employees_by_slug):
 
 
 def test_tutorial_skip_is_persistent_and_creates_no_business_data(client):
+    """跳过只写状态，不产生业务数据。
+
+    能整体跳过的只有 First Project Practice —— 核心教程靠真实动作通关，
+    一键跳过它等于承认"没做完也算做完"，所以那里明确返回 409。
+    """
     before_employees = client.get("/api/v1/employees").json()
     before_projects = client.get("/api/v1/projects").json()
-    started = client.post("/api/v1/tutorial/start").json()
+
+    started = client.post("/api/v1/practice/start").json()
     assert started["status"] == "active"
-    skipped = client.post("/api/v1/tutorial/skip").json()
+    skipped = client.post("/api/v1/practice/skip").json()
     assert skipped["status"] == "skipped"
-    assert client.get("/api/v1/tutorial").json()["status"] == "skipped"
+    assert client.get("/api/v1/practice").json()["progress"]["status"] == "skipped"
+
+    assert client.post("/api/v1/tutorial/skip").status_code == 409
+
     assert client.get("/api/v1/employees").json() == before_employees
     assert client.get("/api/v1/projects").json() == before_projects
 
