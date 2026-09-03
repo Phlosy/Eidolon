@@ -49,7 +49,11 @@ export function GitSettingsSection() {
                     {t("git:connections.description")}
                   </p>
                 </div>
-                <Button size="sm" onClick={() => setAddOpen(true)}>
+                <Button
+                  size="sm"
+                  data-tutorial-target="git-connection-create"
+                  onClick={() => setAddOpen(true)}
+                >
                   <Plus className="h-3.5 w-3.5" />
                   {t("git:connections.add")}
                 </Button>

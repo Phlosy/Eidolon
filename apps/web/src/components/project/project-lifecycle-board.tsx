@@ -36,6 +36,21 @@ const phaseLabel: Record<string, string> = {
   project_archive: "归档",
 };
 
+/**
+ * 教程打光的锚点：phase_type -> target id。
+ * internal_testing 与 user_acceptance_testing 共用一个 target，
+ * registry 的"同 id 取第一个可见元素"策略保证选择结果稳定。
+ */
+const PHASE_TUTORIAL_TARGETS: Record<string, string | undefined> = {
+  requirements_review: "review-requirements",
+  system_design_review: "review-design",
+  development: "phase-development",
+  internal_testing: "phase-testing",
+  user_acceptance_testing: "phase-testing",
+  acceptance_review: "review-acceptance",
+  delivery: "delivery-package",
+};
+
 function PhaseIcon({ phase }: { phase: ProjectPhase }) {
   if (phase.status === "completed") return <Check className="h-3.5 w-3.5" />;
   if (phase.status === "waiting_review") return <ShieldCheck className="h-3.5 w-3.5" />;
@@ -156,6 +171,7 @@ export function ProjectLifecycleBoard({
         {lifecycle.phases.map((phase) => (
           <li
             key={phase.id}
+            data-tutorial-target={PHASE_TUTORIAL_TARGETS[phase.phase_type]}
             className={cn(
               "relative rounded-xl border p-3 transition-colors",
               phase.status === "completed" && "border-success/25 bg-success/6",

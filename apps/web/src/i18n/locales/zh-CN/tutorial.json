@@ -1,0 +1,195 @@
+{
+  "ui": {
+    "kicker": "互动教程",
+    "stepCounter": "第 {{current}} / {{total}} 步",
+    "stageOf": "{{stage}}",
+    "status": {
+      "completed": "已完成",
+      "skipped": "已跳过",
+      "waiting": "等待真实操作"
+    },
+    "requirement": "在等这条业务状态：{{name}}",
+    "autoAdvanceHint": "完成真实操作后会自动前进，不需要点“下一步”。",
+    "noFakeNext": "这一步不能靠点按钮完成。",
+    "gotIt": "知道了",
+    "previous": "上一步",
+    "next": "下一步",
+    "openPage": "打开这一步",
+    "skipStep": "跳过这步",
+    "later": "稍后再说",
+    "pause": "暂停教程",
+    "resume": "继续教程",
+    "pausedTitle": "教程已暂停",
+    "pausedBody": "随时可以从这里继续，进度不会丢。",
+    "exit": "退出到桌面",
+    "targetHiddenTitle": "入口被藏起来了",
+    "targetCoveredTitle": "当前弹窗挡住了目标",
+    "targetMissingTitle": "没找到这一步要点的元素",
+    "targetMissingBody": "页面可能还没渲染完，或者这一步的入口在别处。教程不会瞎指方向——你可以先手动打开对应页面。",
+    "targetHiddenBody": "入口存在但被折叠或隐藏了，展开后再继续。",
+    "targetCoveredBody": "当前有弹窗打开着，而这一步的目标在弹窗外面。先完成或关闭弹窗。",
+    "routePendingTitle": "还差一个真实对象",
+    "routePendingBody": "这一步要带你去某个具体员工的页面，但它还没被创建出来。先完成上一步。",
+    "dismiss": "关闭提示",
+    "whyTitle": "为什么重要",
+    "retryLocate": "重新定位",
+    "manualOpen": "手动打开页面",
+    "errorDenied": "被拒绝了：只有真实业务状态才能让这一步完成。",
+    "errorGeneric": "操作没有生效，可以重试。",
+    "replay": {
+      "badge": "演示回放",
+      "note": "回放只走一遍流程说明，不会执行任何真实操作，也不会改变进度。",
+      "prev": "上一步",
+      "next": "下一步",
+      "exit": "退出回放"
+    }
+  },
+  "tutorials": {
+    "companyFounding": {
+      "title": "建立你的第一家公司",
+      "description": "招聘 CEO、配置 Runtime 与 Provider、建立公司文档，直到第一位工程师能干活。"
+    },
+    "firstProjectPractice": {
+      "title": "第一个项目实战：Classic Snake",
+      "description": "用范围收紧的贪吃蛇项目走一遍需求、设计、开发、测试、验收、交付。可以跳过，之后随时回来。"
+    },
+    "stages": {
+      "welcome": "开始",
+      "leadership": "领导层",
+      "companySystems": "公司系统",
+      "team": "团队",
+      "intake": "立项",
+      "reviews": "评审",
+      "production": "生产",
+      "delivery": "交付"
+    },
+    "library": {
+      "companyFounding": "建立公司",
+      "firstProjectPractice": "项目实战"
+    },
+    "center": {
+      "ceoSetup": "CEO 设置",
+      "employeeManagement": "员工管理",
+      "providerSetup": "Provider 配置",
+      "cloudDocs": "公司文档",
+      "git": "Git 系统",
+      "projects": "项目流程",
+      "reviews": "评审关卡",
+      "delivery": "最终交付"
+    }
+  },
+  "library": {
+    "title": "教程库",
+    "description": "核心教程靠真实操作通关；项目实战可以整体跳过，之后在教程中心重新开始。",
+    "core": "核心",
+    "practice": "实战",
+    "start": "开始教程",
+    "replay": "回看教程",
+    "continue": "继续教程",
+    "resumePractice": "重新开始实战",
+    "skipPractice": "暂时跳过实战",
+    "skipConfirmTitle": "跳过第一个项目实战？",
+    "skipConfirmBody": "不会创建项目、不会调用任何 Agent、不会产生 Token 消耗。之后可以在教程中心重新开始。",
+    "skippedWithCost": "已跳过：没有产生任何项目数据",
+    "notStarted": "未开始",
+    "active": "进行中",
+    "paused": "已暂停",
+    "completed": "已完成",
+    "skipped": "已跳过",
+    "stepProgress": "{{done}} / {{total}} 步"
+  },
+  "practice": {
+    "dialogTitle": "开始第一个项目实战",
+    "dialogBody": "这一步会真的把项目交给你的 AI 员工执行。",
+    "accelerated": "加速模式：Tutorial Accelerated（范围收紧的演示项目）",
+    "team": "将参与的员工",
+    "runtime": "Runtime",
+    "provider": "Provider",
+    "model": "Model",
+    "usesLlm": "这些员工绑定的是真实模型服务，执行会消耗 Token。",
+    "mockOnly": "全部员工都在 Mock Runtime 上，不会产生模型开销。",
+    "noEmployees": "还没有配置好可执行的员工。先完成核心教程里的 Runtime 与 Provider 配置。",
+    "mockOption": "想零消耗先看流程？",
+    "mockOptionHint": "把员工的 Runtime 换成 Mock，再回到这里开始实战。",
+    "start": "开始实战",
+    "notNow": "以后再说"
+  },
+  "steps": {
+    "company_setup": {
+      "label": "认识你的新公司",
+      "explanation": "这是一家完全空白的 AI 公司。真人账号负责决策；AI Employee 是被招聘并长期存在的员工。"
+    },
+    "hire_ceo": {
+      "label": "招募第一位 CEO",
+      "explanation": "用真实的 Employee Onboarding Wizard 招聘负责人。教程不会替你造一个假员工。",
+      "why": "CEO 是后续决策与评审的责任人；没有 ACTIVE 的 CEO，项目评审就没有可以通过的审批人。"
+    },
+    "configure_ceo_runtime": {
+      "label": "给 CEO 选一个 Runtime",
+      "explanation": "Employee 是身份，Runtime 是执行环境。Mock Runtime 会被明确标记，不会被当成真实执行。",
+      "why": "Eidolon 的可审计性来自这三层分离：身份、执行环境、模型服务各自独立配置，换了模型不用换员工。"
+    },
+    "configure_ceo_provider": {
+      "label": "绑定 Provider 与 Model",
+      "explanation": "Provider 是模型服务来源，Model 是实际调用的模型。只有真正存下密钥的绑定才算配置完成。",
+      "why": "一个没有密钥的 Provider 看起来已配置、跑起来必然失败；教程因此要求密钥真实落盘。"
+    },
+    "configure_company_resources": {
+      "label": "分配 Workspace 与权限",
+      "explanation": "Provisioning 会给员工创建 Workspace、文档空间与权限包。Git 账号可以晚一点，但状态必须看得见。",
+      "why": "员工的产出要落到可追溯的位置：Workspace 存代码、文档空间存协作材料、权限包决定他能碰什么。"
+    },
+    "cloud_docs": {
+      "label": "建立第一份公司文档",
+      "explanation": "用 Markdown 进行 Agent 协作；正式客户材料可以再用 DOCX 或导出 PDF。"
+    },
+    "git_setup": {
+      "label": "连接 Git 系统",
+      "explanation": "可以安装内置 Gitea，也可以连接 GitLab、Gitea、GitHub Enterprise 或自定义服务。"
+    },
+    "hire_engineer": {
+      "label": "招募第一位工程师",
+      "explanation": "再走一遍真实 Provisioning，把 Runtime、Workspace、文档与权限分配给工程师。",
+      "why": "到这一步，公司才同时具备“决策”和“执行”两类角色，教程的核心目标也就达成了。"
+    },
+    "configure_engineer": {
+      "label": "让工程师能干活",
+      "explanation": "工程师需要 ACTIVE 身份、Runtime、有效 Provider 绑定和 Workspace 才算就绪。",
+      "why": "这四项缺一项，派给他的任务就会卡在分配阶段；教程用同一组业务门验证它们。"
+    },
+    "hire_qa": {
+      "label": "检查 QA 职责覆盖",
+      "explanation": "独立 QA 有助于职责分离；现在也可以跳过，项目会保留覆盖提醒。"
+    },
+    "create_project": {
+      "label": "创建 Classic Snake 项目",
+      "explanation": "从示例填充 Structured Project Intake，逐项确认需求、约束、交付物与评审计划。"
+    },
+    "requirements_review": {
+      "label": "完成需求评审",
+      "explanation": "AI 已完成分析；必须由你确认需求基线后才能进入系统设计。",
+      "why": "需求基线是整条追溯链的原点：设计、任务、测试、验收都引用它，改一次就得重来一遍。"
+    },
+    "design_review": {
+      "label": "完成设计评审",
+      "explanation": "检查系统设计、评审演示、Speaker Notes 与需求追踪，再由真人做决定。"
+    },
+    "development": {
+      "label": "查看开发产出",
+      "explanation": "查看员工、任务、仓库、分支、提交、产物与项目活动，确认团队真实工作。"
+    },
+    "testing": {
+      "label": "完成内部与验收测试",
+      "explanation": "内部测试负责缺陷与回归；验收测试按客户可见标准验证交付。"
+    },
+    "acceptance_review": {
+      "label": "执行验收评审",
+      "explanation": "最后一个 Human Gate：由真人确认验收结果与最终交付预览。",
+      "why": "交付前的最后一个人工确认是 Eidolon 的底线：AI 可以准备材料，但“可以交给客户”这个判断留给人。"
+    },
+    "delivery": {
+      "label": "生成最终交付包",
+      "explanation": "交付包聚合源码、构建、DOCX、PPTX、手册、发布说明、纪要与清单。"
+    }
+  }
+}

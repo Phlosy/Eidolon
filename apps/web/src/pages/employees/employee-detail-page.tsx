@@ -50,6 +50,15 @@ type Tab =
   | "performance"
   | "career";
 
+/**
+ * 教程 target：Tab 与 api 无关，是纯 UI 锚点。
+ * 没列出来的 Tab 保持 undefined（React 会省略该属性），避免误打光。
+ */
+const TUTORIAL_TAB_TARGETS: Partial<Record<Tab, string>> = {
+  runtime: "employee-runtime-tab",
+  accounts: "employee-accounts-tab",
+};
+
 const TABS: Tab[] = [
   "overview",
   "employment",
@@ -141,6 +150,7 @@ export function EmployeeDetailPage() {
           {TABS.map((key) => (
             <button
               key={key}
+              data-tutorial-target={TUTORIAL_TAB_TARGETS[key]}
               onClick={() => setTab(key)}
               className={cn(
                 "rounded-xl px-3 py-2 text-xs whitespace-nowrap text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",

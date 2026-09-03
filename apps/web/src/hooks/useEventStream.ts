@@ -8,21 +8,40 @@ const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 15000;
 
 /** Map an event type to the TanStack Query keys it should invalidate. */
+// 教程门禁挂在员工/runtime/provider/项目/文档/git 等真实状态上：这些域一有事件
+// 就重取教程进度，用户做完动作立刻看到推进，而不是等下一轮轮询。
+const TUTORIAL: string[] = ["tutorial"];
+
 function invalidatedKeys(type: string): string[][] {
   const domain = type.split(".")[0];
   switch (domain) {
+    case "tutorial":
+      return [TUTORIAL, ["events"]];
     case "employee":
-      return [["employees"], ["events"], ["runtimes"]];
+      return [["employees"], ["events"], ["runtimes"], TUTORIAL];
     case "runtime":
-      return [["employees"], ["events"], ["runtimes"], ["runtime-images"], ["runtime-types"]];
+      return [
+        ["employees"],
+        ["events"],
+        ["runtimes"],
+        ["runtime-images"],
+        ["runtime-types"],
+        TUTORIAL,
+      ];
     case "provider":
-      return [["providers"], ["events"]];
+      return [["providers"], ["events"], TUTORIAL];
     case "project":
-      return [["projects"], ["events"]];
+      return [["projects"], ["events"], TUTORIAL];
     case "task":
-      return [["tasks"], ["projects"], ["employees"], ["events"]];
+      return [["tasks"], ["projects"], ["employees"], ["events"], TUTORIAL];
     case "artifact":
-      return [["artifacts"], ["projects"], ["events"]];
+      return [["artifacts"], ["projects"], ["events"], TUTORIAL];
+    case "drive":
+    case "document":
+      return [["events"], TUTORIAL];
+    case "git":
+    case "review":
+      return [["events"], ["projects"], TUTORIAL];
     case "skill":
     case "learning":
     case "knowledge":

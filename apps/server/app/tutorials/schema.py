@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 REQUIRED_ACTION = "REQUIRED_ACTION"
@@ -26,6 +27,11 @@ PLACEMENTS = {"auto", "top", "right", "bottom", "left"}
 
 # 只有信息类步骤可以"点了就算过"；动作类必须由业务状态兑现
 INTERACTION_COMPLETES = {INFORMATION}
+
+# route 里的 {占位符} 由前端从 progress.context 取值替换（例如把用户带到
+# 那个具体员工的详情页）。名字写错的表现是"教程永远跳不过去"，所以在这里校验。
+CONTEXT_KEYS = {"ceo_employee_id", "engineer_employee_id", "project_id"}
+_PLACEHOLDER = re.compile(r"\{([a-z_]+)\}")
 
 
 def step(
@@ -116,4 +122,12 @@ def validate(definition: dict[str, Any], known_requirements: set[str]) -> list[s
             problems.append(f"步骤 {step_id} 的 requirement 未注册：{requirement}")
         if kind == REQUIRED_ACTION and item.get("allow_skip"):
             problems.append(f"步骤 {step_id} 是 REQUIRED_ACTION，不能允许跳过")
+        for placeholder in _PLACEHOLDER.findall(item.get("route") or ""):
+            if placeholder not in CONTEXT_KEYS:
+                problems.append(f"步骤 {step_id} 的 route 占位符未知：{{{placeholder}}}")
     return problems
+
+
+def route_placeholders(route: str) -> list[str]:
+    """步骤 route 里需要 context 提供的键（前端据此解析目标 URL）。"""
+    return _PLACEHOLDER.findall(route or "")

@@ -12,6 +12,7 @@ COMPANY_FOUNDING_TUTORIAL = {
     "id": "company-founding",
     "version": 2,
     "title_key": "tutorials.companyFounding.title",
+    "description_key": "tutorials.companyFounding.description",
     "kind": REQUIRED,
     # 核心教程通关即代表公司可以进入经营；实战项目不在这里，
     # 见 first_project_practice —— 跳过它不影响 OPERATING。
@@ -41,43 +42,48 @@ COMPANY_FOUNDING_TUTORIAL = {
             "steps": [
                 step(
                     "hire_ceo",
+                    why_key="steps.hire_ceo.why",
                     requirement="CEO_ACTIVE",
                     route="/employees",
                     target_id="hire-employee",
                     placement="left",
                     # 招聘向导内部的逐步指引：引擎按顺序聚光，但"完成"只由
                     # CEO_ACTIVE 这个真实状态决定 —— 指引不是通关条件。
+                    # ui_hints 只负责"向导内部往哪儿看"，完成条件仍是 CEO_ACTIVE；
+                    # target id 与 hire-wizard.tsx 里的 data-tutorial-target 一一对应。
                     metadata={
                         "ui_hints": [
-                            {"target_id": "wizard-position-ceo", "text_key": "hints.pickCeo"},
+                            {"target_id": "wizard-identity", "text_key": "hints.identity"},
                             {"target_id": "wizard-runtime", "text_key": "hints.pickRuntime"},
                             {"target_id": "wizard-provider", "text_key": "hints.pickProvider"},
-                            {"target_id": "wizard-model", "text_key": "hints.pickModel"},
-                            {"target_id": "wizard-access", "text_key": "hints.pickAccess"},
+                            {"target_id": "wizard-packages", "text_key": "hints.pickAccess"},
                             {"target_id": "wizard-confirm", "text_key": "hints.confirmOnboard"},
                         ]
                     },
                 ),
                 step(
                     "configure_ceo_runtime",
+                    why_key="steps.configure_ceo_runtime.why",
                     requirement="CEO_RUNTIME_CONFIGURED",
-                    route="/employees",
+                    route="/employees/{ceo_employee_id}",
                     target_id="employee-runtime-tab",
                     placement="top",
                     interaction_mode="NON_BLOCKING",
                 ),
                 step(
                     "configure_ceo_provider",
+                    why_key="steps.configure_ceo_provider.why",
                     requirement="CEO_PROVIDER_CONFIGURED",
-                    route="/employees",
+                    route="/employees/{ceo_employee_id}",
                     target_id="employee-provider-bind",
                     placement="top",
                     interaction_mode="NON_BLOCKING",
                 ),
                 step(
                     "configure_company_resources",
+                    why_key="steps.configure_company_resources.why",
                     requirement="CEO_RESOURCES_PROVISIONED",
-                    route="/employees",
+                    route="/employees/{ceo_employee_id}",
                     target_id="employee-accounts-tab",
                     placement="top",
                     interaction_mode="NON_BLOCKING",
@@ -112,6 +118,7 @@ COMPANY_FOUNDING_TUTORIAL = {
             "steps": [
                 step(
                     "hire_engineer",
+                    why_key="steps.hire_engineer.why",
                     requirement="ENGINEER_ACTIVE",
                     route="/employees",
                     target_id="hire-employee",
@@ -119,18 +126,17 @@ COMPANY_FOUNDING_TUTORIAL = {
                     # 渐进式披露：第二位员工只提醒关键差异，不再逐字段讲解
                     metadata={
                         "ui_hints": [
-                            {
-                                "target_id": "wizard-position-engineer",
-                                "text_key": "hints.pickEngineer",
-                            },
+                            {"target_id": "wizard-identity", "text_key": "hints.identity"},
+                            {"target_id": "wizard-packages", "text_key": "hints.engineerAccess"},
                             {"target_id": "wizard-confirm", "text_key": "hints.confirmOnboard"},
                         ]
                     },
                 ),
                 step(
                     "configure_engineer",
+                    why_key="steps.configure_engineer.why",
                     requirement="ENGINEER_READY",
-                    route="/employees",
+                    route="/employees/{engineer_employee_id}",
                     target_id="employee-runtime-tab",
                     placement="top",
                     interaction_mode="NON_BLOCKING",

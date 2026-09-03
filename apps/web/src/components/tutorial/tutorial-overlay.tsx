@@ -1,0 +1,290 @@
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  CircleDot,
+  GraduationCap,
+  Pause,
+  Play,
+  RotateCcw,
+  SkipForward,
+  X,
+} from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+import { cn } from "../../utils/cn";
+import { CoachPanel } from "./coach-panel";
+import { TutorialSpotlight } from "./tutorial-spotlight";
+import { useTutorialEngine } from "./use-tutorial-engine";
+import { tutorialTargets } from "./target-registry";
+import { stopReplay } from "./tutorial-replay";
+
+/**
+ * 互动聚光灯教程的唯一出口组件：挂在 AppShell 上，自己决定
+ * 打光在哪儿、面板说什么、按哪种 interaction_mode 拦点击。
+ */
+
+function ProgressDots({ total, index, done }: { total: number; index: number; done: boolean }) {
+  return (
+    <ol className="mt-3 flex gap-1" aria-label="progress">
+      {Array.from({ length: total }).map((_, position) => (
+        <li
+          key={position}
+          className={cn(
+            "h-1.5 flex-1 rounded-full bg-muted",
+            position < index && "bg-success",
+            position === index && (done ? "bg-success" : "bg-primary"),
+          )}
+        />
+      ))}
+    </ol>
+  );
+}
+
+function WhySection({ stepId }: { stepId: string }) {
+  const { t } = useTranslation("tutorial");
+  const [open, setOpen] = useState(false);
+  const body = t(`steps.${stepId}.why`);
+  if (body === `steps.${stepId}.why`) return null; // 没配文案就不显示空壳
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex min-h-8 items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+      >
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+        {t("ui.whyTitle")}
+      </button>
+      {open ? (
+        <p data-tutorial-why="true" className="mt-1 text-[11px] leading-5 text-muted-foreground">
+          {body}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function TutorialOverlay() {
+  const { t } = useTranslation("tutorial");
+  const engine = useTutorialEngine();
+  const { step } = engine;
+  if (!step) return null;
+
+  const paused = engine.progress?.status === "paused";
+  if (paused) {
+    // 暂停时完全不遮挡页面，只留一个入口（§"暂停不遮挡，但保留继续入口"）
+    return (
+      <aside
+        data-tutorial-overlay="paused"
+        className="fixed bottom-4 right-4 z-[60] flex items-center gap-3 rounded-2xl border border-primary/25 bg-card/96 p-3 shadow-2xl backdrop-blur"
+      >
+        <GraduationCap className="h-4 w-4 text-primary" />
+        <span className="text-xs">{t("ui.pausedTitle")}</span>
+        <button
+          type="button"
+          onClick={engine.togglePause}
+          className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-medium text-primary-foreground"
+        >
+          <Play className="h-3.5 w-3.5" />
+          {t("ui.resume")}
+        </button>
+      </aside>
+    );
+  }
+
+  const replay = engine.mode === "replay";
+  const cannotRoute = !replay && engine.pendingParams.length > 0;
+  // 兜底态只在"已经在对的页面上、却抓不到目标"时出现；还没导航过去不算兜底
+  const degraded =
+    cannotRoute || (!replay && engine.onRoute && engine.snapshot.status !== "visible");
+  const anchor: DOMRect | null =
+    !replay && engine.onRoute && engine.snapshot.status === "visible" ? engine.snapshot.rect : null;
+
+  const fallbackCopy = cannotRoute
+    ? { title: "ui.routePendingTitle", body: "ui.routePendingBody" }
+    : engine.snapshot.status === "hidden"
+      ? { title: "ui.targetHiddenTitle", body: "ui.targetHiddenBody" }
+      : engine.snapshot.status === "covered"
+        ? { title: "ui.targetCoveredTitle", body: "ui.targetCoveredBody" }
+        : { title: "ui.targetMissingTitle", body: "ui.targetMissingBody" };
+
+  return (
+    <>
+      {!replay ? (
+        <TutorialSpotlight snapshot={engine.snapshot} interactionMode={step.interaction_mode} />
+      ) : null}
+      <CoachPanel anchor={anchor} placement={step.placement} degraded={degraded}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <GraduationCap className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="type-kicker text-primary">
+                {replay ? t("ui.replay.badge") : t("ui.kicker")}
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                {t("ui.stepCounter", { current: engine.index + 1, total: engine.total })}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-label={replay ? t("ui.replay.exit") : t("ui.pause")}
+            onClick={replay ? () => stopReplay() : engine.togglePause}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            {replay ? <X className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+          </button>
+        </div>
+
+        <ProgressDots total={engine.total} index={engine.index} done={engine.stepDone} />
+
+        <div className="mt-4">
+          <div className="flex items-center gap-2">
+            {engine.stepDone ? (
+              <Check className="h-4 w-4 shrink-0 text-success" />
+            ) : (
+              <CircleDot className="h-4 w-4 shrink-0 text-primary" />
+            )}
+            <h2 className="text-sm font-semibold">{t(`steps.${step.id}.label`)}</h2>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+            {t(`steps.${step.id}.explanation`)}
+          </p>
+          {step.has_why ? <WhySection stepId={step.id} /> : null}
+        </div>
+
+        {degraded ? (
+          <div
+            data-tutorial-fallback="true"
+            className="mt-3 rounded-xl border border-warning/40 bg-warning/5 p-3"
+          >
+            <p className="flex items-center gap-1.5 text-xs font-medium text-warning">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              {t(fallbackCopy.title)}
+            </p>
+            <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+              {t(fallbackCopy.body)}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={engine.goToTarget}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-[11px] hover:bg-muted"
+              >
+                {t("ui.manualOpen")}
+              </button>
+              <button
+                type="button"
+                onClick={() => tutorialTargets.refresh()}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-2.5 text-[11px] hover:bg-muted"
+              >
+                <RotateCcw className="h-3 w-3" />
+                {t("ui.retryLocate")}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {!replay ? (
+          <p className="mt-3 rounded-lg border border-border bg-background/45 px-3 py-2 font-mono text-[10px] text-muted-foreground">
+            {engine.stepDone
+              ? t("ui.status.completed")
+              : engine.stepSkipped
+                ? t("ui.status.skipped")
+                : t("ui.requirement", { name: step.requirement })}
+          </p>
+        ) : (
+          <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{t("ui.replay.note")}</p>
+        )}
+
+        {engine.errorMessage ? (
+          <p
+            data-tutorial-error="true"
+            className="mt-2 flex items-start justify-between gap-2 text-[11px] text-danger"
+          >
+            <span>{engine.errorMessage}</span>
+            <button type="button" onClick={engine.dismissError} aria-label={t("ui.dismiss")}>
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </p>
+        ) : null}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {replay ? (
+            <>
+              <button
+                type="button"
+                onClick={engine.replayPrevious}
+                disabled={engine.index === 0}
+                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-border px-3 text-xs disabled:opacity-40"
+              >
+                {t("ui.replay.prev")}
+              </button>
+              <button
+                type="button"
+                onClick={engine.replayNext}
+                disabled={engine.index >= engine.total - 1}
+                className="inline-flex h-9 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-xs font-medium text-primary-foreground disabled:opacity-40"
+              >
+                {t("ui.replay.next")}
+              </button>
+            </>
+          ) : (
+            <>
+              {step.kind === "INFORMATION" && !engine.stepDone ? (
+                <button
+                  type="button"
+                  onClick={engine.acknowledge}
+                  disabled={engine.busy}
+                  className="inline-flex h-9 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-xs font-medium text-primary-foreground disabled:opacity-60"
+                >
+                  {t("ui.gotIt")}
+                </button>
+              ) : !engine.onRoute ? (
+                <button
+                  type="button"
+                  onClick={engine.goToTarget}
+                  className="inline-flex h-9 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-xs font-medium text-primary-foreground"
+                >
+                  {t("ui.openPage")}
+                </button>
+              ) : (
+                <p className="flex-1 text-[11px] leading-5 text-muted-foreground">
+                  {t("ui.autoAdvanceHint")}
+                </p>
+              )}
+              {step.allow_skip && step.kind !== "INFORMATION" ? (
+                <button
+                  type="button"
+                  onClick={engine.skipStep}
+                  disabled={engine.busy}
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-border px-3 text-xs hover:bg-muted"
+                >
+                  <SkipForward className="h-3.5 w-3.5" />
+                  {t("ui.later")}
+                </button>
+              ) : null}
+            </>
+          )}
+        </div>
+
+        {!replay && step.kind !== "INFORMATION" && engine.onRoute ? (
+          <p className="mt-2 text-[10px] text-muted-foreground">{t("ui.noFakeNext")}</p>
+        ) : null}
+        {!replay ? (
+          <Link
+            to="/settings"
+            className="mt-2 inline-block text-[10px] text-muted-foreground underline-offset-2 hover:underline"
+          >
+            {t("ui.exit")}
+          </Link>
+        ) : null}
+      </CoachPanel>
+    </>
+  );
+}

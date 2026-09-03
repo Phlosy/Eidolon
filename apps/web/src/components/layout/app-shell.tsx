@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { CompanySidebar } from "./company-sidebar";
 import { TopCommandBar } from "./top-command-bar";
 import { useEventStream } from "../../hooks/useEventStream";
-import { TutorialGuide } from "../tutorial/tutorial-guide";
+import { TutorialOverlay } from "../tutorial/tutorial-overlay";
 
 export function AppShell() {
   const { t } = useTranslation();
@@ -34,7 +34,7 @@ export function AppShell() {
             <Outlet />
           </div>
         </main>
-        <TutorialGuide />
+        <TutorialOverlay />
         <div id="global-overlay-layer" />
       </div>
     </div>

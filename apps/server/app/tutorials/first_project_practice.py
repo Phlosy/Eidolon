@@ -18,6 +18,7 @@ FIRST_PROJECT_PRACTICE = {
     "id": "first-project-practice",
     "version": 1,
     "title_key": "tutorials.firstProjectPractice.title",
+    "description_key": "tutorials.firstProjectPractice.description",
     "kind": "PRACTICE",
     "allow_skip": True,  # 教程级可跳过；跳过零成本
     "sets_operating_stage": False,
@@ -43,8 +44,9 @@ FIRST_PROJECT_PRACTICE = {
             "steps": [
                 step(
                     "requirements_review",
+                    why_key="steps.requirements_review.why",
                     requirement="REQUIREMENTS_APPROVED",
-                    route="/projects",
+                    route="/projects/{project_id}",
                     target_id="review-requirements",
                     placement="left",
                     interaction_mode="NON_BLOCKING",
@@ -52,7 +54,7 @@ FIRST_PROJECT_PRACTICE = {
                 step(
                     "design_review",
                     requirement="DESIGN_APPROVED",
-                    route="/projects",
+                    route="/projects/{project_id}",
                     target_id="review-design",
                     placement="left",
                     interaction_mode="NON_BLOCKING",
@@ -66,7 +68,7 @@ FIRST_PROJECT_PRACTICE = {
                 step(
                     "development",
                     requirement="DEVELOPMENT_COMPLETED",
-                    route="/projects",
+                    route="/projects/{project_id}",
                     target_id="phase-development",
                     placement="left",
                     interaction_mode="NON_BLOCKING",
@@ -74,15 +76,16 @@ FIRST_PROJECT_PRACTICE = {
                 step(
                     "testing",
                     requirement="TESTING_COMPLETED",
-                    route="/projects",
+                    route="/projects/{project_id}",
                     target_id="phase-testing",
                     placement="left",
                     interaction_mode="NON_BLOCKING",
                 ),
                 step(
                     "acceptance_review",
+                    why_key="steps.acceptance_review.why",
                     requirement="ACCEPTANCE_APPROVED",
-                    route="/projects",
+                    route="/projects/{project_id}",
                     target_id="review-acceptance",
                     placement="left",
                     interaction_mode="NON_BLOCKING",
@@ -96,7 +99,7 @@ FIRST_PROJECT_PRACTICE = {
                 step(
                     "delivery",
                     requirement="DELIVERY_COMPLETED",
-                    route="/projects",
+                    route="/projects/{project_id}",
                     target_id="delivery-package",
                     placement="left",
                     interaction_mode="NON_BLOCKING",

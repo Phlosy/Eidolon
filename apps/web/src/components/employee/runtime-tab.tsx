@@ -93,17 +93,20 @@ export function RuntimeTab({ employeeId }: { employeeId: number }) {
 
   return (
     <div className="space-y-5">
-      <RuntimeCard
-        instance={instance}
-        image={image ?? null}
-        busy={action.isPending}
-        checkingUpdates={checkUpdates.isPending}
-        onStop={() => action.mutate({ id: instance.id, op: "stop" })}
-        onRestart={() => action.mutate({ id: instance.id, op: "restart" })}
-        onViewLogs={() => setLogsOpen(true)}
-        onChangeProvider={openChangeProvider}
-        onCheckUpdate={() => checkUpdates.mutate()}
-      />
+      {/* 教程在这里打光：Provider/Model 的换绑入口就在这张卡上 */}
+      <div data-tutorial-target="employee-provider-bind">
+        <RuntimeCard
+          instance={instance}
+          image={image ?? null}
+          busy={action.isPending}
+          checkingUpdates={checkUpdates.isPending}
+          onStop={() => action.mutate({ id: instance.id, op: "stop" })}
+          onRestart={() => action.mutate({ id: instance.id, op: "restart" })}
+          onViewLogs={() => setLogsOpen(true)}
+          onChangeProvider={openChangeProvider}
+          onCheckUpdate={() => checkUpdates.mutate()}
+        />
+      </div>
 
       {typeInfo ? (
         <div>

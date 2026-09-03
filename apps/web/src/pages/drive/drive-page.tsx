@@ -235,6 +235,7 @@ export function DrivePage() {
                 />
                 <button
                   type="button"
+                  data-tutorial-target="create-document"
                   disabled={uploadMutation.isPending}
                   className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background/65 px-4 text-sm font-semibold text-foreground transition hover:border-border-active hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60"
                   title={t("drive:workspace.uploadHint")}

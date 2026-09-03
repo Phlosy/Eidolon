@@ -1,0 +1,195 @@
+{
+  "ui": {
+    "kicker": "Interactive tutorial",
+    "stepCounter": "Step {{current}} of {{total}}",
+    "stageOf": "{{stage}}",
+    "status": {
+      "completed": "Done",
+      "skipped": "Skipped",
+      "waiting": "Waiting for the real action"
+    },
+    "requirement": "Waiting on this business state: {{name}}",
+    "autoAdvanceHint": "This step advances when the real action happens — no Next button needed.",
+    "noFakeNext": "This step cannot be completed by clicking.",
+    "gotIt": "Got it",
+    "previous": "Back",
+    "next": "Next",
+    "openPage": "Open this step",
+    "skipStep": "Skip step",
+    "later": "Later",
+    "pause": "Pause tutorial",
+    "resume": "Resume tutorial",
+    "pausedTitle": "Tutorial paused",
+    "pausedBody": "Pick it up whenever you like — progress is kept.",
+    "exit": "Back to dashboard",
+    "targetHiddenTitle": "The control is hidden",
+    "targetCoveredTitle": "The open dialog covers the target",
+    "targetMissingTitle": "Could not find the element for this step",
+    "targetMissingBody": "The page may still be rendering, or this step lives elsewhere. The tutorial will not point at thin air — open the page yourself if needed.",
+    "targetHiddenBody": "The control exists but is collapsed or hidden. Expand it to continue.",
+    "targetCoveredBody": "A dialog is open and this step's target is outside it. Finish or close the dialog first.",
+    "routePendingTitle": "A real object is still missing",
+    "routePendingBody": "This step takes you to a specific employee's page, but that employee does not exist yet. Finish the previous step first.",
+    "dismiss": "Dismiss",
+    "whyTitle": "Why this matters",
+    "retryLocate": "Relocate",
+    "manualOpen": "Open the page manually",
+    "errorDenied": "Rejected: only real business state can complete this step.",
+    "errorGeneric": "That did not take effect. Try again.",
+    "replay": {
+      "badge": "Replay",
+      "note": "Replay walks the explanations only. It performs no real actions and never changes progress.",
+      "prev": "Back",
+      "next": "Next",
+      "exit": "Exit replay"
+    }
+  },
+  "tutorials": {
+    "companyFounding": {
+      "title": "Found your first company",
+      "description": "Hire a CEO, configure runtime and provider, create company documents, until your first engineer can work."
+    },
+    "firstProjectPractice": {
+      "title": "First project practice: Classic Snake",
+      "description": "Run requirements, design, development, testing, acceptance and delivery on a scoped-down Snake project. Skippable, and restartable later."
+    },
+    "stages": {
+      "welcome": "Start",
+      "leadership": "Leadership",
+      "companySystems": "Company systems",
+      "team": "Team",
+      "intake": "Intake",
+      "reviews": "Reviews",
+      "production": "Production",
+      "delivery": "Delivery"
+    },
+    "library": {
+      "companyFounding": "Found the company",
+      "firstProjectPractice": "Project practice"
+    },
+    "center": {
+      "ceoSetup": "CEO setup",
+      "employeeManagement": "Employee management",
+      "providerSetup": "Provider setup",
+      "cloudDocs": "Company documents",
+      "git": "Git system",
+      "projects": "Project flow",
+      "reviews": "Review gates",
+      "delivery": "Final delivery"
+    }
+  },
+  "library": {
+    "title": "Tutorial library",
+    "description": "The core tutorial is completed by doing real work. The project practice can be skipped entirely and restarted from here.",
+    "core": "Core",
+    "practice": "Practice",
+    "start": "Start tutorial",
+    "replay": "Replay tutorial",
+    "continue": "Continue tutorial",
+    "resumePractice": "Restart practice",
+    "skipPractice": "Skip practice for now",
+    "skipConfirmTitle": "Skip the first project practice?",
+    "skipConfirmBody": "No project is created, no agent is called, no tokens are spent. You can restart it later from the tutorial center.",
+    "skippedWithCost": "Skipped: no project data was created",
+    "notStarted": "Not started",
+    "active": "In progress",
+    "paused": "Paused",
+    "completed": "Completed",
+    "skipped": "Skipped",
+    "stepProgress": "{{done}} of {{total}} steps"
+  },
+  "practice": {
+    "dialogTitle": "Start the first project practice",
+    "dialogBody": "This hands the project to your AI employees for real execution.",
+    "accelerated": "Estimated mode: Tutorial Accelerated (scoped-down demo project)",
+    "team": "Employees involved",
+    "runtime": "Runtime",
+    "provider": "Provider",
+    "model": "Model",
+    "usesLlm": "These employees are bound to a real model service, so running the project consumes tokens.",
+    "mockOnly": "Every employee runs on a mock runtime, so there is no model cost.",
+    "noEmployees": "No runnable employee is configured yet. Finish the runtime and provider steps of the core tutorial first.",
+    "mockOption": "Want to see the flow with zero cost?",
+    "mockOptionHint": "Switch the employee runtime to Mock, then start the practice here.",
+    "start": "Start practice",
+    "notNow": "Not now"
+  },
+  "steps": {
+    "company_setup": {
+      "label": "Meet your new company",
+      "explanation": "This is a completely empty AI company. Human accounts make decisions; AI Employees are explicitly hired and persist as staff."
+    },
+    "hire_ceo": {
+      "label": "Hire your first CEO",
+      "explanation": "Use the real Employee Onboarding Wizard to hire leadership. The tutorial never creates fake employees.",
+      "why": "The CEO owns later decisions and reviews. Without an ACTIVE CEO there is no approver who can pass a project review."
+    },
+    "configure_ceo_runtime": {
+      "label": "Give the CEO a runtime",
+      "explanation": "Employee is identity, Runtime is the execution environment. Mock runtimes are labelled as such, never presented as real execution.",
+      "why": "Auditability comes from separating three layers: identity, execution environment and model service. Swapping models should not mean swapping employees."
+    },
+    "configure_ceo_provider": {
+      "label": "Bind provider and model",
+      "explanation": "Provider supplies the model service, Model is what actually gets called. Only a binding with a stored credential counts as configured.",
+      "why": "A provider without a credential looks configured but fails on the first run, so the tutorial requires the secret to actually be stored."
+    },
+    "configure_company_resources": {
+      "label": "Assign workspace and access",
+      "explanation": "Provisioning creates the employee's workspace, document space and access package. The Git account can wait, but its status must be visible.",
+      "why": "Employee output has to land somewhere traceable: workspace for code, document space for collaboration, access package for permissions."
+    },
+    "cloud_docs": {
+      "label": "Create the first company document",
+      "explanation": "Use Markdown for agent collaboration; use DOCX or PDF export for formal customer material."
+    },
+    "git_setup": {
+      "label": "Connect Git",
+      "explanation": "Install built-in Gitea or connect GitLab, Gitea, GitHub Enterprise, or another compatible service."
+    },
+    "hire_engineer": {
+      "label": "Hire your first engineer",
+      "explanation": "Run real provisioning again to assign a runtime, workspace, documents and permissions to the engineer.",
+      "why": "Only now does the company hold both a decision-maker and an executor, which is what the core tutorial is aiming at."
+    },
+    "configure_engineer": {
+      "label": "Make the engineer runnable",
+      "explanation": "An engineer needs ACTIVE identity, a runtime, a valid provider binding and a workspace before work can be assigned.",
+      "why": "Missing any one of those four, tasks stall at dispatch; the tutorial checks the same business gates the scheduler does."
+    },
+    "hire_qa": {
+      "label": "Check QA coverage",
+      "explanation": "Independent QA supports separation of duties. You can defer it and the project will retain a coverage reminder."
+    },
+    "create_project": {
+      "label": "Create the Classic Snake project",
+      "explanation": "Start from the sample Structured Project Intake and confirm requirements, constraints, deliverables and review plan."
+    },
+    "requirements_review": {
+      "label": "Complete requirements review",
+      "explanation": "AI has prepared the analysis; a human must approve the requirements baseline before system design can start.",
+      "why": "The requirements baseline is the origin of the whole traceability chain: design, tasks, tests and acceptance all reference it."
+    },
+    "design_review": {
+      "label": "Complete design review",
+      "explanation": "Inspect system design, review slides, speaker notes and traceability, then make the human decision."
+    },
+    "development": {
+      "label": "Inspect development output",
+      "explanation": "Review staff, tasks, repositories, branches, commits, artifacts and activity to verify real team work."
+    },
+    "testing": {
+      "label": "Complete internal and acceptance testing",
+      "explanation": "Internal testing covers defects and regression; acceptance testing verifies customer-visible criteria."
+    },
+    "acceptance_review": {
+      "label": "Run acceptance review",
+      "explanation": "The final Human Gate: a person confirms acceptance evidence and the delivery preview.",
+      "why": "The last human confirmation before delivery is Eidolon's floor: AI prepares the evidence, a person decides it can go to the customer."
+    },
+    "delivery": {
+      "label": "Generate the final delivery package",
+      "explanation": "The package brings together source, builds, DOCX, PPTX, manuals, release notes, minutes and checklists."
+    }
+  }
+}

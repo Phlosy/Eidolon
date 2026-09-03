@@ -13,7 +13,7 @@ export function CompanyFoundingState({ company }: { company?: Company }) {
   const begin = () => start.mutate(undefined, { onSuccess: () => setHireOpen(true) });
   return (
     <section
-      data-tutorial="company-overview"
+      data-tutorial-target="company-overview"
       className="command-panel relative min-h-[620px] overflow-hidden p-6 md:p-10"
     >
       <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />

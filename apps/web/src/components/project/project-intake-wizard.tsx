@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useCreateProject } from "../../hooks/useProjects";
 import { useEmployees } from "../../hooks/useEmployees";
-import { useClassicSnakeTemplate, useTutorial } from "../../hooks/useTutorial";
+import { useClassicSnakeTemplate, usePractice } from "../../hooks/useTutorial";
 import type { CreateProjectInput, RequirementInput } from "../../types";
 import { cn } from "../../utils/cn";
 import { Button } from "../common/button";
@@ -91,8 +91,10 @@ function LinesField({
 export function ProjectIntakeWizard({ open, onOpenChange }: ProjectIntakeWizardProps) {
   const navigate = useNavigate();
   const employees = useEmployees().data ?? [];
-  const tutorial = useTutorial().data;
-  const snakeTemplate = useClassicSnakeTemplate(open && tutorial?.status === "active");
+  // Classic Snake 现在是"可选实战"，所以预填模板只看实战教程的状态
+  const practice = usePractice().data;
+  const practicing = practice?.progress.status === "active";
+  const snakeTemplate = useClassicSnakeTemplate(open && practicing);
   const createProject = useCreateProject();
   const errorSummaryRef = useRef<HTMLDivElement>(null);
   const [stepIndex, setStepIndex] = useState(0);
@@ -243,7 +245,7 @@ export function ProjectIntakeWizard({ open, onOpenChange }: ProjectIntakeWizardP
               );
             })}
           </ol>
-          {tutorial?.status === "active" ? (
+          {practicing ? (
             <Button
               type="button"
               variant="outline"

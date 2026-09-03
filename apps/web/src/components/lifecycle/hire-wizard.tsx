@@ -345,7 +345,7 @@ export function HireWizard({
       ) : null}
 
       {step === "runtime" ? (
-        <div className="space-y-2">
+        <div className="space-y-2" data-tutorial-target="wizard-runtime">
           <p className="text-xs text-muted-foreground">{t("lifecycle:wizard.runtimeHint")}</p>
           {(runtimeTypes.length > 0 ? runtimeTypes : [{ type: "mock" as RuntimeType }]).map(
             (typeInfo) => (
@@ -369,7 +369,7 @@ export function HireWizard({
       ) : null}
 
       {step === "provider" ? (
-        <div className="space-y-4">
+        <div className="space-y-4" data-tutorial-target="wizard-provider">
           <p className="text-xs leading-relaxed text-muted-foreground">
             {t("lifecycle:wizard.providerHint")}
           </p>
@@ -552,7 +552,7 @@ export function HireWizard({
       ) : null}
 
       {step === "packages" ? (
-        <div className="space-y-2">
+        <div className="space-y-2" data-tutorial-target="wizard-packages">
           <p className="text-xs text-muted-foreground">{t("lifecycle:wizard.packagesHint")}</p>
           {packagesQuery.isLoading ? (
             <Skeleton className="h-24 w-full" />
@@ -614,7 +614,7 @@ export function HireWizard({
       ) : null}
 
       {step === "hire" ? (
-        <dl className="space-y-1.5 text-sm">
+        <dl className="space-y-1.5 text-sm" data-tutorial-target="wizard-identity">
           <SummaryRow label={t("lifecycle:wizard.summary.name")} value={state.name || "—"} />
           <SummaryRow label={t("lifecycle:wizard.summary.slug")} value={state.slug || "—"} mono />
           <SummaryRow label={t("lifecycle:wizard.summary.title")} value={state.title || "—"} />
@@ -689,6 +689,7 @@ export function HireWizard({
             size="sm"
             disabled={!advanceable || onboard.isPending}
             onClick={submit}
+            data-tutorial-target="wizard-confirm"
             data-testid="wizard-hire"
           >
             {onboard.isPending ? t("lifecycle:wizard.hiring") : t("lifecycle:wizard.hire")}
@@ -697,6 +698,7 @@ export function HireWizard({
           <Button
             size="sm"
             disabled={!advanceable}
+            data-tutorial-target="wizard-next"
             data-testid="wizard-next"
             onClick={() => setStepIndex((i) => Math.min(HIRE_WIZARD_STEPS.length - 1, i + 1))}
           >
