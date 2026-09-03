@@ -15,7 +15,9 @@ assert PROCESSOR_SPEC is not None and PROCESSOR_SPEC.loader is not None
 PROCESSOR = importlib.util.module_from_spec(PROCESSOR_SPEC)
 PROCESSOR_SPEC.loader.exec_module(PROCESSOR)
 make_object_atlas = PROCESSOR.make_object_atlas
+make_character_sheet = PROCESSOR.make_character_sheet
 make_tiles = PROCESSOR.make_tiles
+FRAME = PROCESSOR.FRAME
 
 
 def test_checked_in_office_tiles_match_binary_pipeline() -> None:
@@ -47,3 +49,28 @@ def test_runtime_atlas_preserves_opaque_workstation_details() -> None:
     assert atlas.getpixel(lamp_shade)[3] == 255
     assert runtime_atlas.size == atlas.size
     assert runtime_atlas.tobytes() == atlas.tobytes()
+
+
+def test_runtime_employee_frames_keep_complete_character_silhouettes() -> None:
+    source = Image.open(SOURCE / "employee-directional-v2.png")
+
+    sheet, _ = make_character_sheet(source)
+    runtime_sheet = Image.open(RUNTIME / "employees.png")
+    opaque_pixels_per_frame = [
+        sheet.crop(
+            (
+                column * FRAME[0],
+                row * FRAME[1],
+                (column + 1) * FRAME[0],
+                (row + 1) * FRAME[1],
+            )
+        )
+        .getchannel("A")
+        .histogram()[255]
+        for row in range(PROCESSOR.EMPLOYEE_ROWS)
+        for column in range(sheet.width // FRAME[0])
+    ]
+
+    assert min(opaque_pixels_per_frame) >= 900
+    assert runtime_sheet.size == sheet.size
+    assert runtime_sheet.tobytes() == sheet.tobytes()

@@ -26,7 +26,11 @@ def color_distance(a: tuple[int, ...], b: tuple[int, ...]) -> int:
 
 
 def transparent_crop(
-    image: Image.Image, box: tuple[int, int, int, int], threshold: int = 18
+    image: Image.Image,
+    box: tuple[int, int, int, int],
+    threshold: int = 18,
+    *,
+    fixed_background: bool = False,
 ) -> Image.Image:
     crop = image.crop(box).convert("RGBA")
     width, height = crop.size
@@ -38,6 +42,7 @@ def transparent_crop(
         + [(width - 1, y) for y in range(1, height - 1)]
     )
     background: set[tuple[int, int]] = set(pending)
+    background_reference = pixels[0, 0]
 
     while pending:
         x, y = pending.popleft()
@@ -49,7 +54,8 @@ def transparent_crop(
                 or point in background
             ):
                 continue
-            if color_distance(current, pixels[next_x, next_y]) <= threshold:
+            reference = background_reference if fixed_background else current
+            if color_distance(reference, pixels[next_x, next_y]) <= threshold:
                 background.add(point)
                 pending.append(point)
 
@@ -138,7 +144,11 @@ def make_character_sheet(
                 (row_index + 1) * cell_height - 8,
             )
             poses.append(
-                fit_pixel(transparent_crop(source, box, threshold=60), FRAME, padding=2)
+                fit_pixel(
+                    transparent_crop(source, box, threshold=60, fixed_background=True),
+                    FRAME,
+                    padding=2,
+                )
             )
 
         sequence = (
