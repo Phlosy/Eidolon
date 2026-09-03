@@ -23,6 +23,49 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Turn an error body into a human-readable message. FastAPI returns either
+ * `{detail: string}` (our HTTPExceptions) or `{detail: [...]}` (Pydantic
+ * validation errors, e.g. 422). Only the first shape used to be handled, so a
+ * 422 surfaced as the useless "Request failed with status 422".
+ */
+export function describeApiError(body: unknown, status: number): string {
+  const fallback = `Request failed with status ${status}`;
+  if (!body || typeof body !== "object") return fallback;
+  const { detail } = body as { detail?: unknown };
+
+  if (typeof detail === "string" && detail.trim()) return detail;
+
+  if (Array.isArray(detail) && detail.length > 0) {
+    const messages = detail
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (!item || typeof item !== "object") return null;
+        const entry = item as { loc?: unknown; msg?: unknown };
+        const parts = Array.isArray(entry.loc) ? [...entry.loc] : [];
+        // loc[0] is the request location ("body" | "query" | "path" | ...), not a field name.
+        if (
+          typeof parts[0] === "string" &&
+          ["body", "query", "path", "header", "cookie"].includes(parts[0])
+        )
+          parts.shift();
+        const field = parts.map((part) => String(part)).join(".");
+        const message = typeof entry.msg === "string" ? entry.msg : null;
+        if (!message) return null;
+        return field ? `${field}: ${message}` : message;
+      })
+      .filter((value): value is string => Boolean(value));
+    if (messages.length > 0) return messages.join("; ");
+  }
+
+  if (detail && typeof detail === "object") {
+    const message = (detail as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+
+  return fallback;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
   const csrf = document.cookie
@@ -44,21 +87,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!response.ok) {
-    let detail = `Request failed with status ${response.status}`;
+    let body: unknown = null;
     try {
-      const body: unknown = await response.json();
-      if (
-        body &&
-        typeof body === "object" &&
-        "detail" in body &&
-        typeof (body as { detail: unknown }).detail === "string"
-      ) {
-        detail = (body as { detail: string }).detail;
-      }
+      body = await response.json();
     } catch {
-      // keep the generic detail
+      // non-JSON error body; fall back to the generic message below
     }
-    throw new ApiError(response.status, detail);
+    throw new ApiError(response.status, describeApiError(body, response.status));
   }
 
   if (response.status === 204) return undefined as T;
