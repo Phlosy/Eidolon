@@ -42,7 +42,9 @@
       "prev": "上一步",
       "next": "下一步",
       "exit": "退出回放"
-    }
+    },
+    "wizardHint": "向导指引 {{current}} / {{total}}",
+    "hintNotCompletion": "指引只是提示，完成仍由业务状态判定"
   },
   "tutorials": {
     "companyFounding": {
@@ -191,5 +193,13 @@
       "label": "生成最终交付包",
       "explanation": "交付包聚合源码、构建、DOCX、PPTX、手册、发布说明、纪要与清单。"
     }
+  },
+  "hints": {
+    "identity": "先确认身份：这一步决定他是谁，不会创建教程假员工。",
+    "pickRuntime": "选执行环境。Mock Runtime 会被明确标成 Mock，不会伪装成真实执行。",
+    "pickProvider": "选模型服务来源。只有真正把密钥存进来的绑定才算可用。",
+    "pickAccess": "分配权限包与资源：Workspace、文档空间、Git 账号会在这里创建。",
+    "engineerAccess": "第二位员工沿用同样的真实 Provisioning；这里只提醒关键差异。",
+    "confirmOnboard": "确认并入职。提交后教程会等 CEO 真的变成 ACTIVE 才前进。"
   }
 }

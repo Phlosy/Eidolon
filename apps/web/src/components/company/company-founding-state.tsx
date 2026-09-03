@@ -10,7 +10,9 @@ export function CompanyFoundingState({ company }: { company?: Company }) {
   const { t } = useTranslation("auth");
   const start = useStartTutorial();
   const [hireOpen, setHireOpen] = useState(false);
-  const begin = () => start.mutate(undefined, { onSuccess: () => setHireOpen(true) });
+  // 只启动教程：招聘向导由 spotlight 引到"招聘员工"按钮上由用户自己点开。
+  // 一上来就替用户弹窗，会既抢节奏、又让第一步的聚光灯被自己的弹窗挡住。
+  const begin = () => start.mutate();
   return (
     <section
       data-tutorial-target="company-overview"

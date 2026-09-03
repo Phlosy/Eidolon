@@ -33,6 +33,29 @@ import { moveReplay, stopReplay, useReplaySession } from "./tutorial-replay";
 const EXCLUDED_ROUTES: RegExp[] = [/^\/office$/, /\/reviews\//];
 const VISIBLE_STATUSES = new Set(["active", "paused"]);
 
+/** 向导内部指引：只决定"光打在向导的哪个控件上"，不决定完成。 */
+export interface TutorialUiHint {
+  targetId: string;
+  textKey: string;
+}
+
+function uiHintsOf(step: TutorialStep | null): TutorialUiHint[] {
+  const raw = step?.metadata?.ui_hints;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      const entry = item as { target_id?: unknown; text_key?: unknown };
+      return typeof entry.target_id === "string" && typeof entry.text_key === "string"
+        ? { targetId: entry.target_id, textKey: entry.text_key }
+        : null;
+    })
+    .filter((item): item is TutorialUiHint => item !== null);
+}
+
+function modalOpen(): boolean {
+  return Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
+}
+
 export interface TutorialEngine {
   mode: "live" | "replay" | "hidden";
   step: TutorialStep | null;
@@ -48,6 +71,12 @@ export interface TutorialEngine {
   resolvedRoute: string;
   busy: boolean;
   errorMessage: string | null;
+  /** 弹窗打开且这一步有向导指引时，聚光灯跟随向导内部元素 */
+  hint: TutorialUiHint | null;
+  hints: TutorialUiHint[];
+  hintIndex: number;
+  nextHint: () => void;
+  previousHint: () => void;
   acknowledge: () => void;
   skipStep: () => void;
   togglePause: () => void;
@@ -112,7 +141,27 @@ export function useTutorialEngine(): TutorialEngine {
   const targetKey =
     step && typeof step.metadata?.target_key === "string" ? step.metadata.target_key : null;
   const active = Boolean(step) && mode !== "hidden" && !excluded;
-  const snapshot = useTutorialTarget(active ? (step?.target_id ?? null) : null, targetKey);
+  const stepHints = uiHintsOf(step);
+  const [hintIndex, setHintIndex] = useState(0);
+  // 惰性同步读取：如果 useState(false) + effect 里再设，首帧的自动导航 effect
+  // 会赶在弹窗状态生效之前把用户从弹窗里拽走（实测过）。
+  const [dialogOpen, setDialogOpen] = useState(modalOpen);
+  useEffect(() => {
+    // 之后靠 MutationObserver 跟进弹窗开关，不轮询
+    const observer = new MutationObserver(() => setDialogOpen(modalOpen()));
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    setDialogOpen(modalOpen());
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    setHintIndex(0); // 换步骤就从第一条指引重新开始
+  }, [step?.id]);
+  const hinting = active && dialogOpen && stepHints.length > 0 && step?.kind !== "INFORMATION";
+  const hint = hinting ? (stepHints[Math.min(hintIndex, stepHints.length - 1)] ?? null) : null;
+  const snapshot = useTutorialTarget(
+    active ? (hint ? hint.targetId : (step?.target_id ?? null)) : null,
+    hint ? null : targetKey,
+  );
 
   // 每一步最多自动跳转一次；有弹窗打开时不抢方向盘
   const navigated = useRef(new Set<string>());
@@ -120,7 +169,7 @@ export function useTutorialEngine(): TutorialEngine {
     if (mode !== "live" || !step || progress?.status !== "active") return;
     if (onRoute || stepDone || pendingParams.length) return;
     if (navigated.current.has(step.id)) return;
-    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    if (dialogOpen) return;
     navigated.current.add(step.id);
     navigate(resolvedRoute);
   }, [
@@ -132,6 +181,7 @@ export function useTutorialEngine(): TutorialEngine {
     pendingParams.length,
     resolvedRoute,
     navigate,
+    dialogOpen,
   ]);
 
   const clearError = () => setDismissedError(null);
@@ -174,6 +224,11 @@ export function useTutorialEngine(): TutorialEngine {
       navigated.current.add(step.id);
       navigate(resolvedRoute);
     },
+    hint,
+    hints: stepHints,
+    hintIndex: hint ? Math.min(hintIndex, stepHints.length - 1) : -1,
+    nextHint: () => setHintIndex((value) => Math.min(value + 1, stepHints.length - 1)),
+    previousHint: () => setHintIndex((value) => Math.max(value - 1, 0)),
     dismissError: clearError,
     replayNext: () => moveReplay(1),
     replayPrevious: () => moveReplay(-1),

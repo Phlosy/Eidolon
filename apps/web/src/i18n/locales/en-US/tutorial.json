@@ -42,7 +42,9 @@
       "prev": "Back",
       "next": "Next",
       "exit": "Exit replay"
-    }
+    },
+    "wizardHint": "Wizard step {{current}} of {{total}}",
+    "hintNotCompletion": "Hints only nudge — real state still decides completion"
   },
   "tutorials": {
     "companyFounding": {
@@ -191,5 +193,13 @@
       "label": "Generate the final delivery package",
       "explanation": "The package brings together source, builds, DOCX, PPTX, manuals, release notes, minutes and checklists."
     }
+  },
+  "hints": {
+    "identity": "Confirm identity first — this decides who they are; no fake tutorial employee.",
+    "pickRuntime": "Pick the execution environment. Mock runtimes are labelled Mock, never faked as real.",
+    "pickProvider": "Pick the model service. Only bindings with a stored credential count as usable.",
+    "pickAccess": "Assign access packages and resources: workspace, document space and git accounts get created here.",
+    "engineerAccess": "The second employee goes through the same real provisioning; only key differences are called out.",
+    "confirmOnboard": "Review and hire. After submitting, the tutorial waits for the CEO to actually become ACTIVE."
   }
 }

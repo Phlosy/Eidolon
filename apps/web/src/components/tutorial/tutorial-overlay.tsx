@@ -98,8 +98,11 @@ export function TutorialOverlay() {
   const replay = engine.mode === "replay";
   const cannotRoute = !replay && engine.pendingParams.length > 0;
   // 兜底态只在"已经在对的页面上、却抓不到目标"时出现；还没导航过去不算兜底
+  const hinting = Boolean(engine.hint);
+  // 向导指引态下，"目标在弹窗外"不是错误：那时我们打的就是向导内部的控件
   const degraded =
-    cannotRoute || (!replay && engine.onRoute && engine.snapshot.status !== "visible");
+    !hinting &&
+    (cannotRoute || (!replay && engine.onRoute && engine.snapshot.status !== "visible"));
   const anchor: DOMRect | null =
     !replay && engine.onRoute && engine.snapshot.status === "visible" ? engine.snapshot.rect : null;
 
@@ -157,6 +160,40 @@ export function TutorialOverlay() {
           </p>
           {step.has_why ? <WhySection stepId={step.id} /> : null}
         </div>
+
+        {hinting && engine.hint ? (
+          <div
+            data-tutorial-hint="true"
+            className="mt-3 rounded-xl border border-primary/25 bg-primary/5 p-3"
+          >
+            <p className="type-kicker text-primary">
+              {t("ui.wizardHint", { current: engine.hintIndex + 1, total: engine.hints.length })}
+            </p>
+            <p className="mt-1 text-xs leading-5">{t(engine.hint.textKey)}</p>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={engine.previousHint}
+                disabled={engine.hintIndex <= 0}
+                className="inline-flex h-8 items-center rounded-lg border border-border px-2.5 text-[11px] disabled:opacity-40"
+              >
+                {t("ui.previous")}
+              </button>
+              <button
+                type="button"
+                data-tutorial-action="next-hint"
+                onClick={engine.nextHint}
+                disabled={engine.hintIndex >= engine.hints.length - 1}
+                className="inline-flex h-8 items-center rounded-lg border border-border px-2.5 text-[11px] disabled:opacity-40"
+              >
+                {t("ui.next")}
+              </button>
+              <span className="ml-auto text-[10px] text-muted-foreground">
+                {t("ui.hintNotCompletion")}
+              </span>
+            </div>
+          </div>
+        ) : null}
 
         {degraded ? (
           <div
@@ -245,7 +282,7 @@ export function TutorialOverlay() {
                 >
                   {t("ui.gotIt")}
                 </button>
-              ) : !engine.onRoute ? (
+              ) : hinting ? null : !engine.onRoute ? (
                 <button
                   type="button"
                   onClick={engine.goToTarget}

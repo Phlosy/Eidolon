@@ -66,6 +66,8 @@ const DEFINITION: TutorialDefinition = {
 
 const state = vi.hoisted(() => ({
   progress: null as TutorialProgress | null,
+  // 每个用例自带定义：共享对象被就地改会跨用例污染（这里真的踩过）
+  definition: null as unknown,
   complete: vi.fn(),
   skip: vi.fn(),
   pause: vi.fn(),
@@ -96,7 +98,7 @@ function progressFor(currentStep: string, overrides: Partial<TutorialProgress> =
 vi.mock("../../hooks/useTutorial", () => ({
   TUTORIAL_QUERY_KEY: ["tutorial"],
   useTutorial: () => ({ data: state.progress }),
-  useTutorialDefinition: () => ({ data: DEFINITION }),
+  useTutorialDefinition: () => ({ data: (state.definition ?? DEFINITION) as TutorialDefinition }),
   useCompleteTutorialStep: () => ({ mutate: state.complete, isPending: false, error: null }),
   useSkipTutorialStep: () => ({ mutate: state.skip, isPending: false, error: null }),
   usePauseTutorial: () => ({ mutate: state.pause, isPending: false }),
@@ -173,6 +175,7 @@ function spotlight(): HTMLElement | null {
 }
 
 beforeEach(() => {
+  state.definition = null;
   rectStub();
   document.body.innerHTML = "";
   state.complete.mockClear();
@@ -295,16 +298,26 @@ describe("兜底：目标找不到时不瞎指", () => {
     progressFor("hire_ceo");
     state.progress!.context = {};
     // 用一条带占位符的步骤模拟"员工还没创建"
-    DEFINITION.stages[0].steps[1] = step({
-      id: "hire_ceo",
-      route: "/employees/{ceo_employee_id}",
-      target_id: "employee-runtime-tab",
-    });
-    const view = renderAt("/");
+    state.definition = {
+      ...DEFINITION,
+      stages: [
+        {
+          ...DEFINITION.stages[0],
+          steps: [
+            DEFINITION.stages[0].steps[0],
+            step({
+              id: "hire_ceo",
+              route: "/employees/{ceo_employee_id}",
+              target_id: "employee-runtime-tab",
+            }),
+            DEFINITION.stages[0].steps[2],
+          ],
+        },
+      ],
+    };
+    renderAt("/");
     expect(screen.getByText("A real object is still missing")).toBeTruthy();
     expect(spotlight()).toBeNull();
-    view.unmount();
-    DEFINITION.stages[0].steps[1] = step({ id: "hire_ceo", requirement: "CEO_ACTIVE" });
   });
 });
 
@@ -323,6 +336,97 @@ describe("跨路由", () => {
     fireEvent.click(screen.getByText("Hire"));
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.queryByText("other page")).toBeNull();
+  });
+});
+
+describe("向导内部指引（ui_hints）", () => {
+  const wizardStep = step({
+    id: "hire_ceo",
+    requirement: "CEO_ACTIVE",
+    route: "/employees",
+    target_id: "hire-employee",
+    metadata: {
+      ui_hints: [
+        { target_id: "wizard-identity", text_key: "hints.identity" },
+        { target_id: "wizard-confirm", text_key: "hints.confirmOnboard" },
+      ],
+    },
+  });
+
+  beforeEach(() => {
+    state.definition = {
+      ...DEFINITION,
+      stages: [
+        {
+          ...DEFINITION.stages[0],
+          steps: [DEFINITION.stages[0].steps[0], wizardStep, DEFINITION.stages[0].steps[2]],
+        },
+      ],
+    };
+  });
+
+  it("招聘向导打开时，光跟随向导内部元素，而不是抱怨被弹窗挡住", async () => {
+    progressFor("hire_ceo");
+    render(
+      <MemoryRouter initialEntries={["/employees"]}>
+        <Routes>
+          <Route
+            path="/employees"
+            element={
+              <div>
+                <div role="dialog" aria-modal="true" data-rect="100,50,500,600">
+                  <div data-tutorial-target="wizard-identity" data-rect="120,90,300,40">
+                    identity
+                  </div>
+                  <button data-tutorial-target="wizard-confirm" data-rect="420,560,120,32">
+                    Hire
+                  </button>
+                </div>
+                <TutorialOverlay />
+              </div>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText(/Confirm identity first/i)).toBeTruthy());
+    // 第一条指引打在 wizard-identity 上
+    const halo = () => document.querySelector('[data-tutorial-halo="true"]') as HTMLElement;
+    expect(halo().style.left).toBe("112px");
+    expect(screen.getByText(/Hints only nudge/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByText("Next"));
+    await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
+    expect(halo().style.left).toBe("412px");
+
+    // 翻指引绝不会伪装成完成：没有任何进度 mutation
+    expect(state.complete).not.toHaveBeenCalled();
+    expect(state.skip).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-tutorial-fallback="true"]')).toBeNull();
+  });
+
+  it("指引走到最后一条时“下一条”禁用，但步骤仍等真实状态", () => {
+    progressFor("hire_ceo");
+    render(
+      <MemoryRouter initialEntries={["/employees"]}>
+        <Routes>
+          <Route
+            path="/employees"
+            element={
+              <div role="dialog" aria-modal="true" data-rect="0,0,400,400">
+                <div data-tutorial-target="wizard-identity" data-rect="10,10,60,20">a</div>
+                <div data-tutorial-target="wizard-confirm" data-rect="10,50,60,20">b</div>
+                <TutorialOverlay />
+              </div>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const next = screen.getByText("Next").closest("button")!;
+    fireEvent.click(next);
+    expect(next.disabled).toBe(true);
+    expect(state.complete).not.toHaveBeenCalled();
   });
 });
 
