@@ -1,5 +1,6 @@
 """Human account, session and passkey API contracts."""
 
+import re
 from datetime import datetime
 from typing import Any
 
@@ -7,10 +8,25 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 from app.schemas.organization import CompanyOut, ORMModel
 
+PASSWORD_REQUIREMENTS_DESCRIPTION = (
+    "Minimum 8 characters; include at least two: English letters, numbers, special characters."
+)
+PASSWORD_WHITESPACE_CHARACTERS = frozenset(
+    "\u0009\u000a\u000b\u000c\u000d"
+    "\u001c\u001d\u001e\u001f"
+    "\u0020\u0085\u00a0\u1680"
+    "\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a"
+    "\u2028\u2029\u202f\u205f\u3000"
+)
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=12, max_length=256)
+    password: str = Field(
+        min_length=8,
+        max_length=256,
+        description=PASSWORD_REQUIREMENTS_DESCRIPTION,
+    )
     display_name: str = Field(default="", max_length=200)
     locale: str = Field(default="zh-CN", max_length=20)
     timezone: str = Field(default="Asia/Shanghai", max_length=80)
@@ -19,6 +35,24 @@ class RegisterRequest(BaseModel):
     @classmethod
     def normalize_email(cls, value: EmailStr) -> str:
         return str(value).strip().lower()
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_character_types(cls, value: str) -> str:
+        character_type_count = sum(
+            (
+                bool(re.search(r"[A-Za-z]", value)),
+                bool(re.search(r"[0-9]", value)),
+                any(
+                    not re.fullmatch(r"[A-Za-z0-9]", character)
+                    and character not in PASSWORD_WHITESPACE_CHARACTERS
+                    for character in value
+                ),
+            )
+        )
+        if character_type_count < 2:
+            raise ValueError(PASSWORD_REQUIREMENTS_DESCRIPTION)
+        return value
 
 
 class RegisterResponse(BaseModel):

@@ -15,7 +15,7 @@ import { registerAccount } from "../../api/auth";
 import { Button } from "../../components/common/button";
 import { Input } from "../../components/common/input";
 import { AuthShell } from "../../features/auth/auth-shell";
-import { passwordIssues } from "../../features/auth/password-policy";
+import { PASSWORD_MIN_LENGTH, passwordIssues } from "../../features/auth/password-policy";
 
 export function RegisterPage() {
   const { t, i18n } = useTranslation("auth");
@@ -26,10 +26,11 @@ export function RegisterPage() {
   const [confirm, setConfirm] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const passwordIsValid = passwordIssues(password).length === 0;
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (passwordIssues(password).length) return setError(t("errors.passwordLength"));
+    if (!passwordIsValid) return setError(t("errors.passwordRequirements"));
     if (password !== confirm) return setError(t("errors.passwordMismatch"));
     setPending(true);
     setError("");
@@ -105,14 +106,14 @@ export function RegisterPage() {
             className="h-11 pl-10"
             type="password"
             autoComplete="new-password"
-            minLength={12}
+            minLength={PASSWORD_MIN_LENGTH}
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
         </AuthField>
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <Check className={`h-3.5 w-3.5 ${password.length >= 12 ? "text-success" : ""}`} />
+          <Check className={`h-3.5 w-3.5 ${passwordIsValid ? "text-success" : ""}`} />
           {t("register.passwordHint")}
         </div>
         <AuthField id="register-confirm" label={t("fields.confirmPassword")} icon={LockKeyhole}>

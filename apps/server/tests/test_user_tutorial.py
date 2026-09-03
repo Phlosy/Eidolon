@@ -3,7 +3,7 @@
 
 def _new_founder(client, email: str) -> dict:
     response = client.post(
-        "/api/v1/auth/register", json={"email": email, "password": "long enough password"}
+        "/api/v1/auth/register", json={"email": email, "password": "long enough password1"}
     )
     token = response.json()["development_verification_token"]
     return client.post("/api/v1/auth/verify-email", json={"token": token}).json()

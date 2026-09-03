@@ -2,12 +2,16 @@
 
 from datetime import timedelta
 
+import pytest
+from pydantic import ValidationError
+
 from app.core.config import settings
 from app.models.auth import PasskeyCredential, UserSession, WebAuthnChallenge
 from app.models.base import utcnow
 from app.models.organization import Employee
 from app.models.project import Project
 from app.repositories import knowledge as knowledge_repo
+from app.schemas.auth import RegisterRequest
 
 
 def _register_and_verify(client, email: str = "founder@example.com") -> dict:
@@ -15,7 +19,7 @@ def _register_and_verify(client, email: str = "founder@example.com") -> dict:
         "/api/v1/auth/register",
         json={
             "email": email,
-            "password": "correct horse battery staple",
+            "password": "correct horse battery staple1",
             "display_name": "Founder",
             "locale": "zh-CN",
             "timezone": "Asia/Shanghai",
@@ -60,7 +64,7 @@ def test_smtp_registration_delivers_token_without_returning_it(client, monkeypat
         "/api/v1/auth/register",
         json={
             "email": "mail@example.com",
-            "password": "correct horse battery staple",
+            "password": "correct horse battery staple1",
             "locale": "en-US",
         },
     )
@@ -71,12 +75,47 @@ def test_smtp_registration_delivers_token_without_returning_it(client, monkeypat
     assert len(delivered["token"]) >= 32
 
 
+@pytest.mark.parametrize(
+    "password", ["abcdefg1", "1234567!", "abcdefg!", "abcdefg😀", "abcdefg\ufeff"]
+)
+def test_registration_accepts_two_password_character_categories(password):
+    request = RegisterRequest(email="valid-password@example.com", password=password)
+
+    assert request.password == password
+
+
+@pytest.mark.parametrize(
+    "password", ["abc123!", "abcdefgh", "12345678", "!!!!!!!!", "abcdef😀", "abcdefg\u0085"]
+)
+def test_registration_rejects_short_or_single_category_passwords(password):
+    with pytest.raises(ValidationError):
+        RegisterRequest(email="invalid-password@example.com", password=password)
+
+
+def test_registration_returns_validation_error_for_invalid_password(client):
+    response = client.post(
+        "/api/v1/auth/register",
+        json={"email": "invalid-password@example.com", "password": "abcdefgh"},
+    )
+
+    assert response.status_code == 422
+
+
+def test_registration_schema_documents_complete_password_policy():
+    password_schema = RegisterRequest.model_json_schema()["properties"]["password"]
+
+    assert password_schema["minLength"] == 8
+    assert password_schema["description"] == (
+        "Minimum 8 characters; include at least two: English letters, numbers, special characters."
+    )
+
+
 def test_duplicate_email_and_wrong_password_are_rejected(client):
     email = "duplicate@example.com"
     _register_and_verify(client, email)
     duplicate = client.post(
         "/api/v1/auth/register",
-        json={"email": email, "password": "another secure password"},
+        json={"email": email, "password": "another secure password1"},
     )
     assert duplicate.status_code == 409
 
@@ -93,7 +132,7 @@ def test_login_session_rotation_logout_and_revoke(client, db):
 
     logged_in = client.post(
         "/api/v1/auth/login",
-        json={"email": email, "password": "correct horse battery staple"},
+        json={"email": email, "password": "correct horse battery staple1"},
     )
     assert logged_in.status_code == 200
     assert client.cookies.get("eidolon_session") != first_cookie
