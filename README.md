@@ -79,7 +79,8 @@ docker compose up --build
 | 命令 | 说明 |
 |---|---|
 | `make help` | 列出所有命令 |
-| `make install` | 安装前后端依赖（自动检测 uv / pnpm） |
+| `make install` | 安装前后端依赖（自动检测 uv / pnpm；后端走 `requirements.lock`） |
+| `make lock-server` | 用当前 `.venv` 的实测版本重写后端 `requirements.lock` |
 | `make run` / `make dev` | 一键启动 Frontend + Backend（先彻底清理旧进程，日志在 `.run/`） |
 | `make stop` | 停止（进程树 + 端口双路清理，必要时强杀） |
 | `make restart` | 重启 |
@@ -87,8 +88,8 @@ docker compose up --build
 | `make ps` | 列出本仓库全部 dev 进程（含漂移到其他端口的孤儿） |
 | `make logs` | 跟随前后端日志 |
 | `make test` | 后端 pytest + 前端 vitest |
-| `make lint` | ruff + tsc + eslint |
-| `make format` | ruff format + prettier |
+| `make lint` | ruff（check + format）+ tsc + eslint + prettier |
+| `make format` | ruff format + prettier（与 CI / `package.json` 脚本同一入口） |
 | `make build` | 前端生产构建 |
 | `make clean` | 清理构建产物与运行数据 |
 
