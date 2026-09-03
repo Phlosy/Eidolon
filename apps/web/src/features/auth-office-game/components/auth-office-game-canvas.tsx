@@ -24,14 +24,16 @@ export function AuthOfficeGameCanvas({ bridge, initialState, label }: AuthOffice
     let game: DestroyableGame | null = null;
 
     void import("../game/create-game").then(({ createOfficeGame }) => {
-      if (!hostRef.current) return;
-      const createdGame = createOfficeGame({
+      // StrictMode runs mount → cleanup → remount synchronously, so this promise can
+      // resolve after `disposed` was already set. Bail out *before* constructing:
+      // a throwaway Phaser.Game still pays a full boot (atlas upload, Tiled parse,
+      // three scene boots) and only then gets destroyed.
+      if (disposed || !hostRef.current) return;
+      game = createOfficeGame({
         parent: hostRef.current,
         bridge,
         initialState: initialStateRef.current,
       });
-      if (disposed) createdGame.destroy(true);
-      else game = createdGame;
     });
 
     return () => {
