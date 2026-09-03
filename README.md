@@ -80,8 +80,12 @@ docker compose up --build
 |---|---|
 | `make help` | 列出所有命令 |
 | `make install` | 安装前后端依赖（自动检测 uv / pnpm） |
-| `make run` / `make dev` | 一键启动 Frontend + Backend（日志在 `.run/`） |
-| `make stop` / `make restart` | 停止 / 重启 |
+| `make run` / `make dev` | 一键启动 Frontend + Backend（先彻底清理旧进程，日志在 `.run/`） |
+| `make stop` | 停止（进程树 + 端口双路清理，必要时强杀） |
+| `make restart` | 重启 |
+| `make status` | 只看 26881 / 26880 是否有健在的服务 |
+| `make ps` | 列出本仓库全部 dev 进程（含漂移到其他端口的孤儿） |
+| `make logs` | 跟随前后端日志 |
 | `make test` | 后端 pytest + 前端 vitest |
 | `make lint` | ruff + tsc + eslint |
 | `make format` | ruff format + prettier |
@@ -141,6 +145,10 @@ make test      # 含员工隔离、Runtime、任务/项目生命周期、知识�
 ```
 
 约束（详见 [CONTRIBUTING.md](CONTRIBUTING.md)）：后端严格分层、禁止 `print()`；前端禁止巨型单文件组件；新端口先登记 `docs/ports.md`。
+
+> 后端**没有** `--reload`，改完 Python 代码要 `make restart` 才生效。`make run` 会先调用
+> `scripts/devctl.sh stop` 按「pid 文件 + 端口占用 + 进程树」三路清理旧进程，并在返回前
+> 确认服务真的监听成功 —— 避免旧进程残留导致“改了代码但行为还是旧的”。
 
 ## Roadmap
 

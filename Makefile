@@ -12,6 +12,7 @@ RUNTIME_MODE  ?= $(or $(EIDOLON_RUNTIME_MODE),mock)
 SERVER_DIR    := apps/server
 WEB_DIR       := apps/web
 RUN_DIR       := .run
+DEVCTL        := $(CURDIR)/scripts/devctl.sh
 VENV          := $(SERVER_DIR)/.venv
 UV            := $(shell command -v uv 2>/dev/null)
 PYTHON        ?= python3
@@ -75,8 +76,24 @@ else
 	@cd $(SERVER_DIR) && nohup .venv/bin/uvicorn app.main:app --host $(API_HOST) --port $(API_PORT) > $(CURDIR)/$(RUN_DIR)/server.log 2>&1 & echo $$! > $(CURDIR)/$(RUN_DIR)/server.pid
 endif
 	@cd $(WEB_DIR) && nohup pnpm dev > $(CURDIR)/$(RUN_DIR)/web.log 2>&1 & echo $$! > $(CURDIR)/$(RUN_DIR)/web.pid
-	@sleep 2
-	@echo "Eidolon is starting:"
+	@failed=""; \
+	 up=0; for i in $$(seq 1 30); do curl -sf -o /dev/null "http://127.0.0.1:$(API_PORT)/health" && { up=1; break; }; sleep 1; done; \
+	 [ "$$up" = 1 ] || failed="$$failed backend(:$(API_PORT))"; \
+	 up=0; for i in $$(seq 1 30); do lsof -nP -tiTCP:$(WEB_PORT) -sTCP:LISTEN >/dev/null 2>&1 && { up=1; break; }; sleep 1; done; \
+	 [ "$$up" = 1 ] || failed="$$failed web(:$(WEB_PORT))"; \
+	 if [ -n "$$failed" ]; then \
+	   echo "ERROR: Eidolon did not come up — not listening:$$failed"; \
+	   echo "--- $(RUN_DIR)/server.log (tail) ---"; tail -n 15 $(RUN_DIR)/server.log 2>/dev/null; \
+	   echo "--- $(RUN_DIR)/web.log (tail) ---"; tail -n 15 $(RUN_DIR)/web.log 2>/dev/null; \
+	   echo "hint: 'make stop' force-clears the whole process tree; 'make ps' lists strays"; \
+	   exit 1; \
+	 fi; \
+	 for spec in "server $(API_PORT)" "web $(WEB_PORT)"; do \
+	   set -- $$spec; holder=$$(lsof -nP -tiTCP:$$2 -sTCP:LISTEN 2>/dev/null | head -1); \
+	   [ -n "$$holder" ] && echo $$holder > $(RUN_DIR)/$$1.pid; \
+	   true; \
+	 done
+	@echo "Eidolon is running:"
 	@echo "  Eidolon Web     http://localhost:$(WEB_PORT)"
 	@echo "  Network Access  http://<server-ip>:$(WEB_PORT)"
 	@echo "  Backend API     $(API_HOST):$(API_PORT) (proxied via Web at /api, /ws — normally not needed directly)"
@@ -84,14 +101,25 @@ endif
 	@echo "  Logs:           $(RUN_DIR)/server.log, $(RUN_DIR)/web.log"
 	@echo "  Stop:           make stop"
 
-## stop: 停止前后台开发进程
+## stop: 停止开发进程（进程树 + 端口双路清理，详见 scripts/devctl.sh）
 .PHONY: stop
 stop:
-	@for s in server web; do \
-	  if [ -f $(RUN_DIR)/$$s.pid ] && kill -0 $$(cat $(RUN_DIR)/$$s.pid) 2>/dev/null; then \
-	    kill $$(cat $(RUN_DIR)/$$s.pid) 2>/dev/null && echo "stopped $$s"; \
-	  fi; rm -f $(RUN_DIR)/$$s.pid; \
-	done; true
+	@EIDOLON_API_PORT=$(API_PORT) EIDOLON_WEB_PORT=$(WEB_PORT) sh $(DEVCTL) stop
+
+## ps: 列出本仓库所有 dev 进程（包括漂移到其他端口的孤儿）
+.PHONY: ps
+ps:
+	@EIDOLON_API_PORT=$(API_PORT) EIDOLON_WEB_PORT=$(WEB_PORT) sh $(DEVCTL) ps
+
+## status: 只看 26881 / 26880 是否有健在的服务
+.PHONY: status
+status:
+	@EIDOLON_API_PORT=$(API_PORT) EIDOLON_WEB_PORT=$(WEB_PORT) sh $(DEVCTL) status
+
+## logs: 跟随前后端日志（Ctrl-C 退出）
+.PHONY: logs
+logs:
+	@tail -n 40 -f $(RUN_DIR)/server.log $(RUN_DIR)/web.log
 
 ## restart: 重启全部服务
 .PHONY: restart

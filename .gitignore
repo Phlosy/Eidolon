@@ -22,6 +22,10 @@ node_modules/
 data/
 .run/
 
+# Browser agent debug artifacts
+.playwright-mcp/
+.chrome-mcp/
+
 # OS / Editor
 .DS_Store
 .idea/

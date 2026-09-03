@@ -18,6 +18,10 @@ make run
 ## 约定
 
 - 后端：FastAPI + SQLAlchemy，严格分层 `API → Service → Repository`；Ruff 格式化；禁止 `print()`。
+- 开发进程：后端无 `--reload`，改完 Python 需 `make restart`。`make stop/restart` 不依赖
+  `.run/*.pid`（那里面往往是 `uv`/`pnpm` 启动器，不是真正占端口的 uvicorn/vite），而是
+  走 `scripts/devctl.sh` 的「pid 文件 + 端口占用 + 命令行特征」三路并集 + 进程树闭包。
+  手工用 `pnpm dev` / `uvicorn --port 8000` 起的孤儿也会被它回收，`make ps` 可随时查看。
 - 前端：TypeScript strict；页面组件只组装，业务组件进 `components/`；不允许巨型单文件组件。
 - 架构边界（见 `docs/architecture.md` §0）不可破坏：Employee≠Runtime、Private Memory≠Company Knowledge、Task≠Agent Session、Domain Logic≠API、Frontend≠Runtime。
 - 任何 secret 走 `.env`，禁止提交。
