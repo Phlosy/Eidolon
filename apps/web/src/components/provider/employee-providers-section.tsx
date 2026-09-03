@@ -83,7 +83,11 @@ export function EmployeeProvidersSection({ employeeId }: { employeeId: number })
             {t("provider:employeeSection.description")}
           </p>
         </div>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
+        {/* 教程打光在这里：员工级"新建服务商"才是 mock 运行时也能走通的绑定入口
+            （带 model 的创建会顺手建好 ModelBinding，教程门禁认的就是它）。
+            运行时卡片上的"更换服务商"对 mock 运行时的 supported_providers 是空列表，
+            指过去只会让用户对着一个永远没有选项的下拉框。 */}
+        <Button size="sm" data-tutorial-target="employee-provider-create" onClick={() => setAddOpen(true)}>
           <Plus className="h-3.5 w-3.5" />
           {t("provider:employeeSection.add")}
         </Button>

@@ -124,7 +124,15 @@ export function TutorialOverlay() {
           interactionMode={hinting ? "FOCUS_ONLY" : step.interaction_mode}
         />
       ) : null}
-      <CoachPanel anchor={anchor} placement={step.placement} degraded={degraded}>
+      {/* 指引态换成侧边摆放：这一步的 placement 是给"页面上的目标"定的（例如 top），
+          而指引目标是弹窗/标签页里的控件，沿用同一个方位会让面板正好压住用户
+          下一个要点开的元素（Playwright 实测因此点不动"运行时"标签页）。
+          真被挡住时用户还能按暂停收成小药丸，但默认就不该挡。 */}
+      <CoachPanel
+        anchor={anchor}
+        placement={hinting ? "right" : step.placement}
+        degraded={degraded}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">

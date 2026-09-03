@@ -238,6 +238,37 @@ def test_upload_markdown_keeps_text_preview_and_sanitizes_name(client):
     assert unsupported.status_code == 400
 
 
+def test_drive_writes_publish_events(client):
+    """Drive 必须发事件：教程门禁挂在文档状态上，静默写入 = 用户做完动作不推进。
+
+    回归背景：Drive 是唯一不发事件的域，实测外部创建文档后 15s 内教程毫无反应
+    （只能等 45s 兜底轮询）。事件是"该重算"的信号，不是状态本身。
+    """
+    created = client.post(
+        "/api/v1/drive/files",
+        params={"zone": "knowledge", "name": "event-check.md"},
+        content=b"# event check\n",
+        headers={"content-type": "text/markdown"},
+    )
+    assert created.status_code == 201, created.text
+    node_id = created.json()["id"]
+
+    types = [event["type"] for event in client.get("/api/v1/events?limit=200").json()]
+    assert "drive.created" in types
+
+    folder = client.post("/api/v1/drive/folders", json={"name": "Event Folder", "zone": "knowledge"})
+    assert folder.status_code == 201, folder.text
+    types = [event["type"] for event in client.get("/api/v1/events?limit=200").json()]
+    assert types.count("drive.created") >= 2, "文件夹创建同样要发事件"
+
+    patched = client.patch(
+        f"/api/v1/drive/nodes/{node_id}", json={"content": "# edited\n", "message": "tutorial check"}
+    )
+    assert patched.status_code == 200, patched.text
+    types = [event["type"] for event in client.get("/api/v1/events?limit=200").json()]
+    assert "drive.updated" in types
+
+
 def test_legacy_artifacts_migrate_to_drive(client, db, default_company_id):
     project = project_repo.create_project(
         db,

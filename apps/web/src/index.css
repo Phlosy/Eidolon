@@ -781,3 +781,16 @@ a[href],
     animation: none !important;
   }
 }
+
+/* 教程教练面板：面板本体点击穿透，只有它自己的控件可交互。
+   面板是 fixed 悬浮层，弹窗/标签页里的真实控件随时可能落在它下面；
+   如果面板吞掉点击，用户就点不到本来该点的元素（实测被压住的既有页签，
+   也有嵌套弹窗的"添加服务商"提交按钮）。见 Tutorial §"教程不能锁死应用"。
+   面板内的交互控件（按钮/链接/表单）显式恢复指针事件。 */
+[data-tutorial-overlay="coach"] button,
+[data-tutorial-overlay="coach"] a,
+[data-tutorial-overlay="coach"] input,
+[data-tutorial-overlay="coach"] select,
+[data-tutorial-overlay="coach"] summary {
+  pointer-events: auto;
+}

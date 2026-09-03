@@ -1,4 +1,4 @@
-import { API_BASE_URL, ApiError, get, patch, post } from "./client";
+import { API_BASE_URL, ApiError, authHeaders, get, patch, post } from "./client";
 import type {
   CreateDriveFolderInput,
   DriveNode,
@@ -25,7 +25,13 @@ export function getDriveRevisions(id: number): Promise<DriveRevision[]> {
 async function rawDriveRequest(path: string, init?: RequestInit): Promise<Response> {
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}/api/v1${path}`, init);
+    response = await fetch(`${API_BASE_URL}/api/v1${path}`, {
+      ...init,
+      // 原始请求也要带会话与 CSRF：这里是 Blob / 文件上传，用不了 client.ts 的
+      // request()，但鉴权头必须同源，否则写操作全部 403。
+      credentials: "include",
+      headers: { ...authHeaders(), ...init?.headers },
+    });
   } catch {
     throw new ApiError(0, "Cannot reach the Eidolon API");
   }

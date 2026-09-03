@@ -202,6 +202,6 @@
     "engineerAccess": "第二位员工沿用同样的真实 Provisioning；这里只提醒关键差异。",
     "confirmOnboard": "确认并入职。提交后教程会等这位 CEO 的运行时与工作区真的开出来才前进。",
     "openRuntimeTab": "绑定入口在“运行时”标签页里，先切过去。",
-    "bindProvider": "在这里选择或新建 Provider 并绑定模型；密钥真正存下才算完成。"
+    "bindProvider": "在这里新建服务商并填模型：带密钥与模型的创建会同时建立绑定，教程只认这个。"
   }
 }

@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.request_context import get_request_identity
+from app.events.bus import bus
 from app.models.drive import DriveNode
 from app.models.enums import ArtifactType, DriveNodeKind, DriveZone
 from app.models.organization import Company
@@ -94,7 +95,23 @@ def _create_node(db: Session, *, path: str, on_disk: Path, **fields) -> DriveNod
     node = drive_repo.create_node(db, path=path, **fields)
     if node.kind == DriveNodeKind.folder.value:
         on_disk.mkdir(parents=True, exist_ok=True)
-    return node
+    return node  # 这里不 commit，所以也不发事件：事件只在真正提交之后发
+
+
+def publish_drive(kind: str, node: DriveNode) -> None:
+    """Drive 写操作要发事件（以前 Drive 是唯一"静默"的域）。
+
+    教程的 COMPANY_DOCUMENT_CREATED 靠 GET /tutorial 里的 reconcile 才推进；
+    Drive 不发事件，前端就不知道该重取，实测外部创建文档后 15s 内教程毫无反应。
+    事件只是"该重算了"的信号而不是状态本身，所以偶发的多余事件只会多一次重取。
+    """
+    bus.publish(
+        f"drive.{kind}",
+        {"id": node.id, "kind": node.kind, "zone": node.zone, "path": node.path, "name": node.name},
+        company_id=node.company_id,
+        project_id=node.project_id,
+        actor_employee_id=node.owner_employee_id,
+    )
 
 
 # ---- seed / project folder structure ----
@@ -228,6 +245,9 @@ def create_document(
     if commit:
         db.commit()
         db.refresh(node)
+        # 事件必须在 commit 之后发：bus.publish 用自己的 session，
+        # 插在未提交的事务里会撞 SQLite 写锁（实测 database is locked）。
+        publish_drive("created", node)
     else:
         db.flush()
     return node
@@ -280,7 +300,7 @@ def create_binary_document(
         author_employee_id=owner_employee_id,
         message=message,
     )
-    db.flush()
+    db.flush()  # 不 commit：事件由真正提交的上层负责
     return node
 
 
@@ -346,6 +366,7 @@ def create_uploaded_file(
     )
     db.commit()
     db.refresh(node)
+    publish_drive("created", node)
     return node
 
 
@@ -407,6 +428,7 @@ def update_document(
     )
     db.commit()
     db.refresh(node)
+    publish_drive("updated", node)
     return node
 
 
@@ -447,6 +469,7 @@ def create_folder(
     abs_path(node).mkdir(parents=True, exist_ok=True)
     db.commit()
     db.refresh(node)
+    publish_drive("created", node)
     return node
 
 

@@ -111,7 +111,7 @@ export function CoachPanel({ anchor, placement, children, degraded }: CoachPanel
       data-tutorial-overlay="coach"
       data-degraded={degraded ? "true" : "false"}
       data-coach-placement={applied}
-      className={`fixed z-[70] w-[380px] max-w-[92vw] rounded-2xl border bg-card/97 p-4 text-left shadow-2xl backdrop-blur transition-[left,top] duration-150 motion-reduce:transition-none ${
+      className={`pointer-events-none fixed z-[70] w-[380px] max-w-[92vw] rounded-2xl border bg-card/97 p-4 text-left shadow-2xl backdrop-blur transition-[left,top] duration-150 motion-reduce:transition-none ${
         degraded ? "border-warning/45" : "border-primary/25"
       }`}
       style={

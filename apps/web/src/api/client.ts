@@ -66,19 +66,29 @@ export function describeApiError(body: unknown, status: number): string {
   return fallback;
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  let response: Response;
+/**
+ * CSRF 头只有一个来源。任何自己调 fetch 的模块（例如 drive.ts 的原始请求）
+ * 都必须复用它：漏掉 X-CSRF-Token 的后果是后端直接 403，
+ * 用户看到的是"上传失败"，而且只在写操作出现（实测：Drive 上传被教程
+ * cloud_docs 这一步撞出来）。
+ */
+export function authHeaders(): Record<string, string> {
   const csrf = document.cookie
     .split("; ")
     .find((value) => value.startsWith("eidolon_csrf="))
     ?.split("=")[1];
+  return csrf ? { "X-CSRF-Token": decodeURIComponent(csrf) } : {};
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${API_PREFIX}${path}`, {
       ...init,
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        ...(csrf ? { "X-CSRF-Token": decodeURIComponent(csrf) } : {}),
+        ...authHeaders(),
         ...init?.headers,
       },
     });
