@@ -142,7 +142,7 @@ export function useTutorialEngine(): TutorialEngine {
   const steps = isPractice ? practiceSteps : coreSteps;
   const progress = isPractice ? (practiceData?.progress ?? null) : (coreProgress ?? null);
   const ordered = replay ? replay.steps : steps;
-  const step = replay ? (replay.steps[replay.index] ?? null) : (isPractice ? practiceStep : coreStep);
+  const step = replay ? (replay.steps[replay.index] ?? null) : isPractice ? practiceStep : coreStep;
   const mode: TutorialEngine["mode"] = replay ? "replay" : step ? "live" : "hidden";
 
   const context = (progress?.context ?? {}) as Record<string, unknown>;

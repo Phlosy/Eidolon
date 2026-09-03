@@ -582,7 +582,6 @@ describe("暂停与回放", () => {
   });
 });
 
-
 const PRACTICE: TutorialDefinition = {
   id: "first-project-practice",
   version: 1,
@@ -630,9 +629,7 @@ describe("实战教程（practice）也能驱动聚光灯", () => {
 
   it("核心不在展示态时，界面显示的是实战那一步", async () => {
     renderAt("/projects");
-    await waitFor(() =>
-      expect(screen.getByText(/Create the Classic Snake project/i)).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/Create the Classic Snake project/i)).toBeTruthy());
     // 退出入口在实战语境下就是"暂时跳过"，走 /practice/skip（零副作用）
     const exit = screen.getByRole("button", { name: "Skip practice for now" });
     fireEvent.click(exit);

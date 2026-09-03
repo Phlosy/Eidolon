@@ -256,13 +256,16 @@ def test_drive_writes_publish_events(client):
     types = [event["type"] for event in client.get("/api/v1/events?limit=200").json()]
     assert "drive.created" in types
 
-    folder = client.post("/api/v1/drive/folders", json={"name": "Event Folder", "zone": "knowledge"})
+    folder = client.post(
+        "/api/v1/drive/folders", json={"name": "Event Folder", "zone": "knowledge"}
+    )
     assert folder.status_code == 201, folder.text
     types = [event["type"] for event in client.get("/api/v1/events?limit=200").json()]
     assert types.count("drive.created") >= 2, "文件夹创建同样要发事件"
 
     patched = client.patch(
-        f"/api/v1/drive/nodes/{node_id}", json={"content": "# edited\n", "message": "tutorial check"}
+        f"/api/v1/drive/nodes/{node_id}",
+        json={"content": "# edited\n", "message": "tutorial check"},
     )
     assert patched.status_code == 200, patched.text
     types = [event["type"] for event in client.get("/api/v1/events?limit=200").json()]
