@@ -211,7 +211,7 @@ export function HireWizard({
       className="max-w-lg"
     >
       {step === "identity" ? (
-        <div className="space-y-3">
+        <div className="space-y-3" data-tutorial-target="wizard-identity">
           <Input
             data-testid="hire-name"
             placeholder={t("lifecycle:wizard.namePlaceholder")}
@@ -614,7 +614,7 @@ export function HireWizard({
       ) : null}
 
       {step === "hire" ? (
-        <dl className="space-y-1.5 text-sm" data-tutorial-target="wizard-identity">
+        <dl className="space-y-1.5 text-sm">
           <SummaryRow label={t("lifecycle:wizard.summary.name")} value={state.name || "—"} />
           <SummaryRow label={t("lifecycle:wizard.summary.slug")} value={state.slug || "—"} mono />
           <SummaryRow label={t("lifecycle:wizard.summary.title")} value={state.title || "—"} />

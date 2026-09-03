@@ -117,7 +117,12 @@ export function TutorialOverlay() {
   return (
     <>
       {!replay ? (
-        <TutorialSpotlight snapshot={engine.snapshot} interactionMode={step.interaction_mode} />
+        <TutorialSpotlight
+          snapshot={engine.snapshot}
+          // 指引态强制降级为非拦截：TARGET_ONLY 的遮罩会把向导自己的"下一步"
+          // 一起吃掉，用户就被教程锁死在弹窗里（实测过）。
+          interactionMode={hinting ? "FOCUS_ONLY" : step.interaction_mode}
+        />
       ) : null}
       <CoachPanel anchor={anchor} placement={step.placement} degraded={degraded}>
         <div className="flex items-start justify-between gap-3">

@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import type { TutorialInteractionMode } from "../../api/tutorial";
 import type { TutorialTargetSnapshot } from "./target-registry";
@@ -39,7 +40,8 @@ export function TutorialSpotlight({ snapshot, interactionMode }: SpotlightProps)
   const h = height + PADDING * 2;
   const blocking = interactionMode === "TARGET_ONLY";
 
-  return (
+  // 与 CoachPanel 同理：挖孔层也要以视口为包含块，portal 到 body
+  return createPortal(
     <div
       data-tutorial-overlay="spotlight"
       data-tutorial-blocking={blocking ? "true" : "false"}
@@ -63,6 +65,7 @@ export function TutorialSpotlight({ snapshot, interactionMode }: SpotlightProps)
         className="absolute animate-pulse rounded-xl ring-2 ring-primary/80 ring-offset-2 ring-offset-black/40 motion-reduce:animate-none"
         style={{ left: x, top: y, width: w, height: h }}
       />
-    </div>
+    </div>,
+    document.body,
   );
 }

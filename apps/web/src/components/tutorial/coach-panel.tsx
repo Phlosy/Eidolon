@@ -1,4 +1,5 @@
 import { arrow, autoUpdate, computePosition, flip, offset, shift } from "@floating-ui/dom";
+import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { TutorialPlacement } from "../../api/tutorial";
@@ -11,6 +12,8 @@ import type { TutorialPlacement } from "../../api/tutorial";
  * 而 autoUpdate 负责滚动与 resize 期间持续跟随 —— 这正是 §"窗口大小改变后
  * 遮罩位置仍然正确"要求的行为。
  */
+
+const PADDING = 12;
 
 const FALLBACK_CENTER_STYLE = {
   left: "50%",
@@ -35,79 +38,96 @@ function rectKey(rect: DOMRect | null): string {
 export function CoachPanel({ anchor, placement, children, degraded }: CoachPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<HTMLDivElement>(null);
-  const [positioned, setPositioned] = useState(false);
+  // 坐标只走 state → style prop。之前混用了"React 的 style prop"和
+  // "place() 里直接写 panel.style"，React 在下一帧把 left/top 当成自己记账的
+  // 属性抹掉了，面板会瞬间跳回静态位置（实测：掉到视口下方 903px）。
+  const [coords, setCoords] = useState<{
+    x: number;
+    y: number;
+    arrowX?: number;
+    arrowY?: number;
+  } | null>(null);
+  const [applied, setApplied] = useState<TutorialPlacement | string>(placement);
   const key = rectKey(anchor);
 
   useLayoutEffect(() => {
     const panel = panelRef.current;
     if (!panel || !anchor) {
-      setPositioned(false);
+      setCoords(null);
       return undefined;
     }
     const reference = { getBoundingClientRect: () => anchor };
-    let cleanup: (() => void) | undefined;
     let cancelled = false;
     const place = async () => {
       const {
-        x,
-        y,
-        placement: applied,
+        x: rawX,
+        y: rawY,
+        placement: appliedPlacement,
         middlewareData,
       } = await computePosition(reference, panel, {
         placement: placement === "auto" ? "bottom" : placement,
         strategy: "fixed",
         middleware: [
           offset(14),
-          flip({ padding: 12 }),
-          shift({ padding: 12 }),
-          // 面板本身是 w-[380px] max-w-[92vw]，窄屏由 CSS 兜住；
-          // 这里只负责"不要压在屏幕上"，不再用 size 中间件改宽度。
+          flip({ padding: PADDING }),
+          shift({ padding: PADDING }),
           ...(arrowRef.current ? [arrow({ element: arrowRef.current })] : []),
         ],
       });
       if (cancelled) return;
-      panel.style.left = `${x}px`;
-      panel.style.top = `${y}px`;
-      panel.dataset.coachPlacement = applied;
-      const arrowData = middlewareData.arrow;
-      if (arrowRef.current && arrowData) {
-        arrowRef.current.style.left = arrowData.x != null ? `${arrowData.x}px` : "";
-        arrowRef.current.style.top = arrowData.y != null ? `${arrowData.y}px` : "";
-      }
-      setPositioned(true);
+      // 确定性兜底：参考元素几乎占满视口时（例如整个公司总览面板），flip/shift 会
+      // 算出 x = -98 这种屏幕外坐标 —— 实测过。自己夹一遍，保证面板永远在屏内，
+      // 兑现 §"窗口大小改变后遮罩与面板位置仍然正确"。
+      const viewWidth = document.documentElement.clientWidth;
+      const viewHeight = document.documentElement.clientHeight;
+      const rect = panel.getBoundingClientRect();
+      const clampAxis = (value: number, size: number, extent: number) =>
+        size >= extent - PADDING * 2
+          ? PADDING
+          : Math.min(Math.max(PADDING, value), extent - size - PADDING);
+      setApplied(appliedPlacement);
+      setCoords({
+        x: clampAxis(rawX, rect.width, viewWidth),
+        y: clampAxis(rawY, rect.height, viewHeight),
+        arrowX: middlewareData.arrow?.x ?? undefined,
+        arrowY: middlewareData.arrow?.y ?? undefined,
+      });
     };
     void place();
-    // autoUpdate 覆盖滚动/resize/目标自身变化，不需要我们轮询
-    if (typeof window !== "undefined") {
-      cleanup = autoUpdate(reference, panel, () => void place());
-    }
+    // autoUpdate 覆盖滚动 / resize / 目标自身变化，不需要我们轮询
+    const cleanup = autoUpdate(reference, panel, () => void place());
     return () => {
       cancelled = true;
-      cleanup?.();
+      cleanup();
     };
-    // key 而不是 anchor：矩形对象每次测量都是新的，用它会死循环重渲染
+    // key 而不是 anchor：矩形对象每帧都是新的，用它会把这里变成死循环
   }, [key, placement, anchor]);
 
-  const centered = !anchor || !positioned;
-
-  return (
+  return createPortal(
     <div
       ref={panelRef}
       role="region"
       aria-live="polite"
       data-tutorial-overlay="coach"
       data-degraded={degraded ? "true" : "false"}
+      data-coach-placement={applied}
       className={`fixed z-[70] w-[380px] max-w-[92vw] rounded-2xl border bg-card/97 p-4 text-left shadow-2xl backdrop-blur transition-[left,top] duration-150 motion-reduce:transition-none ${
         degraded ? "border-warning/45" : "border-primary/25"
-      } ${centered ? "opacity-0" : "opacity-100"}`}
-      style={centered ? { ...FALLBACK_CENTER_STYLE, opacity: anchor ? 0 : 1 } : undefined}
+      }`}
+      style={
+        coords
+          ? { left: coords.x, top: coords.y }
+          : { ...FALLBACK_CENTER_STYLE, opacity: anchor ? 0 : 1 }
+      }
     >
       {children}
       <div
         ref={arrowRef}
         data-tutorial-arrow="true"
+        style={{ left: coords?.arrowX, top: coords?.arrowY }}
         className="absolute h-2 w-2 rotate-45 border border-primary/25 bg-card/97"
       />
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -399,6 +399,11 @@ describe("向导内部指引（ui_hints）", () => {
     await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
     expect(halo().style.left).toBe("412px");
 
+    // 指引态不能拦点击：向导自己的"下一步"必须还能按（实测被遮罩锁死过）
+    const dims = document.querySelectorAll('[data-tutorial-dim="true"]');
+    expect(dims.length).toBeGreaterThan(0);
+    expect([...dims].every((d) => (d as HTMLElement).style.pointerEvents === "none")).toBe(true);
+
     // 翻指引绝不会伪装成完成：没有任何进度 mutation
     expect(state.complete).not.toHaveBeenCalled();
     expect(state.skip).not.toHaveBeenCalled();
@@ -414,8 +419,12 @@ describe("向导内部指引（ui_hints）", () => {
             path="/employees"
             element={
               <div role="dialog" aria-modal="true" data-rect="0,0,400,400">
-                <div data-tutorial-target="wizard-identity" data-rect="10,10,60,20">a</div>
-                <div data-tutorial-target="wizard-confirm" data-rect="10,50,60,20">b</div>
+                <div data-tutorial-target="wizard-identity" data-rect="10,10,60,20">
+                  a
+                </div>
+                <div data-tutorial-target="wizard-confirm" data-rect="10,50,60,20">
+                  b
+                </div>
                 <TutorialOverlay />
               </div>
             }
