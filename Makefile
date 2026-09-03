@@ -74,7 +74,8 @@ endif
 
 .PHONY: install-web
 install-web:
-	cd $(WEB_DIR) && pnpm install
+	# 与 CI 完全一致：lock 与 package.json 不一致就当场报错，而不是默默改 lock。
+	cd $(WEB_DIR) && pnpm install --frozen-lockfile
 
 ## run: 一次启动 Frontend + Backend（后台运行，日志在 .run/）
 .PHONY: run

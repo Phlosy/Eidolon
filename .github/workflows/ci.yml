@@ -2,8 +2,11 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    # dev 是日常开发分支（main 长期停在发布线），不在这里列出来的分支只能靠 PR 触发。
+    branches: [main, dev]
   pull_request:
+  # 手动跑一次（改完 CI 配置想立即验证，又不想造一个空提交）
+  workflow_dispatch:
 
 jobs:
   backend:
@@ -30,6 +33,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          # 仓库根目录没有 package.json，v4 无从读取 packageManager 字段，
+          # 不显式给版本会直接报错：No pnpm version specified。
+          # 与本地开发用同一主版本号（pnpm --version）；改这里时同步改 CONTRIBUTING。
+          version: 11.22.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -37,6 +45,9 @@ jobs:
           cache-dependency-path: apps/web/pnpm-lock.yaml
       - name: Install
         run: pnpm install --frozen-lockfile
+        working-directory: apps/web
+      - name: Prettier
+        run: pnpm exec prettier --check .
         working-directory: apps/web
       - name: Typecheck
         run: pnpm exec tsc --noEmit
