@@ -307,6 +307,7 @@ export class OfficeScene extends Phaser.Scene {
       .getTweens()
       .forEach((tween: Phaser.Tweens.Tween) => (paused ? tween.pause() : tween.resume()));
     for (const runtime of this.employees.values()) {
+      if (!runtime.sprite.active || !runtime.sprite.anims) continue;
       if (paused) runtime.sprite.anims.pause();
       else if (!runtime.sprite.hoverPaused) runtime.sprite.anims.resume();
     }

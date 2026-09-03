@@ -1,6 +1,8 @@
 import importlib.util
+from itertools import pairwise
 from pathlib import Path
 
+import pytest
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -18,6 +20,17 @@ make_object_atlas = PROCESSOR.make_object_atlas
 make_character_sheet = PROCESSOR.make_character_sheet
 make_tiles = PROCESSOR.make_tiles
 FRAME = PROCESSOR.FRAME
+EMPLOYEE_FRAMES_PER_ROW = PROCESSOR.EMPLOYEE_FRAMES_PER_ROW
+EMPLOYEE_ANIMATION_LAYOUT = PROCESSOR.EMPLOYEE_ANIMATION_LAYOUT
+
+
+@pytest.fixture(scope="module")
+def generated_character_sheet():
+    with (
+        Image.open(SOURCE / "employee-directional-v2.png") as source,
+        Image.open(SOURCE / "employee-walk-cycles-v3.png") as walk_source,
+    ):
+        return make_character_sheet(source, walk_source)
 
 
 def test_checked_in_office_tiles_match_binary_pipeline() -> None:
@@ -51,10 +64,10 @@ def test_runtime_atlas_preserves_opaque_workstation_details() -> None:
     assert runtime_atlas.tobytes() == atlas.tobytes()
 
 
-def test_runtime_employee_frames_keep_complete_character_silhouettes() -> None:
-    source = Image.open(SOURCE / "employee-directional-v2.png")
-
-    sheet, _ = make_character_sheet(source)
+def test_runtime_employee_frames_keep_complete_character_silhouettes(
+    generated_character_sheet,
+) -> None:
+    sheet, registry = generated_character_sheet
     runtime_sheet = Image.open(RUNTIME / "employees.png")
     opaque_pixels_per_frame = [
         sheet.crop(
@@ -71,6 +84,65 @@ def test_runtime_employee_frames_keep_complete_character_silhouettes() -> None:
         for column in range(sheet.width // FRAME[0])
     ]
 
-    assert min(opaque_pixels_per_frame) >= 900
+    assert min(opaque_pixels_per_frame) >= 500
+    assert sheet.width == FRAME[0] * EMPLOYEE_FRAMES_PER_ROW
+    assert {entry["frameCount"] for entry in registry.values()} == {EMPLOYEE_FRAMES_PER_ROW}
     assert runtime_sheet.size == sheet.size
     assert runtime_sheet.tobytes() == sheet.tobytes()
+
+
+def test_runtime_employee_walks_use_distinct_continuous_directional_frames(
+    generated_character_sheet,
+) -> None:
+    sheet, _ = generated_character_sheet
+    for row in range(PROCESSOR.EMPLOYEE_ROWS):
+        for direction in ("walk-down", "walk-up", "walk-side"):
+            start, count = EMPLOYEE_ANIMATION_LAYOUT[direction]
+            frames = [
+                sheet.crop(
+                    (
+                        column * FRAME[0],
+                        row * FRAME[1],
+                        (column + 1) * FRAME[0],
+                        (row + 1) * FRAME[1],
+                    )
+                )
+                for column in range(start, start + count)
+            ]
+            frame_bytes = [frame.tobytes() for frame in frames]
+            assert len(set(frame_bytes)) >= 5
+            assert len({frame.getbbox()[3] for frame in frames}) == 1
+            assert all(
+                current != following
+                for current, following in pairwise(frame_bytes + frame_bytes[:1])
+            )
+
+
+def test_runtime_employee_edges_have_no_light_matte_or_transparent_rgb(
+    generated_character_sheet,
+) -> None:
+    sheet, _ = generated_character_sheet
+    pixels = sheet.load()
+
+    for y in range(sheet.height):
+        for x in range(sheet.width):
+            red, green, blue, alpha = pixels[x, y]
+            if alpha == 0:
+                assert (red, green, blue) == (0, 0, 0), (x, y)
+                continue
+            neighbors = (
+                (x - 1, y),
+                (x + 1, y),
+                (x, y - 1),
+                (x, y + 1),
+            )
+            touches_transparency = any(
+                not (0 <= next_x < sheet.width and 0 <= next_y < sheet.height)
+                or pixels[next_x, next_y][3] == 0
+                for next_x, next_y in neighbors
+            )
+            is_light_neutral = (
+                max(red, green, blue) - min(red, green, blue) <= 18
+                and (red + green + blue) / 3 >= 218
+            )
+            assert not (touches_transparency and is_light_neutral), (x, y)

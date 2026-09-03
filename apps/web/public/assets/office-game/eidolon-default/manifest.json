@@ -1,6 +1,6 @@
 {
   "id": "eidolon-default",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "tileSize": 32,
   "fallbacks": {
     "character": "employee-0",
@@ -35,7 +35,7 @@
       "source": "source/employee-directional-v2.png",
       "author": "OpenAI image generation, directed by Eidolon",
       "license": "project-generated",
-      "version": "2.0.0",
+      "version": "3.0.0",
       "spriteSize": [48, 64],
       "runtimePath": "runtime/employees.png"
     }

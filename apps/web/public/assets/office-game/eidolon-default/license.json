@@ -24,6 +24,13 @@
       "modification": "cropped into directional idle, walk, and desk-free seated work frames; background-normalized; resized with nearest-neighbor"
     },
     {
+      "source": "source/employee-walk-cycles-v3.png",
+      "author": "OpenAI image generation, directed by Eidolon",
+      "license": "project-generated",
+      "sourceUrl": null,
+      "modification": "segmented into continuous front, back, and side walk-cycle keyframes; checkerboard matte removed; resized with a stable baseline and nearest-neighbor"
+    },
+    {
       "source": "source/office-layout-additions-v2.png",
       "author": "OpenAI image generation, directed by Eidolon",
       "license": "project-generated",
