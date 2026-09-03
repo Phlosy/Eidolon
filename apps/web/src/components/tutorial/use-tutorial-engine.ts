@@ -16,8 +16,7 @@ import {
   useTutorialDefinition,
 } from "../../hooks/useTutorial";
 import type { TutorialTargetSnapshot } from "./target-registry";
-import { readTargetSnapshot } from "./target-registry";
-import { useTutorialTarget } from "./use-tutorial-target";
+import { useFirstVisibleHint, useTutorialTarget } from "./use-tutorial-target";
 import { moveReplay, stopReplay, useReplaySession } from "./tutorial-replay";
 
 /**
@@ -164,9 +163,9 @@ export function useTutorialEngine(): TutorialEngine {
     Boolean(step) && active && stepHints.length > 0 && step?.kind !== "INFORMATION";
   // 向导每翻一步只渲染当前那一段 DOM，所以"此刻可见的指引目标"就是用户真正
   // 所在的那一步 —— 用它自动跟随。
-  const visibleHintIndex = hintCandidate
-    ? stepHints.findIndex((item) => readTargetSnapshot({ id: item.targetId }).status === "visible")
-    : -1;
+  const visibleHintIndex = useFirstVisibleHint(
+    hintCandidate ? stepHints.map((item) => item.targetId) : [],
+  );
   useEffect(() => {
     // 向导步骤变了 → 放弃手翻，回到跟随。纯自动跟随会永远压掉手翻，两条路都得留。
     if (visibleHintIndex >= 0 && visibleHintIndex !== lastVisibleHint.current) {

@@ -105,6 +105,7 @@ vi.mock("../../hooks/useTutorial", () => ({
   useResumeTutorial: () => ({ mutate: state.resume, isPending: false }),
 }));
 
+import { tutorialTargets } from "./target-registry";
 import { TutorialOverlay } from "./tutorial-overlay";
 import { startReplay, stopReplay } from "./tutorial-replay";
 
@@ -363,6 +364,58 @@ describe("向导内部指引（ui_hints）", () => {
         },
       ],
     };
+  });
+
+  it("向导换段落（DOM 里换了可见的指引目标）时，光自动跟上", async () => {
+    progressFor("hire_ceo");
+    let holder: HTMLDivElement | null = null;
+    render(
+      <MemoryRouter initialEntries={["/employees"]}>
+        <Routes>
+          <Route
+            path="/employees"
+            element={
+              <div>
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  data-rect="100,50,500,600"
+                  ref={(node) => {
+                    holder = node;
+                  }}
+                >
+                  <div data-tutorial-target="wizard-identity" data-rect="120,90,300,40">
+                    identity
+                  </div>
+                </div>
+                <TutorialOverlay />
+              </div>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.getByText(/Confirm identity first/i)).toBeTruthy());
+    expect(document.querySelector('[data-tutorial-hint="true"]')).toHaveTextContent(
+      /Wizard step 1 of 2/,
+    );
+
+    // 模拟向导翻到确认那一步：DOM 里换成了另一个指引目标
+    const dialog = holder as unknown as HTMLDivElement;
+    dialog.innerHTML =
+      '<button data-tutorial-target="wizard-confirm" data-rect="420,560,120,32">Hire</button>';
+    tutorialTargets.refresh();
+
+    // 换段落之后光应当自动跟到第 2 条指引，不需要任何人手翻
+    await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
+    expect(document.querySelector('[data-tutorial-hint="true"]')).toHaveTextContent(
+      /Wizard step 2 of 2/,
+    );
+    await waitFor(() =>
+      expect(
+        (document.querySelector('[data-tutorial-halo="true"]') as HTMLElement).style.left,
+      ).toBe("412px"),
+    );
   });
 
   it("向导只渲染当前那一段时，光自动跟随到对应指引，不需要手动翻页", async () => {
