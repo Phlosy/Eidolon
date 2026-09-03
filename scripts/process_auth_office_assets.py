@@ -83,6 +83,22 @@ def keep_rows(source: Image.Image, start: int, end: int) -> Image.Image:
     return output
 
 
+def quantize_pixel_alpha(source: Image.Image, cutoff: int = 128) -> Image.Image:
+    """Make generated pixel art fully opaque or transparent, with no ghost pixels."""
+    output = source.copy().convert("RGBA")
+    alpha = output.getchannel("A").point(lambda value: 0 if value <= cutoff else 255)
+    output.putalpha(alpha)
+    return output
+
+
+def assert_binary_alpha(source: Image.Image, name: str) -> None:
+    partial_pixels = sum(source.getchannel("A").histogram()[1:255])
+    if partial_pixels:
+        raise ValueError(
+            f"{name} contains {partial_pixels} partially transparent pixels"
+        )
+
+
 def animation_frames(
     pose: Image.Image, *, mirror_stride: bool = False
 ) -> list[Image.Image]:
@@ -165,7 +181,7 @@ def make_object_atlas(
     definitions = {
         "window": ((520, 16, 748, 216), (128, 96)),
         "meeting-table": ((858, 206, 1214, 450), (192, 128)),
-        "coffee-station": ((382, 642, 588, 846), (128, 96)),
+        "coffee-station": ((382, 642, 552, 846), (128, 96)),
         "whiteboard": ((920, 636, 1156, 850), (128, 96)),
         "server-rack": ((1178, 610, 1324, 856), (64, 128)),
         "plant": ((1012, 456, 1204, 644), (96, 96)),
@@ -187,20 +203,26 @@ def make_object_atlas(
             cursor_x = 0
             cursor_y += row_height
             row_height = 0
-        item = fit_pixel(transparent_crop(source, box), size, padding=2)
+        item = quantize_pixel_alpha(
+            fit_pixel(transparent_crop(source, box), size, padding=2)
+        )
         atlas.alpha_composite(item, (cursor_x, cursor_y))
         frames[name] = {"x": cursor_x, "y": cursor_y, "w": size[0], "h": size[1]}
         cursor_x += size[0]
         row_height = max(row_height, size[1])
 
     addition_items = {
-        name: fit_pixel(transparent_crop(additions, box, threshold=22), size, padding=2)
+        name: quantize_pixel_alpha(
+            fit_pixel(transparent_crop(additions, box, threshold=22), size, padding=2)
+        )
         for name, (box, size) in addition_definitions.items()
     }
-    workstation = fit_pixel(
-        transparent_crop(additions, (26, 528, 446, 920), threshold=22),
-        (192, 128),
-        padding=2,
+    workstation = quantize_pixel_alpha(
+        fit_pixel(
+            transparent_crop(additions, (26, 528, 446, 920), threshold=22),
+            (192, 128),
+            padding=2,
+        )
     )
     addition_items["workstation-back"] = keep_rows(workstation, 0, 70)
     addition_items["workstation-front"] = keep_rows(workstation, 74, workstation.height)
@@ -226,10 +248,12 @@ def main() -> None:
     additions = Image.open(SOURCE / "office-layout-additions-v2.png")
 
     character_sheet, character_registry = make_character_sheet(characters)
+    assert_binary_alpha(character_sheet, "employee sprite sheet")
     character_sheet.save(RUNTIME / "employees.png", optimize=True)
 
     make_tiles(objects).save(RUNTIME / "office-tiles.png", optimize=True)
     object_atlas, frames = make_object_atlas(objects, additions)
+    assert_binary_alpha(object_atlas, "office object atlas")
     object_atlas.save(RUNTIME / "office-objects.png", optimize=True)
 
     atlas = {
