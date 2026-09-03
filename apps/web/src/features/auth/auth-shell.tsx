@@ -1,11 +1,30 @@
-import { Globe2, Orbit } from "lucide-react";
-import type { ReactNode } from "react";
+import { Info, Orbit, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "../../components/common/language-selector";
 import { AuthOfficeCover } from "../auth-office-game/components/auth-office-cover";
 
 export function AuthShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation("auth");
+  const [guideOpen, setGuideOpen] = useState(false);
+  const noticeRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  const closeGuide = useCallback(() => {
+    setGuideOpen(false);
+    window.requestAnimationFrame(() => noticeRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    if (!guideOpen) return;
+    closeRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeGuide();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [closeGuide, guideOpen]);
+
   return (
     <main
       className="auth-world-shell relative min-h-screen overflow-x-hidden bg-background"
@@ -22,31 +41,63 @@ export function AuthShell({ children }: { children: ReactNode }) {
             <Orbit className="h-5 w-5" />
           </span>
           <div>
-            <p className="text-sm font-semibold tracking-[.22em]">EIDOLON</p>
+            <h1 className="text-sm font-semibold tracking-[.22em]">EIDOLON</h1>
             <p className="text-[10px] uppercase tracking-[.18em] text-white/60">AI Company OS</p>
           </div>
         </div>
         <LanguageSelector />
       </header>
 
-      <section className="auth-world-copy hidden lg:block">
-        <p className="type-kicker text-primary">{t("shell.kicker")}</p>
-        <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-[1.08] tracking-[-.05em]">
-          {t("shell.title")}
-        </h1>
-        <p className="mt-3 max-w-lg text-sm leading-6 text-white/72">{t("shell.description")}</p>
-        <p className="mt-4 font-mono text-[9px] tracking-[.16em] text-white/50">
-          HUMAN COMMAND · AI WORKFORCE · VERIFIED DELIVERY
-        </p>
+      <section className="auth-world-guide hidden lg:block">
+        {guideOpen ? (
+          <aside
+            id="auth-office-guide"
+            role="dialog"
+            aria-label={t("shell.notice.label")}
+            className="auth-world-guide-card"
+          >
+            <div className="auth-world-guide-heading">
+              <p>{t("shell.notice.kicker")}</p>
+              <button
+                ref={closeRef}
+                type="button"
+                aria-label={t("shell.notice.close")}
+                onClick={closeGuide}
+              >
+                <X aria-hidden="true" />
+              </button>
+            </div>
+            <h2>{t("shell.notice.title")}</h2>
+            <p className="auth-world-guide-copy">{t("shell.notice.description")}</p>
+            <p className="auth-world-guide-tip">{t("shell.notice.detail")}</p>
+          </aside>
+        ) : null}
+        <button
+          ref={noticeRef}
+          type="button"
+          className="auth-world-notice"
+          aria-label={t("shell.notice.open")}
+          aria-expanded={guideOpen}
+          aria-controls="auth-office-guide"
+          onClick={() => setGuideOpen((open) => !open)}
+        >
+          <span className="auth-world-notice-icon" aria-hidden="true">
+            <Info />
+          </span>
+          <span>
+            <strong>{t("shell.notice.label")}</strong>
+            <small>{t("shell.notice.hint")}</small>
+          </span>
+        </button>
       </section>
 
-      <section className="auth-world-auth relative flex min-h-screen items-center justify-center px-4 py-24 sm:px-6 lg:ml-auto lg:w-[min(44vw,580px)] lg:justify-end lg:px-8 xl:px-12">
-        <div className="w-full max-w-[460px]">
-          <div className="auth-card auth-control-panel p-6 sm:p-8">{children}</div>
-          <div className="mt-4 hidden items-center justify-end gap-2 font-mono text-[9px] tracking-[.12em] text-white/50 lg:flex">
-            <Globe2 className="h-3.5 w-3.5" aria-hidden="true" />
-            SECURE COMPANY ACCESS
+      <section className="auth-world-auth relative flex min-h-screen items-center justify-center px-4 py-24 sm:px-6 lg:ml-auto lg:w-[min(42vw,540px)] lg:justify-end lg:px-7 xl:px-10">
+        <div className="auth-terminal-mount w-full max-w-[440px]">
+          <div className="auth-terminal-heading" aria-hidden="true">
+            <span />
+            {t("shell.terminal")}
           </div>
+          <div className="auth-card auth-control-panel p-6 sm:p-8">{children}</div>
         </div>
       </section>
     </main>

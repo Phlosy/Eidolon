@@ -37,6 +37,7 @@ describe("LoginPage", () => {
       passwordLogin.compareDocumentPosition(passkeyLogin) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: "注册" })).toHaveAttribute("href", "/auth/register");
+    expect(screen.getByRole("heading", { level: 1, name: "EIDOLON" })).toBeInTheDocument();
     expect(screen.getByTestId("auth-shell")).toHaveClass("auth-world-shell");
     expect(screen.getByTestId("auth-office-game")).toHaveAccessibleName(/2D 像素办公室/);
   });
@@ -77,5 +78,26 @@ describe("LoginPage", () => {
     fireEvent.pointerEnter(operations);
     expect(screen.getByText("客户反馈已整理，下午同步给团队。")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /陈默，项目负责人/ })).toBeInTheDocument();
+  });
+
+  it("reveals the office introduction from an in-world notice", () => {
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    const notice = screen.getByRole("button", { name: "打开办公室导览" });
+    expect(notice).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("dialog", { name: "办公室导览" })).not.toBeInTheDocument();
+
+    fireEvent.click(notice);
+    expect(notice).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("dialog", { name: "办公室导览" })).toHaveTextContent(
+      "你的 AI 公司，从这里开始运转。",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "关闭办公室导览" }));
+    expect(screen.queryByRole("dialog", { name: "办公室导览" })).not.toBeInTheDocument();
   });
 });
