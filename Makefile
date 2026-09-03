@@ -185,7 +185,7 @@ runtime-clean:
 test-web:
 	cd $(WEB_DIR) && pnpm exec vitest run
 
-## lint: ruff + eslint + tsc
+## lint: ruff + prettier + eslint + tsc
 .PHONY: lint
 lint:
 ifdef UV
@@ -195,8 +195,9 @@ else
 	$(RUFFBIN) format --check $(SERVER_DIR)/app $(SERVER_DIR)/tests
 endif
 	cd $(WEB_DIR) && pnpm exec tsc --noEmit && pnpm exec eslint .
+	cd $(WEB_DIR) && pnpm exec prettier --check .
 
-## format: ruff format + prettier
+## format: ruff format + prettier（与 CI / package.json 脚本同一入口：整仓 + .prettierignore）
 .PHONY: format
 format:
 ifdef UV
@@ -204,7 +205,7 @@ ifdef UV
 else
 	$(RUFFBIN) format $(SERVER_DIR)/app $(SERVER_DIR)/tests
 endif
-	cd $(WEB_DIR) && pnpm exec prettier --write src
+	cd $(WEB_DIR) && pnpm exec prettier --write .
 
 ## build: 前端生产构建
 .PHONY: build

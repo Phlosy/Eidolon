@@ -1,0 +1,4 @@
+# 这些提交只改格式、不改语义，git blame 默认会把每一行都归到它们身上。
+# 一次性开启：
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+90372ff469b30f4bc32d7b58d118875113ff449c
