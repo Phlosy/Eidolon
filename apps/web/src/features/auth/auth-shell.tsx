@@ -1,8 +1,22 @@
 import { Info, Orbit, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "../../components/common/language-selector";
 import { AuthOfficeCover } from "../auth-office-game/components/auth-office-cover";
+
+/**
+ * Layout route for every /auth/* page. Keeping the shell (and with it the Phaser
+ * office) above the outlet means login → register → verify transitions reuse the
+ * running game instead of booting a new one per page.
+ */
+export function AuthShellLayout() {
+  return (
+    <AuthShell>
+      <Outlet />
+    </AuthShell>
+  );
+}
 
 export function AuthShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation("auth");

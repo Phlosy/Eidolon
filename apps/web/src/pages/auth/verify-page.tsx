@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { verifyEmail } from "../../api/auth";
 import { Button } from "../../components/common/button";
-import { AuthShell } from "../../features/auth/auth-shell";
 import { useAuth } from "../../features/auth/auth-context";
 
 export function VerifyPage() {
@@ -33,7 +32,7 @@ export function VerifyPage() {
   };
 
   return (
-    <AuthShell>
+    <>
       <div className="text-center">
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           {token ? <CheckCircle2 className="h-6 w-6" /> : <MailCheck className="h-6 w-6" />}
@@ -61,6 +60,6 @@ export function VerifyPage() {
           {t("verify.back")}
         </Link>
       </div>
-    </AuthShell>
+    </>
   );
 }

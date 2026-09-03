@@ -5,7 +5,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { loginWithPassword } from "../../api/auth";
 import { Button } from "../../components/common/button";
 import { Input } from "../../components/common/input";
-import { AuthShell } from "../../features/auth/auth-shell";
 import { useAuth } from "../../features/auth/auth-context";
 import { passkeysAvailable, signInWithPasskey } from "../../features/auth/webauthn";
 
@@ -50,7 +49,7 @@ export function LoginPage() {
   };
 
   return (
-    <AuthShell>
+    <>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="type-kicker text-primary">{t("login.kicker")}</p>
@@ -135,6 +134,6 @@ export function LoginPage() {
           {t("login.create")}
         </Link>
       </p>
-    </AuthShell>
+    </>
   );
 }

@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../../i18n";
+import { AuthShellLayout } from "../../features/auth/auth-shell";
 import { LoginPage } from "./login-page";
 
 vi.mock("../../features/auth/auth-context", () => ({
@@ -19,17 +20,27 @@ vi.mock("../../features/auth-office-game/components/auth-office-game-canvas", ()
   ),
 }));
 
+// The office and the header live in the /auth/* layout route, so the page has to be
+// rendered the way the router renders it.
+function renderLoginPage() {
+  return render(
+    <MemoryRouter initialEntries={["/auth/login"]}>
+      <Routes>
+        <Route element={<AuthShellLayout />}>
+          <Route path="/auth/login" element={<LoginPage />} />
+        </Route>
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 describe("LoginPage", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("zh-CN");
   });
 
   it("places passkey after password login and labels the account link as registration", () => {
-    render(
-      <MemoryRouter>
-        <LoginPage />
-      </MemoryRouter>,
-    );
+    renderLoginPage();
 
     const passwordLogin = screen.getByRole("button", { name: "登录" });
     const passkeyLogin = screen.getByRole("button", { name: "使用通行密钥登录" });
@@ -43,11 +54,7 @@ describe("LoginPage", () => {
   });
 
   it("lets people pause the looping office scene", () => {
-    render(
-      <MemoryRouter>
-        <LoginPage />
-      </MemoryRouter>,
-    );
+    renderLoginPage();
 
     const pause = screen.getByRole("button", { name: "暂停办公室动画" });
     expect(pause).toHaveAttribute("aria-pressed", "false");
@@ -57,11 +64,7 @@ describe("LoginPage", () => {
   });
 
   it("introduces each employee and pauses that character while they speak", () => {
-    render(
-      <MemoryRouter>
-        <LoginPage />
-      </MemoryRouter>,
-    );
+    renderLoginPage();
 
     const engineer = screen.getByRole("button", { name: /林舟，工程负责人/ });
     expect(engineer).toHaveAttribute("aria-expanded", "false");
@@ -81,11 +84,7 @@ describe("LoginPage", () => {
   });
 
   it("reveals the office introduction from an in-world notice", () => {
-    render(
-      <MemoryRouter>
-        <LoginPage />
-      </MemoryRouter>,
-    );
+    renderLoginPage();
 
     const notice = screen.getByRole("button", { name: "打开办公室导览" });
     expect(notice).toHaveAttribute("aria-expanded", "false");

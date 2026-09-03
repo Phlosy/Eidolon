@@ -4,6 +4,7 @@ import { AppLayout } from "../layouts/AppLayout";
 import { PageNotFound } from "../components/common/states";
 import { RouteBoundary } from "../components/common/route-boundary";
 import { AuthGuard, GuestGuard } from "../features/auth/auth-guard";
+import { AuthShellLayout } from "../features/auth/auth-shell";
 import { LoginPage } from "../pages/auth/login-page";
 import { RegisterPage } from "../pages/auth/register-page";
 import { VerifyPage } from "../pages/auth/verify-page";
@@ -51,9 +52,15 @@ export const router = createBrowserRouter([
   {
     element: <GuestGuard />,
     children: [
-      { path: "/auth/login", element: <LoginPage /> },
-      { path: "/auth/register", element: <RegisterPage /> },
-      { path: "/auth/verify", element: <VerifyPage /> },
+      {
+        // 办公室由 layout route 持有，登录/注册/验证之间切换不会重启 Phaser。
+        element: <AuthShellLayout />,
+        children: [
+          { path: "/auth/login", element: <LoginPage /> },
+          { path: "/auth/register", element: <RegisterPage /> },
+          { path: "/auth/verify", element: <VerifyPage /> },
+        ],
+      },
     ],
   },
   {

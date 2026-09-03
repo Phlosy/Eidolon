@@ -14,7 +14,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { registerAccount } from "../../api/auth";
 import { Button } from "../../components/common/button";
 import { Input } from "../../components/common/input";
-import { AuthShell } from "../../features/auth/auth-shell";
 import { PASSWORD_MIN_LENGTH, passwordIssues } from "../../features/auth/password-policy";
 
 export function RegisterPage() {
@@ -54,7 +53,7 @@ export function RegisterPage() {
   };
 
   return (
-    <AuthShell>
+    <>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="type-kicker text-primary">{t("register.kicker")}</p>
@@ -147,7 +146,7 @@ export function RegisterPage() {
           {t("register.signIn")}
         </Link>
       </p>
-    </AuthShell>
+    </>
   );
 }
 
