@@ -49,7 +49,6 @@ export function useFirstVisibleHint(targetIds: string[]): number {
       tutorialTargets.subscribe({ id }, () => setIndex(firstVisibleHint(ids))),
     );
     return () => offs.forEach((off) => off());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   return index;
 }

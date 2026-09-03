@@ -10,9 +10,7 @@ from app.tutorials import CORE_TUTORIAL_ID, DEFINITIONS, PRACTICE_TUTORIAL_ID
 from app.tutorials import requirements as R
 from app.tutorials.schema import flatten, validate
 
-ALL_STEPS = {
-    item["id"]: item for steps in DEFINITIONS.values() for item in flatten(steps)
-}
+ALL_STEPS = {item["id"]: item for steps in DEFINITIONS.values() for item in flatten(steps)}
 
 
 def test_every_declared_requirement_is_registered():
@@ -128,3 +126,48 @@ def test_information_step_is_the_only_interaction_completing_kind():
         step_id for step_id, item in ALL_STEPS.items() if item["kind"] in INTERACTION_COMPLETES
     } == {"company_setup"}
     assert kinds == {"REQUIRED_ACTION", "OPTIONAL_ACTION", "INFORMATION"}
+
+
+def test_onboarded_gate_is_relaxed_but_active_gate_is_not():
+    """核心教程用 *_ONBOARDED，*_ACTIVE 保持严格 —— 两者的差别必须有测试钉住。
+
+    背景：git 这类可选资源失败时员工会永远停在 onboarding（见
+    test_optional_git_resource_failure_does_not_deadlock_the_tutorial）。
+    如果哪天有人把教程步骤改回用 *_ACTIVE，教程就会在没装 gitea 的环境里死锁；
+    反过来如果把 *_ACTIVE 放宽，那些"确实要求运行时活着"的门禁就失真了。
+    """
+    from types import SimpleNamespace
+
+    from app.tutorials import requirements as R
+
+    employee = SimpleNamespace(id=1, role="ceo", lifecycle_status="onboarding", runtime_type="mock")
+    runtime = SimpleNamespace(employee_id=1, status="running")
+    workspace = SimpleNamespace(status="active")
+    facts = R.Facts(
+        company=SimpleNamespace(id=1),
+        employees=[employee],
+        runtimes={1: runtime},
+        accounts={1: {"workspace": workspace}},
+    )
+    assert R.evaluate("CEO_ONBOARDED", facts) is True
+    assert R.evaluate("CEO_ACTIVE", facts) is False, "active 档必须仍然只认真正在职"
+
+    # 缺 provisioning 产物 → 两档都不过
+    assert (
+        R.evaluate("CEO_ONBOARDED", R.Facts(company=facts.company, employees=[employee])) is False
+    )
+
+    # 离岗的人不算数
+    gone = SimpleNamespace(id=2, role="ceo", lifecycle_status="offboarded", runtime_type="mock")
+    assert (
+        R.evaluate(
+            "CEO_ONBOARDED",
+            R.Facts(
+                company=facts.company,
+                employees=[gone],
+                runtimes={2: runtime},
+                accounts={2: {"workspace": workspace}},
+            ),
+        )
+        is False
+    )

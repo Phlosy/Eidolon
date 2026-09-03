@@ -43,7 +43,7 @@ COMPANY_FOUNDING_TUTORIAL = {
                 step(
                     "hire_ceo",
                     why_key="steps.hire_ceo.why",
-                    requirement="CEO_ACTIVE",
+                    requirement="CEO_ONBOARDED",
                     route="/employees",
                     target_id="hire-employee",
                     placement="left",
@@ -119,7 +119,7 @@ COMPANY_FOUNDING_TUTORIAL = {
                 step(
                     "hire_engineer",
                     why_key="steps.hire_engineer.why",
-                    requirement="ENGINEER_ACTIVE",
+                    requirement="ENGINEER_ONBOARDED",
                     route="/employees",
                     target_id="hire-employee",
                     placement="left",

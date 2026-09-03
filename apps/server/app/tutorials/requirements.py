@@ -150,12 +150,27 @@ class Facts:
                 facts.delivery_count = len(delivery_repo.list_delivery_packages(db, project.id))
         return facts
 
-    # ---- 角色查询：教程只认"在职"的那个人；离职/待入职不算配置完成 ----
-    def active_of(self, role: str) -> Employee | None:
+    # ---- 角色查询：教程认"在岗或正在入职"的那个人 ----
+    # 为什么不是严格 active：入职任务里有 git 等资源是**可选**的（核心教程自己的
+    # git_setup 就是 OPTIONAL_ACTION）。开发环境里 builtin gitea 未安装时，
+    # git 步骤全部 failed → onboarding job 停在 partial → lifecycle_status 永远是
+    # onboarding → 教程第 2 步永久死锁（实测：员工 19 就是这样卡住的）。
+    # 因此角色定位放宽到 {onboarding, active}，但仍然要求真实的 runtime +
+    # workspace provisioning 发生过（见 onboarded 档），点"下一步"造不出来。
+    IN_POST = (LifecycleStatus.active.value, LifecycleStatus.onboarding.value)
+
+    def in_post_of(self, role: str) -> Employee | None:
+        match = None
         for employee in self.employees:
-            if employee.role == role and employee.lifecycle_status == LifecycleStatus.active.value:
-                return employee
-        return None
+            if employee.role != role or employee.lifecycle_status not in self.IN_POST:
+                continue
+            # 同时存在时优先真正 active 的那位
+            if match is None or (
+                employee.lifecycle_status == LifecycleStatus.active.value
+                and match.lifecycle_status != LifecycleStatus.active.value
+            ):
+                match = employee
+        return None if match is None else match
 
     def runtime_of(self, employee: Employee | None) -> RuntimeInstance | None:
         return self.runtimes.get(employee.id) if employee else None
@@ -168,12 +183,12 @@ class Facts:
 
 
 def _runtime_configured(facts: Facts, role: str) -> bool:
-    runtime = facts.runtime_of(facts.active_of(role))
+    runtime = facts.runtime_of(facts.in_post_of(role))
     return runtime is not None and runtime.status not in RUNTIME_BROKEN
 
 
 def _provider_configured(facts: Facts, role: str) -> bool:
-    employee = facts.active_of(role)
+    employee = facts.in_post_of(role)
     if employee is None:
         return False
     return any(
@@ -183,7 +198,7 @@ def _provider_configured(facts: Facts, role: str) -> bool:
 
 
 def _workspace_provisioned(facts: Facts, role: str) -> bool:
-    account = facts.account(facts.active_of(role), ResourceType.workspace.value)
+    account = facts.account(facts.in_post_of(role), ResourceType.workspace.value)
     return account is not None and account.status == ACCOUNT_ACTIVE
 
 
@@ -192,7 +207,7 @@ def _access_provisioned(facts: Facts, role: str) -> bool:
 
     不看 docs 账号的话，"分配了权限包"和"权限真的落到系统里"会被混为一谈。
     """
-    employee = facts.active_of(role)
+    employee = facts.in_post_of(role)
     if employee is None:
         return False
     docs = facts.account(employee, ResourceType.docs.value)
@@ -206,7 +221,18 @@ def _access_provisioned(facts: Facts, role: str) -> bool:
 def _role_gate(role: str, part: str) -> Callable[[Facts], bool]:
     """(角色, 环节) 组装判定，避免每个角色抄一遍。"""
     if part == "active":
-        return lambda facts: facts.active_of(role) is not None
+        # 严格档：只有 lifecycle_status == active 才算。核心教程用它会被可选资源
+        # 卡死，所以留给"确实需要活着的运行时"的场景。
+        return lambda facts: any(
+            employee.role == role and employee.lifecycle_status == LifecycleStatus.active.value
+            for employee in facts.employees
+        )
+    if part == "onboarded":
+        # 教程用这档：员工真的被创建、runtime 与 workspace 真的被开出 =
+        # 用户确实走完了真实入职向导；git 之类可选资源失败不再阻塞教程。
+        return lambda facts: (
+            _runtime_configured(facts, role) and _workspace_provisioned(facts, role)
+        )
     if part == "runtime":
         return lambda facts: _runtime_configured(facts, role)
     if part == "provider":
@@ -246,6 +272,7 @@ REQUIREMENTS: dict[str, Callable[[Facts], bool]] = {
     "EMPLOYEE_CREATED": lambda facts: len(facts.employees) > 0,
     # ---- CEO：入职 → Runtime → Provider → Workspace → 权限 ----
     "CEO_ACTIVE": _role_gate(EmployeeRole.ceo.value, "active"),
+    "CEO_ONBOARDED": _role_gate(EmployeeRole.ceo.value, "onboarded"),
     "CEO_RUNTIME_CONFIGURED": _role_gate(EmployeeRole.ceo.value, "runtime"),
     "CEO_PROVIDER_CONFIGURED": _role_gate(EmployeeRole.ceo.value, "provider"),
     "CEO_WORKSPACE_PROVISIONED": _role_gate(EmployeeRole.ceo.value, "workspace"),
@@ -258,6 +285,7 @@ REQUIREMENTS: dict[str, Callable[[Facts], bool]] = {
     "GIT_CONFIGURED": lambda facts: facts.git_enabled,
     # ---- Engineer ----
     "ENGINEER_ACTIVE": _role_gate(EmployeeRole.engineer.value, "active"),
+    "ENGINEER_ONBOARDED": _role_gate(EmployeeRole.engineer.value, "onboarded"),
     "ENGINEER_RUNTIME_CONFIGURED": _role_gate(EmployeeRole.engineer.value, "runtime"),
     "ENGINEER_PROVIDER_CONFIGURED": _role_gate(EmployeeRole.engineer.value, "provider"),
     "ENGINEER_WORKSPACE_PROVISIONED": _role_gate(EmployeeRole.engineer.value, "workspace"),

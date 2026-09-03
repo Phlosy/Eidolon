@@ -53,8 +53,6 @@ def gitea_down(monkeypatch):
     return provisioner
 
 
-
-
 # ---- onboarding ----
 
 

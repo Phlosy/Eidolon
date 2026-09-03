@@ -142,27 +142,60 @@ def test_optional_steps_can_be_skipped_but_required_cannot(client):
     assert _step(client) != "company_setup"
 
 
-def test_incomplete_onboarding_does_not_complete_the_ceo_step(client):
-    """只建了员工记录、onboarding 还没完成 → 教程不许说"CEO 已入职"。"""
-    founder = _new_founder(client, "tutorial-partial@example.com")
+def test_optional_git_resource_failure_does_not_deadlock_the_tutorial(client, db):
+    """可选资源失败不能把核心教程锁死在第二步。
+
+    开发环境里 builtin gitea 常常没装：git 那几步全部 failed → onboarding job
+    停在 partial → 员工 lifecycle_status 永远是 onboarding。git_setup 在核心教程
+    里本来就是 OPTIONAL_ACTION，所以"招到 CEO"这一步不能反过来要求 git 健康
+    ——（实测：员工 19 就是这样卡住的，教程 0 步也推不动）。
+    推进仍然要靠真实的入职产物：runtime 实例 + workspace 账号，点"下一步"造不出来。
+    """
+    founder = _new_founder(client, "tutorial-nogitea@example.com")
+    client.post("/api/v1/tutorial/start")
+    client.post("/api/v1/tutorial/steps/company_setup/complete")
+
+    onboarded = _hire(
+        client, founder, name="No-Gitea CEO", role="ceo", dept_slug="executive", package="ceo"
+    )
+    ceo, job = onboarded["employee"], onboarded["job"]
+    # 本用例的前提：git 资源失败 → 入职任务 partial → 员工停在 onboarding，没到 active
+    assert ceo["lifecycle_status"] == "onboarding"
+    assert job["status"] == "partial"
+    assert _step(client) == "cloud_docs", "git 缺失时教程必须照样推进"
+
+
+def test_employee_row_without_provisioning_does_not_complete_the_step(client, db):
+    """一行员工记录不等于"已招到 CEO"。
+
+    教程认的是真实入职产物：runtime 实例 + workspace 账号都开出来了。
+    只写一行 employees 记录（相当于入职中途失败）不能推进，
+    这也是"点下一步永远完不成 REQUIRED_ACTION"之外的另一半保证：
+    后端不会因为你调用了某个端点就发奖，它看的是域状态。
+    """
+    from app.repositories import organization as org_repo
+
+    founder = _new_founder(client, "tutorial-row-only@example.com")
     client.post("/api/v1/tutorial/start")
     client.post("/api/v1/tutorial/steps/company_setup/complete")
     departments = {item["slug"]: item["id"] for item in founder["company"]["departments"]}
 
-    half = client.post(
-        "/api/v1/employees",
-        json={
-            "name": "Stuck CEO",
-            "slug": f"stuck-ceo-{uuid.uuid4().hex[:6]}",
-            "role": "ceo",
-            "title": "CEO",
-            "department_id": departments["executive"],
-            "runtime_type": "mock",
-        },
+    org_repo.create_employee(
+        db,
+        company_id=founder["company"]["id"],
+        department_id=departments["executive"],
+        name="Row Only CEO",
+        slug=f"row-only-{uuid.uuid4().hex[:6]}",
+        role="ceo",
+        title="CEO",
+        runtime_type="mock",
+        lifecycle_status="onboarding",
+        workspace_path="./data/workspaces/row-only",
+        memory_namespace="emp_row-only",
     )
-    assert half.status_code == 201
-    assert half.json()["lifecycle_status"] == "onboarding"
-    assert _step(client) == "hire_ceo", "半完成的入职不能推进教程"
+    db.commit()
+
+    assert _step(client) == "hire_ceo", "没有 runtime / workspace 产物就不能算入职完成"
 
 
 # ---------------------------------------------------------------- 真实推进
@@ -360,9 +393,7 @@ def test_advancement_publishes_tutorial_events(client, fake_gitea, db):
     _hire(client, founder, name="EV CEO", role="ceo", dept_slug="executive", package="ceo")
 
     def tutorial_events() -> list[str]:
-        return [
-            row.type for row in db.scalars(select(Event).where(Event.type.like("tutorial.%")))
-        ]
+        return [row.type for row in db.scalars(select(Event).where(Event.type.like("tutorial.%")))]
 
     types = tutorial_events()
     assert "tutorial.advanced" in types, f"没有发出推进事件：{types}"
