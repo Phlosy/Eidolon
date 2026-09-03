@@ -200,6 +200,8 @@
     "pickProvider": "选模型服务来源。只有真正把密钥存进来的绑定才算可用。",
     "pickAccess": "分配权限包与资源：Workspace、文档空间、Git 账号会在这里创建。",
     "engineerAccess": "第二位员工沿用同样的真实 Provisioning；这里只提醒关键差异。",
-    "confirmOnboard": "确认并入职。提交后教程会等 CEO 真的变成 ACTIVE 才前进。"
+    "confirmOnboard": "确认并入职。提交后教程会等这位 CEO 的运行时与工作区真的开出来才前进。",
+    "openRuntimeTab": "绑定入口在“运行时”标签页里，先切过去。",
+    "bindProvider": "在这里选择或新建 Provider 并绑定模型；密钥真正存下才算完成。"
   }
 }

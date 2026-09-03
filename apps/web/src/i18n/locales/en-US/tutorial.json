@@ -200,6 +200,8 @@
     "pickProvider": "Pick the model service. Only bindings with a stored credential count as usable.",
     "pickAccess": "Assign access packages and resources: workspace, document space and git accounts get created here.",
     "engineerAccess": "The second employee goes through the same real provisioning; only key differences are called out.",
-    "confirmOnboard": "Review and hire. After submitting, the tutorial waits for the CEO to actually become ACTIVE."
+    "confirmOnboard": "Review and hire. After submitting, the tutorial waits until this CEO's runtime and workspace really exist.",
+    "openRuntimeTab": "The binding lives in the Runtime tab — switch to it first.",
+    "bindProvider": "Pick or create a Provider and bind a model; it only counts once the key is really stored."
   }
 }

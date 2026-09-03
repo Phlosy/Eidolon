@@ -470,12 +470,16 @@ describe("向导内部指引（ui_hints）", () => {
         </Routes>
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByText(/Confirm identity first/i)).toBeTruthy());
-    // 第一条指引打在 wizard-identity 上
+    // 两段指引目标同时可见时，光停在"用户已经走到的最远处"= 最后一条
     const halo = () => document.querySelector('[data-tutorial-halo="true"]') as HTMLElement;
-    expect(halo().style.left).toBe("112px");
+    await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
+    expect(halo().style.left).toBe("412px");
     expect(screen.getByText(/Hints only nudge/i)).toBeTruthy();
 
+    // 手动翻页仍然有效：可以退回前一条，再翻回来
+    fireEvent.click(screen.getByText("Back"));
+    await waitFor(() => expect(screen.getByText(/Confirm identity first/i)).toBeTruthy());
+    expect(halo().style.left).toBe("112px");
     fireEvent.click(screen.getByText("Next"));
     await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
     expect(halo().style.left).toBe("412px");

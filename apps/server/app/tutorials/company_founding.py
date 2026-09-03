@@ -78,6 +78,21 @@ COMPANY_FOUNDING_TUTORIAL = {
                     target_id="employee-provider-bind",
                     placement="top",
                     interaction_mode="NON_BLOCKING",
+                    metadata={
+                        # 绑定按钮在"运行时"标签页里，页面上先看得见的是标签页本身。
+                        # 两段指引：先请用户开标签页；开了之后绑定控件出现在 DOM，
+                        # 前端按"当前可见的指引目标"自动把光移过去。
+                        "ui_hints": [
+                            {
+                                "target_id": "employee-runtime-tab",
+                                "text_key": "hints.openRuntimeTab",
+                            },
+                            {
+                                "target_id": "employee-provider-bind",
+                                "text_key": "hints.bindProvider",
+                            },
+                        ],
+                    },
                 ),
                 step(
                     "configure_company_resources",
