@@ -72,6 +72,8 @@ const state = vi.hoisted(() => ({
   skip: vi.fn(),
   pause: vi.fn(),
   resume: vi.fn(),
+  practice: null as null | { definition: TutorialDefinition; progress: TutorialProgress },
+  skipPractice: vi.fn(),
 }));
 
 function progressFor(currentStep: string, overrides: Partial<TutorialProgress> = {}) {
@@ -103,6 +105,8 @@ vi.mock("../../hooks/useTutorial", () => ({
   useSkipTutorialStep: () => ({ mutate: state.skip, isPending: false, error: null }),
   usePauseTutorial: () => ({ mutate: state.pause, isPending: false }),
   useResumeTutorial: () => ({ mutate: state.resume, isPending: false }),
+  usePractice: () => ({ data: state.practice ?? undefined }),
+  useSkipPractice: () => ({ mutate: state.skipPractice, isPending: false }),
 }));
 
 import { tutorialTargets } from "./target-registry";
@@ -157,6 +161,26 @@ function renderAt(path: string) {
           }
         />
         <Route
+          path="/employees/:id"
+          element={
+            <div>
+              detail page
+              <TutorialOverlay />
+            </div>
+          }
+        />
+        <Route
+          path="/projects"
+          element={
+            <div>
+              <button data-tutorial-target="create-project" data-rect="700,120,140,36">
+                New project
+              </button>
+              <TutorialOverlay />
+            </div>
+          }
+        />
+        <Route
           path="/settings"
           element={
             <div>
@@ -179,10 +203,12 @@ beforeEach(() => {
   state.definition = null;
   rectStub();
   document.body.innerHTML = "";
+  state.practice = null;
   state.complete.mockClear();
   state.skip.mockClear();
   state.pause.mockClear();
   state.resume.mockClear();
+  state.skipPractice.mockClear();
 });
 
 afterEach(() => {
@@ -326,6 +352,14 @@ describe("跨路由", () => {
   it("步骤在别的页面时，教程自己导航过去", async () => {
     progressFor("hire_ceo");
     renderAt("/");
+    await waitFor(() => expect(screen.getByText("Hire")).toBeTruthy());
+  });
+
+  it("步骤要的是列表页时，停在详情页也必须跳回去", async () => {
+    // 回归：onRoute 曾把 /employees/21 当成"就在 /employees 上"，
+    // 于是 hire_qa 这类列表页步骤既不跳转、目标也永远找不到。
+    progressFor("hire_ceo");
+    renderAt("/employees/21");
     await waitFor(() => expect(screen.getByText("Hire")).toBeTruthy());
   });
 
@@ -545,5 +579,73 @@ describe("暂停与回放", () => {
     expect(state.skip).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Exit replay" }));
     expect(screen.queryByText("Replay")).toBeNull();
+  });
+});
+
+
+const PRACTICE: TutorialDefinition = {
+  id: "first-project-practice",
+  version: 1,
+  title_key: "tutorials.firstProjectPractice.title",
+  kind: "REQUIRED_ACTION",
+  sets_operating_stage: false,
+  allow_skip: true,
+  stages: [
+    {
+      id: "delivery",
+      title_key: "tutorials.stages.delivery",
+      steps: [
+        step({
+          id: "create_project",
+          requirement: "FIRST_PROJECT_CREATED",
+          route: "/projects",
+          target_id: "create-project",
+          title_key: "steps.create_project.label",
+          description_key: "steps.create_project.explanation",
+          metadata: {},
+        }),
+      ],
+    },
+  ],
+};
+
+describe("实战教程（practice）也能驱动聚光灯", () => {
+  beforeEach(() => {
+    // 核心教程已完成 → 轮到实战教程打光。真实后端通关后把 current_step
+    // 写成 "completed"（它不是任何步骤 id），照实构造。
+    progressFor("completed", { status: "completed" });
+    state.practice = {
+      definition: PRACTICE,
+      progress: {
+        ...state.progress,
+        tutorial_id: "first-project-practice",
+        status: "active",
+        current_stage: "delivery",
+        current_step: "create_project",
+        completed_steps: [],
+        skipped_steps: [],
+      } as TutorialProgress,
+    };
+  });
+
+  it("核心不在展示态时，界面显示的是实战那一步", async () => {
+    renderAt("/projects");
+    await waitFor(() =>
+      expect(screen.getByText(/Create the Classic Snake project/i)).toBeTruthy(),
+    );
+    // 退出入口在实战语境下就是"暂时跳过"，走 /practice/skip（零副作用）
+    const exit = screen.getByRole("button", { name: "Skip practice for now" });
+    fireEvent.click(exit);
+    await waitFor(() => expect(state.skipPractice).toHaveBeenCalledTimes(1));
+    expect(state.pause).not.toHaveBeenCalled();
+  });
+
+  it("核心仍然优先：核心在展示态时不抢实战的话筒", async () => {
+    progressFor("hire_ceo"); // 核心 active
+    renderAt("/employees");
+    await waitFor(() => expect(screen.getByText("Hire")).toBeTruthy());
+    const coach = document.querySelector('[data-tutorial-overlay="coach"]') as HTMLElement;
+    expect(coach).toHaveTextContent(/Hire your first CEO/i);
+    expect(state.skipPractice).not.toHaveBeenCalled();
   });
 });

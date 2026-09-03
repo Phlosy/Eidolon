@@ -149,7 +149,7 @@ export function TutorialOverlay() {
           </div>
           <button
             type="button"
-            aria-label={replay ? t("ui.replay.exit") : t("ui.pause")}
+            aria-label={replay ? t("ui.replay.exit") : t(engine.exitLabelKey)}
             onClick={replay ? () => stopReplay() : engine.togglePause}
             className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
           >

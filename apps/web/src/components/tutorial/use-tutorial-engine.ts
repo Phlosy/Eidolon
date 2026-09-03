@@ -10,7 +10,9 @@ import {
 import {
   useCompleteTutorialStep,
   usePauseTutorial,
+  usePractice,
   useResumeTutorial,
+  useSkipPractice,
   useSkipTutorialStep,
   useTutorial,
   useTutorialDefinition,
@@ -75,6 +77,9 @@ export interface TutorialEngine {
   hint: TutorialUiHint | null;
   hints: TutorialUiHint[];
   hintIndex: number;
+  /** 当前展示的是可选的实战教程（决定"退出"是暂停还是暂时跳过） */
+  isPractice: boolean;
+  exitLabelKey: string;
   nextHint: () => void;
   previousHint: () => void;
   acknowledge: () => void;
@@ -111,8 +116,10 @@ function liveStepFor(
 export function useTutorialEngine(): TutorialEngine {
   const location = useLocation();
   const navigate = useNavigate();
-  const { data: progress } = useTutorial();
-  const { data: definition } = useTutorialDefinition();
+  const { data: coreProgress } = useTutorial();
+  const { data: coreDefinition } = useTutorialDefinition();
+  const { data: practiceData } = usePractice();
+  const skipPractice = useSkipPractice();
   const replay = useReplaySession();
 
   const completeStep = useCompleteTutorialStep();
@@ -121,18 +128,35 @@ export function useTutorialEngine(): TutorialEngine {
   const resume = useResumeTutorial();
   const [dismissedError, setDismissedError] = useState<string | null>(null);
 
-  const steps = useMemo(() => flattenSteps(definition), [definition]);
+  // 两个教程各自独立评分：核心优先；核心不在展示态（未开始 / 已完成 / 已跳过）
+  // 时才轮到实战教程 —— 否则用户从教程中心"重新开始实战"后根本看不到聚光灯
+  // （实测过：实战进度明明是 active，界面一片安静）。
+  const coreSteps = useMemo(() => flattenSteps(coreDefinition), [coreDefinition]);
+  const practiceSteps = useMemo(
+    () => flattenSteps(practiceData?.definition ?? undefined),
+    [practiceData?.definition],
+  );
+  const coreStep = liveStepFor(coreProgress ?? undefined, coreSteps);
+  const practiceStep = liveStepFor(practiceData?.progress ?? undefined, practiceSteps);
+  const isPractice = !replay && !coreStep && Boolean(practiceStep);
+  const steps = isPractice ? practiceSteps : coreSteps;
+  const progress = isPractice ? (practiceData?.progress ?? null) : (coreProgress ?? null);
   const ordered = replay ? replay.steps : steps;
-  const step = replay ? (replay.steps[replay.index] ?? null) : liveStepFor(progress, steps);
+  const step = replay ? (replay.steps[replay.index] ?? null) : (isPractice ? practiceStep : coreStep);
   const mode: TutorialEngine["mode"] = replay ? "replay" : step ? "live" : "hidden";
 
   const context = (progress?.context ?? {}) as Record<string, unknown>;
   const resolvedRoute = step ? resolveRoute(step.route, context) : "";
   const pendingParams = step ? unresolvedRouteParams(resolvedRoute) : [];
+  // 只有声明了参数的"资源页"才允许把子路径算作同一页（/projects/7/reviews 仍是
+  // /projects/{id} 那一步）。索引页必须精确匹配：步骤要的是 /employees 列表，
+  // 人停在 /employees/21 详情页时不能当成"已经在页面上"，否则目标永远找不到、
+  // 自动跳转也永远不触发（实测卡在第 10 步就是这个原因）。
+  const declaredHasParam = /\{[^}]+\}/.test(step?.route ?? "");
   const onRoute = Boolean(
     resolvedRoute &&
-    // /employees/{id} 这类子路由同样算"就在这一步的页面上"
-    (location.pathname === resolvedRoute || location.pathname.startsWith(`${resolvedRoute}/`)),
+    (location.pathname === resolvedRoute ||
+      (declaredHasParam && location.pathname.startsWith(`${resolvedRoute}/`))),
   );
   const excluded = EXCLUDED_ROUTES.some((pattern) => pattern.test(location.pathname));
   const stepDone = Boolean(step && progress?.completed_steps.includes(step.id));
@@ -226,7 +250,12 @@ export function useTutorialEngine(): TutorialEngine {
     onRoute,
     pendingParams,
     resolvedRoute,
-    busy: completeStep.isPending || skipStep.isPending || pause.isPending || resume.isPending,
+    busy:
+      completeStep.isPending ||
+      skipStep.isPending ||
+      pause.isPending ||
+      resume.isPending ||
+      skipPractice.isPending,
     errorMessage: dismissedError ? null : rawError,
     acknowledge: () => {
       clearError();
@@ -236,11 +265,19 @@ export function useTutorialEngine(): TutorialEngine {
       clearError();
       if (step && mode === "live") skipStep.mutate(step.id);
     },
+    // 核心教程：收成小药丸（可恢复）。实战教程本身就是可选的，"退出"就是暂时跳过
+    // —— 零副作用，之后还能从教程中心重新开始。
     togglePause: () => {
       clearError();
+      if (isPractice) {
+        skipPractice.mutate();
+        return;
+      }
       if (progress?.status === "paused") resume.mutate();
       else pause.mutate();
     },
+    isPractice,
+    exitLabelKey: isPractice ? "library.skipPractice" : "ui.pause",
     goToTarget: () => {
       if (!step || !resolvedRoute) return;
       navigated.current.add(step.id);
