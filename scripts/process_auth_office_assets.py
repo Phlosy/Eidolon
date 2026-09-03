@@ -61,6 +61,13 @@ def transparent_crop(
     return crop.crop(bounds) if bounds else crop
 
 
+def alpha_crop(image: Image.Image, box: tuple[int, int, int, int]) -> Image.Image:
+    """Crop generated art using its embedded alpha mask without erasing interior detail."""
+    crop = image.crop(box).convert("RGBA")
+    bounds = crop.getbbox()
+    return crop.crop(bounds) if bounds else crop
+
+
 def fit_pixel(
     source: Image.Image, size: tuple[int, int], padding: int = 0
 ) -> Image.Image:
@@ -172,7 +179,7 @@ def make_tiles(source: Image.Image) -> Image.Image:
             source.crop(box).convert("RGBA").resize((32, 32), Image.Resampling.NEAREST)
         )
         tiles.alpha_composite(ImageEnhance.Color(tile).enhance(0.78), (index * 32, 0))
-    return tiles
+    return quantize_pixel_alpha(tiles)
 
 
 def make_object_atlas(
@@ -213,13 +220,13 @@ def make_object_atlas(
 
     addition_items = {
         name: quantize_pixel_alpha(
-            fit_pixel(transparent_crop(additions, box, threshold=22), size, padding=2)
+            fit_pixel(alpha_crop(additions, box), size, padding=2)
         )
         for name, (box, size) in addition_definitions.items()
     }
     workstation = quantize_pixel_alpha(
         fit_pixel(
-            transparent_crop(additions, (26, 528, 446, 920), threshold=22),
+            alpha_crop(additions, (26, 528, 446, 920)),
             (192, 128),
             padding=2,
         )
@@ -251,7 +258,9 @@ def main() -> None:
     assert_binary_alpha(character_sheet, "employee sprite sheet")
     character_sheet.save(RUNTIME / "employees.png", optimize=True)
 
-    make_tiles(objects).save(RUNTIME / "office-tiles.png", optimize=True)
+    tiles = make_tiles(objects)
+    assert_binary_alpha(tiles, "office tileset")
+    tiles.save(RUNTIME / "office-tiles.png", optimize=True)
     object_atlas, frames = make_object_atlas(objects, additions)
     assert_binary_alpha(object_atlas, "office object atlas")
     object_atlas.save(RUNTIME / "office-objects.png", optimize=True)
