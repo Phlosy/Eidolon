@@ -1,4 +1,8 @@
-dist
-coverage
-node_modules
+# 生成物：格式由生成脚本决定（scripts/generate_auth_office_map.py 用 json.dumps(indent=2)），
+# 让 Prettier 改写它们会让「重新生成 = 无意义 diff」。
+public/assets/
+
+# 构建产物与包管理器维护的文件
+dist/
 pnpm-lock.yaml
+package-lock.json
