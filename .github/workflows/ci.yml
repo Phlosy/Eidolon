@@ -34,6 +34,26 @@ jobs:
         working-directory: apps/server
       - name: Test
         run: python -m pytest apps/server/tests -q
+      - name: Server image smoke test
+        run: |
+          docker build --file deployments/docker/Dockerfile.server --tag eidolon-server:ci .
+          container_name="eidolon-server-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'docker rm --force "$container_name" >/dev/null 2>&1 || true' EXIT
+          docker run --detach \
+            --name "$container_name" \
+            --publish 127.0.0.1:26881:26881 \
+            --env EIDOLON_API_HOST=0.0.0.0 \
+            --env EIDOLON_RUNTIME_MODE=mock \
+            --env EIDOLON_UPDATE_CHECK_ENABLED=false \
+            eidolon-server:ci
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:26881/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$container_name"
+          exit 1
 
   frontend:
     runs-on: ubuntu-latest
