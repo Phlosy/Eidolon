@@ -13,6 +13,7 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.database import SessionLocal, ensure_database_schema
 from app.core.logging import configure_logging, get_logger
+from app.core.version import application_version
 from app.events.bus import bus
 from app.providers.secrets.store import get_secret_store
 from app.runtimes.gateway import gateway
@@ -50,7 +51,7 @@ async def lifespan(app: FastAPI):
     await gateway.stop_all()
 
 
-app = FastAPI(title="Eidolon Server", version="0.7.0", lifespan=lifespan)
+app = FastAPI(title="Eidolon Server", version=application_version(), lifespan=lifespan)
 
 
 @app.middleware("http")
