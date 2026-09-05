@@ -14,6 +14,7 @@ dnspython==2.8.0
 docker==7.2.0
 email-validator==2.3.0
 fastapi==0.141.1
+greenlet==3.5.5
 h11==0.16.0
 httpcore==1.0.9
 httptools==0.8.0
