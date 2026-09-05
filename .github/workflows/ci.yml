@@ -25,6 +25,13 @@ jobs:
         run: |
           ruff check apps/server/app apps/server/tests
           ruff format --check apps/server/app apps/server/tests
+      - name: Alembic model drift
+        env:
+          EIDOLON_DATABASE_URL: sqlite:///${{ runner.temp }}/eidolon-alembic.db
+        run: |
+          python -m alembic upgrade head
+          python -m alembic check
+        working-directory: apps/server
       - name: Test
         run: python -m pytest apps/server/tests -q
 

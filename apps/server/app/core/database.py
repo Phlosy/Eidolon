@@ -3,7 +3,10 @@
 from collections.abc import Iterator
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from alembic import command
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
@@ -25,6 +28,12 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
+_SERVER_ROOT = Path(__file__).resolve().parents[2]
+
+
+class DatabaseSchemaError(RuntimeError):
+    """Raised when an existing database is not at the repository's Alembic head."""
+
 
 def get_db() -> Iterator[Session]:
     db = SessionLocal()
@@ -34,8 +43,42 @@ def get_db() -> Iterator[Session]:
         db.close()
 
 
-def init_db() -> None:
-    """Dev convenience: create_all. Alembic holds the authoritative initial migration."""
-    from app.models.base import Base
+def _alembic_config() -> Config:
+    return Config(str(_SERVER_ROOT / "alembic.ini"))
 
-    Base.metadata.create_all(engine)
+
+def _expected_heads(config: Config) -> set[str]:
+    return set(ScriptDirectory.from_config(config).get_heads())
+
+
+def _current_heads(connection) -> set[str]:
+    if "alembic_version" not in inspect(connection).get_table_names():
+        return set()
+    return set(connection.execute(text("SELECT version_num FROM alembic_version")).scalars())
+
+
+def ensure_database_schema(target_engine: Engine = engine) -> None:
+    """Initialize an empty database with Alembic or reject an out-of-date database."""
+    config = _alembic_config()
+    expected = _expected_heads(config)
+
+    with target_engine.begin() as connection:
+        tables = set(inspect(connection).get_table_names())
+        if not tables:
+            config.attributes["connection"] = connection
+            command.upgrade(config, "head")
+            current = _current_heads(connection)
+        elif "alembic_version" not in tables:
+            raise DatabaseSchemaError(
+                "Database schema is unversioned. Back it up and reconcile it with Alembic; "
+                "an empty database can be initialized with `alembic upgrade head`."
+            )
+        else:
+            current = _current_heads(connection)
+
+    if current != expected:
+        raise DatabaseSchemaError(
+            "Database schema is not at the repository Alembic head "
+            f"(current={sorted(current)}, expected={sorted(expected)}). "
+            "Run `alembic upgrade head` before starting the server."
+        )

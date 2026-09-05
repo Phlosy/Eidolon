@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1.router import api_router
 from app.core.config import settings
-from app.core.database import SessionLocal, init_db
+from app.core.database import SessionLocal, ensure_database_schema
 from app.core.logging import configure_logging, get_logger
 from app.events.bus import bus
 from app.providers.secrets.store import get_secret_store
@@ -30,7 +30,7 @@ logger = get_logger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging(settings.log_level)
-    init_db()  # dev convenience; Alembic has the authoritative initial migration
+    ensure_database_schema()
     with SessionLocal() as db:
         seed_default_company(db)
         migrate_artifacts_to_drive(db)  # v0.3: legacy artifacts -> drive_nodes

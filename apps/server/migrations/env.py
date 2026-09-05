@@ -2,10 +2,8 @@ import os
 import sys
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,6 +23,18 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+
+# v0.6 tutorial rows were superseded by user_tutorial_progress in v0.7. Keep the
+# legacy table intact until a dedicated data-retention migration removes it, but
+# do not let that known historical table hide new model/migration drift in CI.
+_RETAINED_LEGACY_TABLES = {"tutorial_progress"}
+
+
+def include_object(object_, name, type_, reflected, compare_to) -> bool:
+    if type_ == "table" and reflected and compare_to is None:
+        return name not in _RETAINED_LEGACY_TABLES
+    return True
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -48,6 +58,7 @@ def run_migrations_offline() -> None:
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -63,6 +74,22 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+
+    def run_with_connection(connection) -> None:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=include_object,
+        )
+
+        with context.begin_transaction():
+            context.run_migrations()
+
+    supplied_connection = config.attributes.get("connection")
+    if supplied_connection is not None:
+        run_with_connection(supplied_connection)
+        return
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
@@ -70,12 +97,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
-
-        with context.begin_transaction():
-            context.run_migrations()
+        run_with_connection(connection)
 
 
 if context.is_offline_mode():
