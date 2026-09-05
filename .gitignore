@@ -30,3 +30,6 @@ data/
 .DS_Store
 .idea/
 .vscode/
+
+# Temporary/debug artifacts
+/tmp-*
