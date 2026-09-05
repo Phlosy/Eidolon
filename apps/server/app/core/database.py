@@ -5,8 +5,9 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import Engine, create_engine, inspect, text
+from sqlalchemy import Engine, create_engine, inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
@@ -52,9 +53,7 @@ def _expected_heads(config: Config) -> set[str]:
 
 
 def _current_heads(connection) -> set[str]:
-    if "alembic_version" not in inspect(connection).get_table_names():
-        return set()
-    return set(connection.execute(text("SELECT version_num FROM alembic_version")).scalars())
+    return set(MigrationContext.configure(connection).get_current_heads())
 
 
 def ensure_database_schema(target_engine: Engine = engine) -> None:
