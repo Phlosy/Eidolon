@@ -45,7 +45,11 @@ def get_db() -> Iterator[Session]:
 
 
 def _alembic_config() -> Config:
-    return Config(str(_SERVER_ROOT / "alembic.ini"))
+    config = Config(str(_SERVER_ROOT / "alembic.ini"))
+    # Application startup already installed structured/redacting handlers.
+    # Programmatic migrations must not replace them with alembic.ini logging.
+    config.attributes["configure_logger"] = False
+    return config
 
 
 def _expected_heads(config: Config) -> set[str]:
