@@ -24,7 +24,10 @@
 - **Docker Runtime 管理（v0.2）**：每员工一个持久容器实例（Hermes / OpenClaw），独立数据卷、专用容器网络、资源限制与生命周期管理
 - **Provider 管理（v0.2）**：模型供应商成为一级领域对象，凭证 Fernet 加密存储（不落明文），支持任意 OpenAI 兼容端点
 - **Runtime 更新与回滚（v0.2）**：镜像版本登记、更新检查、managed update（备份 → 升级 → 健康检查 → 失败自动回滚）
-- **员工大脑 EmployeeBrain（v0.2）**：SOUL.md / IDENTITY.md / MEMORY.md 等身份文件持久化，切换 Runtime 不丢身份
+- **员工大脑 EmployeeBrain（v0.2）**：人格 / 目标 / 兴趣 / 学习与记忆策略随员工持久化，切换 Runtime 不丢身份
+- **行为策略 behavior-v1**：`traits`（当前：好奇心）经 `app/brain/` 单一解析器换算成检索额度、反思额度与延伸学习额度，
+  随任务内联投递给 runtime 并投影为只读文件。**人格只改变工作方式，不改变成功判定与知识晋升**（阈值集中在一处，
+  业务层禁止 `if curiosity > 0.7`，由 AST 守卫测试强制）。设计：[docs/employee-brain-behavior-policy.md](docs/employee-brain-behavior-policy.md)
 
 ## Architecture
 
@@ -42,7 +45,7 @@ Runtime Adapter: Mock | Hermes | OpenClaw | Codex | Claude Code | OpenCode
 
 五条不可破坏的架构边界：`Employee ≠ Runtime`、`Private Memory ≠ Company Knowledge`、`Task ≠ Agent Session`、`Domain Logic ≠ API`、`Frontend ≠ Runtime`。
 
-详见 [docs/architecture.md](docs/architecture.md)、[认证](docs/authentication.md)、[Passkey](docs/passkeys.md) 与 [首次引导](docs/user-onboarding.md)。
+详见 [docs/architecture.md](docs/architecture.md)、[认证](docs/authentication.md)、[Passkey](docs/passkeys.md)、[员工行为策略](docs/employee-brain-behavior-policy.md) 与 [首次引导](docs/user-onboarding.md)。
 
 ## Screenshots
 

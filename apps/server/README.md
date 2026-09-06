@@ -58,6 +58,9 @@ orchestrator runs the full order → planning → research → development → t
 ## Configuration
 
 All settings use the `EIDOLON_` prefix (see `app/core/config.py`, `.env.example` at repo root).
+One flag is worth knowing about when debugging behavior: `EIDOLON_BEHAVIOR_POLICY_ENABLED=false`
+makes every resolver call fall back to `DEFAULT_POLICY` — i.e. the pre-v1 literal constants —
+without rewriting any stored `traits` (kill switch, see `docs/employee-brain-behavior-policy.md` §13).
 Key ones: `EIDOLON_DATABASE_URL`, `EIDOLON_WORKSPACE_ROOT`, `EIDOLON_RUNTIME_MODE` (`mock`),
 `EIDOLON_MOCK_TASK_SECONDS`, `EIDOLON_CORS_ORIGINS`.
 

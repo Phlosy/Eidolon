@@ -376,7 +376,15 @@ v0.2 把 "One Employee = One Persistent Agent" 落地为持久容器化 Runtime�
 - 新增表：
   - **providers**：kind（openai/anthropic/openrouter/custom...）、base_url、default_model、scope（company/employee）、**credential_ref**（引用 secret store，不存明文）。
   - **model_bindings**：Employee ↔ Provider 关联，预留 primary/fallback 角色（fallback 语义 v0.2 预留落库）。
-  - **employee_brains**：员工大脑（SOUL.md / IDENTITY.md / AGENTS.md / MEMORY.md 等身份文件的登记与版本），落盘于 `data/employees/{id}/brain/`，与 Hermes profile / OpenClaw workspace 文件约定对齐。
+  - **employee_brains**：员工大脑（personality / goals / interests / learning_policy / memory_policy / curiosity），`curiosity` 等 trait 经 `BehaviorPolicyResolver` 解析为行为策略后由 retrieval / reflection / prompt / 投影文件消费——设计见 [docs/employee-brain-behavior-policy.md](employee-brain-behavior-policy.md)。
+  **实现状态（behavior-v1）**：`traits` JSON 列（`schema_version` + 注册表校验，`curiosity` 列为兼容镜像，
+  traits 优先）已落库；`app/brain/` 把 trait 解析成 `BehaviorPolicy`，由 retrieval / reflection /
+  priorities / orchestrator / adapter 消费，业务层不允许出现 `if curiosity > 0.7`（AST 守卫）。
+  `brain/PROFILE.md` 与 `brain/eidolon/behavior.md` 由投影生成并随人格变更重写；Docker 型 runtime
+  在容器目录里镜像一份 `runtime/<type>/eidolon/behavior.md`（`metadata_json.behavior_revision` 记录已同步修订）。
+  ⚠ 仍然成立的两条边界：`brain/` 目录**不挂载进容器**（bind 仅 `runtime/<type>`，见 `docker_manager.py`），
+  真正保证生效的是每次 `send_task` 内联下发的行为块；SOUL.md / IDENTITY.md / AGENTS.md / MEMORY.md
+  属第三方约定文件，Eidolon **刻意不写**。设计见 [docs/employee-brain-behavior-policy.md](employee-brain-behavior-policy.md)。
   - **runtime_instances**：employee ↔ 持久 runtime 实例映射（容器名、镜像 tag、状态、last_error）。
   - **runtime_images**（+ per-instance RuntimeVersionState）：镜像登记、pin tag、channel、兼容性矩阵 `tested_min/max_version`、update_policy。
 - **Artifact 文件化**：除 `artifacts.content` 内联文本外，产物可落盘到员工 workspace 并在表中以 `path` 引用（真实 runtime 的产物从数据卷回收）。
@@ -413,7 +421,11 @@ v0.2 把 "One Employee = One Persistent Agent" 落地为持久容器化 Runtime�
 | POST | /runtimes/{employee_id}/start、/stop、/restart | 生命周期控制 |
 | GET | /runtimes/{employee_id}/logs | 容器日志 |
 | GET/PATCH | /employees/{id}/runtime | runtime 详情 / 切换类型、绑定 provider |
-| GET | /employees/{id}/brain | EmployeeBrain（身份文件） |
+| GET/PATCH | /employees/{id}/brain | EmployeeBrain（含 `traits` 与派生 `behavior` 策略摘要；PATCH 白名单 + 422） |
+| GET | /employees/{id}/brain/projection | 投影文件清单、修订号、容器镜像是否同步（`mirror_current`） |
+| GET | /behavior/preview?trait=&value= | 服务端把未落库的人格值换算成策略摘要（UI 不得自己算档位） |
+| GET | /employees/{id}/skill-usages(+ /benchmarks) | 技能使用记录与试用/转化/有用率（`null` = 无数据，不等于 0%） |
+| PATCH | /employees/{id}/skill-usages/{usage_id}/outcome | 人工评价 `useful\|not_useful`；只写 outcome，夹带 success 直接 422 |
 | GET | /runtime-images | 镜像登记与版本状态 |
 | POST | /runtime-images/check-updates | 立即检查更新 |
 | POST | /runtime-images/{type}/update | 触发 managed update |
