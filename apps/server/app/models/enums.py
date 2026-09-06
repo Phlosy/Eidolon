@@ -109,6 +109,8 @@ class WorkSessionStatus(StrEnum):
 class LearningKind(StrEnum):
     reflection = "reflection"
     research = "research"
+    # 人格派生的“未解问题 / 待验证假设”（§11）：solution 永远为空、confidence 永远 0.0。
+    question = "question"
 
 
 class SkillValidationStatus(StrEnum):
