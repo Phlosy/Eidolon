@@ -59,16 +59,38 @@ resolve(employee, lifecycle, active_assignments) -> WorkforceStatus
 
 ```text
 resolve(employee, lifecycle, active_assignments):
-    if lifecycle == offboarded:    OFFBOARDED
-    if lifecycle == offboarding:   OFFBOARDING
-    if lifecycle == suspended:     SUSPENDED
-    if lifecycle == transferring:  TRANSFERRING
-    if lifecycle == onboarding or person_resources_not_ready: ONBOARDING
-    if any(a.is_primary and a.effective_to is None for a in active_assignments): ASSIGNED
-    return AVAILABLE
+    if lifecycle == offboarded:     OFFBOARDED
+    if lifecycle == offboarding:    OFFBOARDING
+    if lifecycle == suspended:      SUSPENDED
+    if lifecycle == transferring:   TRANSFERRING      # 只由 lifecycle 轴决定，见下方修订 3
+    if lifecycle in (pending, onboarding): ONBOARDING
+    if lifecycle == active:
+        return ASSIGNED  if occupies_establishment(active_assignments) else AVAILABLE
+    return ONBOARDING                                  # 未知 lifecycle：保守，不猜
 ```
 
+三处 P4a 实测修订（规则以代码 `app/workforce/status.py` 为准，本节跟着它改）：
+
+1. **`ASSIGNED` 要求"占住编制"，不是"有主职行"。**
+   `occupies_establishment()` = 存在生效 PRIMARY **且其 `position_slot_id` 能解析到坑与定义**。
+   理由：v0.4 遗留下来 11 条生效主职根本没有坑（老代码写任职从不填 `position_id`），
+   那记录的是"曾被雇入"，不是"现在承担编制"。按旧规则会把这 11 条报成 `ASSIGNED`，
+   等于凭空造出一个不存在的职位 —— 正是本次重构要消灭的东西。
+2. **`person_resources_not_ready` 这个判据被删掉。** `lifecycle_status` 已经由 provisioning
+   job 收尾翻转（`pending/onboarding → active`）；再读一次 runtime 会让同一件事有两个判据，
+   两个判据不一致时没人能解释状态。
+3. **`TRANSFERRING` 不许从"两条 assignment 同时存在"反推**（拍板）。effective date 交叠、
+   代理任职（`acting`）、兼任都会让这种反推误判；转岗是工作流事实，归 lifecycle 轴。
+
+悬空引用同样按"宁缺不错"处理：`position_slot_id` 指向不存在的坑（本项目 SQLite 不开
+`PRAGMA foreign_keys`，所以没有 DB 外键兜着），resolver 会剔除这条任职并如实报
+`AVAILABLE`，而不是给这个人配一个解析不出来的职位。
+
 - `RECRUITING` 只在"招募草稿"存在时出现在候选列表，不落 `employees` 行（避免半个人进名册）。
+- `counts()` 直接给 `on_roster`（= assigned + available + transferring）：`available` 是
+  "已就绪但没编制"，它是 `on_roster` 的子集而不是兄弟，`available + assigned` 当在岗数会漏。
+- 两条读法（详情页 `resolve()` / 名册 `views()`）**共用同一份坑→定义解析**（实例内缓存）。
+  不一致时最容易的症状是"详情页说已分配、名册说待分配"，所以这条有测试。
 - 状态**不入库**：由 `WorkforceStatusResolver` 读时计算，杜绝漂移。
   将来若名册需对百万级数据筛 `AVAILABLE`，再引入 materialized status / generated column /
   denormalized read model，但那时**写入方仍只能是这个 resolver**（现在不留半实现列）。

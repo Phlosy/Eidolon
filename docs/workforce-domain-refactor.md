@@ -257,7 +257,9 @@ Company
 | `alembic check`    | 干净（空库与真实库两条路径都验）                                                                                          |
 | 任职挂上坑的比例   | **5/19** — 另外 14 条老任职的 `position_id` 本来就是空                                                                    |
 
-最后一行是这次实测最有价值的发现：**v0.4 的 `positions` 表基本没被写过**，入职与调岗只落 `employees.role` 文本。所以迁移之后 11 名在岗者的 `workforce_status` 会是 `AVAILABLE` —— 有身份、有运行时、没有编制。这不是数据损坏，而是旧模型一直藏着的真实状态被显式暴露出来。
+最后一行是这次实测最有价值的发现：**v0.4 的 `positions` 表基本没被写过**，入职与调岗只落 `employees.role` 文本。所以迁移之后 11 条生效任职是"有记录、没有编制"。这不是数据损坏，而是旧模型一直藏着的真实状态被显式暴露出来。
+
+**P4a 复核后订正本节的初版结论。** 当时写成"11 名在岗者会是 `AVAILABLE`"是错的：那 11 条无坑主职属于 lifecycle 轴上非 `active` 的人（8 `onboarding` + 2 `transferring` + 1 `offboarded`），会被 lifecycle 轴盖住。两轴派生后的真实分布是 `assigned 5 / available 7 / onboarding 8 / transferring 2 / offboarding 1 / offboarded 1`，`on_roster = 14`。也就是说 **7 名**已就绪员工处于 `AVAILABLE`，另外 11 条无编制记录属于还在途或已离开的人 —— 这个数字差异本身就证明了"两个正交轴"比"一个 role 字段"能说的话多。
 
 由此定下两条纪律，P4 之后都受它约束：
 
