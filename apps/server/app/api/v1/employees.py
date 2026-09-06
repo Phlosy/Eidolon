@@ -23,7 +23,13 @@ from app.schemas.organization import (
     EmployeePatch,
     EmployeePerformance,
 )
-from app.schemas.provider import EmployeeProviderCreate, ProviderOut
+from app.schemas.provider import (
+    BindingCreate,
+    BindingPatch,
+    EmployeeProviderCreate,
+    ModelBindingOut,
+    ProviderOut,
+)
 from app.schemas.runtime import (
     EmployeeBrainOut,
     EmployeeBrainPatch,
@@ -148,6 +154,51 @@ def create_employee_provider(
 ) -> ProviderOut:
     _get_employee_or_404(db, employee_id)
     return provider_service.create_for_employee(db, employee_id, payload)
+
+
+# ---- model bindings: 一个员工可绑多个模型，is_primary 是默认启动模型 ----
+
+
+@router.get("/{employee_id}/bindings", response_model=list[ModelBindingOut])
+def list_employee_bindings(
+    employee_id: int, db: Session = Depends(get_db)
+) -> list[ModelBindingOut]:
+    _get_employee_or_404(db, employee_id)
+    return provider_service.list_bindings(db, employee_id)
+
+
+@router.post("/{employee_id}/bindings", response_model=ModelBindingOut, status_code=201)
+def add_employee_binding(
+    employee_id: int, payload: BindingCreate, db: Session = Depends(get_db)
+) -> ModelBindingOut:
+    _get_employee_or_404(db, employee_id)
+    return provider_service.add_binding(db, employee_id, payload)
+
+
+@router.post(
+    "/{employee_id}/bindings/{binding_id}/primary", response_model=list[ModelBindingOut]
+)
+def set_primary_binding(
+    employee_id: int, binding_id: int, db: Session = Depends(get_db)
+) -> list[ModelBindingOut]:
+    _get_employee_or_404(db, employee_id)
+    return provider_service.set_primary_binding(db, employee_id, binding_id)
+
+
+@router.patch("/{employee_id}/bindings/{binding_id}", response_model=ModelBindingOut)
+def update_employee_binding(
+    employee_id: int, binding_id: int, payload: BindingPatch, db: Session = Depends(get_db)
+) -> ModelBindingOut:
+    _get_employee_or_404(db, employee_id)
+    return provider_service.update_binding(db, employee_id, binding_id, payload)
+
+
+@router.delete("/{employee_id}/bindings/{binding_id}", status_code=204)
+def delete_employee_binding(
+    employee_id: int, binding_id: int, db: Session = Depends(get_db)
+) -> None:
+    _get_employee_or_404(db, employee_id)
+    provider_service.delete_binding(db, employee_id, binding_id)
 
 
 # ---- v0.2: employee runtime + brain ----

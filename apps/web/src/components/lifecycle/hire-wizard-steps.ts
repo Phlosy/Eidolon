@@ -1,4 +1,10 @@
-import type { AccessPackage, EmployeeRole, ProviderType, RuntimeType } from "../../types";
+import type {
+  AccessPackage,
+  EmployeeRole,
+  ModelEntry,
+  ProviderType,
+  RuntimeType,
+} from "../../types";
 
 /** Step order for the hire wizard (v0.4). */
 export const HIRE_WIZARD_STEPS = [
@@ -31,6 +37,8 @@ export interface HireWizardState {
   providerType: ProviderType;
   providerBaseUrl: string;
   providerApiKey: string;
+  /** 条目式模型编辑器的条目；model 字段始终等于默认条目的真实模型名 */
+  providerEntries: ModelEntry[];
   model: string;
   personality: string;
   goals: string;
@@ -55,6 +63,7 @@ export const INITIAL_HIRE_STATE: HireWizardState = {
   providerType: "openai",
   providerBaseUrl: "",
   providerApiKey: "",
+  providerEntries: [],
   model: "",
   personality: "结构化、可靠、主动沟通",
   goals: "持续交付高质量成果，并积累可复用知识",

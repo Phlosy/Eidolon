@@ -3,14 +3,7 @@
     "kicker": "Interactive tutorial",
     "stepCounter": "Step {{current}} of {{total}}",
     "stageOf": "{{stage}}",
-    "status": {
-      "completed": "Done",
-      "skipped": "Skipped",
-      "waiting": "Waiting for the real action"
-    },
-    "requirement": "Waiting on this business state: {{name}}",
     "autoAdvanceHint": "This step advances when the real action happens — no Next button needed.",
-    "noFakeNext": "This step cannot be completed by clicking.",
     "gotIt": "Got it",
     "previous": "Back",
     "next": "Next",
@@ -42,9 +35,7 @@
       "prev": "Back",
       "next": "Next",
       "exit": "Exit replay"
-    },
-    "wizardHint": "Wizard step {{current}} of {{total}}",
-    "hintNotCompletion": "Hints only nudge — real state still decides completion"
+    }
   },
   "tutorials": {
     "companyFounding": {

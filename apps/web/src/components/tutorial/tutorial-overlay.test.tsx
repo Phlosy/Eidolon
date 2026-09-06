@@ -185,6 +185,9 @@ function renderAt(path: string) {
           element={
             <div>
               settings page
+              <button data-tutorial-target="git-connection-create" data-rect="700,120,140,36">
+                Connect git
+              </button>
               <TutorialOverlay />
             </div>
           }
@@ -232,7 +235,6 @@ describe("信息步骤与动作步骤的区别", () => {
     expect(screen.queryByText("Skip step")).toBeNull();
     // 面板只解释"完成即自动前进"，不给任何可以冒充完成的按钮
     expect(screen.getByText(/no Next button needed/i)).toBeTruthy();
-    expect(screen.getByText(/cannot be completed by clicking/i)).toBeTruthy();
     expect(state.complete).not.toHaveBeenCalled();
   });
 
@@ -256,15 +258,42 @@ describe("遮罩与 interaction_mode", () => {
     expect(layer!.getAttribute("data-tutorial-blocking")).toBe("true");
   });
 
-  it("NON_BLOCKING 不铺遮罩：教程不能把整个应用锁死", () => {
+  it("NON_BLOCKING 不铺暗但仍打光环：用户知道点哪儿，页面也照常可用", () => {
     progressFor("git_setup");
     renderAt("/settings");
+    const layer = spotlight();
+    expect(layer).not.toBeNull();
+    expect(layer!.getAttribute("data-tutorial-blocking")).toBe("false");
+    expect(layer!.querySelectorAll('[data-tutorial-dim="true"]').length).toBe(0);
+    expect(layer!.querySelector('[data-tutorial-halo="true"]')).not.toBeNull();
+  });
+
+  it("INFORMATION 步骤不挖孔：整页压暗、面板居中", () => {
+    progressFor("company_setup");
+    renderAt("/");
     expect(spotlight()).toBeNull();
+    expect(document.querySelector('[data-tutorial-overlay="dim"]')).not.toBeNull();
+    const coach = document.querySelector('[data-tutorial-overlay="coach"]') as HTMLElement;
+    expect(coach.style.transform).toContain("translate(-50%, -50%)");
   });
 
   it("FOCUS_ONLY 打光但不拦点击", () => {
-    progressFor("company_setup");
-    renderAt("/");
+    // 用 FOCUS_ONLY 的动作步：信息步走的是整页压暗，挖孔行为要在动作步上钉住
+    state.definition = {
+      ...DEFINITION,
+      stages: [
+        {
+          ...DEFINITION.stages[0],
+          steps: [
+            DEFINITION.stages[0].steps[0],
+            step({ id: "hire_ceo", requirement: "CEO_ACTIVE", interaction_mode: "FOCUS_ONLY" }),
+            DEFINITION.stages[0].steps[2],
+          ],
+        },
+      ],
+    };
+    progressFor("hire_ceo");
+    renderAt("/employees");
     const layer = spotlight();
     expect(layer).not.toBeNull();
     expect(layer!.getAttribute("data-tutorial-blocking")).toBe("false");
@@ -400,6 +429,55 @@ describe("向导内部指引（ui_hints）", () => {
     };
   });
 
+  it("向导走到没有锚点的段落时，面板贴弹窗侧边而不是屏幕正中", async () => {
+    progressFor("hire_ceo");
+    let holder: HTMLDivElement | null = null;
+    render(
+      <MemoryRouter initialEntries={["/employees"]}>
+        <Routes>
+          <Route
+            path="/employees"
+            element={
+              <div>
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  data-rect="100,50,500,600"
+                  ref={(node) => {
+                    holder = node;
+                  }}
+                >
+                  <div data-tutorial-target="wizard-identity" data-rect="120,90,300,40">
+                    identity
+                  </div>
+                </div>
+                <TutorialOverlay />
+              </div>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    // 初始：锚定 identity，有指引卡
+    await waitFor(() => expect(screen.getByText(/Confirm identity first/i)).toBeTruthy());
+
+    // 翻到没有锚点的段落（真实向导的"部门/汇报线"等步骤没有 wizard-* 目标）
+    const dialog = holder as unknown as HTMLDivElement;
+    dialog.innerHTML = "<p>department step</p>";
+    tutorialTargets.refresh();
+
+    const coach = () => document.querySelector('[data-tutorial-overlay="coach"]') as HTMLElement;
+    await waitFor(() => {
+      // 居中兜底的特征是 left:50% + translate(-50%,-50%)；贴弹窗则是具体像素位置
+      // （jsdom 下面板是 0 尺寸，flip 的落点不可靠，只钉"没有居中"）
+      expect(coach().style.left).not.toBe("50%");
+      expect(coach().style.transform ?? "").not.toContain("translate(-50%");
+    });
+    // 失效的指引条目不再展示（目标已卸载，文字文不对题）
+    await waitFor(() => expect(screen.queryByText(/Confirm identity first/i)).toBeNull());
+    expect(document.querySelector('[data-tutorial-hint="true"]')).toBeNull();
+  });
+
   it("向导换段落（DOM 里换了可见的指引目标）时，光自动跟上", async () => {
     progressFor("hire_ceo");
     let holder: HTMLDivElement | null = null;
@@ -430,9 +508,6 @@ describe("向导内部指引（ui_hints）", () => {
       </MemoryRouter>,
     );
     await waitFor(() => expect(screen.getByText(/Confirm identity first/i)).toBeTruthy());
-    expect(document.querySelector('[data-tutorial-hint="true"]')).toHaveTextContent(
-      /Wizard step 1 of 2/,
-    );
 
     // 模拟向导翻到确认那一步：DOM 里换成了另一个指引目标
     const dialog = holder as unknown as HTMLDivElement;
@@ -442,9 +517,6 @@ describe("向导内部指引（ui_hints）", () => {
 
     // 换段落之后光应当自动跟到第 2 条指引，不需要任何人手翻
     await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
-    expect(document.querySelector('[data-tutorial-hint="true"]')).toHaveTextContent(
-      /Wizard step 2 of 2/,
-    );
     await waitFor(() =>
       expect(
         (document.querySelector('[data-tutorial-halo="true"]') as HTMLElement).style.left,
@@ -508,7 +580,6 @@ describe("向导内部指引（ui_hints）", () => {
     const halo = () => document.querySelector('[data-tutorial-halo="true"]') as HTMLElement;
     await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
     expect(halo().style.left).toBe("412px");
-    expect(screen.getByText(/Hints only nudge/i)).toBeTruthy();
 
     // 手动翻页仍然有效：可以退回前一条，再翻回来
     fireEvent.click(screen.getByText("Back"));

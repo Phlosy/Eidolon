@@ -10,7 +10,7 @@ import {
   SkipForward,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { cn } from "../../utils/cn";
@@ -70,6 +70,22 @@ function WhySection({ stepId }: { stepId: string }) {
 export function TutorialOverlay() {
   const { t } = useTranslation("tutorial");
   const engine = useTutorialEngine();
+  // 弹窗锚点（向导无锚点段落用）不经 Target Registry，弹窗开着时 resize/scroll
+  // 自己催一次重渲染来重读弹窗位置
+  const [, setDialogBump] = useState(0);
+  useEffect(() => {
+    const bump = () => {
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) {
+        setDialogBump((n) => n + 1);
+      }
+    };
+    window.addEventListener("resize", bump);
+    window.addEventListener("scroll", bump, true);
+    return () => {
+      window.removeEventListener("resize", bump);
+      window.removeEventListener("scroll", bump, true);
+    };
+  }, []);
   const { step } = engine;
   if (!step) return null;
 
@@ -103,8 +119,21 @@ export function TutorialOverlay() {
   const degraded =
     !hinting &&
     (cannotRoute || (!replay && engine.onRoute && engine.snapshot.status !== "visible"));
+  // 信息步没有"要点哪个控件"：面板居中、整页压暗即可，不给整面墙画光环
+  const isInfo = step.kind === "INFORMATION";
+  // 指引锚点当前可见才算"钉住"；向导翻页会卸载上一段 DOM，翻页间隙锚点可能缺失
+  const hintAnchored = hinting && engine.snapshot.status === "visible";
+  // 向导走到没有锚点的段落（部门、汇报线等）：面板贴弹窗右侧，别退到屏幕正中挡操作
+  const dialogRect =
+    hinting && !hintAnchored
+      ? (document
+          .querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
+          ?.getBoundingClientRect() ?? null)
+      : null;
   const anchor: DOMRect | null =
-    !replay && engine.onRoute && engine.snapshot.status === "visible" ? engine.snapshot.rect : null;
+    !isInfo && !replay && engine.onRoute && engine.snapshot.status === "visible"
+      ? engine.snapshot.rect
+      : dialogRect;
 
   const fallbackCopy = cannotRoute
     ? { title: "ui.routePendingTitle", body: "ui.routePendingBody" }
@@ -117,12 +146,21 @@ export function TutorialOverlay() {
   return (
     <>
       {!replay ? (
-        <TutorialSpotlight
-          snapshot={engine.snapshot}
-          // 指引态强制降级为非拦截：TARGET_ONLY 的遮罩会把向导自己的"下一步"
-          // 一起吃掉，用户就被教程锁死在弹窗里（实测过）。
-          interactionMode={hinting ? "FOCUS_ONLY" : step.interaction_mode}
-        />
+        isInfo ? (
+          // 信息步没有页面上的点击目标：整页压暗，让居中的面板成为唯一焦点
+          <div
+            data-tutorial-overlay="dim"
+            aria-hidden="true"
+            className="pointer-events-none fixed inset-0 z-[60] bg-black/65 backdrop-blur-[1px]"
+          />
+        ) : (
+          <TutorialSpotlight
+            snapshot={engine.snapshot}
+            // 指引态强制降级为非拦截：TARGET_ONLY 的遮罩会把向导自己的"下一步"
+            // 一起吃掉，用户就被教程锁死在弹窗里（实测过）。
+            interactionMode={hinting ? "FOCUS_ONLY" : step.interaction_mode}
+          />
+        )
       ) : null}
       {/* 指引态换成侧边摆放：这一步的 placement 是给"页面上的目标"定的（例如 top），
           而指引目标是弹窗/标签页里的控件，沿用同一个方位会让面板正好压住用户
@@ -174,15 +212,12 @@ export function TutorialOverlay() {
           {step.has_why ? <WhySection stepId={step.id} /> : null}
         </div>
 
-        {hinting && engine.hint ? (
+        {hintAnchored && engine.hint ? (
           <div
             data-tutorial-hint="true"
             className="mt-3 rounded-xl border border-primary/25 bg-primary/5 p-3"
           >
-            <p className="type-kicker text-primary">
-              {t("ui.wizardHint", { current: engine.hintIndex + 1, total: engine.hints.length })}
-            </p>
-            <p className="mt-1 text-xs leading-5">{t(engine.hint.textKey)}</p>
+            <p className="text-xs leading-5">{t(engine.hint.textKey)}</p>
             <div className="mt-2 flex items-center gap-2">
               <button
                 type="button"
@@ -201,9 +236,6 @@ export function TutorialOverlay() {
               >
                 {t("ui.next")}
               </button>
-              <span className="ml-auto text-[10px] text-muted-foreground">
-                {t("ui.hintNotCompletion")}
-              </span>
             </div>
           </div>
         ) : null}
@@ -240,17 +272,9 @@ export function TutorialOverlay() {
           </div>
         ) : null}
 
-        {!replay ? (
-          <p className="mt-3 rounded-lg border border-border bg-background/45 px-3 py-2 font-mono text-[10px] text-muted-foreground">
-            {engine.stepDone
-              ? t("ui.status.completed")
-              : engine.stepSkipped
-                ? t("ui.status.skipped")
-                : t("ui.requirement", { name: step.requirement })}
-          </p>
-        ) : (
+        {replay ? (
           <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{t("ui.replay.note")}</p>
-        )}
+        ) : null}
 
         {engine.errorMessage ? (
           <p
@@ -323,12 +347,9 @@ export function TutorialOverlay() {
           )}
         </div>
 
-        {!replay && step.kind !== "INFORMATION" && engine.onRoute ? (
-          <p className="mt-2 text-[10px] text-muted-foreground">{t("ui.noFakeNext")}</p>
-        ) : null}
         {!replay ? (
           <Link
-            to="/settings"
+            to="/settings/tutorial"
             className="mt-2 inline-block text-[10px] text-muted-foreground underline-offset-2 hover:underline"
           >
             {t("ui.exit")}

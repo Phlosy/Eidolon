@@ -17,6 +17,8 @@ function makeProvider(overrides: Partial<Provider> = {}): Provider {
     credential_mask: "sk-••••abcd",
     metadata: {},
     in_use_by: 0,
+    available_models: [],
+    default_model: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     ...overrides,

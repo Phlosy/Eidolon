@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Bell, Menu, Moon, Plus, Search, Sun, UserRound } from "lucide-react";
+import { Bell, Menu, Moon, Plus, Search, Sun } from "lucide-react";
 import { useCompany } from "../../hooks/useSystem";
 import { useEmployees } from "../../hooks/useEmployees";
 import { useEventStreamStore } from "../../stores/events";
 import { applyTheme, useThemeStore } from "../../stores/theme";
 import { LanguageSelector } from "../common/language-selector";
+import { UserMenu } from "./user-menu";
 import { cn } from "../../utils/cn";
 
 const ROUTE_LABELS: Array<[RegExp, string]> = [
@@ -128,13 +129,7 @@ export function TopCommandBar({ onOpenNavigation }: { onOpenNavigation: () => vo
       >
         {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
       </button>
-      <Link
-        to="/settings#security"
-        className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-surface text-muted-foreground hover:border-border-active hover:text-foreground"
-        aria-label="Account security"
-      >
-        <UserRound className="h-4 w-4" />
-      </Link>
+      <UserMenu />
     </header>
   );
 }

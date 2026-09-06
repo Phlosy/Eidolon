@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Fingerprint,
   Laptop,
+  LockKeyhole,
   LogOut,
   Pencil,
   Plus,
@@ -9,10 +10,11 @@ import {
   Smartphone,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
+  changePassword,
   getPasskeys,
   getSessions,
   logoutAll,
@@ -23,6 +25,7 @@ import {
 import { Button } from "../../components/common/button";
 import { Input } from "../../components/common/input";
 import { useAuth } from "./auth-context";
+import { PASSWORD_MIN_LENGTH, passwordIssues } from "./password-policy";
 import { passkeysAvailable, registerPasskey } from "./webauthn";
 
 export function SecurityCenter() {
@@ -159,6 +162,8 @@ export function SecurityCenter() {
             {t("security.logoutAll")}
           </Button>
         </div>
+
+        <PasswordChangeCard />
       </div>
       {message ? (
         <p className="mt-4 text-xs text-muted-foreground" role="status">
@@ -166,6 +171,98 @@ export function SecurityCenter() {
         </p>
       ) : null}
     </section>
+  );
+}
+
+function PasswordChangeCard() {
+  const { t } = useTranslation("auth");
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+  const nextIsValid = passwordIssues(next).length === 0;
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setMessage("");
+    setError("");
+    if (!nextIsValid) return setError(t("errors.passwordRequirements"));
+    if (next !== confirm) return setError(t("errors.passwordMismatch"));
+    setPending(true);
+    try {
+      // 改密码也要邮件确认：这里只发起，点邮件链接后才换新密码
+      await changePassword({ current_password: current, new_password: next });
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      setMessage(t("security.password.sent"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("errors.unknown"));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl border border-border bg-background/35 p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold">{t("security.password.title")}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">{t("security.password.help")}</p>
+        </div>
+        <LockKeyhole className="h-5 w-5 text-primary" />
+      </div>
+      <form className="mt-4 space-y-2" onSubmit={submit}>
+        <Input
+          type="password"
+          autoComplete="current-password"
+          aria-label={t("security.password.current")}
+          placeholder={t("security.password.current")}
+          value={current}
+          onChange={(event) => setCurrent(event.target.value)}
+          required
+        />
+        <Input
+          type="password"
+          autoComplete="new-password"
+          aria-label={t("security.password.next")}
+          placeholder={t("security.password.next")}
+          minLength={PASSWORD_MIN_LENGTH}
+          value={next}
+          onChange={(event) => setNext(event.target.value)}
+          required
+        />
+        <Input
+          type="password"
+          autoComplete="new-password"
+          aria-label={t("fields.confirmPassword")}
+          placeholder={t("fields.confirmPassword")}
+          value={confirm}
+          onChange={(event) => setConfirm(event.target.value)}
+          required
+        />
+        {error ? (
+          <p className="text-xs text-danger" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {message ? (
+          <p className="text-xs text-success" role="status">
+            {message}
+          </p>
+        ) : null}
+        <Button
+          type="submit"
+          variant="outline"
+          className="w-full"
+          disabled={pending || !current || !next || !confirm}
+        >
+          {t("security.password.submit")}
+        </Button>
+      </form>
+    </div>
   );
 }
 

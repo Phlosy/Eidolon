@@ -1,6 +1,40 @@
 {
   "title": "Settings",
-  "description": "Runtime configuration, providers, and updates.",
+  "description": "Account, interface, and company system configuration.",
+  "nav": {
+    "aria": "Settings sections",
+    "groups": {
+      "personal": "Personal",
+      "system": "System"
+    },
+    "profile": "Profile",
+    "security": "Security",
+    "preferences": "Preferences",
+    "tutorial": "Tutorial center",
+    "providers": "Providers",
+    "git": "Git",
+    "runtime": "Runtime",
+    "about": "About"
+  },
+  "profile": {
+    "title": "Profile",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "The name your team sees",
+    "email": "Sign-in email",
+    "locale": "Language preference",
+    "timezone": "Timezone",
+    "save": "Save",
+    "saved": "Saved",
+    "avatarUpload": "Upload avatar",
+    "avatarHint": "Click the avatar to upload. PNG / JPEG / WebP / GIF, up to 2 MB.",
+    "avatarSaved": "Avatar updated",
+    "changeEmail": "Change sign-in email",
+    "changeEmailHint": "Current email: {{email}}. A verification link is sent to the new address and takes effect only after you open it.",
+    "newEmailPlaceholder": "New email address",
+    "sendVerification": "Send verification email",
+    "emailChangeSent": "Verification email sent to {{email}}. Open the link in it to finish the change.",
+    "emailChangeSentDev": "Development mode: the verification link is printed to the backend console log (eidolon.email)."
+  },
   "runtimeSection": "Runtime",
   "rows": {
     "companyName": "Company name",
@@ -23,14 +57,6 @@
   "apiDocs": "API documentation",
   "apiDocsText": "The backend serves interactive OpenAPI docs at <link>{{url}}/docs</link>.",
   "console": {
-    "kicker": "System administration",
-    "title": "Company Systems Console",
-    "description": "Manage the organization services that power employees, access, source control, runtimes, and the interface.",
-    "navigation": "Settings sections",
-    "providers": "Providers",
-    "git": "Git",
-    "runtime": "Runtime",
-    "appearance": "Appearance",
     "liveNote": "System configuration is connected to the current Eidolon environment."
   }
 }

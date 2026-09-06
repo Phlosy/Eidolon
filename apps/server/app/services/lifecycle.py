@@ -42,9 +42,9 @@ from app.schemas.lifecycle import (
     PreviewRequest,
     TransferRequest,
 )
-from app.schemas.provider import EmployeeProviderCreate
+from app.schemas.provider import EmployeeProviderCreate, ModelEntryIn
 from app.services import seed
-from app.services.providers import provider_service
+from app.services.providers import provider_service, validate_model_name
 
 engine = ProvisioningEngine()
 
@@ -285,23 +285,33 @@ async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, Provi
     brain.curiosity = min(1.0, max(0.0, payload.curiosity))
 
     binding = None
+    # 条目化模型：payload.model 是默认启动模型，payload.models 是完整条目列表；
+    # 两者合并去重，默认模型不在列表里时补进去
+    entries = list(payload.models)
+    if payload.model and not any(entry.model == payload.model for entry in entries):
+        entries.append(ModelEntryIn(model=payload.model))
+    primary_model = payload.model or (entries[0].model if entries else None)
     if payload.provider_id is not None:
         provider = provider_repo.get_provider_visible(db, payload.provider_id, employee.id)
         assert provider is not None
         provider_repo.clear_primary_flags(db, employee.id)
-        binding = provider_repo.create_binding(
-            db,
-            employee_id=employee.id,
-            provider_id=provider.id,
-            model=payload.model,
-            is_primary=True,
-            position=0,
-        )
+        for position, entry in enumerate(entries):
+            created = provider_repo.create_binding(
+                db,
+                employee_id=employee.id,
+                provider_id=provider.id,
+                model=validate_model_name(entry.model),
+                alias=entry.alias.strip(),
+                is_primary=entry.model == primary_model,
+                position=position,
+            )
+            if entry.model == primary_model:
+                binding = created
     elif payload.provider_type is not None:
-        if not payload.provider_name or not payload.model:
+        if not payload.provider_name or not entries:
             raise HTTPException(
                 status_code=422,
-                detail="provider_name and model are required for a new provider",
+                detail="provider_name and at least one model are required for a new provider",
             )
         provider_service.create_for_employee(
             db,
@@ -311,7 +321,8 @@ async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, Provi
                 provider_type=payload.provider_type,
                 base_url=payload.provider_base_url,
                 api_key=payload.provider_api_key,
-                model=payload.model,
+                models=entries,
+                primary_model=primary_model,
             ),
         )
         binding = provider_repo.get_primary_binding(db, employee.id)

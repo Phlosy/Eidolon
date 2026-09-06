@@ -39,7 +39,19 @@
     "workforce": "组织",
     "work": "工作",
     "assets": "资产",
-    "infrastructure": "基础设施",
-    "system": "系统"
+    "infrastructure": "基础设施"
+  },
+  "userMenu": {
+    "open": "账号菜单",
+    "profile": "个人资料",
+    "settings": "设置",
+    "logout": "退出登录",
+    "switchAccount": "切换账号",
+    "deleteAccount": "注销账号",
+    "deleteTitle": "注销账号？",
+    "deleteBody": "点击确认后，我们会向你的登录邮箱发送一封确认邮件；点击邮件中的链接才会真正注销。",
+    "deleteConfirm": "发送确认邮件",
+    "deleteSent": "确认邮件已发送至 {{email}}，点击邮件中的链接完成注销。",
+    "deleteSentDev": "开发模式：注销确认链接已打印到后端控制台日志（eidolon.email）。"
   }
 }

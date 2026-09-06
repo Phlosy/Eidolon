@@ -125,6 +125,11 @@ class ProviderType(StrEnum):
     anthropic = "anthropic"
     openrouter = "openrouter"
     deepseek = "deepseek"
+    moonshot = "moonshot"  # Kimi
+    zhipu = "zhipu"  # 智谱 GLM
+    qwen = "qwen"  # 阿里通义（DashScope 兼容模式）
+    groq = "groq"
+    mistral = "mistral"
     gemini = "gemini"
     ollama = "ollama"
     custom = "custom"

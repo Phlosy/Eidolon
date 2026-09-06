@@ -1,4 +1,4 @@
-import { get, patch, post } from "./client";
+import { del, get, patch, post } from "./client";
 import type {
   CompanyEvent,
   CreateEmployeeProviderInput,
@@ -8,6 +8,7 @@ import type {
   LearningPriority,
   LearningRecord,
   MemoryEntry,
+  ModelBinding,
   Provider,
   Skill,
 } from "../types";
@@ -63,4 +64,33 @@ export function createEmployeeProvider(
   body: CreateEmployeeProviderInput,
 ): Promise<Provider> {
   return post<Provider>(`/employees/${id}/providers`, body);
+}
+
+// ---- model bindings：一个员工可绑多个模型，is_primary 为默认启动 ----
+
+export function listEmployeeBindings(id: number): Promise<ModelBinding[]> {
+  return get<ModelBinding[]>(`/employees/${id}/bindings`);
+}
+
+export function addEmployeeBinding(
+  id: number,
+  body: { provider_id: number; model: string; alias?: string; make_primary?: boolean },
+): Promise<ModelBinding> {
+  return post<ModelBinding>(`/employees/${id}/bindings`, body);
+}
+
+export function updateEmployeeBinding(
+  id: number,
+  bindingId: number,
+  body: { alias: string },
+): Promise<ModelBinding> {
+  return patch<ModelBinding>(`/employees/${id}/bindings/${bindingId}`, body);
+}
+
+export function setPrimaryBinding(id: number, bindingId: number): Promise<ModelBinding[]> {
+  return post<ModelBinding[]>(`/employees/${id}/bindings/${bindingId}/primary`);
+}
+
+export function deleteEmployeeBinding(id: number, bindingId: number): Promise<void> {
+  return del<void>(`/employees/${id}/bindings/${bindingId}`);
 }

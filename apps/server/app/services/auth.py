@@ -13,7 +13,7 @@ from threading import Lock
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
-from fastapi import HTTPException, Request, Response
+from fastapi import BackgroundTasks, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from webauthn import (
@@ -34,6 +34,7 @@ from webauthn.helpers.structs import (
 
 from app.core.config import settings
 from app.models.auth import (
+    AccountActionToken,
     CompanyMembership,
     EmailVerificationToken,
     PasskeyCredential,
@@ -47,7 +48,7 @@ from app.models.base import utcnow
 from app.models.organization import Company, Department
 from app.schemas.auth import AuthStateOut, MembershipOut, UserOut
 from app.schemas.organization import CompanyOut
-from app.services.email_delivery import send_verification_email
+from app.services.email_delivery import send_account_action_email, send_verification_email
 
 _password_hasher = PasswordHasher()
 _attempts: dict[str, deque[float]] = {}
@@ -117,11 +118,18 @@ def record_audit_event(
     )
 
 
-def register(db: Session, payload, request: Request) -> tuple[dict, int]:
+def register(
+    db: Session, payload, request: Request, background: BackgroundTasks | None = None
+) -> tuple[dict, int]:
     email = str(payload.email).strip().lower()
     enforce_rate_limit(f"register:{_client_ip(request)}:{email}", limit=5, window_seconds=300)
-    if db.scalar(select(User).where(User.email == email)) is not None:
-        raise HTTPException(status_code=409, detail="an account already exists for this email")
+    existing = db.scalar(select(User).where(User.email == email))
+    if existing is not None:
+        if existing.status == "active":
+            raise HTTPException(status_code=409, detail="an account already exists for this email")
+        # 已注销的账号不占邮箱（兼容匿名化之前的历史数据）：改写后释放给新注册
+        _anonymize(existing)
+        db.flush()
     pending = db.scalar(select(PendingRegistration).where(PendingRegistration.email == email))
     expires_at = utcnow() + timedelta(minutes=settings.email_verification_ttl_minutes)
     if pending is None:
@@ -150,12 +158,7 @@ def register(db: Session, payload, request: Request) -> tuple[dict, int]:
     )
     record_audit_event(db, "user.registered", request=request)
     db.commit()
-    try:
-        send_verification_email(email, token, locale=pending.locale)
-    except (OSError, smtplib.SMTPException, RuntimeError) as exc:
-        raise HTTPException(
-            status_code=503, detail="verification email could not be delivered"
-        ) from exc
+    _deliver(lambda: send_verification_email(email, token, locale=pending.locale), background)
     return {
         "email": email,
         "verification_required": True,
@@ -164,6 +167,53 @@ def register(db: Session, payload, request: Request) -> tuple[dict, int]:
         if settings.email_delivery_mode == "console"
         else None,
     }, pending.id
+
+
+def resend_verification(
+    db: Session, email: str, request: Request, background: BackgroundTasks | None = None
+) -> dict:
+    """重发注册验证邮件：作废旧链接、签发新令牌、延长 pending 有效期。
+
+    无论 pending 是否存在都返回同样的回执，避免探测"这个邮箱注册过没有"。
+    60 秒内只允许重发一次（覆盖式重发，旧链接立即失效）。
+    """
+    email = email.strip().lower()
+    enforce_rate_limit(
+        f"resend-verify:{_client_ip(request)}:{email}", limit=1, window_seconds=60
+    )
+    expires_at = utcnow() + timedelta(minutes=settings.email_verification_ttl_minutes)
+    token = ""
+    pending = db.scalar(select(PendingRegistration).where(PendingRegistration.email == email))
+    if pending is not None:
+        pending.expires_at = expires_at
+        for old in db.scalars(
+            select(EmailVerificationToken).where(
+                EmailVerificationToken.pending_registration_id == pending.id,
+                EmailVerificationToken.used_at.is_(None),
+            )
+        ):
+            old.used_at = utcnow()
+        token = secrets.token_urlsafe(32)
+        db.add(
+            EmailVerificationToken(
+                pending_registration_id=pending.id,
+                token_hash=_hash(token),
+                expires_at=expires_at,
+            )
+        )
+        record_audit_event(db, "user.verification_resent", request=request)
+        db.commit()
+        _deliver(
+            lambda: send_verification_email(email, token, locale=pending.locale), background
+        )
+    return {
+        "email": email,
+        "verification_required": True,
+        "expires_at": expires_at,
+        "development_verification_token": token
+        if token and settings.email_delivery_mode == "console"
+        else None,
+    }
 
 
 def verify_email(db: Session, token: str, request: Request, response: Response) -> AuthStateOut:
@@ -254,6 +304,184 @@ def authenticate_password(
     db.commit()
     create_session(db, user, request, response)
     return _auth_state(user, company, membership)
+
+
+# ---- 账户安全操作（改邮箱 / 改密码 / 注销）：一律先邮件确认，确认时才生效 ----
+
+ACCOUNT_ACTIONS = {"change_email", "change_password", "delete_account"}
+
+
+def _issue_action_token(
+    db: Session, user: User, action: str, payload: dict, request: Request
+) -> tuple[str, object]:
+    """作废旧令牌、签发新令牌。返回 (明文 token, expires_at)。"""
+    expires_at = utcnow() + timedelta(minutes=settings.email_verification_ttl_minutes)
+    for old in db.scalars(
+        select(AccountActionToken).where(
+            AccountActionToken.user_id == user.id,
+            AccountActionToken.action == action,
+            AccountActionToken.used_at.is_(None),
+        )
+    ):
+        old.used_at = utcnow()
+    token = secrets.token_urlsafe(32)
+    db.add(
+        AccountActionToken(
+            user_id=user.id,
+            action=action,
+            payload=payload,
+            token_hash=_hash(token),
+            expires_at=expires_at,
+        )
+    )
+    record_audit_event(db, f"user.{action}_requested", request=request, user_id=user.id)
+    db.commit()
+    return token, expires_at
+
+
+def _action_request_response(email: str, token: str, expires_at) -> dict:
+    return {
+        "email": email,
+        "verification_required": True,
+        "expires_at": expires_at,
+        # 本地开发没有真实邮箱（console 投递打到服务端日志），token 随响应返回
+        # 供测试与开发联调；前端只用它判断"现在是开发模式"，不会自动确认。
+        "development_verification_token": token
+        if settings.email_delivery_mode == "console"
+        else None,
+    }
+
+
+def _deliver(send, background: BackgroundTasks | None) -> None:
+    """发信。SMTP 可能非常慢（实测 Gmail 一次握手+发送 ~37s），同步发会把注册/
+    改密码这些请求一起卡住 —— 有 BackgroundTasks 就响应先回、邮件后台发。
+    同步路径（测试、脚本）保留"发不出去就 503"的硬失败，便于立刻发现配置错。"""
+    if background is not None:
+        background.add_task(send)
+        return
+    try:
+        send()
+    except (OSError, smtplib.SMTPException, RuntimeError) as exc:
+        raise HTTPException(
+            status_code=503, detail="verification email could not be delivered"
+        ) from exc
+
+
+def request_email_change(
+    db: Session, user: User, payload, request: Request, background: BackgroundTasks | None = None
+) -> dict:
+    """换绑邮箱：确认邮件发到**新**邮箱，点链接后才真正改。"""
+    enforce_rate_limit(f"email-change:{user.id}", limit=5, window_seconds=300)
+    new_email = str(payload.new_email).strip().lower()
+    if new_email == user.email:
+        raise HTTPException(status_code=409, detail="new email is the same as the current one")
+    if db.scalar(select(User).where(User.email == new_email)) is not None:
+        raise HTTPException(status_code=409, detail="an account already exists for this email")
+    token, expires_at = _issue_action_token(
+        db, user, "change_email", {"new_email": new_email}, request
+    )
+    _deliver(
+        lambda: send_account_action_email(new_email, "change_email", token, locale=user.locale),
+        background,
+    )
+    return _action_request_response(new_email, token, expires_at)
+
+
+def request_password_change(
+    db: Session, user: User, payload, request: Request, background: BackgroundTasks | None = None
+) -> dict:
+    """改密码：先验当前密码，再发确认邮件；点链接后才换新哈希。"""
+    try:
+        _password_hasher.verify(user.password_hash, payload.current_password)
+    except (VerifyMismatchError, InvalidHashError):
+        raise HTTPException(status_code=400, detail="current password is incorrect") from None
+    token, expires_at = _issue_action_token(
+        db,
+        user,
+        "change_password",
+        {"password_hash": _password_hasher.hash(payload.new_password)},
+        request,
+    )
+    _deliver(
+        lambda: send_account_action_email(user.email, "change_password", token, locale=user.locale),
+        background,
+    )
+    return _action_request_response(user.email, token, expires_at)
+
+
+def request_account_deletion(
+    db: Session, user: User, request: Request, background: BackgroundTasks | None = None
+) -> dict:
+    """注销账号：确认邮件发到当前邮箱，点链接后才执行。"""
+    enforce_rate_limit(f"delete-account:{user.id}", limit=5, window_seconds=300)
+    token, expires_at = _issue_action_token(db, user, "delete_account", {}, request)
+    _deliver(
+        lambda: send_account_action_email(user.email, "delete_account", token, locale=user.locale),
+        background,
+    )
+    return _action_request_response(user.email, token, expires_at)
+
+
+def _anonymize(user: User) -> None:
+    """注销后释放登录邮箱，让同一地址可以重新注册；审计记录只认 user_id。"""
+    user.status = "deleted"
+    user.email = f"deleted-{user.id}@deleted.invalid"
+    user.display_name = ""
+    user.avatar = ""
+    user.password_hash = ""
+
+
+def _revoke_all_sessions(db: Session, user_id: int) -> None:
+    for session in db.scalars(
+        select(UserSession).where(
+            UserSession.user_id == user_id, UserSession.revoked_at.is_(None)
+        )
+    ):
+        session.revoked_at = utcnow()
+
+
+def confirm_account_action(
+    db: Session, token: str, request: Request, response: Response | None = None
+) -> dict:
+    """执行邮件确认的动作。令牌是一次性的"邮箱所有权"证明，不要求会话。"""
+    row = db.scalar(
+        select(AccountActionToken).where(AccountActionToken.token_hash == _hash(token))
+    )
+    if row is None or row.used_at is not None:
+        raise HTTPException(status_code=409, detail="verification link is invalid or already used")
+    if _is_expired(row.expires_at):
+        raise HTTPException(status_code=410, detail="verification link has expired")
+    user = db.get(User, row.user_id)
+    if user is None or user.status != "active":
+        raise HTTPException(status_code=401, detail="account no longer exists")
+
+    if row.action == "change_email":
+        new_email = str(row.payload.get("new_email", "")).strip().lower()
+        taken = db.scalar(select(User).where(User.email == new_email, User.id != user.id))
+        if not new_email or taken is not None:
+            raise HTTPException(status_code=409, detail="an account already exists for this email")
+        user.email = new_email
+        # 换邮箱不影响会话：身份没变，只是登录标识换了
+    elif row.action == "change_password":
+        password_hash = str(row.payload.get("password_hash", ""))
+        if not password_hash:
+            raise HTTPException(status_code=409, detail="verification link is invalid")
+        user.password_hash = password_hash
+        # 改密码后所有设备都退出（包括发起设备），用新密码重新登录
+        _revoke_all_sessions(db, user.id)
+    elif row.action == "delete_account":
+        record_audit_event(db, "user.deleted", request=request, user_id=user.id)
+        _revoke_all_sessions(db, user.id)
+        _anonymize(user)
+    else:
+        raise HTTPException(status_code=409, detail="verification link is invalid")
+
+    row.used_at = utcnow()
+    record_audit_event(db, f"user.{row.action}_confirmed", request=request, user_id=user.id)
+    db.commit()
+    if row.action in ("change_password", "delete_account") and response is not None:
+        clear_session_cookies(response)
+    return {"action": row.action, "email": user.email if row.action != "delete_account" else None}
 
 
 def create_session(db: Session, user: User, request: Request, response: Response) -> UserSession:

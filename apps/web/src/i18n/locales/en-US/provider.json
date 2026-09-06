@@ -22,7 +22,11 @@
       "inUse": "In use",
       "status": "Status",
       "actions": "Actions"
-    }
+    },
+    "add": "New company provider",
+    "addTitle": "New company provider",
+    "addDescription": "A company-shared provider account. Model entries form the company catalog; per-employee bindings live under Employee → Runtime.",
+    "modelsSummary": "{{count}} models · default {{default}}"
   },
   "add": "Add provider",
   "emptyTitle": "No providers",
@@ -70,7 +74,25 @@
     "apiKeyKeep": "API key (leave empty to keep)",
     "modelOptional": "Model (optional)",
     "saveChanges": "Save changes",
-    "addProvider": "Add provider"
+    "addProvider": "Add provider",
+    "apiKeyOptional": "API key (optional)",
+    "noKeyNeeded": "Local services (e.g. Ollama) need no API key.",
+    "models": "Model entries (check to include; one is the default)",
+    "probe": "Probe key & models",
+    "probeFailed": "Discovery failed",
+    "probeEmpty": "Connected, but no models were returned — add one manually.",
+    "removeModel": "Remove",
+    "modelInvalid": "Model names may contain letters, digits and . - _ / : only, and must start with a letter or digit",
+    "officialDocs": "Official model docs",
+    "probeOk": "Key works — found {{count}} models, added below.",
+    "probeKeyFailed": "Probe failed: {{error}}",
+    "entryEnabled": "Use",
+    "entryAlias": "Display name",
+    "entryModel": "Remote model",
+    "entryDefault": "Default",
+    "entryAliasPlaceholder": "Display name (defaults to model)",
+    "entryModelPlaceholder": "Model name sent to the provider",
+    "addEntry": "Add entry"
   },
   "selector": {
     "selectProvider": "Select a provider…"
@@ -89,6 +111,18 @@
     "deepseek": "DeepSeek",
     "gemini": "Gemini",
     "ollama": "Ollama",
+    "moonshot": "Moonshot (Kimi)",
+    "zhipu": "Zhipu GLM",
+    "qwen": "Qwen (DashScope)",
+    "groq": "Groq",
+    "mistral": "Mistral",
     "custom": "Custom"
+  },
+  "bindings": {
+    "makePrimary": "Make default model",
+    "primary": "Default",
+    "remove": "Remove binding",
+    "edit": "Edit model entries",
+    "editTitle": "Model entries — {{name}}"
   }
 }

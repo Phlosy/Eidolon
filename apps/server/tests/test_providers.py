@@ -164,3 +164,68 @@ def test_provider_events_are_redacted(client):
     assert API_KEY not in json.dumps(provider_events)
     debug_events = [e for e in provider_events if "debug" in e["payload"]]
     assert debug_events and "••••" in debug_events[0]["payload"]["debug"]
+
+
+def test_provider_presets_cover_mainstream_vendors(client):
+    response = client.get("/api/v1/providers/presets")
+    assert response.status_code == 200
+    presets = {p["provider_type"]: p for p in response.json()}
+    # 主流厂商都在，且非 custom/ollama 一律需要 key
+    for vendor in ("openai", "anthropic", "deepseek", "moonshot", "zhipu", "qwen",
+                   "groq", "mistral", "openrouter", "gemini"):
+        assert vendor in presets
+        assert presets[vendor]["requires_api_key"] is True
+        assert presets[vendor]["default_base_url"]
+        assert presets[vendor]["recommended_models"]
+    assert presets["ollama"]["requires_api_key"] is False
+    # 自定义：没有默认 base_url，由用户填写
+    assert presets["custom"]["default_base_url"] is None
+
+
+def test_create_provider_with_preset_type_needs_no_base_url(client):
+    response = _create_provider(
+        client, name="kimi", provider_type=ProviderType.moonshot.value, base_url=None
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["provider_type"] == "moonshot"
+    assert body["credential_mask"].endswith("CRET")
+
+
+def test_company_provider_model_catalog(client):
+    created = client.post(
+        "/api/v1/providers",
+        json={
+            "name": "company-deepseek",
+            "provider_type": "deepseek",
+            "scope": "company",
+            "models": [
+                {"model": "deepseek-chat", "alias": "聊天"},
+                {"model": "deepseek-reasoner"},
+            ],
+            "primary_model": "deepseek-reasoner",
+        },
+    )
+    assert created.status_code == 201, created.text
+    body = created.json()
+    assert body["available_models"] == [
+        {"model": "deepseek-chat", "alias": "聊天"},
+        {"model": "deepseek-reasoner", "alias": ""},
+    ]
+    assert body["default_model"] == "deepseek-reasoner"
+    # 目录不出现在 metadata 散列里（有专属字段）
+    assert "available_models" not in body["metadata"]
+
+    # PATCH 更新目录
+    updated = client.patch(
+        f"/api/v1/providers/{body['id']}",
+        json={"models": [{"model": "deepseek-v4"}]},
+    )
+    assert updated.status_code == 200
+    assert [m["model"] for m in updated.json()["available_models"]] == ["deepseek-v4"]
+    assert updated.json()["default_model"] == "deepseek-v4"
+
+    # 传空列表 = 清空目录
+    cleared = client.patch(f"/api/v1/providers/{body['id']}", json={"models": []})
+    assert cleared.json()["available_models"] == []
+    assert cleared.json()["default_model"] is None

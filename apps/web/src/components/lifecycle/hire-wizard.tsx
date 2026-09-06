@@ -11,12 +11,15 @@ import { useCompany } from "../../hooks/useSystem";
 import { useEmployees } from "../../hooks/useEmployees";
 import { useRuntimeTypes } from "../../hooks/useRuntimes";
 import { useProviders } from "../../hooks/useProviders";
+import { listProviderModels } from "../../api/providers";
 import { Button } from "../common/button";
 import { Dialog } from "../common/dialog";
 import { Input } from "../common/input";
 import { Badge } from "../common/badge";
 import { Skeleton } from "../common/skeleton";
 import { ProvisioningPreviewList } from "./provisioning-preview";
+import { ProviderPresetFields } from "../provider/provider-preset-fields";
+import { ModelEntriesEditor } from "../provider/model-entries-editor";
 import {
   canAdvanceHire,
   defaultPackageIds,
@@ -28,7 +31,7 @@ import {
 } from "./hire-wizard-steps";
 import { cn } from "../../utils/cn";
 import { enumLabel } from "../../utils/labels";
-import type { EmployeeRole, OnboardEmployeeInput, ProviderType, RuntimeType } from "../../types";
+import type { EmployeeRole, OnboardEmployeeInput, RuntimeType } from "../../types";
 
 const STEP_TITLE_KEY: Record<HireWizardStep, string> = {
   identity: "wizard.steps.identity",
@@ -145,6 +148,20 @@ export function HireWizard({
 
   const patch = (partial: Partial<HireWizardState>) => setState((s) => ({ ...s, ...partial }));
 
+  // 已保存 provider 的探测：key 在后端 SecretStore，前端只拿模型清单
+  const probeSavedProvider = async (providerId: number) => {
+    try {
+      const result = await listProviderModels(providerId);
+      return { ok: true, error: null, models: result.models };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+        models: [],
+      };
+    }
+  };
+
   const submit = () => {
     if (state.departmentId == null || state.runtimeType == null) return;
     const input: OnboardEmployeeInput = {
@@ -169,7 +186,14 @@ export function HireWizard({
             ...(state.providerApiKey ? { provider_api_key: state.providerApiKey } : {}),
           }
         : {}),
-      ...(state.providerMode !== "none" ? { model: state.model.trim() } : {}),
+      ...(state.providerMode !== "none"
+        ? {
+            model: state.model.trim(),
+            models: state.providerEntries
+              .filter((entry) => entry.enabled && entry.model.trim())
+              .map((entry) => ({ model: entry.model.trim(), alias: entry.alias.trim() })),
+          }
+        : {}),
       personality: state.personality.trim(),
       goals: state.goals.trim(),
       learning_enabled: state.learningEnabled,
@@ -208,7 +232,7 @@ export function HireWizard({
         total: HIRE_WIZARD_STEPS.length,
         step: t(`lifecycle:${STEP_TITLE_KEY[step]}`),
       })}
-      className="max-w-lg"
+      className="max-w-2xl"
     >
       {step === "identity" ? (
         <div className="space-y-3" data-tutorial-target="wizard-identity">
@@ -422,50 +446,45 @@ export function HireWizard({
                   {t("lifecycle:wizard.noCompanyProvider")}
                 </p>
               ) : null}
+              {state.providerId != null ? (
+                <ModelEntriesEditor
+                  value={{ entries: state.providerEntries, primaryModel: state.model }}
+                  onChange={(next) =>
+                    patch({
+                      ...(next.entries !== undefined ? { providerEntries: next.entries } : {}),
+                      ...(next.primaryModel !== undefined ? { model: next.primaryModel } : {}),
+                    })
+                  }
+                  probe={() => probeSavedProvider(state.providerId!)}
+                  autoProbeSignature={`saved-${state.providerId}`}
+                />
+              ) : null}
             </div>
           ) : null}
 
           {state.providerMode === "new" ? (
             <div className="space-y-3 rounded-md border border-border p-3">
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  placeholder={t("lifecycle:wizard.providerNamePlaceholder")}
-                  value={state.providerName}
-                  onChange={(event) => patch({ providerName: event.target.value })}
-                />
-                <select
-                  className={selectClass}
-                  value={state.providerType}
-                  onChange={(event) => patch({ providerType: event.target.value as ProviderType })}
-                >
-                  {(
-                    [
-                      "openai",
-                      "anthropic",
-                      "openrouter",
-                      "deepseek",
-                      "gemini",
-                      "ollama",
-                      "custom",
-                    ] as ProviderType[]
-                  ).map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Input
-                placeholder={t("lifecycle:wizard.providerUrlPlaceholder")}
-                value={state.providerBaseUrl}
-                onChange={(event) => patch({ providerBaseUrl: event.target.value })}
-              />
-              <Input
-                type="password"
-                autoComplete="new-password"
-                placeholder={t("lifecycle:wizard.apiKeyPlaceholder")}
-                value={state.providerApiKey}
-                onChange={(event) => patch({ providerApiKey: event.target.value })}
+              <ProviderPresetFields
+                modelMode="multi"
+                value={{
+                  name: state.providerName,
+                  providerType: state.providerType,
+                  baseUrl: state.providerBaseUrl,
+                  apiKey: state.providerApiKey,
+                  model: state.model,
+                  entries: state.providerEntries,
+                  primaryModel: state.model,
+                }}
+                onChange={(next) =>
+                  patch({
+                    ...(next.name !== undefined ? { providerName: next.name } : {}),
+                    ...(next.providerType !== undefined ? { providerType: next.providerType } : {}),
+                    ...(next.baseUrl !== undefined ? { providerBaseUrl: next.baseUrl } : {}),
+                    ...(next.apiKey !== undefined ? { providerApiKey: next.apiKey } : {}),
+                    ...(next.entries !== undefined ? { providerEntries: next.entries } : {}),
+                    ...(next.primaryModel !== undefined ? { model: next.primaryModel } : {}),
+                  })
+                }
               />
               <p className="text-[11px] text-muted-foreground">
                 {t("lifecycle:wizard.apiKeyHint")}
@@ -473,22 +492,11 @@ export function HireWizard({
             </div>
           ) : null}
 
-          {state.providerMode !== "none" ? (
-            <label className="block">
-              <span className="mb-1 block text-xs text-muted-foreground">
-                {t("lifecycle:wizard.modelLabel")}
-              </span>
-              <Input
-                placeholder={t("lifecycle:wizard.modelPlaceholder")}
-                value={state.model}
-                onChange={(event) => patch({ model: event.target.value })}
-              />
-            </label>
-          ) : (
+          {state.providerMode === "none" ? (
             <p className="rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">
               {t("lifecycle:wizard.providerLaterHint")}
             </p>
-          )}
+          ) : null}
         </div>
       ) : null}
 

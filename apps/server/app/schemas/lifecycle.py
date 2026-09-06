@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.enums import EmployeeRole, ProviderType, RuntimeType
 from app.schemas.organization import EmployeeOut
+from app.schemas.provider import ModelEntryIn
 
 
 class ORMModel(BaseModel):
@@ -30,6 +31,8 @@ class OnboardRequest(BaseModel):
     provider_base_url: str | None = None
     provider_api_key: str | None = None
     model: str | None = None
+    # 多模型条目（可选）：招聘向导的条目编辑器。model 仍代表默认启动模型。
+    models: list[ModelEntryIn] = []
     personality: str = ""
     goals: str = ""
     learning_enabled: bool = True

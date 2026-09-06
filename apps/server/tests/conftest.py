@@ -11,6 +11,8 @@ os.environ["EIDOLON_MOCK_TASK_SECONDS"] = "0.1"
 os.environ["EIDOLON_LOG_LEVEL"] = "WARNING"
 os.environ["EIDOLON_UPDATE_CHECK_ENABLED"] = "false"
 os.environ["EIDOLON_SECRET_KEY"] = "test-secret-key"
+# 绝不碰真实 SMTP：本地 apps/server/.env 可能配了真实投递，测试一律 console
+os.environ["EIDOLON_EMAIL_DELIVERY_MODE"] = "console"
 # Legacy workflow tests exercise the original five-role autonomous team. Production
 # now defaults to an empty company and only seeds this demo workforce when opted in.
 os.environ["EIDOLON_SEED_DEMO_WORKFORCE"] = "true"

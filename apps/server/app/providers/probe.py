@@ -108,3 +108,24 @@ async def list_models(provider: Provider, credential: str | None) -> list[str]:
         return _extract_models(provider, response.json())
     except Exception:
         return []
+
+
+async def probe_models(provider: Provider, credential: str | None) -> dict:
+    """单次抓取同时返回连接状态与模型清单（供"未保存配置先探测"用）。"""
+    url = _models_url(provider)
+    if url is None:
+        return {"ok": False, "error": "no base_url for provider", "models": []}
+    if provider.provider_type != ProviderType.ollama.value and not credential:
+        return {"ok": False, "error": "no credential stored", "models": []}
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+            response = await client.get(url, headers=_auth_headers(provider, credential))
+        if response.status_code >= 400:
+            return {
+                "ok": False,
+                "error": redact(f"HTTP {response.status_code}: {response.text[:200]}"),
+                "models": [],
+            }
+        return {"ok": True, "error": None, "models": _extract_models(provider, response.json())}
+    except Exception as exc:
+        return {"ok": False, "error": redact(str(exc)[:300]), "models": []}

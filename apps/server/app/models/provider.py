@@ -34,13 +34,18 @@ class Provider(TimestampMixin, Base):
 
 class ModelBinding(TimestampMixin, Base):
     """Binds an employee to a provider+model. Primary binding is used; the
-    position column reserves ordered fallback chains (data model only for now)."""
+    position column reserves ordered fallback chains (data model only for now).
+
+    ``model`` 是发给厂商的真实模型名；``alias`` 是界面显示名（默认等于 model，
+    用户可改成好认的名字，类似 CC-Switch 的条目别名）。
+    """
 
     __tablename__ = "model_bindings"
 
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
     provider_id: Mapped[int] = mapped_column(ForeignKey("providers.id"))
     model: Mapped[str] = mapped_column(String(200))
+    alias: Mapped[str] = mapped_column(String(200), default="")
     is_primary: Mapped[bool] = mapped_column(default=True)
     position: Mapped[int] = mapped_column(default=0)  # fallback order (reserved)
 

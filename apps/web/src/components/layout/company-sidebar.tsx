@@ -7,7 +7,6 @@ import {
   CircleGauge,
   Cloud,
   FolderKanban,
-  Settings,
   Users,
   X,
   type LucideIcon,
@@ -60,7 +59,7 @@ export function CompanySidebar({
     },
     { key: "assets", items: [{ to: "/drive", key: "cloudDocs", icon: Cloud }] },
     { key: "infrastructure", items: [{ to: "/runtime", key: "runtime", icon: Bot }] },
-    { key: "system", items: [{ to: "/settings", key: "settings", icon: Settings }] },
+    // 设置统一收进右上角账号菜单（个人 + 系统），主导航不再放"系统设置"
   ];
   return (
     <aside

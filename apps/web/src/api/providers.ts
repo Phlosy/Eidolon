@@ -3,9 +3,26 @@ import type {
   CreateProviderInput,
   Provider,
   ProviderModels,
+  ProviderPreset,
+  ProviderProbeResult,
   ProviderTestResult,
+  ProviderType,
   UpdateProviderInput,
 } from "../types";
+
+/** 内置厂商预设清单（静态数据，长缓存）。 */
+export function listProviderPresets(): Promise<ProviderPreset[]> {
+  return get<ProviderPreset[]>("/providers/presets");
+}
+
+/** 不保存配置的试连：创建对话框"探测可用模型"用，api_key 不落库。 */
+export function probeProviderConfig(body: {
+  provider_type: ProviderType;
+  base_url?: string;
+  api_key?: string;
+}): Promise<ProviderProbeResult> {
+  return post<ProviderProbeResult>("/providers/probe", body);
+}
 
 /** List providers; pass `employeeId` to scope the list to one employee (company + their private). */
 export function listProviders(employeeId?: number): Promise<Provider[]> {

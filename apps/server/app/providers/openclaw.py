@@ -23,6 +23,18 @@ from app.providers.base import (
 
 SUPPORTED = [p.value for p in ProviderType]
 
+# openclaw 原生认识的厂商有限；其余 OpenAI 兼容厂商按 custom 处理：
+# 注入 models.providers 配置块（baseUrl + openai-completions），model ref 仍以
+# "{type}/" 为前缀，两者必须同名才能对上。
+_NON_NATIVE = {
+    ProviderType.custom.value,
+    ProviderType.moonshot.value,
+    ProviderType.zhipu.value,
+    ProviderType.qwen.value,
+    ProviderType.groq.value,
+    ProviderType.mistral.value,
+}
+
 
 class OpenClawProviderConfigurator(RuntimeProviderConfigurator):
     runtime_type = RuntimeType.openclaw.value
@@ -34,10 +46,8 @@ class OpenClawProviderConfigurator(RuntimeProviderConfigurator):
         errors: list[str] = []
         if provider.provider_type not in SUPPORTED:
             errors.append(f"unsupported provider type: {provider.provider_type}")
-        if provider.provider_type in (ProviderType.custom.value,) and not effective_base_url(
-            provider
-        ):
-            errors.append("custom providers require a base_url")
+        if provider.provider_type in _NON_NATIVE and not effective_base_url(provider):
+            errors.append("custom-style providers require a base_url")
         if provider.provider_type != ProviderType.ollama.value and not provider.credential_ref:
             errors.append("provider has no stored credential")
         return errors
@@ -56,10 +66,13 @@ class OpenClawProviderConfigurator(RuntimeProviderConfigurator):
             "plugins": {"entries": {"admin-http-rpc": {"enabled": True}}},
         }
         base_url = effective_base_url(provider)
-        if provider.provider_type == ProviderType.custom.value and base_url:
+        if provider.provider_type in _NON_NATIVE and base_url:
             config["models"] = {
                 "providers": {
-                    "custom": {"baseUrl": base_url.rstrip("/"), "api": "openai-completions"}
+                    provider.provider_type: {
+                        "baseUrl": base_url.rstrip("/"),
+                        "api": "openai-completions",
+                    }
                 }
             }
         env: dict[str, str] = {}

@@ -60,6 +60,23 @@ class CompanyMembership(TimestampMixin, Base):
     role: Mapped[str] = mapped_column(String(40), default="OWNER")
 
 
+class AccountActionToken(TimestampMixin, Base):
+    """账户安全操作的邮件确认令牌：改邮箱 / 改密码 / 注销账号共用。
+
+    ``action`` 决定确认时执行什么；``payload`` 带动作参数（如新邮箱、新密码哈希）。
+    令牌一次性、限时，本身就是"拥有该邮箱"的证明，所以确认端点不要求会话。
+    """
+
+    __tablename__ = "account_action_tokens"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    action: Mapped[str] = mapped_column(String(40), index=True)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(index=True)
+    used_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
 class UserSession(TimestampMixin, Base):
     __tablename__ = "user_sessions"
 
@@ -112,6 +129,7 @@ class UserAuditEvent(TimestampMixin, Base):
 
 
 __all__ = [
+    "AccountActionToken",
     "CompanyMembership",
     "EmailVerificationToken",
     "PasskeyCredential",

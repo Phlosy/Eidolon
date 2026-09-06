@@ -39,7 +39,19 @@
     "workforce": "Workforce",
     "work": "Work",
     "assets": "Assets",
-    "infrastructure": "Infrastructure",
-    "system": "System"
+    "infrastructure": "Infrastructure"
+  },
+  "userMenu": {
+    "open": "Account menu",
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Sign out",
+    "switchAccount": "Switch account",
+    "deleteAccount": "Delete account",
+    "deleteTitle": "Delete this account?",
+    "deleteBody": "After confirmation we email a verification link to your sign-in address; the account is deleted only after you open that link.",
+    "deleteConfirm": "Send confirmation email",
+    "deleteSent": "Confirmation email sent to {{email}}. Open the link in it to finish deleting the account.",
+    "deleteSentDev": "Development mode: the deletion confirmation link is printed to the backend console log (eidolon.email)."
   }
 }

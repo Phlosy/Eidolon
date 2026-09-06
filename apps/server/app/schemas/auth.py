@@ -20,6 +20,24 @@ PASSWORD_WHITESPACE_CHARACTERS = frozenset(
 )
 
 
+def check_password_policy(value: str) -> str:
+    """英文、数字、特殊字符三类中至少包含两类；注册与改密码共用。"""
+    character_type_count = sum(
+        (
+            bool(re.search(r"[A-Za-z]", value)),
+            bool(re.search(r"[0-9]", value)),
+            any(
+                not re.fullmatch(r"[A-Za-z0-9]", character)
+                and character not in PASSWORD_WHITESPACE_CHARACTERS
+                for character in value
+            ),
+        )
+    )
+    if character_type_count < 2:
+        raise ValueError(PASSWORD_REQUIREMENTS_DESCRIPTION)
+    return value
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(
@@ -39,20 +57,7 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password_character_types(cls, value: str) -> str:
-        character_type_count = sum(
-            (
-                bool(re.search(r"[A-Za-z]", value)),
-                bool(re.search(r"[0-9]", value)),
-                any(
-                    not re.fullmatch(r"[A-Za-z0-9]", character)
-                    and character not in PASSWORD_WHITESPACE_CHARACTERS
-                    for character in value
-                ),
-            )
-        )
-        if character_type_count < 2:
-            raise ValueError(PASSWORD_REQUIREMENTS_DESCRIPTION)
-        return value
+        return check_password_policy(value)
 
 
 class RegisterResponse(BaseModel):
@@ -69,6 +74,60 @@ class VerifyEmailRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=1, max_length=256)
+
+
+class ProfileUpdateRequest(BaseModel):
+    display_name: str = Field(default="", max_length=200)
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(
+        min_length=8,
+        max_length=256,
+        description=PASSWORD_REQUIREMENTS_DESCRIPTION,
+    )
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        return check_password_policy(value)
+
+
+class EmailChangeRequest(BaseModel):
+    new_email: EmailStr
+
+    @field_validator("new_email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
+
+
+class AccountActionConfirmRequest(BaseModel):
+    token: str = Field(min_length=20, max_length=512)
+
+
+class AccountActionRequestOut(BaseModel):
+    """账户安全操作的"确认邮件已发出"回执；token 只在 console 投递模式下发。"""
+
+    email: str
+    verification_required: bool = True
+    expires_at: datetime
+    development_verification_token: str | None = None
+
+
+class AccountActionResultOut(BaseModel):
+    action: str
+    email: str | None = None
 
 
 class UserOut(ORMModel):

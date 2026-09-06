@@ -4,10 +4,10 @@ import { useCreateEmployeeRuntime } from "../../hooks/useRuntimes";
 import { useCreateEmployeeProvider } from "../../hooks/useProviders";
 import { Button } from "../common/button";
 import { Dialog } from "../common/dialog";
-import { Input } from "../common/input";
 import { ProviderSelector } from "../provider/provider-selector";
 import { ProviderModelSelector } from "../provider/provider-model-selector";
-import { PROVIDER_TYPES } from "../provider/constants";
+import { ProviderPresetFields, type ProviderPresetValue } from "../provider/provider-preset-fields";
+import { isValidModelName } from "../provider/constants";
 import { RuntimeCapabilitiesGrid } from "./runtime-capabilities-grid";
 import { RuntimeResourceConfig } from "./runtime-resource-config";
 import {
@@ -34,9 +34,6 @@ const STEP_TITLE_KEY: Record<WizardStep, string> = {
   resources: "wizard.steps.resources",
   confirm: "wizard.steps.confirm",
 };
-
-const selectClass =
-  "w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50";
 
 interface RuntimeCreateWizardProps {
   open: boolean;
@@ -286,20 +283,39 @@ function InlineProviderCreate({
   // v0.3: provider accounts belong to the employee (POST /employees/{id}/providers).
   const createProvider = useCreateEmployeeProvider(employeeId);
   const busy = createProvider.isPending;
-  const [name, setName] = useState("");
-  const [providerType, setProviderType] = useState<ProviderType>(supportedTypes?.[0] ?? "openai");
-  const [apiKey, setApiKey] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
-
-  const types = supportedTypes && supportedTypes.length > 0 ? supportedTypes : PROVIDER_TYPES;
+  const [error, setError] = useState("");
+  const [form, setForm] = useState<ProviderPresetValue>({
+    name: "",
+    providerType: supportedTypes?.[0] ?? "openai",
+    baseUrl: "",
+    apiKey: "",
+    model: "",
+    entries: [],
+    primaryModel: "",
+  });
 
   const submit = () => {
+    const entries = form.entries.filter((entry) => entry.enabled && entry.model.trim());
+    if (entries.some((entry) => !isValidModelName(entry.model.trim()))) {
+      setError(t("provider:form.modelInvalid"));
+      return;
+    }
+    setError("");
     createProvider.mutate(
       {
-        name: name.trim(),
-        provider_type: providerType,
-        ...(apiKey ? { api_key: apiKey } : {}),
-        ...(baseUrl.trim() ? { base_url: baseUrl.trim() } : {}),
+        name: form.name.trim(),
+        provider_type: form.providerType,
+        ...(form.apiKey ? { api_key: form.apiKey } : {}),
+        ...(form.baseUrl.trim() ? { base_url: form.baseUrl.trim() } : {}),
+        ...(entries.length
+          ? {
+              models: entries.map((entry) => ({
+                model: entry.model.trim(),
+                alias: entry.alias.trim(),
+              })),
+              primary_model: form.primaryModel || undefined,
+            }
+          : {}),
       },
       { onSuccess: (provider) => onCreated(provider.id) },
     );
@@ -307,39 +323,26 @@ function InlineProviderCreate({
 
   return (
     <div className="space-y-2 rounded-md border border-border p-3">
-      <Input
-        placeholder={t("runtime:wizard.providerNamePlaceholder")}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+      <ProviderPresetFields
+        modelMode="multi"
+        value={form}
+        onChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
       />
-      <select
-        className={selectClass}
-        value={providerType}
-        onChange={(e) => setProviderType(e.target.value as ProviderType)}
-      >
-        {types.map((type) => (
-          <option key={type} value={type}>
-            {enumLabel(t, "provider:type", type)}
-          </option>
-        ))}
-      </select>
-      <Input
-        type="password"
-        autoComplete="new-password"
-        placeholder={t("runtime:wizard.apiKeyPlaceholder")}
-        value={apiKey}
-        onChange={(e) => setApiKey(e.target.value)}
-      />
-      <Input
-        placeholder={t("runtime:wizard.baseUrlPlaceholder")}
-        value={baseUrl}
-        onChange={(e) => setBaseUrl(e.target.value)}
-      />
+      {error ? (
+        <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {createProvider.isError ? (
+        <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+          {createProvider.error.message}
+        </p>
+      ) : null}
       <div className="flex justify-end gap-2">
         <Button variant="ghost" size="sm" onClick={onCancel}>
           {t("common:cancel")}
         </Button>
-        <Button size="sm" disabled={busy || !name.trim()} onClick={submit}>
+        <Button size="sm" disabled={busy || !form.name.trim()} onClick={submit}>
           {busy ? t("runtime:wizard.saving") : t("runtime:wizard.saveProvider")}
         </Button>
       </div>

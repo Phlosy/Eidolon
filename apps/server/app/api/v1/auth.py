@@ -1,6 +1,11 @@
 """Human account, session and WebAuthn endpoints."""
 
-from fastapi import APIRouter, Depends, Request, Response, status
+import mimetypes
+import secrets
+from pathlib import Path, PurePath
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,12 +15,19 @@ from app.core.database import get_db
 from app.models.auth import PasskeyCredential, UserSession
 from app.models.base import utcnow
 from app.schemas.auth import (
+    AccountActionConfirmRequest,
+    AccountActionRequestOut,
+    AccountActionResultOut,
     AuthStateOut,
+    EmailChangeRequest,
     LoginRequest,
     PasskeyNameRequest,
     PasskeyOut,
+    PasswordChangeRequest,
+    ProfileUpdateRequest,
     RegisterRequest,
     RegisterResponse,
+    ResendVerificationRequest,
     SessionOut,
     VerifyEmailRequest,
     WebAuthnOptionsOut,
@@ -27,9 +39,24 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, request: Request, db: Session = Depends(get_db)):
-    result, _ = auth_service.register(db, payload, request)
+def register(
+    payload: RegisterRequest,
+    request: Request,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    result, _ = auth_service.register(db, payload, request, background)
     return result
+
+
+@router.post("/verify-email/resend", response_model=AccountActionRequestOut)
+def resend_verification(
+    payload: ResendVerificationRequest,
+    request: Request,
+    background: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    return auth_service.resend_verification(db, str(payload.email), request, background)
 
 
 @router.post("/verify-email", response_model=AuthStateOut)
@@ -55,6 +82,120 @@ def login(
 @router.get("/me", response_model=AuthStateOut)
 def me(auth: CurrentAuth = Depends(current_auth), db: Session = Depends(get_db)):
     return auth_service.auth_state(db, auth.user)
+
+
+@router.patch("/me", response_model=AuthStateOut)
+def update_profile(
+    payload: ProfileUpdateRequest,
+    auth: CurrentAuth = Depends(current_auth),
+    db: Session = Depends(get_db),
+):
+    auth.user.display_name = payload.display_name.strip()
+    db.commit()
+    return auth_service.auth_state(db, auth.user)
+
+
+@router.post("/me/delete", response_model=AccountActionRequestOut)
+def request_account_deletion(
+    request: Request,
+    background: BackgroundTasks,
+    auth: CurrentAuth = Depends(current_auth),
+    db: Session = Depends(get_db),
+):
+    """注销账号第一步：发确认邮件。真正删除发生在邮件链接确认时。"""
+    return auth_service.request_account_deletion(db, auth.user, request, background)
+
+
+@router.post("/me/password", response_model=AccountActionRequestOut)
+def change_password(
+    payload: PasswordChangeRequest,
+    request: Request,
+    background: BackgroundTasks,
+    auth: CurrentAuth = Depends(current_auth),
+    db: Session = Depends(get_db),
+):
+    """改密码第一步：验当前密码后发确认邮件，点链接后才生效。"""
+    return auth_service.request_password_change(db, auth.user, payload, request, background)
+
+
+@router.post("/me/email", response_model=AccountActionRequestOut)
+def request_email_change(
+    payload: EmailChangeRequest,
+    request: Request,
+    background: BackgroundTasks,
+    auth: CurrentAuth = Depends(current_auth),
+    db: Session = Depends(get_db),
+):
+    return auth_service.request_email_change(db, auth.user, payload, request, background)
+
+
+@router.post("/account-actions/confirm", response_model=AccountActionResultOut)
+def confirm_account_action(
+    payload: AccountActionConfirmRequest,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    # 公开端点：token 本身就是"拥有该邮箱"的证明，点击邮件链接时不一定有会话
+    return auth_service.confirm_account_action(db, payload.token, request, response)
+
+
+_AVATAR_MEDIA_TYPES = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+}
+_AVATAR_MAX_BYTES = 2 * 1024 * 1024
+
+
+def _avatar_directory() -> Path:
+    directory = Path(settings.data_root) / "avatars"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+@router.post("/me/avatar", response_model=AuthStateOut)
+async def upload_avatar(
+    request: Request,
+    auth: CurrentAuth = Depends(current_auth),
+    db: Session = Depends(get_db),
+):
+    # 二进制直传（Content-Type 即图片类型），不走 multipart
+    content_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+    extension = _AVATAR_MEDIA_TYPES.get(content_type)
+    if extension is None:
+        raise HTTPException(status_code=415, detail="avatar must be a PNG, JPEG, WebP or GIF image")
+    body = await request.body()
+    if not body:
+        raise HTTPException(status_code=400, detail="avatar file is empty")
+    if len(body) > _AVATAR_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="avatar must be smaller than 2 MB")
+    filename = f"{auth.user.id}-{secrets.token_hex(6)}{extension}"
+    _avatar_directory().joinpath(filename).write_bytes(body)
+    old = auth.user.avatar
+    auth.user.avatar = f"/api/v1/auth/avatars/{filename}"
+    auth_service.record_audit_event(
+        db, "user.avatar_updated", request=request, user_id=auth.user.id
+    )
+    db.commit()
+    if old.startswith("/api/v1/auth/avatars/"):
+        stale = _avatar_directory() / old.rsplit("/", 1)[-1]
+        if stale.name != filename:
+            stale.unlink(missing_ok=True)
+    return auth_service.auth_state(db, auth.user)
+
+
+@router.get("/avatars/{filename}")
+def get_avatar(filename: str):
+    # 文件名是服务端生成的随机名；这里再挡一次路径穿越
+    if PurePath(filename).name != filename:
+        raise HTTPException(status_code=404, detail="avatar not found")
+    path = _avatar_directory() / filename
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="avatar not found")
+    media_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+    return FileResponse(path, media_type=media_type)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

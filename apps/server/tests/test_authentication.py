@@ -4,9 +4,10 @@ from datetime import timedelta
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import select
 
 from app.core.config import settings
-from app.models.auth import PasskeyCredential, UserSession, WebAuthnChallenge
+from app.models.auth import PasskeyCredential, User, UserSession, WebAuthnChallenge
 from app.models.base import utcnow
 from app.models.organization import Employee
 from app.models.project import Project
@@ -311,3 +312,223 @@ def test_authenticated_project_reads_are_scoped_to_the_users_company(client, db)
     assert client.get("/api/v1/messages").json() == []
     assert client.get("/api/v1/knowledge").json() == []
     assert client.get(f"/api/v1/projects/{legacy_project.id}").status_code == 404
+
+
+def test_profile_update_persists_display_name(client):
+    _register_and_verify(client, "rename@example.com")
+
+    updated = client.patch("/api/v1/auth/me", json={"display_name": "New Name"})
+    assert updated.status_code == 200
+    assert updated.json()["user"]["display_name"] == "New Name"
+    assert client.get("/api/v1/auth/me").json()["user"]["display_name"] == "New Name"
+
+
+def test_delete_account_requires_email_confirmation(client):
+    _register_and_verify(client, "leaver@example.com")
+
+    requested = client.post("/api/v1/auth/me/delete")
+    assert requested.status_code == 200
+    token = requested.json()["development_verification_token"]
+    assert token
+
+    # 点确认链接之前：账号仍然活着
+    assert client.get("/api/v1/auth/me").status_code == 200
+
+    confirmed = client.post("/api/v1/auth/account-actions/confirm", json={"token": token})
+    assert confirmed.status_code == 200
+    assert confirmed.json()["action"] == "delete_account"
+
+    # 确认后：会话立即失效，邮箱+密码也无法再登录
+    assert client.get("/api/v1/auth/me").status_code == 401
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"email": "leaver@example.com", "password": "correct horse battery staple1"},
+    )
+    assert login.status_code == 401
+
+
+def test_deleted_account_email_can_register_again(client):
+    _register_and_verify(client, "comeback@example.com")
+    token = client.post("/api/v1/auth/me/delete").json()["development_verification_token"]
+    client.post("/api/v1/auth/account-actions/confirm", json={"token": token})
+
+    # 同一邮箱可以重新注册并完成验证
+    registered = client.post(
+        "/api/v1/auth/register",
+        json={"email": "comeback@example.com", "password": "fresh start pass 1"},
+    )
+    assert registered.status_code == 201
+    verify_token = registered.json()["development_verification_token"]
+    verified = client.post("/api/v1/auth/verify-email", json={"token": verify_token})
+    assert verified.status_code == 200
+    assert verified.json()["user"]["email"] == "comeback@example.com"
+
+
+def test_registration_frees_email_from_pre_anonymization_deleted_account(client, db):
+    """匿名化之前就注销的账号（email 未被改写）也不能挡新注册。"""
+    _register_and_verify(client, "legacy@example.com")
+    user = db.scalar(select(User).where(User.email == "legacy@example.com"))
+    user.status = "deleted"
+    db.commit()
+
+    registered = client.post(
+        "/api/v1/auth/register",
+        json={"email": "legacy@example.com", "password": "fresh start pass 1"},
+    )
+    assert registered.status_code == 201
+    verify_token = registered.json()["development_verification_token"]
+    verified = client.post("/api/v1/auth/verify-email", json={"token": verify_token})
+    assert verified.status_code == 200
+
+
+def test_delete_account_requires_authentication(client):
+    assert client.post("/api/v1/auth/me/delete").status_code == 401
+
+
+def test_change_password_requires_current_password_and_email_confirmation(client):
+    _register_and_verify(client, "pw@example.com")
+
+    wrong = client.post(
+        "/api/v1/auth/me/password",
+        json={"current_password": "nope", "new_password": "new horse battery 1"},
+    )
+    assert wrong.status_code == 400
+
+    weak = client.post(
+        "/api/v1/auth/me/password",
+        json={
+            "current_password": "correct horse battery staple1",
+            "new_password": "aaaaaaaa",
+        },
+    )
+    assert weak.status_code == 422
+
+    requested = client.post(
+        "/api/v1/auth/me/password",
+        json={
+            "current_password": "correct horse battery staple1",
+            "new_password": "new horse battery 1",
+        },
+    )
+    assert requested.status_code == 200
+    token = requested.json()["development_verification_token"]
+
+    # 确认前：旧密码仍然有效
+    assert client.get("/api/v1/auth/me").status_code == 200
+    still_old = client.post(
+        "/api/v1/auth/login",
+        json={"email": "pw@example.com", "password": "correct horse battery staple1"},
+    )
+    assert still_old.status_code == 200
+
+    confirmed = client.post("/api/v1/auth/account-actions/confirm", json={"token": token})
+    assert confirmed.status_code == 200
+    assert confirmed.json()["action"] == "change_password"
+
+    # 确认后：所有会话被吊销，旧密码失效、新密码可登录
+    assert client.get("/api/v1/auth/me").status_code == 401
+    old = client.post(
+        "/api/v1/auth/login",
+        json={"email": "pw@example.com", "password": "correct horse battery staple1"},
+    )
+    assert old.status_code == 401
+    new = client.post(
+        "/api/v1/auth/login", json={"email": "pw@example.com", "password": "new horse battery 1"}
+    )
+    assert new.status_code == 200
+
+
+def test_email_change_only_applies_after_verification(client):
+    _register_and_verify(client, "old@example.com")
+
+    requested = client.post("/api/v1/auth/me/email", json={"new_email": "new@example.com"})
+    assert requested.status_code == 200
+    token = requested.json()["development_verification_token"]
+    assert token
+
+    # 点链接之前，邮箱不变
+    assert client.get("/api/v1/auth/me").json()["user"]["email"] == "old@example.com"
+
+    confirmed = client.post("/api/v1/auth/account-actions/confirm", json={"token": token})
+    assert confirmed.status_code == 200
+    assert confirmed.json()["action"] == "change_email"
+    assert client.get("/api/v1/auth/me").json()["user"]["email"] == "new@example.com"
+
+    # token 一次性；旧邮箱登录失败、新邮箱成功
+    again = client.post("/api/v1/auth/account-actions/confirm", json={"token": token})
+    assert again.status_code == 409
+    old = client.post(
+        "/api/v1/auth/login",
+        json={"email": "old@example.com", "password": "correct horse battery staple1"},
+    )
+    assert old.status_code == 401
+    new = client.post(
+        "/api/v1/auth/login",
+        json={"email": "new@example.com", "password": "correct horse battery staple1"},
+    )
+    assert new.status_code == 200
+
+
+def test_email_change_rejects_taken_email(client):
+    _register_and_verify(client, "taken1@example.com")
+    _register_and_verify(client, "taken2@example.com")
+
+    response = client.post("/api/v1/auth/me/email", json={"new_email": "taken1@example.com"})
+    assert response.status_code == 409
+
+
+def test_avatar_upload_roundtrip(client):
+    _register_and_verify(client, "avatar@example.com")
+
+    bad = client.post(
+        "/api/v1/auth/me/avatar", content=b"hello", headers={"Content-Type": "text/plain"}
+    )
+    assert bad.status_code == 415
+
+    png = b"\x89PNG\r\n\x1a\n" + b"0" * 32
+    uploaded = client.post(
+        "/api/v1/auth/me/avatar", content=png, headers={"Content-Type": "image/png"}
+    )
+    assert uploaded.status_code == 200
+    url = uploaded.json()["user"]["avatar"]
+    assert url.startswith("/api/v1/auth/avatars/")
+
+    fetched = client.get(url)
+    assert fetched.status_code == 200
+    assert fetched.content == png
+
+    # 路径穿越被拒
+    traversal = client.get("/api/v1/auth/avatars/..%2F..%2Ftest.db")
+    assert traversal.status_code in (400, 404, 422)
+
+
+def test_resend_verification_invalidates_previous_link(client):
+    registered = client.post(
+        "/api/v1/auth/register",
+        json={"email": "resend@example.com", "password": "correct horse battery staple1"},
+    )
+    assert registered.status_code == 201
+    first_token = registered.json()["development_verification_token"]
+
+    resent = client.post("/api/v1/auth/verify-email/resend", json={"email": "resend@example.com"})
+    assert resent.status_code == 200
+    second_token = resent.json()["development_verification_token"]
+    assert second_token and second_token != first_token
+
+    # 60 秒内不允许再次重发
+    denied = client.post("/api/v1/auth/verify-email/resend", json={"email": "resend@example.com"})
+    assert denied.status_code == 429
+
+    # 旧链接作废，新链接可验证
+    stale = client.post("/api/v1/auth/verify-email", json={"token": first_token})
+    assert stale.status_code == 409
+    verified = client.post("/api/v1/auth/verify-email", json={"token": second_token})
+    assert verified.status_code == 200
+
+
+def test_resend_verification_does_not_leak_unknown_email(client):
+    response = client.post(
+        "/api/v1/auth/verify-email/resend", json={"email": "ghost@example.com"}
+    )
+    assert response.status_code == 200
+    assert response.json()["development_verification_token"] is None

@@ -125,6 +125,18 @@ export function patch<T>(path: string, body: unknown): Promise<T> {
   return request<T>(path, { method: "PATCH", body: JSON.stringify(body) });
 }
 
+/**
+ * 二进制直传（如头像）：body 就是文件本身，Content-Type 用文件类型，
+ * 不引入 multipart。CSRF 头由 request() 统一带上。
+ */
+export function postFile<T>(path: string, file: Blob, contentType: string): Promise<T> {
+  return request<T>(path, {
+    method: "POST",
+    body: file,
+    headers: { "Content-Type": contentType || "application/octet-stream" },
+  });
+}
+
 export function del<T>(path: string): Promise<T> {
   return request<T>(path, { method: "DELETE" });
 }

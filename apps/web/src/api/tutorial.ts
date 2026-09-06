@@ -4,8 +4,8 @@ import type { CreateProjectInput } from "../types";
 /**
  * 教程数据层。字段与 app/tutorials/schema.py 一一对应。
  *
- * 前端**不判断业务完成**：这里能读到的唯一事实是 requirement 这个名字（用于
- * 展示"在等哪条业务状态"），完成与否由后端求值后写进 progress。
+ * 前端**不判断业务完成**：requirement 只是后端门禁的名字，不在界面上展示；
+ * 完成与否由后端求值后写进 progress。
  */
 
 export type TutorialStepKind = "REQUIRED_ACTION" | "OPTIONAL_ACTION" | "INFORMATION" | "PRACTICE";

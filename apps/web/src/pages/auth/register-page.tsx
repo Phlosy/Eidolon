@@ -41,9 +41,10 @@ export function RegisterPage() {
         locale: i18n.language.startsWith("zh") ? "zh-CN" : "en-US",
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
+      // 注册必须真的走邮箱验证：只带 email，token 只能来自邮件里的链接。
+      // 开发模式（console 投递）下邮件打到后端控制台，dev=1 让验证页提示去哪里找。
       const query = new URLSearchParams({ email: result.email });
-      if (result.development_verification_token)
-        query.set("token", result.development_verification_token);
+      if (result.development_verification_token) query.set("dev", "1");
       navigate(`/auth/verify?${query}`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("errors.unknown"));

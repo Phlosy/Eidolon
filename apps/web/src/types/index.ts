@@ -620,7 +620,29 @@ export interface EmployeePerformance {
 // ---------- v0.2: Providers ----------
 
 export type ProviderType =
-  "openai" | "anthropic" | "openrouter" | "deepseek" | "gemini" | "ollama" | "custom";
+  | "openai"
+  | "anthropic"
+  | "openrouter"
+  | "deepseek"
+  | "moonshot"
+  | "zhipu"
+  | "qwen"
+  | "groq"
+  | "mistral"
+  | "gemini"
+  | "ollama"
+  | "custom";
+
+/** 内置厂商预设（GET /providers/presets）：表单据此自动填 base_url 与推荐模型。 */
+export interface ProviderPreset {
+  provider_type: ProviderType;
+  default_base_url: string | null;
+  requires_api_key: boolean;
+  /** 常见示例：权威清单以实时探测（POST /providers/probe）为准。 */
+  recommended_models: string[];
+  /** 官方模型文档，供用户核对 */
+  docs_url: string | null;
+}
 
 export type ProviderScope = "company" | "employee";
 
@@ -638,6 +660,9 @@ export interface Provider {
   credential_mask: string | null;
   metadata: Record<string, unknown>;
   in_use_by: number;
+  /** 公司级模型目录（员工私有账号的模型在 bindings 上） */
+  available_models: Array<{ model: string; alias: string }>;
+  default_model: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -662,6 +687,9 @@ export interface CreateProviderInput {
   owner_employee_id?: number | null;
   api_key?: string;
   metadata?: Record<string, unknown>;
+  /** 公司级模型目录（可选） */
+  models?: Array<{ model: string; alias?: string }>;
+  primary_model?: string;
 }
 
 export interface UpdateProviderInput {
@@ -884,6 +912,39 @@ export interface CreateEmployeeProviderInput {
   /** Write-only: stored server-side in the SecretStore, never returned. */
   api_key?: string;
   model?: string;
+  /** 多模型条目：每个建一条绑定；primary_model 为默认启动模型（缺省取第一个）。 */
+  models?: Array<{ model: string; alias?: string }>;
+  primary_model?: string;
+}
+
+/** 条目式模型编辑器里的一行：显示名 + 真实模型名 + 是否选用。 */
+export interface ModelEntry {
+  /** 显示名（可改，默认等于真实模型名） */
+  alias: string;
+  /** 发给厂商的真实模型名 */
+  model: string;
+  /** 是否选用（不选用的不会建绑定） */
+  enabled: boolean;
+}
+
+/** 员工 ↔ Provider ↔ 模型的绑定（GET /employees/{id}/bindings）。 */
+export interface ModelBinding {
+  id: number;
+  employee_id: number;
+  provider_id: number;
+  provider_name: string;
+  model: string;
+  /** 显示名（空 = 与真实模型名相同） */
+  alias: string;
+  is_primary: boolean;
+  position: number;
+}
+
+/** POST /providers/probe：不保存配置的试连结果。 */
+export interface ProviderProbeResult {
+  ok: boolean;
+  error: string | null;
+  models: string[];
 }
 
 // ---------- v0.3: Git integration ----------

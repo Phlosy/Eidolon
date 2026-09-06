@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { EmployeeProvidersSection } from "./employee-providers-section";
-import type { Provider } from "../../types";
+import type { ModelBinding, Provider } from "../../types";
 
 function makeProvider(overrides: Partial<Provider> = {}): Provider {
   return {
@@ -16,6 +16,8 @@ function makeProvider(overrides: Partial<Provider> = {}): Provider {
     credential_mask: "sk-••••abcd",
     metadata: {},
     in_use_by: 0,
+    available_models: [],
+    default_model: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
     ...overrides,
@@ -33,6 +35,12 @@ const PROVIDERS = [
   }),
 ];
 
+const BINDING_STATE = vi.hoisted(() => ({
+  bindings: [] as ModelBinding[],
+  setPrimary: vi.fn(),
+  remove: vi.fn(),
+}));
+
 vi.mock("../../hooks/useProviders", () => ({
   useEmployeeProviders: () => ({
     data: PROVIDERS,
@@ -41,6 +49,11 @@ vi.mock("../../hooks/useProviders", () => ({
     error: null,
     refetch: vi.fn(),
   }),
+  useEmployeeBindings: () => ({ data: BINDING_STATE.bindings, isLoading: false, refetch: vi.fn() }),
+  useSetPrimaryBinding: () => ({ mutate: BINDING_STATE.setPrimary, isPending: false }),
+  useDeleteBinding: () => ({ mutate: BINDING_STATE.remove, isPending: false }),
+  useAddEmployeeBinding: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
+  useUpdateBinding: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   useCreateEmployeeProvider: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useTestProvider: () => ({ mutate: vi.fn(), isPending: false, isSuccess: false }),
 }));
@@ -58,5 +71,44 @@ describe("EmployeeProvidersSection", () => {
   it("offers an Add Provider Account action", () => {
     render(<EmployeeProvidersSection employeeId={7} />);
     expect(screen.getByRole("button", { name: "Add Provider Account" })).toBeInTheDocument();
+  });
+
+  it("renders model bindings under the provider and can switch the default", () => {
+    BINDING_STATE.bindings = [
+      {
+        id: 11,
+        employee_id: 7,
+        provider_id: 2,
+        provider_name: "Ada Anthropic",
+        model: "claude-sonnet-4-5",
+        alias: "",
+        is_primary: true,
+        position: 0,
+      },
+      {
+        id: 12,
+        employee_id: 7,
+        provider_id: 2,
+        provider_name: "Ada Anthropic",
+        model: "claude-haiku-4-5",
+        alias: "",
+        is_primary: false,
+        position: 1,
+      },
+    ];
+    render(<EmployeeProvidersSection employeeId={7} />);
+
+    // 绑定列在所属 provider 卡片下方，默认模型有标记
+    expect(screen.getByText("claude-sonnet-4-5")).toBeInTheDocument();
+    expect(screen.getByText("claude-haiku-4-5")).toBeInTheDocument();
+    expect(screen.getByText("Default")).toBeInTheDocument();
+
+    // 点非默认绑定的星标 → 切换默认
+    fireEvent.click(screen.getByRole("button", { name: "Make default model claude-haiku-4-5" }));
+    expect(BINDING_STATE.setPrimary).toHaveBeenCalledWith(12);
+
+    // 解除绑定
+    fireEvent.click(screen.getByRole("button", { name: "Remove binding claude-haiku-4-5" }));
+    expect(BINDING_STATE.remove).toHaveBeenCalledWith(12);
   });
 });

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useProviderModels } from "../../hooks/useProviders";
@@ -28,6 +28,10 @@ export function ProviderModelSelector({
 }: ProviderModelSelectorProps) {
   const { t } = useTranslation();
   const [discovering, setDiscovering] = useState(false);
+  // 选定 provider 就自动探测真实模型清单，不用用户再找"发现"按钮
+  useEffect(() => {
+    if (providerId != null) setDiscovering(true);
+  }, [providerId]);
   const modelsQuery = useProviderModels(providerId, discovering);
   const discovered = modelsQuery.data?.models ?? [];
 
