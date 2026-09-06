@@ -11,6 +11,8 @@ import type {
   ModelBinding,
   Provider,
   Skill,
+  SkillUsage,
+  SkillUsageBenchmarks,
 } from "../types";
 
 export function listEmployees(): Promise<Employee[]> {
@@ -43,6 +45,15 @@ export function getEmployeeLearningRecords(id: number): Promise<LearningRecord[]
 
 export function getEmployeeLearningPriorities(id: number): Promise<LearningPriority[]> {
   return get<LearningPriority[]>(`/employees/${id}/learning-priorities`);
+}
+
+export function getEmployeeSkillUsages(id: number): Promise<SkillUsage[]> {
+  return get<SkillUsage[]>(`/employees/${id}/skill-usages`);
+}
+
+/** 候选技能的三个基准指标（§10.2）；分母为 0 时是 null。 */
+export function getEmployeeSkillUsageBenchmarks(id: number): Promise<SkillUsageBenchmarks> {
+  return get<SkillUsageBenchmarks>(`/employees/${id}/skill-usages/benchmarks`);
 }
 
 export function getEmployeeActivity(id: number): Promise<CompanyEvent[]> {

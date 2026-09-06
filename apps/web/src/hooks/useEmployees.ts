@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getEmployee,
   getEmployeeActivity,
@@ -6,9 +6,13 @@ import {
   getEmployeeLearningRecords,
   getEmployeeMemory,
   getEmployeePerformance,
+  getEmployeeSkillUsageBenchmarks,
+  getEmployeeSkillUsages,
   getEmployeeSkills,
   listEmployees,
 } from "../api/employees";
+import { getEmployeeBrain, getEmployeeBrainProjection, updateEmployeeBrain } from "../api/runtimes";
+import type { EmployeeBrain } from "../types";
 import { getTask } from "../api/tasks";
 
 export function useEmployees() {
@@ -19,6 +23,47 @@ export function useEmployee(id: number) {
   return useQuery({
     queryKey: ["employees", id],
     queryFn: () => getEmployee(id),
+  });
+}
+
+/** 员工大脑 + 服务端解析出的 BehaviorPolicy 摘要（`brain.behavior`）。 */
+export function useEmployeeBrain(id: number) {
+  return useQuery({
+    queryKey: ["employees", id, "brain"],
+    queryFn: () => getEmployeeBrain(id),
+  });
+}
+
+/** 写 traits（权威）：成功后同时刷新 brain 与投影，档位/额度立刻跟着变。 */
+export function useUpdateEmployeeBrain(employeeId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Partial<Omit<EmployeeBrain, "employee_id" | "behavior">>) =>
+      updateEmployeeBrain(employeeId, body),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["employees", employeeId, "brain"] });
+    },
+  });
+}
+
+export function useEmployeeBrainProjection(id: number) {
+  return useQuery({
+    queryKey: ["employees", id, "brain", "projection"],
+    queryFn: () => getEmployeeBrainProjection(id),
+  });
+}
+
+export function useEmployeeSkillUsages(id: number) {
+  return useQuery({
+    queryKey: ["employees", id, "skill-usages"],
+    queryFn: () => getEmployeeSkillUsages(id),
+  });
+}
+
+export function useEmployeeSkillUsageBenchmarks(id: number) {
+  return useQuery({
+    queryKey: ["employees", id, "skill-usages", "benchmarks"],
+    queryFn: () => getEmployeeSkillUsageBenchmarks(id),
   });
 }
 

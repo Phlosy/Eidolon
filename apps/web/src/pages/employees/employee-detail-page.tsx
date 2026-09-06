@@ -21,6 +21,7 @@ import { RuntimeTab } from "../../components/employee/runtime-tab";
 import { WorkspaceTab } from "../../components/employee/workspace-tab";
 import { MemoryTab } from "../../components/employee/memory-tab";
 import { PerformanceTab } from "../../components/employee/performance-tab";
+import { BehaviorTab } from "../../components/employee/behavior-tab";
 import { CareerTab } from "../../components/employee/career-tab";
 import { LifecycleActions } from "../../components/lifecycle/lifecycle-actions";
 import { ProvisioningJobPanel } from "../../components/lifecycle/provisioning-job-panel";
@@ -47,6 +48,7 @@ type Tab =
   | "knowledge"
   | "skills"
   | "learning"
+  | "behavior"
   | "performance"
   | "career";
 
@@ -72,6 +74,7 @@ const TABS: Tab[] = [
   "knowledge",
   "skills",
   "learning",
+  "behavior",
   "performance",
   "career",
 ];
@@ -199,6 +202,7 @@ export function EmployeeDetailPage() {
             <LearningRecordsList records={learningQuery.data ?? []} />
           )
         ) : null}
+        {tab === "behavior" ? <BehaviorTab employeeId={employeeId} /> : null}
         {tab === "performance" ? <PerformanceTab employeeId={employeeId} /> : null}
         {tab === "career" ? <CareerTab employeeId={employeeId} /> : null}
       </Panel>

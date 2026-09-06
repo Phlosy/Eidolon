@@ -17,6 +17,7 @@ import { Dialog } from "../common/dialog";
 import { Input } from "../common/input";
 import { Badge } from "../common/badge";
 import { Skeleton } from "../common/skeleton";
+import { BehaviorPreview } from "./behavior-preview";
 import { ProvisioningPreviewList } from "./provisioning-preview";
 import { ProviderPresetFields } from "../provider/provider-preset-fields";
 import { ModelEntriesEditor } from "../provider/model-entries-editor";
@@ -538,13 +539,8 @@ export function HireWizard({
           <label className="block rounded-md border border-border p-3">
             <span className="flex items-center justify-between text-xs font-medium">
               {t("lifecycle:wizard.curiosityLabel")}
-              <span className="font-mono text-muted-foreground">
-                {state.curiosity < 0.4
-                  ? t("lifecycle:wizard.curiosityLow")
-                  : state.curiosity < 0.75
-                    ? t("lifecycle:wizard.curiosityMedium")
-                    : t("lifecycle:wizard.curiosityHigh")}
-              </span>
+              {/* 档位由后端算：前端不再保留第二套阈值（§3.3） */}
+              <span className="font-mono text-muted-foreground">{state.curiosity.toFixed(1)}</span>
             </span>
             <input
               className="mt-3 w-full accent-foreground"
@@ -555,6 +551,7 @@ export function HireWizard({
               value={state.curiosity}
               onChange={(event) => patch({ curiosity: Number(event.target.value) })}
             />
+            <BehaviorPreview curiosity={state.curiosity} learningEnabled={state.learningEnabled} />
           </label>
         </div>
       ) : null}

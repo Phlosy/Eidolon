@@ -45,6 +45,7 @@
     "knowledge": "知识",
     "skills": "技能",
     "learning": "学习",
+    "behavior": "行为",
     "performance": "绩效",
     "career": "履历"
   },
@@ -143,5 +144,43 @@
     "awaitingMission": "等待分配任务",
     "experience": "经验",
     "derived": "等级与 XP 根据已记录的绩效和学习活动派生。"
+  },
+  "behavior": {
+    "title": "行为方式",
+    "hint": "这里显示的是当前生效的行为策略：它决定探索额度与反思深度，不决定能力与事实判定。",
+    "unavailable": "暂无行为策略数据。",
+    "saveFailed": "保存失败。",
+    "curiosity": "好奇心",
+    "noDirectives": "默认工作方式：不额外改变探索与反思额度。",
+    "band": {
+      "low": "低档",
+      "moderate": "中档",
+      "high": "高档"
+    },
+    "quota": {
+      "knowledgeLimit": "相邻经验条数",
+      "maxContext": "上下文条目上限",
+      "candidateSkills": "试用未验证技能",
+      "openQuestions": "反思未解问题",
+      "hypotheses": "失败备选假设",
+      "followupTopics": "延伸学习主题",
+      "on": "开",
+      "off": "关"
+    },
+    "benchmarkTitle": "候选技能基准",
+    "benchmarkHint": "试用率与转化率来自真实任务记录；“有用”只能由人评价，未评价不计入分母。",
+    "metric": {
+      "trial": "试用率",
+      "conversion": "转化率",
+      "useful": "评价为有用",
+      "pending": "待评价"
+    },
+    "projectionTitle": "行为投影",
+    "projectionRevision": "投影修订",
+    "projectionFiles": "投影文件",
+    "projectionMirror": "容器内已同步",
+    "projectionMirrorOn": "是",
+    "projectionMirrorOff": "否（下次重建实例时同步）",
+    "projectionNote": "brain/ 目录不挂载进容器，真正生效的是随任务内联下发的行为块。"
   }
 }

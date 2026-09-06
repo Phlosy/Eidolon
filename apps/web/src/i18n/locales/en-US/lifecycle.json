@@ -63,9 +63,22 @@
     "learningLabel": "Enable continuous learning",
     "learningHint": "Let the employee retain retrospectives and delivery lessons as durable knowledge.",
     "curiosityLabel": "Curiosity",
-    "curiosityLow": "Low",
-    "curiosityMedium": "Medium",
-    "curiosityHigh": "High",
+    "behaviorPreview": {
+      "title": "Effective behaviour preview",
+      "knowledge": "Adjacent knowledge",
+      "candidateSkills": "Try unvalidated skills",
+      "openQuestions": "Open questions",
+      "followups": "Follow-up topics",
+      "on": "yes",
+      "off": "no",
+      "note": "Computed by the server from the current company policy. Personality changes how the employee works, never the acceptance criteria.",
+      "noteLearningOff": "Learning is off: quotas stay at the default working style.",
+      "band": {
+        "low": "low",
+        "moderate": "moderate",
+        "high": "high"
+      }
+    },
     "enabled": "Enabled",
     "disabled": "Disabled",
     "packagesHint": "Choose the access packages to grant; role defaults are pre-selected.",

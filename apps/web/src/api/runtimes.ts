@@ -1,5 +1,6 @@
 import { ApiError, del, get, patch, post } from "./client";
 import type {
+  BehaviorProjection,
   CreateEmployeeRuntimeInput,
   EmployeeBrain,
   RuntimeImageInfo,
@@ -75,9 +76,15 @@ export function getEmployeeBrain(employeeId: number): Promise<EmployeeBrain> {
 
 export function updateEmployeeBrain(
   employeeId: number,
-  body: Partial<Omit<EmployeeBrain, "employee_id">>,
+  // traits 是权威写入面（curiosity 只是兼容镜像）；后端白名单校验，未知 trait 会 422。
+  body: Partial<Omit<EmployeeBrain, "employee_id" | "behavior">>,
 ): Promise<EmployeeBrain> {
   return patch<EmployeeBrain>(`/employees/${employeeId}/brain`, body);
+}
+
+/** 投影审计面：文件路径、revision、容器里那份是否已同步（§8 T2/T3）。 */
+export function getEmployeeBrainProjection(employeeId: number): Promise<BehaviorProjection> {
+  return get<BehaviorProjection>(`/employees/${employeeId}/brain/projection`);
 }
 
 // ---------- Runtime images ----------

@@ -227,6 +227,8 @@ export interface LearningPriority {
   topic: string;
   score: number;
   reason: string | null;
+  /** "" | "failure" | "behavior-extension"：失败驱动与人格延伸必须可区分（§13.1） */
+  source: string;
   created_at: string;
   updated_at: string;
 }
@@ -717,6 +719,8 @@ export interface RuntimeCapabilities {
   scheduler: boolean;
   streaming: boolean;
   artifacts: boolean;
+  /** 该 runtime 是否真的把行为投影送进 agent 上下文（诚实能力位，§8） */
+  brain_projection: boolean;
 }
 
 export interface RuntimeTypeInfo {
@@ -817,7 +821,79 @@ export interface EmployeeBrain {
   interests: string[];
   learning_policy: Record<string, unknown>;
   memory_policy: Record<string, unknown>;
+  /** legacy 镜像列（权威值在 traits 里，两者由后端同步写） */
   curiosity: number;
+  traits?: Record<string, number> | null;
+  /** 服务端解析出的 BehaviorPolicy 摘要：只含工作方式，永不含 confidence / 结果判定 */
+  behavior?: BehaviorPolicySummary | null;
+}
+
+/** `app.brain.BehaviorPolicy.as_dict()` 的镜像。阈值一律在后端，前端只读。 */
+export interface BehaviorPolicySummary {
+  policy_version: string;
+  profile_revision: number;
+  band: "low" | "moderate" | "high" | string;
+  traits: Record<string, number>;
+  work_directives: string[];
+  retrieval: {
+    knowledge_limit: number;
+    include_candidate_skills: boolean;
+    candidate_min_success_rate: number;
+    novel_topic_ratio: number;
+    max_context_items: number;
+  };
+  reflection: {
+    open_question_count: number;
+    alternative_hypotheses: number;
+    note_style: string;
+  };
+  learning: {
+    followup_topics_per_task: number;
+    followup_priority_score: number;
+    priority_score_cap: number;
+    topic_source: string;
+  };
+}
+
+export interface BehaviorProjection {
+  employee_id: number;
+  policy_version: string;
+  revision: number;
+  band: string;
+  projection_markdown: string;
+  paths: string[];
+  mirrored_revision: number | null;
+  mirror_current: boolean;
+}
+
+/** 候选技能基准（§10）。`success` 是事实，`outcome` 是人的判断，两者互不推导。 */
+export interface SkillUsage {
+  id: number;
+  employee_id: number;
+  skill_id: number;
+  task_id: number | null;
+  work_session_id: number | null;
+  skill_validation_status: string;
+  selection_reason: string;
+  policy_version: string;
+  profile_revision: number;
+  success: boolean;
+  outcome: "useful" | "not_useful" | null;
+  outcome_source: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SkillUsageBenchmarks {
+  total_usages: number;
+  candidate_usages: number;
+  candidate_skills_tried: number;
+  rated_usages: number;
+  pending_ratings: number;
+  /** 分母为 0 时后端返回 null（没数据 ≠ 0%） */
+  trial_rate: number | null;
+  conversion_rate: number | null;
+  useful_rate: number | null;
 }
 
 export interface SettingsResponse {

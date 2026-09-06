@@ -63,9 +63,22 @@
     "learningLabel": "启用持续学习",
     "learningHint": "允许员工把复盘和交付经验沉淀到长期知识中。",
     "curiosityLabel": "Curiosity",
-    "curiosityLow": "低",
-    "curiosityMedium": "中",
-    "curiosityHigh": "高",
+    "behaviorPreview": {
+      "title": "生效方式预览",
+      "knowledge": "相邻经验条数",
+      "candidateSkills": "试用未验证技能",
+      "openQuestions": "反思未解问题",
+      "followups": "延伸学习主题",
+      "on": "会",
+      "off": "不会",
+      "note": "以上数值由服务端按当前公司策略算出，人格只改变工作方式，不改变验收标准。",
+      "noteLearningOff": "学习已关闭：本次不会改变检索与反思额度，沿用默认工作方式。",
+      "band": {
+        "low": "低档",
+        "moderate": "中档",
+        "high": "高档"
+      }
+    },
     "enabled": "已启用",
     "disabled": "已停用",
     "packagesHint": "勾选授予的权限包，已按角色预选默认值。",

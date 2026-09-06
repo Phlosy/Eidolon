@@ -45,6 +45,7 @@
     "knowledge": "Knowledge",
     "skills": "Skills",
     "learning": "Learning",
+    "behavior": "Behaviour",
     "performance": "Performance",
     "career": "Career"
   },
@@ -143,5 +144,43 @@
     "awaitingMission": "Awaiting assignment",
     "experience": "Experience",
     "derived": "Level and XP are derived from recorded performance and learning activity."
+  },
+  "behavior": {
+    "title": "Behaviour",
+    "hint": "The behaviour policy currently in effect: it sets exploration and reflection quotas, never competence or factual verdicts.",
+    "unavailable": "No behaviour policy available.",
+    "saveFailed": "Could not save.",
+    "curiosity": "Curiosity",
+    "noDirectives": "Default working style: no extra exploration or reflection quota.",
+    "band": {
+      "low": "low",
+      "moderate": "moderate",
+      "high": "high"
+    },
+    "quota": {
+      "knowledgeLimit": "Adjacent knowledge",
+      "maxContext": "Context items cap",
+      "candidateSkills": "Try unvalidated skills",
+      "openQuestions": "Open questions",
+      "hypotheses": "Fallback hypotheses",
+      "followupTopics": "Follow-up topics",
+      "on": "on",
+      "off": "off"
+    },
+    "benchmarkTitle": "Candidate skill benchmarks",
+    "benchmarkHint": "Trial and conversion rates come from real task records; “useful” is a human judgement and unrated rows are excluded from the denominator.",
+    "metric": {
+      "trial": "Trial rate",
+      "conversion": "Conversion",
+      "useful": "Rated useful",
+      "pending": "Pending"
+    },
+    "projectionTitle": "Behaviour projection",
+    "projectionRevision": "Revision",
+    "projectionFiles": "Projection files",
+    "projectionMirror": "Mirrored into container",
+    "projectionMirrorOn": "yes",
+    "projectionMirrorOff": "no (synced on next recreate)",
+    "projectionNote": "brain/ is not mounted into the container; the effective channel is the block inlined into each task."
   }
 }
