@@ -106,6 +106,9 @@ class RuntimeCapabilities:
     scheduler: bool = False
     streaming: bool = False
     artifacts: bool = False
+    # 诚实标记：该 runtime 是否真的把行为投影送进 agent 上下文（T1 内联）。
+    # 没有这条能力位，“投影是否生效”只能靠读代码猜 —— 见 docs/employee-brain-behavior-policy.md §8。
+    brain_projection: bool = False
 
 
 class RuntimeAdapter(ABC):

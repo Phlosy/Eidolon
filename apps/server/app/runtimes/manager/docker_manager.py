@@ -238,6 +238,10 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
                 if target.name == ".env" or (credential and credential in content):
                     target.chmod(0o600)
 
+        # §8 T3：把行为投影镜像进**已挂载**的 runtime 目录（只在创建/重建时写，避免与
+        # Hermes 自身 profile 并发改写，见 docs/research.md:13）。brain 目录本身不挂载。
+        self._mirror_behavior(db, instance, employee, runtime_dir)
+
         image = self._image_for(runtime_type)
         if runtime_type == RuntimeType.hermes.value:
             env.update(
@@ -285,6 +289,32 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
             "image": image,
             "runtime_dir": runtime_dir,
             "command": self._commands.get(runtime_type),
+        }
+
+    def _mirror_behavior(
+        self,
+        db: Session,
+        instance: RuntimeInstance,
+        employee: Employee,
+        runtime_dir: Path,
+    ) -> None:
+        """写 runtime/<type>/eidolon/behavior.md 并在实例元数据里记 revision（生效可机验）。"""
+        from app.brain import BrainTraits, policy_for
+        from app.brain.projection import mirror_into_runtime_dir, render_profile_markdown
+        from app.repositories import runtimes as runtime_repo
+
+        policy = policy_for(db, employee.id, getattr(employee, "company", None))
+        traits = BrainTraits.from_brain(runtime_repo.get_brain(db, employee.id))
+        revision = policy.runtime.profile_revision
+        markdown = render_profile_markdown(employee.name, traits.snapshot(), policy, revision)
+        try:
+            mirror_into_runtime_dir(runtime_dir, markdown)
+        except OSError as exc:  # 投影失败不阻断交付：T1 内联才是生效链路
+            logger.warning("behavior 镜像写入失败（runtime_dir=%s）：%s", runtime_dir, exc)
+        instance.metadata_json = {
+            **dict(instance.metadata_json or {}),
+            "behavior_revision": revision,
+            "behavior_policy_version": policy.runtime.policy_version,
         }
 
     async def _ensure_image(self, image: str) -> None:

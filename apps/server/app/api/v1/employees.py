@@ -9,6 +9,7 @@ from app.models.organization import Employee
 from app.repositories import events as event_repo
 from app.repositories import knowledge as knowledge_repo
 from app.repositories import organization as org_repo
+from app.repositories import runtimes as runtime_repo
 from app.schemas.knowledge import (
     EventOut,
     KnowledgeItemOut,
@@ -16,6 +17,9 @@ from app.schemas.knowledge import (
     LearningRecordOut,
     MemoryEntryOut,
     SkillOut,
+    SkillUsageBenchmarksOut,
+    SkillUsageOut,
+    SkillUsageOutcomeIn,
 )
 from app.schemas.organization import (
     EmployeeCreate,
@@ -31,6 +35,7 @@ from app.schemas.provider import (
     ProviderOut,
 )
 from app.schemas.runtime import (
+    BehaviorProjectionOut,
     EmployeeBrainOut,
     EmployeeBrainPatch,
     EmployeeRuntimeCreate,
@@ -123,6 +128,49 @@ def get_learning_priorities(
     employee = _get_employee_or_404(db, employee_id)
     priorities = knowledge_repo.list_learning_priorities(db, employee.id)
     return [LearningPriorityOut.model_validate(p) for p in priorities]
+
+
+@router.get("/{employee_id}/skill-usages", response_model=list[SkillUsageOut])
+def get_skill_usages(employee_id: int, db: Session = Depends(get_db)) -> list[SkillUsageOut]:
+    """候选/已验证技能的基准流水（§10.1）。"""
+    employee = _get_employee_or_404(db, employee_id)
+    return [
+        SkillUsageOut.model_validate(u) for u in knowledge_repo.list_skill_usages(db, employee.id)
+    ]
+
+
+@router.get("/{employee_id}/skill-usages/benchmarks", response_model=SkillUsageBenchmarksOut)
+def get_skill_usage_benchmarks(
+    employee_id: int, db: Session = Depends(get_db)
+) -> SkillUsageBenchmarksOut:
+    """§10.2 的三个指标；分母为 0 时是 null，不是 0。"""
+    employee = _get_employee_or_404(db, employee_id)
+    return SkillUsageBenchmarksOut.model_validate(
+        knowledge_repo.skill_usage_benchmarks(db, employee.id)
+    )
+
+
+@router.patch("/{employee_id}/skill-usages/{usage_id}/outcome", response_model=SkillUsageOut)
+def rate_skill_usage(
+    employee_id: int,
+    usage_id: int,
+    payload: SkillUsageOutcomeIn,
+    db: Session = Depends(get_db),
+) -> SkillUsageOut:
+    """人的评价接口（§18.2：v1 只做这一条）。
+
+    它**只能**写 outcome / outcome_source：success 是 _finalize 的客观事实，confidence 属于
+    证据面，两者都不接受从人格或评价推导（§2）。
+    """
+    employee = _get_employee_or_404(db, employee_id)
+    usage = knowledge_repo.get_skill_usage_for_employee(db, usage_id, employee.id)
+    if usage is None:
+        raise HTTPException(status_code=404, detail="skill usage not found")
+    usage.outcome = payload.outcome
+    usage.outcome_source = "manual_rating"
+    db.commit()
+    db.refresh(usage)
+    return SkillUsageOut.model_validate(usage)
 
 
 @router.get("/{employee_id}/activity", response_model=list[EventOut])
@@ -239,6 +287,25 @@ async def delete_employee_runtime(employee_id: int, db: Session = Depends(get_db
 def get_employee_brain(employee_id: int, db: Session = Depends(get_db)) -> EmployeeBrainOut:
     employee = _get_employee_or_404(db, employee_id)
     return runtime_service.get_brain(db, employee)
+
+
+@router.get("/{employee_id}/brain/projection", response_model=BehaviorProjectionOut)
+def get_brain_projection(employee_id: int, db: Session = Depends(get_db)) -> BehaviorProjectionOut:
+    """投影审计面：当前策略摘要 + 投影正文 + T3 是否已随实例生效（§8）。"""
+    employee = _get_employee_or_404(db, employee_id)
+    projection = runtime_service.project_brain(db, employee)
+    instance = runtime_repo.get_instance_for_employee(db, employee.id)
+    mirrored = (instance.metadata_json or {}).get("behavior_revision") if instance else None
+    return BehaviorProjectionOut(
+        employee_id=employee.id,
+        policy_version=projection["policy_version"],
+        revision=projection["revision"],
+        band=projection["band"],
+        projection_markdown=projection["projection_markdown"],
+        paths=projection["paths"],
+        mirrored_revision=mirrored,
+        mirror_current=mirrored == projection["revision"],
+    )
 
 
 @router.patch("/{employee_id}/brain", response_model=EmployeeBrainOut)

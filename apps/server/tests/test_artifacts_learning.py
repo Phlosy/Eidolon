@@ -84,19 +84,22 @@ def test_retrieval_matches_private_knowledge(db, employees_by_slug):
     )
     db.commit()
 
-    knowledge, skills = retrieval.retrieve_for_task(
+    # v1: retrieve_for_task 返回 RetrievalResult（带 skill id，§9），旧调用点只取名字
+    result = retrieval.retrieve_for_task(
         db, alice["id"], "订单评审：onboarding portal", "构建 onboarding portal"
     )
-    assert "onboarding portal" in knowledge
+    assert "onboarding portal" in result.knowledge
+    # 默认策略不放开候选技能（等价性专项断言见 tests/test_brain_contract.py）
+    assert not [skill for skill in result.skills if skill.is_candidate]
 
     # private knowledge does not leak across employees
-    knowledge_bob, _ = retrieval.retrieve_for_task(
+    knowledge_bob = retrieval.retrieve_for_task(
         db, bob["id"], "订单评审：onboarding portal", "构建 onboarding portal"
-    )
+    ).knowledge
     assert "onboarding portal" not in knowledge_bob
 
     # no overlap → no injection
-    none_hit, _ = retrieval.retrieve_for_task(db, alice["id"], " unrelated xyzzy", "")
+    none_hit = retrieval.retrieve_for_task(db, alice["id"], " unrelated xyzzy", "").knowledge
     assert "onboarding portal" not in none_hit
 
 

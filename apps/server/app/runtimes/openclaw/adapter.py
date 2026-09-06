@@ -18,6 +18,7 @@ from collections.abc import AsyncIterator
 import httpx
 import websockets
 
+from app.brain.projection import append_behavior_block
 from app.core.logging import get_logger
 from app.models.enums import RuntimeType
 from app.runtimes.base import (
@@ -66,6 +67,7 @@ class OpenClawAdapter(RuntimeAdapter):
             scheduler=True,  # cron methods
             streaming=True,  # session.* WS events
             artifacts=True,  # artifacts.list/get/download RPC
+            brain_projection=True,  # behavior block is appended to chat.send message
         )
 
     def supported_providers(self) -> list[str]:
@@ -110,6 +112,8 @@ class OpenClawAdapter(RuntimeAdapter):
 
     async def send_task(self, session: RuntimeSession, prompt: str, context: dict) -> None:
         config = context.get("runtime_config") or {}
+        # 接缝 7 / §8 T1：投影拼进 chat.send 的 message（brain 目录不挂载，写文件不会生效）。
+        prompt = append_behavior_block(prompt, context.get("behavior_policy"))
         timeout = float(config.get("run_timeout_seconds", _DEFAULT_RUN_TIMEOUT))
         session.background = asyncio.create_task(
             self._pump(session, prompt, timeout), name=f"openclaw-run-{session.id}"

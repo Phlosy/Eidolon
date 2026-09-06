@@ -12,6 +12,8 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.brain import BrainTraits, write_traits_to_brain
+from app.brain.projection import project_brain
 from app.core.config import settings
 from app.events.bus import bus
 from app.lifecycle import access, audit
@@ -282,7 +284,9 @@ async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, Provi
         "enabled": payload.learning_enabled,
         "source": "onboarding",
     }
-    brain.curiosity = min(1.0, max(0.0, payload.curiosity))
+    # traits 是唯一权威，curiosity 只是兼容镜像；两者只能由 BrainTraits 同步写（§4.1）。
+    write_traits_to_brain(brain, BrainTraits.build({"curiosity": payload.curiosity}))
+    project_brain(db, employee, brain)
 
     binding = None
     # 条目化模型：payload.model 是默认启动模型，payload.models 是完整条目列表；

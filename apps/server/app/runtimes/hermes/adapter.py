@@ -16,6 +16,7 @@ from collections.abc import AsyncIterator
 
 import httpx
 
+from app.brain.projection import append_behavior_block
 from app.core.logging import get_logger
 from app.models.enums import RuntimeType
 from app.runtimes.base import (
@@ -63,6 +64,7 @@ class HermesAdapter(RuntimeAdapter):
             scheduler=True,  # /api/jobs (cron) API
             streaming=True,  # SSE /v1/runs/{id}/events
             artifacts=False,  # no artifacts-download endpoint in the API
+            brain_projection=True,  # behavior block is appended to POST /v1/runs input
         )
 
     def supported_providers(self) -> list[str]:
@@ -98,6 +100,8 @@ class HermesAdapter(RuntimeAdapter):
 
     async def send_task(self, session: RuntimeSession, prompt: str, context: dict) -> None:
         config = context.get("runtime_config") or {}
+        # 接缝 7 / §8 T1：投影在**真正发请求前**拼进 input，而不是写进未挂载的目录。
+        prompt = append_behavior_block(prompt, context.get("behavior_policy"))
         timeout = float(config.get("run_timeout_seconds", _DEFAULT_RUN_TIMEOUT))
         session.background = asyncio.create_task(
             self._pump(session, prompt, timeout), name=f"hermes-run-{session.id}"

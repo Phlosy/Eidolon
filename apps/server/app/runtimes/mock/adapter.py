@@ -11,6 +11,7 @@ import random
 import uuid
 from collections.abc import AsyncIterator
 
+from app.brain.projection import behavior_block
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.models.enums import RuntimeType
@@ -53,6 +54,7 @@ class MockAdapter(RuntimeAdapter):
             scheduler=True,
             streaming=True,
             artifacts=True,
+            brain_projection=True,  # 投影内联进模拟产出，端到端可验（§8 T1 的等价物）
         )
 
     async def create_instance(self, employee: EmployeeRef, config: dict) -> RuntimeInstance:
@@ -83,8 +85,10 @@ class MockAdapter(RuntimeAdapter):
     async def send_task(self, session: RuntimeSession, prompt: str, context: dict) -> None:
         ctx: TaskContext = context["task_context"]
         config: dict = context.get("runtime_config") or {}
+        # 接缝 8：mock 没有真实 prompt，把投影渲染进模拟产出与事件流，同样可机验（§8 T1 等价物）。
+        behavior: dict = context.get("behavior_policy") or {}
         session.background = asyncio.create_task(
-            self._run(session, ctx, config), name=f"mock-task-{ctx.task_id}"
+            self._run(session, ctx, config, behavior), name=f"mock-task-{ctx.task_id}"
         )
 
     async def send_message(self, session: RuntimeSession, message: str) -> None:
@@ -114,7 +118,13 @@ class MockAdapter(RuntimeAdapter):
             details={"profile": instance.profile, "home_path": instance.home_path},
         )
 
-    async def _run(self, session: RuntimeSession, ctx: TaskContext, config: dict) -> None:
+    async def _run(
+        self,
+        session: RuntimeSession,
+        ctx: TaskContext,
+        config: dict,
+        behavior_policy: dict | None = None,
+    ) -> None:
         total = max(settings.mock_task_seconds, 0.01)
         fail_rate = float(config.get("mock_fail_rate", 0) or 0)
         will_fail = random.random() < fail_rate
@@ -145,6 +155,13 @@ class MockAdapter(RuntimeAdapter):
                         "content": f"using prior knowledge: {topics}{skills}",
                     },
                 )
+            block = behavior_block(behavior_policy)
+            if block:
+                # 投影进了 agent 上下文：在事件流里可见，并随 artifact 一起留档。
+                await emit(
+                    RuntimeEventKind.message,
+                    {"role": ctx.employee_role, "content": block.replace("\n", " ")},
+                )
             for i, beat in enumerate(WORKING_BEATS):
                 await asyncio.sleep(total * 0.6 / len(WORKING_BEATS))
                 await emit(
@@ -159,7 +176,7 @@ class MockAdapter(RuntimeAdapter):
                     {"message": f"mock_fail_rate={fail_rate} 注入失败：任务未通过"},
                 )
                 return
-            artifact = build_artifact(ctx)
+            artifact = build_artifact(ctx, behavior=block)
             session.artifacts.append(artifact)
             await asyncio.sleep(total * 0.2)
             await emit(RuntimeEventKind.artifact, {"type": artifact.type, "title": artifact.title})

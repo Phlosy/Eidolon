@@ -5,11 +5,15 @@ import asyncio
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.brain import BRAIN_EDITABLE_FIELDS, merge_traits, write_traits_to_brain
+from app.brain import policy_for as behavior_policy_for
+from app.brain.projection import project_brain
+from app.brain.traits import TraitOutOfRange, UnknownTrait
 from app.core.config import settings
 from app.events.bus import bus
 from app.models.enums import DeploymentMode, RuntimeType
 from app.models.organization import Employee
-from app.models.runtime import RuntimeInstance
+from app.models.runtime import EmployeeBrain, RuntimeInstance
 from app.repositories import organization as org_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
@@ -273,16 +277,43 @@ async def runtime_types() -> list[RuntimeTypeInfoOut]:
 
 
 def get_brain(db: Session, employee: Employee) -> EmployeeBrainOut:
-    return EmployeeBrainOut.model_validate(runtime_repo.ensure_brain(db, employee.id))
+    return _brain_out(db, employee)
+
+
+def _brain_out(
+    db: Session, employee: Employee, brain: EmployeeBrain | None = None
+) -> EmployeeBrainOut:
+    """brain + BehaviorPolicy 摘要（工作方式额度/风格）。永不含 confidence / 结果判定。"""
+    brain = brain if brain is not None else runtime_repo.ensure_brain(db, employee.id)
+    policy = behavior_policy_for(db, employee.id, getattr(employee, "company", None))
+    out = EmployeeBrainOut.model_validate(brain)
+    out.behavior = policy.as_dict()
+    return out
 
 
 def patch_brain(db: Session, employee: Employee, payload: EmployeeBrainPatch) -> EmployeeBrainOut:
     brain = runtime_repo.ensure_brain(db, employee.id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(brain, field, value)
+    data = payload.model_dump(exclude_unset=True)
+    # 白名单来自 app.brain（契约层），不是“payload 里有什么就 setattr 什么”（§4.4）。
+    traits_patch = data.pop("traits", None)
+    curiosity_patch = data.pop("curiosity", None)
+    for name, value in data.items():
+        if name not in BRAIN_EDITABLE_FIELDS:
+            raise HTTPException(status_code=422, detail=f"不可编辑的 brain 字段：{name}")
+        setattr(brain, name, value)
+    if traits_patch is not None or curiosity_patch is not None:
+        patch: dict = dict(traits_patch or {})
+        if curiosity_patch is not None:
+            patch.setdefault("curiosity", curiosity_patch)  # 显式 traits 优先
+        try:
+            merged = merge_traits(brain, patch)
+        except (UnknownTrait, TraitOutOfRange, TypeError) as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        write_traits_to_brain(brain, merged)
     db.commit()
     db.refresh(brain)
-    return EmployeeBrainOut.model_validate(brain)
+    project_brain(db, employee, brain)
+    return _brain_out(db, employee, brain)
 
 
 # ---- images ----

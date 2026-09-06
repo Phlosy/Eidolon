@@ -8,6 +8,8 @@ release pipeline. One running session per employee; queued tasks wait.
 import asyncio
 from datetime import UTC, datetime, timedelta
 
+from app.brain import DEFAULT_POLICY
+from app.brain import policy_for as behavior_policy_for
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
 from app.events.bus import bus
@@ -23,6 +25,7 @@ from app.models.enums import (
 )
 from app.models.project import Milestone
 from app.models.provider import ModelBinding
+from app.repositories import knowledge as knowledge_repo
 from app.repositories import organization as org_repo
 from app.repositories import project as project_repo
 from app.repositories import providers as provider_repo
@@ -137,6 +140,8 @@ class Orchestrator:
                 task_service.transition_task(db, task, TaskStatus.in_progress.value)
                 # v0.2: link the work session to the runtime instance + provider/model
                 runtime_instance = runtime_repo.get_instance_for_employee(db, employee.id)
+                # BehaviorPolicy：全任务只解析一次，后续所有接缝共享同一个对象（§7 接缝 1）。
+                policy = behavior_policy_for(db, employee.id, getattr(employee, "company", None))
                 binding = provider_repo.get_primary_binding(db, employee.id) or (
                     db.get(ModelBinding, runtime_instance.model_binding_id)
                     if runtime_instance and runtime_instance.model_binding_id
@@ -152,6 +157,11 @@ class Orchestrator:
                     runtime_instance_id=runtime_instance.id if runtime_instance else None,
                     provider_id=binding.provider_id if binding else None,
                     model=binding.model if binding else None,
+                    # 本次任务实际生效的策略版本（§8.4）
+                    cost={
+                        "policy_version": policy.runtime.policy_version,
+                        "behavior_revision": policy.runtime.profile_revision,
+                    },
                 )
                 if task.milestone_id:
                     milestone = db.get(Milestone, task.milestone_id)
@@ -160,9 +170,19 @@ class Orchestrator:
                 db.commit()
                 runtime_config = dict(employee.runtime_config or {})
                 # v0.2: inject the assignee's own relevant learning into the task context
-                prior_knowledge, validated_skills = retrieval.retrieve_for_task(
-                    db, employee.id, task.title, task.description
-                )
+                # v1: 额度由 BehaviorPolicy 决定；解析/检索异常时本任务回落 DEFAULT_POLICY
+                try:
+                    result = retrieval.retrieve_for_task(
+                        db, employee.id, task.title, task.description, policy=policy
+                    )
+                except Exception:  # pragma: no cover - defensive
+                    logger.warning(
+                        "retrieval failed, falling back to DEFAULT_POLICY", exc_info=True
+                    )
+                    policy = DEFAULT_POLICY
+                    result = retrieval.RetrievalResult()
+                prior_knowledge, validated_skills = result.knowledge, result.skill_names
+                validated_skill_refs = result.skills
                 task_ctx = TaskContext(
                     task_id=task.id,
                     project_id=task.project_id,
@@ -201,13 +221,34 @@ class Orchestrator:
                 ws = project_repo.get_running_session_for_task(db, task_id)
                 if ws:
                     ws.runtime_session_ref = session.id
+                    # 接缝 9 / §10.3：技能被交出去的那一刻记基准（含策略原因 + 版本）。
+                    # 已验证技能也记：“这个任务到底跑在哪些技能上”本身是事实，不是判断。
+                    for skill in validated_skill_refs:
+                        knowledge_repo.create_skill_usage(
+                            db,
+                            employee_id=employee_id,
+                            skill_id=skill.id,
+                            task_id=task_id,
+                            work_session_id=ws.id,
+                            skill_validation_status=skill.validation_status,
+                            selection_reason=skill.reason,
+                            policy_version=policy.runtime.policy_version,
+                            profile_revision=policy.runtime.profile_revision,
+                        )
                     db.commit()
             prompt = (
                 f"任务：{task_ctx.title}\n\n{task_ctx.description}\n\n"
                 f"验收标准：{task_ctx.acceptance_criteria or '按任务描述完成'}"
             )
             await adapter.send_task(
-                session, prompt, {"task_context": task_ctx, "runtime_config": runtime_config}
+                session,
+                prompt,
+                {
+                    "task_context": task_ctx,
+                    "runtime_config": runtime_config,
+                    # 接缝 7：载荷是策略的**纯函数**（adapter 侧只渲染，不再做判断）
+                    "behavior_policy": policy.as_dict(),
+                },
             )
 
             success, error = True, None
@@ -251,7 +292,10 @@ class Orchestrator:
                 ws.ended_at = datetime.now(UTC)
                 ws.summary = error or f"产出 {len(produced)} 个交付物"
                 ws.error = error
-                ws.cost = {"duration_sec": round(duration, 3), "tokens": 0}
+                ws.cost = {**(ws.cost or {}), "duration_sec": round(duration, 3), "tokens": 0}
+                # §10.2：success 是客观事实，与"人是否评价过"无关，都必须落库
+                for usage in knowledge_repo.list_skill_usages_for_task(db, task_id):
+                    usage.success = success
 
             artifact_ids = []
             # v0.3: artifacts are drive documents in the project folder

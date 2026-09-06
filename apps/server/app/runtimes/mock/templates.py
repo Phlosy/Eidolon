@@ -118,8 +118,12 @@ _BUILDERS = {
 }
 
 
-def build_artifact(ctx: TaskContext) -> ProducedArtifact:
+def build_artifact(ctx: TaskContext, behavior: str = "") -> ProducedArtifact:
+    """behavior：由 app.brain.projection.behavior_block() 渲染好的投影块（调用方不做判断）。"""
     artifact = _BUILDERS.get(ctx.kind, _general)(ctx)
+    if behavior:
+        # §3.4 验收条件 2/4：投影必须能在产出里被机器验证到。
+        artifact.content += f"\n\n## Behavior Projection\n\n{behavior}\n"
     if ctx.prior_knowledge:
         # Make learning retrieval observable in the produced artifact.
         skills = "\n".join(f"- {name}" for name in ctx.validated_skills) or "- (none validated yet)"
