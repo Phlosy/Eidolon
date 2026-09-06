@@ -43,6 +43,7 @@ python-pptx==1.0.2
 PyYAML==6.0.3
 requests==2.34.2
 ruff==0.16.5
+setuptools==84.0.0
 SQLAlchemy==2.0.52
 starlette==1.6.0
 typing_extensions==4.16.0

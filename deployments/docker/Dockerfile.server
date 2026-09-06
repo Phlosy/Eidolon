@@ -7,7 +7,7 @@ COPY apps/server/app ./app
 COPY apps/server/migrations ./migrations
 
 RUN python -m pip install --no-cache-dir -r requirements.lock \
-    && python -m pip install --no-cache-dir --no-deps .
+    && python -m pip install --no-build-isolation --no-cache-dir --no-deps .
 
 EXPOSE 26881
 
