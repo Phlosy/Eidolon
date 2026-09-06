@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     # autonomous five-role team remains opt-in for development fixtures.
     seed_demo_workforce: bool = False
 
+    # Behavioral Policy v1（docs/employee-brain-behavior-policy.md）总开关。
+    # 关闭后 resolve() 永远返回 DEFAULT_POLICY —— 逐字等于引入 traits 之前的行为，
+    # 这是 §3.4 验收条件 5 的回滚语义锚点。
+    behavior_policy_enabled: bool = True
+
     # v0.7 — human user authentication. Sessions are opaque, hashed server-side,
     # and transported only in an HttpOnly cookie.
     auth_required: bool = True

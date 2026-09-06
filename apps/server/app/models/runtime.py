@@ -8,7 +8,7 @@ so replacing an instance never touches them.
 
 from datetime import datetime
 
-from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy import JSON, ForeignKey, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -23,9 +23,24 @@ from app.models.enums import (
 
 
 class EmployeeBrain(TimestampMixin, Base):
-    """Persistent personality/goals/learning configuration per employee."""
+    """Persistent personality/goals/learning configuration per employee.
+
+    `traits` is the authoritative personality store (`{"schema_version": 1, ...}`) read only
+    through `app.brain.BrainTraits`; `curiosity` survives as a legacy compatibility mirror
+    (§14.1) and is partial-indexed for backfill scans. Behavior code must read neither — it
+    reads the derived BehaviorPolicy.
+    """
 
     __tablename__ = "employee_brains"
+    __table_args__ = (
+        Index(
+            "ix_employee_brains_curiosity_legacy",
+            "curiosity",
+            unique=False,
+            sqlite_where=text("traits IS NULL"),
+            postgresql_where=text("traits IS NULL"),
+        ),
+    )
 
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), unique=True, index=True)
     personality: Mapped[str] = mapped_column(Text, default="")
@@ -34,6 +49,7 @@ class EmployeeBrain(TimestampMixin, Base):
     learning_policy: Mapped[dict] = mapped_column(JSON, default=dict)
     memory_policy: Mapped[dict] = mapped_column(JSON, default=dict)
     curiosity: Mapped[float] = mapped_column(default=0.5)
+    traits: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
 
 class RuntimeInstance(TimestampMixin, Base):

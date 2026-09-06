@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
+from app.brain.traits import BrainTraits, TraitOutOfRange, UnknownTrait
 from app.models.enums import RuntimeType
 from app.schemas.organization import ORMModel
 
@@ -17,6 +18,8 @@ class RuntimeCapabilitiesOut(BaseModel):
     scheduler: bool
     streaming: bool
     artifacts: bool
+    # 行为投影是否真的进了 agent 上下文（诚实能力位，§8）
+    brain_projection: bool = False
 
 
 class RuntimeTypeInfoOut(BaseModel):
@@ -88,6 +91,19 @@ class EmployeeRuntimeProviderPatch(BaseModel):
     model: str
 
 
+class BehaviorProjectionOut(BaseModel):
+    """§8 投影审计面： revision 可比对，mirror_current 直接回答“容器里那份是不是最新的”。"""
+
+    employee_id: int
+    policy_version: str
+    revision: int
+    band: str
+    projection_markdown: str
+    paths: list[str]
+    mirrored_revision: int | None = None
+    mirror_current: bool = False
+
+
 class EmployeeBrainOut(ORMModel):
     employee_id: int
     personality: str
@@ -96,6 +112,9 @@ class EmployeeBrainOut(ORMModel):
     learning_policy: dict
     memory_policy: dict
     curiosity: float
+    traits: dict | None = None
+    # BehaviorPolicy 摘要：只含工作方式（额度/深度/风格），永不含 confidence / 结果判定。
+    behavior: dict | None = None
 
 
 class EmployeeBrainPatch(BaseModel):
@@ -104,4 +123,17 @@ class EmployeeBrainPatch(BaseModel):
     interests: list[str] | None = None
     learning_policy: dict | None = None
     memory_policy: dict | None = None
-    curiosity: float | None = None
+    curiosity: float | None = Field(default=None, ge=0.0, le=1.0)
+    traits: dict[str, float] | None = None
+
+    @field_validator("traits")
+    @classmethod
+    def _traits_must_be_registered_and_in_range(cls, value: dict[str, float] | None):
+        """未注册 trait 与越界值都是 422（§17.1）；schema_version 由后端控制，传入被忽略。"""
+        if value is None:
+            return value
+        try:
+            BrainTraits.build(value)
+        except (UnknownTrait, TraitOutOfRange, TypeError) as exc:
+            raise ValueError(str(exc)) from exc
+        return value

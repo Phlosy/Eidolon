@@ -3,6 +3,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.brain.traits import BrainTraits
 from app.core.request_context import get_request_identity
 from app.models.organization import Employee
 from app.models.runtime import EmployeeBrain, RuntimeImage, RuntimeInstance
@@ -107,6 +108,8 @@ def ensure_brain(db: Session, employee_id: int, **defaults) -> EmployeeBrain:
     brain = get_brain(db, employee_id)
     if brain is None:
         brain = EmployeeBrain(employee_id=employee_id, **defaults)
+        # 新 brain 创建时就拥有 traits（唯一权威）；legacy 镜像列继续存在以便回滚读旧值（§4.1）。
+        brain.traits = BrainTraits.from_brain(brain).to_json()
         db.add(brain)
         db.flush()
     return brain
