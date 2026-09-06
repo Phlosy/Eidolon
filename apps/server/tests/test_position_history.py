@@ -294,7 +294,9 @@ def test_upgrade_preserves_person_data_and_history(tmp_path):
                 " AND position_slot_id IS NULL"
             )
         ).scalar_one()
-        assert unslotted == 2, f"无坑的生效任职应当原样保留（孤儿 + 无 position_id），实际 {unslotted}"
+        assert unslotted == 2, (
+            f"无坑的生效任职应当原样保留（孤儿 + 无 position_id），实际 {unslotted}"
+        )
         all_rows = conn.execute(sa.text("SELECT COUNT(*) FROM employments")).scalar_one()
         assert all_rows == 6, "迁移不许丢行，也不许补行"
 
