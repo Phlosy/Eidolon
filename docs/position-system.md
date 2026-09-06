@@ -220,6 +220,29 @@ def legacy_role_of(db, employee) -> str:
 
 ---
 
+### 6.1 完整性纪律：`position_slot_id` 没有数据库外键（明确 ADR，不是遗漏）
+
+当前 SQLite 部署**从不 `PRAGMA foreign_keys=ON`**，所以外键声明不参与约束；而给
+`employments` 这种历史表加 FK 会迫使 alembic batch 重建整张表（其旧 FK 全是匿名约束，
+重建直接报 `Constraint must have a name`）。为不会生效的声明付历史表重建风险没有价值，
+因此 v14 的 `position_slot_id` 不带 FK，完整性改由三处保证：
+
+1. **写路径必须校验**：`PositionAssignment.position_slot_id` 只能由 Service/Repository 写入，
+   且必须先过 `repositories.position.require_slot(db, slot_id)`（不存在则 `SlotNotFound`）。
+2. **读路径按"宁缺不错"降级**：悬空引用不报错也不猜职位 —— `employee_current_position()`
+   返回 `None`，`WorkforceStatusResolver` 剔除这条任职并如实报 `AVAILABLE`。
+3. **测试守卫**：`tests/test_position_repository.py::test_slot_integrity_is_checked_in_code_not_by_foreign_key`
+   与 `..._dangling_slot_reference_yields_no_position_instead_of_a_guess`。
+
+> 领域完整性由 Service/Repository 与测试守卫保证，不依赖数据库 FK。
+> **未来切 PostgreSQL 时重新评估 physical FK**（PG 的 FK 是真约束，届时应当加上，
+> 并把 `require_slot()` 降级为防御性断言而不是唯一防线）。
+
+兼容层返回体刻意**不含 `fit`**：Fit 依赖能力域（P9），在没有任何证据分数之前返回数字
+就是编造。`derived_current_position()` 的字段集在 P9 之前就是本节列出的这些。
+
+---
+
 ## 7. Office 联动（§40，Phase 14）
 
 `apps/web/src/features/auth-office-game/`：

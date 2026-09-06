@@ -17,6 +17,7 @@ from app.models.lifecycle import (
     ResourceAsset,
     ResourceProvider,
 )
+from app.repositories import position as position_repo
 
 # ---- positions ----
 
@@ -57,12 +58,14 @@ def list_employments(db: Session, employee_id: int) -> list[Employment]:
 
 
 def get_current_employment(db: Session, employee_id: int) -> Employment | None:
-    return db.scalars(
-        select(Employment)
-        .where(Employment.employee_id == employee_id, Employment.effective_to.is_(None))
-        .order_by(Employment.id.desc())
-        .limit(1)
-    ).first()
+    """当前**主职**任职。
+
+    实现已收口到 `repositories.position`（P4a）：旧写法是
+    `order_by(id.desc()).limit(1)`，它不区分 primary / secondary / acting，
+    一旦允许兼任就会“随手取到一条不是主职的”。保留函数名是为了 26 个调用点
+    不一次改完，但**读法只能有一份**。
+    """
+    return position_repo.active_primary_assignment(db, employee_id)
 
 
 def create_employment(db: Session, **fields) -> Employment:

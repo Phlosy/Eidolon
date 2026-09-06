@@ -196,20 +196,36 @@ class PositionAssignment(Base):
         return self.effective_to is None
 
 
-def derive_occupancy(
-    slot: PositionSlot, active_primary_assignments: list[PositionAssignment]
-) -> OccupancyStatus:
-    """编制占用态：纯函数，**没有对应的写入口**。
+def occupancy_from_count(slot: PositionSlot, active_primary_heads: int) -> OccupancyStatus:
+    """占用态的**唯一口径**：行政态 + 生效主职人数。
 
-    `FROZEN` 不映射成 `VACANT`：冻结的坑不该出现在招聘建议里，
-    把它算成空缺会诱导用户去填一个不该填的坑。
+    单独抽出一个收计数的入口，是因为名页/组织图需要一次聚合查询算完一堆坑；
+    如果只保留实体版 `derive_occupancy(slot, assignments)`，批量路径要么 N+1，
+    要么自己另写一份条件 —— 两份口径迟早分家。
     """
     if slot.administrative_status == SlotAdministrativeStatus.closed.value:
         return OccupancyStatus.closed
     if slot.administrative_status == SlotAdministrativeStatus.frozen.value:
         return OccupancyStatus.frozen
-    occupied = any(
-        assignment.is_primary and assignment.is_active and assignment.position_slot_id == slot.id
+    return OccupancyStatus.occupied if active_primary_heads > 0 else OccupancyStatus.vacant
+
+
+def derive_occupancy(
+    slot: PositionSlot, active_primary_assignments: list[PositionAssignment]
+) -> OccupancyStatus:
+    """实体版占用态：先数出真正生效的主职，再走 `occupancy_from_count` 同一口径。
+
+    纯函数，**没有对应的写入口**。
+
+    `FROZEN` 不映射成 `VACANT`：冻结的坑不该出现在招聘建议里，
+    把它算成空缺会诱导用户去填一个不该填的坑。
+    """
+    heads = [
+        assignment
         for assignment in active_primary_assignments
-    )
-    return OccupancyStatus.occupied if occupied else OccupancyStatus.vacant
+        if assignment.is_primary
+        and assignment.is_active
+        and assignment.assignment_type == AssignmentType.primary.value
+        and assignment.position_slot_id == slot.id
+    ]
+    return occupancy_from_count(slot, len(heads))
