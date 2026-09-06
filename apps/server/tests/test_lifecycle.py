@@ -9,13 +9,20 @@ from fake_gitea import FakeGiteaProvisioner
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.request_context import (
+    RequestIdentity,
+    reset_request_identity,
+    set_request_identity,
+)
 from app.lifecycle.naming import naming
 from app.lifecycle.provisioners.base import (
     Drift,
 )
 from app.lifecycle.provisioners.registry import get_registry
 from app.models.lifecycle import AuditLog
+from app.models.organization import Company, Department, Employee
 from app.repositories import lifecycle as lifecycle_repo
+from app.repositories import organization as org_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
 
@@ -54,6 +61,66 @@ def gitea_down(monkeypatch):
 
 
 # ---- onboarding ----
+
+
+def test_onboard_slug_taken_by_another_company_is_409_not_500(client, db):
+    """跨公司同名必须 409。
+
+    `employees.slug` 和由它派生的 username / workspace_path / memory_namespace 都是
+    **全局唯一**列，但存在性检查看起来是"按公司"的 —— 修复前跨公司撞名会一路走到
+    INSERT，抛 `UNIQUE constraint failed: employees.memory_namespace` 变成 500
+    （真机端到端验证时撞到）。这里把契约钉住：冲突要在 API 边界上说清楚。
+    """
+    slug = _unique_slug("crosscorp")
+    _onboard(client, slug)
+
+    other = Company(name="Second Co", slug=f"second-{uuid.uuid4().hex[:8]}")
+    db.add(other)
+    db.flush()
+    department = Department(company_id=other.id, name="Engineering", slug=f"eng-{other.id}")
+    db.add(department)
+    db.commit()
+
+    token = set_request_identity(
+        RequestIdentity(user_id=1, company_id=other.id, membership_role="OWNER", session_id=1)
+    )
+    try:
+        response = client.post(
+            "/api/v1/employees/onboard",
+            json={
+                "name": "Cross Company Dup",
+                "slug": slug,
+                "title": "Engineer",
+                "role": "engineer",
+                "department_id": department.id,
+                "runtime_type": "mock",
+            },
+        )
+        assert response.status_code == 409, f"{response.status_code}: {response.text[:200]}"
+        assert "already exists" in response.text
+    finally:
+        reset_request_identity(token)
+
+
+def test_onboard_slug_check_is_global_not_company_scoped(db):
+    """仓库层的唯一性口径要单独钉住：`get_employee_by_slug` 不能用来判唯一性。"""
+    other = Company(name="Third Co", slug=f"third-{uuid.uuid4().hex[:8]}")
+    db.add(other)
+    db.flush()
+    taken = db.scalar(select(Employee.id)) is not None
+    token = set_request_identity(
+        RequestIdentity(user_id=1, company_id=other.id, membership_role="OWNER", session_id=1)
+    )
+    try:
+        existing_slug = db.scalar(select(Employee.slug))
+        assert org_repo.get_employee_by_slug(db, existing_slug) is None, (
+            "前提变了：get_employee_by_slug 不再按公司过滤，这个测试要一起重写"
+        )
+        assert org_repo.slug_taken_anywhere(db, existing_slug) is (
+            taken and existing_slug is not None
+        )
+    finally:
+        reset_request_identity(token)
 
 
 def test_onboard_partial_when_gitea_down(client, gitea_down):

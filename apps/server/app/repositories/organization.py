@@ -50,6 +50,17 @@ def get_employee_by_slug(db: Session, slug: str) -> Employee | None:
     return db.scalars(stmt).first()
 
 
+def slug_taken_anywhere(db: Session, slug: str) -> bool:
+    """`slug` 是否已被**任何公司**占用（唯一性判断专用）。
+
+    不能用上面的 `get_employee_by_slug` 判唯一性：那是按当前请求公司过滤的读接口，
+    而 `employees.slug` 及由它派生的 `username` / `workspace_path` / `memory_namespace`
+    在库里都是全局唯一列（models/organization.py）。公司内查不到 ≠ 能插入：
+    跨公司同名会在 INSERT 上撞成 500。
+    """
+    return db.scalar(select(Employee.id).where(Employee.slug == slug)) is not None
+
+
 def get_employee_by_role(db: Session, company_id: int, role: str) -> Employee | None:
     return db.scalars(
         select(Employee)

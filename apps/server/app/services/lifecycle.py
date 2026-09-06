@@ -227,7 +227,9 @@ async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, Provi
             detail="provider_name and model are required for a new provider",
         )
     slug = naming.username(payload.slug or payload.name)
-    if org_repo.get_employee_by_slug(db, slug):
+    # 唯一性按全局口径判：slug / username / workspace_path / memory_namespace 都是全局唯一列，
+    # 而公司视角的存在性检查看不见别的公司，会把冲突推到 INSERT 上变成 500。
+    if org_repo.slug_taken_anywhere(db, slug):
         raise HTTPException(status_code=409, detail=f"employee slug already exists: {slug}")
 
     employee = org_repo.create_employee(
