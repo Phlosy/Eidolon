@@ -18,6 +18,11 @@ from app.models.enums import (
     ProvisioningJobStatus,
     ResourceAccountStatus,
 )
+from app.models.position import PositionAssignment
+
+# 名字别名（不是第二个 mapper）：调用点可以逐段改读 PositionAssignment，
+# 而表始终只有一个实体映射 —— 存在两个 Employment 类比存在两个位置概念更糟。
+Employment = PositionAssignment
 
 
 class Position(TimestampMixin, Base):
@@ -28,23 +33,9 @@ class Position(TimestampMixin, Base):
     level: Mapped[str] = mapped_column(String(50), default="")
 
 
-class Employment(Base):
-    """One row per employment stint; IS the employment history."""
-
-    __tablename__ = "employments"
-
-    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
-    department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
-    position_id: Mapped[int | None] = mapped_column(ForeignKey("positions.id"), nullable=True)
-    manager_employee_id: Mapped[int | None] = mapped_column(
-        ForeignKey("employees.id"), nullable=True
-    )
-    employment_status: Mapped[str] = mapped_column(String(50), default="active")
-    joined_at: Mapped[datetime] = mapped_column(default=utcnow)
-    effective_from: Mapped[datetime] = mapped_column(default=utcnow)
-    effective_to: Mapped[datetime | None] = mapped_column(nullable=True)
-    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+# `Employment` 已于 v0.7 领域重构中演进为 **PositionAssignment**
+# （表名保留 `employments`，见 docs/position-system.md §2.4 拍板记录）。
+# 下面的名字别名不是第二个 mapper，只是给尚未迁移的调用点一个过渡，P15 会清除。
 
 
 class ResourceProvider(TimestampMixin, Base):

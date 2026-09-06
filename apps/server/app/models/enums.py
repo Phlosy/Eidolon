@@ -224,6 +224,74 @@ class ImageUpdateStatus(StrEnum):
 # ---------- v0.4 (employee lifecycle) ----------
 
 
+# ------------------------------------------------------------------ 职位/编制/任职
+# 领域设计见 docs/position-system.md；拍板记录见 docs/workforce-domain-refactor.md §11。
+
+
+class TemplateScope(StrEnum):
+    """职位模板来源。内置模板被公司采用时**复制**成 company 行，不共享可变行。"""
+
+    system = "system"
+    company = "company"
+
+
+class SlotAdministrativeStatus(StrEnum):
+    """编制的**行政态**：只有人/业务决定的四个值可以入库。
+
+    `VACANT` / `OCCUPIED` 故意不在这里 —— 它们是占用态（`OccupancyStatus`），
+    由“有无生效 PRIMARY 任职”派生（ADR-2）：写入口不存在，所以
+    “库里写 VACANT 而实际有人任职”这个漂移场景结构上不可表达。
+    """
+
+    planned = "planned"
+    active = "active"
+    frozen = "frozen"
+    closed = "closed"
+
+
+class OccupancyStatus(StrEnum):
+    """编制的**占用态**：只用于 API/UI 展示，绝不入库。"""
+
+    vacant = "vacant"
+    occupied = "occupied"
+    frozen = "frozen"
+    closed = "closed"
+
+
+class AssignmentType(StrEnum):
+    """任职类型。MVP 只开 `primary`；部分唯一索引只约束 primary，
+    所以将来接代理/兼任不需改表。"""
+
+    primary = "primary"
+    acting = "acting"
+    temporary = "temporary"
+    secondary = "secondary"
+
+
+class AssignmentStatus(StrEnum):
+    """复用 `employments.employment_status` 语义（不新增同义列 ⇒ 不会两个真相）。"""
+
+    active = "active"
+    closed = "closed"
+    superseded = "superseded"
+
+
+class WorkforceStatus(StrEnum):
+    """由 `WorkforceStatusResolver` 读时派生，**不入库**（ADR-4）。
+
+    `available` 是合法常态：已入册、人级资源就绪、暂无主职。
+    """
+
+    recruiting = "recruiting"
+    onboarding = "onboarding"
+    available = "available"
+    assigned = "assigned"
+    transferring = "transferring"
+    suspended = "suspended"
+    offboarding = "offboarding"
+    offboarded = "offboarded"
+
+
 class LifecycleStatus(StrEnum):
     """Employee lifecycle (docs/design-v0.4-lifecycle.md §1). Distinct from
     EmployeeStatus, which is the moment-to-moment work state."""

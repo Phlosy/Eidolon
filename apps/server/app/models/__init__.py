@@ -34,6 +34,12 @@ from app.models.lifecycle import (
     ResourceProvider,
 )
 from app.models.organization import Company, Department, Employee
+from app.models.position import (
+    PositionAssignment,
+    PositionDefinition,
+    PositionDefinitionPackage,
+    PositionSlot,
+)
 from app.models.project import (
     Artifact,
     Message,
@@ -83,6 +89,10 @@ __all__ = [
     "Milestone",
     "ModelBinding",
     "Position",
+    "PositionSlot",
+    "PositionDefinitionPackage",
+    "PositionDefinition",
+    "PositionAssignment",
     "Project",
     "Provider",
     "ProvisioningJob",

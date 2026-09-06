@@ -239,10 +239,30 @@ Company
 
 1. 迁移前 dump 关键不变量：`employee_id`、`runtime_instance.id/employee_id`、`model_bindings`、
    `employee_brains.traits`、`memory_namespace`、`workspace_path`、`skills`、`knowledge`、
-   `employments` 的行数与 id 集合 —— 迁移后逐项相等（`test_migration_preserves_history.py`）。
+   `employments` 的行数与 id 集合 —— 迁移后逐项相等（`tests/test_position_history.py`）。
 2. 每条旧 employment 都必须能在新表里找到对应 assignment，且 `effective_from/to` 完全一致。
 3. 迁移在**已有 dev 库**（含真实数据，当前停在 `j5e8a1b4c730`）和**空库**两条路径上都跑通。
 4. `alembic downgrade -6` → `upgrade head` 往返后 `alembic check` 仍无漂移。
+
+### 6.1 v12–v14 落地后的实测回填结论（真实 dev 库副本）
+
+在 `data/eidolon.db`（v11：24 员工 / 19 任职 / 5 职位）的副本上跑 `upgrade head`：
+
+| 检查项             | 结果                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| 人侧行数与 id 区间 | employees 24、employee_brains 24、runtime_instances 24、model_bindings 3、skills 7、knowledge_items 26 — 迁移前后逐项相同 |
+| `employments`      | 19 → 19，id 集合不变，19 行全部回填                                                                                       |
+| 重叠主职清洗       | 0 条（dev 数据本就无冲突；冲突路径改由 `tests/test_position_history.py` 构造并断言）                                      |
+| 定义 / 坑          | 5 / 5，`code` 无冲突（ceo、product_manager、researcher、engineer、qa_engineer），派生占用态每坑 1 人在任                  |
+| `alembic check`    | 干净（空库与真实库两条路径都验）                                                                                          |
+| 任职挂上坑的比例   | **5/19** — 另外 14 条老任职的 `position_id` 本来就是空                                                                    |
+
+最后一行是这次实测最有价值的发现：**v0.4 的 `positions` 表基本没被写过**，入职与调岗只落 `employees.role` 文本。所以迁移之后 11 名在岗者的 `workforce_status` 会是 `AVAILABLE` —— 有身份、有运行时、没有编制。这不是数据损坏，而是旧模型一直藏着的真实状态被显式暴露出来。
+
+由此定下两条纪律，P4 之后都受它约束：
+
+1. **迁移绝不代为猜坑。** `position_id` 为空就留空，孤儿 `position_id` 也不映射 —— 宁缺不错。
+2. **补编制是业务动作，不是数据修补。** 走 P4 的 `position_service` 分配工作流，产出 `PositionAssignment` 与履历事件，而不是在迁移里悄悄补一行。
 
 ---
 
