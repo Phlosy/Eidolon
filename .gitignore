@@ -6,6 +6,8 @@
 # Python
 __pycache__/
 *.py[cod]
+# 仓库内不应出现 .venv：后端统一用本地 conda 环境（见 Makefile / CONTRIBUTING）。
+# 这两行只为了防止有人不当心提交。
 .venv/
 venv/
 .pytest_cache/

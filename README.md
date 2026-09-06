@@ -50,15 +50,18 @@ _（占位：Dashboard / Office / Projects 截图待补充）_
 
 ## Quick Start
 
-要求：Python ≥ 3.11、Node.js ≥ 20、pnpm（`npm i -g pnpm`）。可选：uv（检测到则自动使用）。
+要求：Miniconda（或任何 conda 发行版）、Node.js ≥ 20、pnpm（`npm i -g pnpm`）。
 
 ```bash
 git clone <repo-url>
 cd eidolon
 cp .env.example .env
-make install
+make install     # 建 conda 环境 eidolon（Python 3.12，与 CI 对齐）+ 装后端/前端依赖
 make run
 ```
+
+> 后端不在仓库里建 `.venv`：环境由 conda 显式管理（`make install` 幂等，改名字用
+> `make CONDA_ENV=myenv install`，`conda activate eidolon` 后可直接 `python -m pytest`）。
 
 然后打开：
 
@@ -79,8 +82,8 @@ docker compose up --build
 | 命令 | 说明 |
 |---|---|
 | `make help` | 列出所有命令 |
-| `make install` | 安装前后端依赖（自动检测 uv / pnpm；后端走 `requirements.lock`） |
-| `make lock-server` | 用当前 `.venv` 的实测版本重写后端 `requirements.lock` |
+| `make install` | 安装前后端依赖（conda 环境 + pnpm；后端走 `requirements.lock`） |
+| `make lock-server` | 用当前 conda 环境的实测版本重写后端 `requirements.lock` |
 | `make run` / `make dev` | 一键启动 Frontend + Backend（先彻底清理旧进程，日志在 `.run/`） |
 | `make stop` | 停止（进程树 + 端口双路清理，必要时强杀） |
 | `make restart` | 重启 |
@@ -88,6 +91,8 @@ docker compose up --build
 | `make ps` | 列出本仓库全部 dev 进程（含漂移到其他端口的孤儿） |
 | `make logs` | 跟随前后端日志 |
 | `make test` | 后端 pytest + 前端 vitest |
+| `make migrate` | `alembic upgrade head`（改了 model 后、`make restart` 前必跑） |
+| `make migrate-new M="..."` | 按 model 变更 autogenerate 一个 revision（仍需人工检查） |
 | `make lint` | ruff（check + format）+ tsc + eslint + prettier |
 | `make format` | ruff format + prettier（与 CI / `package.json` 脚本同一入口） |
 | `make build` | 前端生产构建 |

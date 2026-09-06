@@ -19,10 +19,10 @@
 
 | 层 | 选型 | 理由 |
 |---|---|---|
-| Backend | Python 3.11+ / FastAPI / Pydantic v2 | Agent/LLM 生态最完整；自带 OpenAPI 文档 |
+| Backend | Python 3.12（conda env `eidolon`）/ FastAPI / Pydantic v2 | Agent/LLM 生态最完整；自带 OpenAPI 文档 |
 | ORM / Migration | SQLAlchemy 2.0 (sync) / Alembic | 成熟；sync session 配 FastAPI 线程池，MVP 最简单 |
 | DB | SQLite（默认）→ PostgreSQL 可切换 | 业务层只走 ORM，不写 SQLite 方言 |
-| Backend 工具链 | uv（优先，缺失时自动回退 venv+pip）/ Ruff / pytest | 快、统一 |
+| Backend 工具链 | conda 环境（不在仓库内建 `.venv`）/ pip + `requirements.lock` / Ruff / pytest | 解释器版本与 CI 对齐，环境来源显式可复现 |
 | Frontend | React 19 / Vite / TypeScript strict | 标准 |
 | Frontend 库 | TanStack Query v5（服务端状态）、Zustand v5（本地状态）、@xyflow/react（项目流程图）、Tailwind CSS v4 + shadcn 风格组件、lucide-react、React Router v7 | 全部成熟活跃，不造轮子 |
 | Frontend 工具链 | pnpm / ESLint / Prettier / Vitest | — |
@@ -337,7 +337,9 @@ EIDOLON_COMPANY_NAME=Eidolon Studio
 ## 11. 启动与种子数据
 
 启动时（main.py startup）：
-1. `create_all`（开发便利；Alembic 提供正式 initial migration）。
+1. `ensure_database_schema()`（`app/core/database.py`）：空库由 Alembic `upgrade head` 初始化；
+   已有库若不在仓库 head、或缺 `alembic_version`，抛 `DatabaseSchemaError` 拒绝启动。
+   schema 的所有者是 Alembic，启动路径上不再有 `create_all`（仅集成测试的临时库还用）。
 2. 幂等 seed：默认 Company "Eidolon Studio" + 5 个部门（Executive/Product/Research/Engineering/QA）+ 5 名员工：
    Alice(CEO)、Morgan(PM)、Bob(Researcher)、Charlie(Engineer)、Dana(QA)，
    均 runtime_type=mock，各自独立 `workspace_path=data/workspaces/{slug}`、`memory_namespace=emp_{slug}`。

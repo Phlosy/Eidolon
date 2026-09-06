@@ -1,6 +1,7 @@
 """Build the eidolon-default Phaser runtime pack from reviewed source sheets.
 
-Run with apps/server/.venv/bin/python scripts/process_auth_office_assets.py.
+Run with the project conda env:
+    conda run -n eidolon python scripts/process_auth_office_assets.py
 The source sheets remain immutable; all output is reproducible under runtime/.
 """
 

@@ -13,20 +13,20 @@ SERVER_DIR    := apps/server
 WEB_DIR       := apps/web
 RUN_DIR       := .run
 DEVCTL        := $(CURDIR)/scripts/devctl.sh
-VENV          := $(SERVER_DIR)/.venv
-UV            := $(shell command -v uv 2>/dev/null)
-PYTHON        ?= python3
 
-ifeq ($(UV),)
-  PYBIN       := $(VENV)/bin/python
-  PIPBIN      := $(VENV)/bin/pip
-  RUFFBIN     := $(VENV)/bin/ruff
-  UVICORNBIN  := $(VENV)/bin/uvicorn
-else
-  PYBIN       := cd $(SERVER_DIR) && uv run python
-  RUFFBIN     := cd $(SERVER_DIR) && uv run ruff
-  UVICORNBIN  := cd $(SERVER_DIR) && uv run uvicorn
-endif
+# Python 工具链：后端跑在**本地 conda 环境**里（默认名 eidolon），仓库内不建 .venv。
+# 环境来源显式化才有意义：conda 环境由 `make install` 按 conda-forge + Python 版本
+# 创建，与 CI 用同一份 requirements.lock；仓库内的 .venv 既不进版本控制，
+# 也不会告诉新同学它的解释器版本 —— 本地 3.14 / CI 3.12 的差异就是这么漏出来的。
+CONDA         ?= $(shell command -v conda 2>/dev/null)
+CONDA_BASE    := $(if $(CONDA),$(shell $(CONDA) info --base 2>/dev/null),)
+CONDA_ENV     ?= eidolon
+CONDA_PY      ?= 3.12   # 与 CI 的 python-version 对齐（.github/workflows/ci.yml）
+PYBIN         := $(CONDA_BASE)/envs/$(CONDA_ENV)/bin/python
+PIPBIN        := $(PYBIN) -m pip
+RUFFBIN       := $(PYBIN) -m ruff
+UVICORNBIN    := $(PYBIN) -m uvicorn
+ALEMBICBIN    := $(PYBIN) -m alembic
 
 .DEFAULT_GOAL := help
 
@@ -35,40 +35,35 @@ endif
 help:
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/^## //' | column -t -s ':'
 
-## install: 安装前后端全部依赖（自动检测 uv / pnpm）
+## install: 安装前后端全部依赖（conda 环境 + pnpm）
 .PHONY: install
 install: check-tools install-server install-web
 	@[ -f .env ] || { cp .env.example .env; echo "created .env from .env.example"; }
-	@echo "install done."
+	@echo "install done. conda env: $(CONDA_ENV) ($(PYBIN))"
 
 .PHONY: check-tools
 check-tools:
-	@command -v $(PYTHON) >/dev/null || { echo "ERROR: python3 not found (need >= 3.11)"; exit 1; }
+	@command -v conda >/dev/null || { echo "ERROR: conda not found. Install Miniconda (https://docs.conda.io/en/latest/miniconda.html) or pass CONDA=/path/to/conda"; exit 1; }
 	@command -v pnpm >/dev/null || { echo "ERROR: pnpm not found. Install: npm i -g pnpm (or https://pnpm.io/installation)"; exit 1; }
-ifndef UV
-	@echo "note: uv not found, falling back to python venv + pip"
-endif
+
+# 所有需要解释器的目标都依赖它：环境缺失时给出一行可执行的修复命令，
+# 而不是让 uvicorn/ruff 以 "no such file or directory" 的形式失败。
+.PHONY: check-env
+check-env: check-tools
+	@[ -x $(PYBIN) ] || { echo "ERROR: conda env '$(CONDA_ENV)' missing ($(PYBIN)). Run: make install-server"; exit 1; }
 
 .PHONY: install-server
-install-server:
-ifdef UV
-	@[ -d $(VENV) ] || (cd $(SERVER_DIR) && uv venv)
-	cd $(SERVER_DIR) && uv pip install -r requirements.lock
-	cd $(SERVER_DIR) && uv pip install -e . --no-deps
-else
-	$(PYTHON) -m venv $(VENV)
+install-server: check-tools
+	# --override-channels -c conda-forge：绕开 Anaconda defaults 通道的 ToS 拦截
+	# （未 `conda tos accept` 时，conda create 会直接报错退出）。
+	@[ -x $(PYBIN) ] || $(CONDA) create -y -n $(CONDA_ENV) --override-channels -c conda-forge python=$(CONDA_PY)
 	$(PIPBIN) install -r $(SERVER_DIR)/requirements.lock
 	$(PIPBIN) install -e '$(SERVER_DIR)' --no-deps
-endif
 
-## lock-server: 用当前 .venv 的实测版本重写后端 requirements.lock
+## lock-server: 用当前 conda 环境的实测版本重写后端 requirements.lock
 .PHONY: lock-server
-lock-server:
-ifdef UV
-	@cd $(SERVER_DIR) && uv pip freeze | grep -Ev '^(eidolon-server|-e )| @ |^#' | sort -f > requirements.lock
-else
-	@$(VENV)/bin/python -m pip freeze --exclude-editable | grep -Ev '^-e | @ ' | sort -f > $(SERVER_DIR)/requirements.lock
-endif
+lock-server: check-env
+	@$(PIPBIN) freeze --exclude-editable | grep -Ev '^-e | @ ' | sort -f > $(SERVER_DIR)/requirements.lock
 	@git diff --stat -- $(SERVER_DIR)/requirements.lock | tail -1
 	@echo "已重写 $(SERVER_DIR)/requirements.lock（检查 diff 后一起提交）"
 
@@ -83,13 +78,9 @@ run: dev
 
 ## dev: 同 run
 .PHONY: dev
-dev: stop
+dev: check-env stop
 	@mkdir -p $(RUN_DIR)
-ifdef UV
-	@cd $(SERVER_DIR) && nohup uv run uvicorn app.main:app --host $(API_HOST) --port $(API_PORT) > $(CURDIR)/$(RUN_DIR)/server.log 2>&1 & echo $$! > $(CURDIR)/$(RUN_DIR)/server.pid
-else
-	@cd $(SERVER_DIR) && nohup .venv/bin/uvicorn app.main:app --host $(API_HOST) --port $(API_PORT) > $(CURDIR)/$(RUN_DIR)/server.log 2>&1 & echo $$! > $(CURDIR)/$(RUN_DIR)/server.pid
-endif
+	@cd $(SERVER_DIR) && nohup $(UVICORNBIN) app.main:app --host $(API_HOST) --port $(API_PORT) > $(CURDIR)/$(RUN_DIR)/server.log 2>&1 & echo $$! > $(CURDIR)/$(RUN_DIR)/server.pid
 	@cd $(WEB_DIR) && nohup pnpm dev > $(CURDIR)/$(RUN_DIR)/web.log 2>&1 & echo $$! > $(CURDIR)/$(RUN_DIR)/web.pid
 	@failed=""; \
 	 up=0; for i in $$(seq 1 30); do curl -sf -o /dev/null "http://127.0.0.1:$(API_PORT)/health" && { up=1; break; }; sleep 1; done; \
@@ -145,21 +136,24 @@ restart: stop dev
 test: test-server test-web
 
 .PHONY: test-server
-test-server:
-ifdef UV
-	cd $(SERVER_DIR) && uv run pytest tests -q
-else
-	$(VENV)/bin/python -m pytest $(SERVER_DIR)/tests -q
-endif
+test-server: check-env
+	$(PYBIN) -m pytest $(SERVER_DIR)/tests -q
 
 ## test-integration: 真实 Docker 集成测试（需要本机 Docker daemon）
 .PHONY: test-integration
-test-integration:
-ifdef UV
-	cd $(SERVER_DIR) && uv run pytest tests/integration -m integration -q
-else
-	$(VENV)/bin/python -m pytest $(SERVER_DIR)/tests/integration -m integration -q
-endif
+test-integration: check-env
+	$(PYBIN) -m pytest $(SERVER_DIR)/tests/integration -m integration -q
+
+## migrate: 把数据库升到最新 schema（改了 model 后、重启 dev 服务前必跑）
+.PHONY: migrate
+migrate: check-env
+	@cd $(SERVER_DIR) && $(ALEMBICBIN) upgrade head && $(ALEMBICBIN) current
+
+## migrate-new: 按 model 变更自动生成一个 revision（仍需人工 review）
+.PHONY: migrate-new
+migrate-new: check-env
+	@cd $(SERVER_DIR) && $(ALEMBICBIN) revision --autogenerate -m "$(or $(M),autogen)"
+	@echo "生成后请人工检查 $(SERVER_DIR)/migrations/versions/ 里的 upgrade/downgrade"
 
 ## runtime-status: 通过 API 列出 runtime instances
 .PHONY: runtime-status
@@ -188,24 +182,16 @@ test-web:
 
 ## lint: ruff + prettier + eslint + tsc
 .PHONY: lint
-lint:
-ifdef UV
-	cd $(SERVER_DIR) && uv run ruff check app tests && uv run ruff format --check app tests
-else
+lint: check-env
 	$(RUFFBIN) check $(SERVER_DIR)/app $(SERVER_DIR)/tests
 	$(RUFFBIN) format --check $(SERVER_DIR)/app $(SERVER_DIR)/tests
-endif
 	cd $(WEB_DIR) && pnpm exec tsc --noEmit && pnpm exec eslint .
 	cd $(WEB_DIR) && pnpm exec prettier --check .
 
 ## format: ruff format + prettier（与 CI / package.json 脚本同一入口：整仓 + .prettierignore）
 .PHONY: format
-format:
-ifdef UV
-	cd $(SERVER_DIR) && uv run ruff format app tests
-else
+format: check-env
 	$(RUFFBIN) format $(SERVER_DIR)/app $(SERVER_DIR)/tests
-endif
 	cd $(WEB_DIR) && pnpm exec prettier --write .
 
 ## build: 前端生产构建

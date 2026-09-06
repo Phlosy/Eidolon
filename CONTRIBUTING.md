@@ -8,9 +8,12 @@
 git clone <repo>
 cd eidolon
 cp .env.example .env
-make install
+make install     # 后端：conda 环境 eidolon（Python 3.12）；前端：pnpm
 make run
 ```
+
+- 后端不在仓库里建 `.venv`，一律用本地 conda 环境（名字可用 `CONDA_ENV=` 改）。
+  `conda activate eidolon` 后 `pytest` / `ruff` / `alembic` 直接可用。
 
 - Web: http://localhost:26880（API 在 127.0.0.1:26881，经 Web 反代于 `/api`、`/ws`；OpenAPI 文档 http://127.0.0.1:26881/docs）
 - 提交前请运行 `make lint && make test`，CI 会强制执行相同检查。
@@ -34,14 +37,19 @@ make run
   升级 pnpm 时同改这里（`pnpm --version` 对齐）。
 - **ruff**：`apps/server/pyproject.toml` 的 `ruff~=0.16.5`，与 `requirements.lock` 一致。
   格式化器的判定会随版本变，不 pin 就会出现同一 commit 隔天红绿灯相反。
-- **Python**：CI 跑 3.12（下界侧），本地可能是更新的解释器；`requires-python >= 3.11`。
-  CI 在下界测能拦住“本地用了新版语法”，反过来（新版独有 bug）拦不住。
+- **Python**：CI 跑 3.12（`ci.yml` 的 `python-version`），本地 conda 环境也 pin 到 3.12
+  （`make install-server` 的 `CONDA_PY`），两边同一个解释器才能拦住差异。
+  `requires-python >= 3.11` 只是声明的地板，**未被 CI 覆盖**；写代码时按 3.12 能跑为准。
+  反面例子：class body 里先定一个 `def list(self, ...)` 方法，会把 builtin `list` 遮蔽掉，
+  后一个方法的 `-> list[X]` 注解在 ≤3.13 上直接 `TypeError`（3.14 的 PEP 649 惰性注解把
+  它暂住了）—— 本地 3.14 绿、CI 3.12 红就是这么来的。类方法定了 builtin 同名的时候，
+  文件顶部加 `from __future__ import annotations`。
 
 ## 约定
 
 - 后端：FastAPI + SQLAlchemy，严格分层 `API → Service → Repository`；Ruff 格式化；禁止 `print()`。
 - 开发进程：后端无 `--reload`，改完 Python 需 `make restart`。`make stop/restart` 不依赖
-  `.run/*.pid`（那里面往往是 `uv`/`pnpm` 启动器，不是真正占端口的 uvicorn/vite），而是
+  `.run/*.pid`（那里面往往是 conda/`pnpm` 启动器，不是真正占端口的 uvicorn/vite），而是
   走 `scripts/devctl.sh` 的「pid 文件 + 端口占用 + 命令行特征」三路并集 + 进程树闭包。
   手工用 `pnpm dev` / `uvicorn --port 8000` 起的孤儿也会被它回收，`make ps` 可随时查看。
 - 前端：TypeScript strict；页面组件只组装，业务组件进 `components/`；不允许巨型单文件组件。
@@ -49,4 +57,8 @@ make run
 - 任何 secret 走 `.env`，禁止提交。
 - 改了 Python 依赖必须同步锁文件：`make install-server && make lock-server`，把
   `pyproject.toml` 与 `requirements.lock` 一起提交（CI 只装 lock，lock 缺包会直接红）。
+- 改了 `apps/server/app/models/**` 必须同时交 migration：`make migrate-new M="..."`，
+  并在 `make restart` 前先 `make stop && make migrate`。启动时 schema 由 Alembic 全权拥有
+  （空库 `upgrade head`，已有库未到 head 直接 `DatabaseSchemaError` 拒绝启动），CI 另有
+  `alembic check` 挡模型漂移 —— 两边都不放行，所以不存在“本地能跑但缺 migration”。
 - 新端口必须先登记 `docs/ports.md`。

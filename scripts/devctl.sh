@@ -4,9 +4,9 @@
 # 为什么需要显式的进程树清理，而不是 kill $(cat .run/*.pid)：
 # `nohup … & echo $!` 记录的是**启动器**的 pid，不是真正的服务器：
 #
-#   /bin/sh -c 'cd apps/server && nohup uv run uvicorn … & echo $! > server.pid'
-#     └ uv run                     ← $! 常常是它
-#        └ python .venv/bin/uvicorn :26881   ← 真正占端口的人
+#   /bin/sh -c 'cd apps/server && nohup …/envs/eidolon/bin/python -m uvicorn … & echo $! > server.pid'
+#     └ sh -c / nohup 包装            ← $! 常常是它
+#        └ python -m uvicorn :26881   ← 真正占端口的人（conda 环境里的解释器）
 #   /bin/sh -c 'cd apps/web && nohup pnpm dev … & echo $! > web.pid'
 #     └ pnpm dev                   ← $! 是它
 #        └ node vite.js :26880     ← 真正占端口的人（孙辈）
@@ -73,7 +73,7 @@ resolve_pids() {
     END {
       n = split(seeds, s, " ")
       for (i = 1; i <= n; i++) if (s[i] != "" && alive[s[i]]) keep[s[i]] = 1
-      # 启动器特征：make 的 sh -c 包装、pnpm/npm 包装、uv run
+      # 启动器特征：make 的 sh -c 包装、pnpm/npm 包装、conda run / uv run
       launcher = /^(\/bin\/)?(sh|bash|zsh)( -c)? |(^|\/)(pnpm|npm|yarn|pnpx)( |$)|(^|\/)uv( |$)/
       changed = 1
       while (changed) {
