@@ -48,19 +48,56 @@ PositionDefinition   职位模板："Software Engineer"         公司级（含�
 
 ### 2.3 `position_slots`
 
-| 列                                                            | 说明                                                                                |
-| ------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `id`, `company_id`, `department_id`, `position_definition_id` |                                                                                     |
-| `slot_code`                                                   | 展示码，如 `ENG-SE-1`；`uq(department_id, position_definition_id, headcount_index)` |
-| `headcount_index`                                             | 第几号坑（§6 的 `#1 #2 #3`）                                                        |
-| `status`                                                      | **只允许** `PLANNED`\|`FROZEN`\|`CLOSED`（ADR-2）；`VACANT`/`OCCUPIED` 是派生       |
-| `manager_slot_id`                                             | 自引用：本坑向哪个坑汇报（组织树，替代"员工带上级"的含糊语义）                      |
-| `metadata_json`, `created_at`, `closed_at`                    |                                                                                     |
+| 列                                                            | 说明                                                                                                                  |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `id`, `company_id`, `department_id`, `position_definition_id` |                                                                                                                       |
+| `slot_code`                                                   | 展示码，如 `ENG-SE-1`；`uq(department_id, position_definition_id, headcount_index)`                                   |
+| `headcount_index`                                             | 第几号坑（§6 的 `#1 #2 #3`）                                                                                          |
+| `status`                                                      | **只允许**人工值 `PLANNED`\|`ACTIVE`\|`FROZEN`\|`CLOSED`（ADR-2：行政态）；`VACANT`/`OCCUPIED` 属占用态，**永远派生** |
+| `manager_slot_id`                                             | 自引用：本坑向哪个坑汇报（组织树，替代"员工带上级"的含糊语义）                                                        |
+| `metadata_json`, `created_at`, `closed_at`                    |                                                                                                                       |
 
-派生：`slot_state(slot, active_assignments)` = `CLOSED` 若 closed；`FROZEN` 若冻结；
-`OCCUPIED` 若有生效 PRIMARY；否则 `VACANT`。
+两个轴不得混成一个字段（拍板要求，防漂移的接口层表达）：
 
-### 2.4 `position_assignments`（由 `employments` 演化，ADR-1）
+```python
+def occupancy_state(slot, active_assignments) -> OccupancyState:
+    if slot.administrative_status == CLOSED: return CLOSED
+    if slot.administrative_status == FROZEN: return FROZEN   # 冻结坑不报空缺，避免误导招聘
+    return OCCUPIED if any(a.is_primary and a.effective_to is None
+                           for a in active_assignments) else VACANT
+```
+
+```json
+{
+  "slot_id": 7,
+  "slot_code": "ENG-SE-1",
+  "administrative_status": "ACTIVE",
+  "occupancy_status": "OCCUPIED",
+  "incumbent": { "employee_id": 24, "name": "Charlie", "since": "…" }
+}
+```
+
+`VACANT`/`OCCUPIED` 在枚举里根本不存在写入口 —— 试图入列就会在迁移与守卫测试里被拒。
+
+### 2.4 `PositionAssignment` —— 物理表仍为 `employments`
+
+> **拍板记录（ADR-1 修订，用户 2026-08-09 定稿）**
+>
+> ```text
+> DB table      : employments          （不改名）
+> Domain entity : PositionAssignment   （领域层 / 仓库层 / 文档统一用这个名字）
+> Meaning       : 唯一的任职关系 Source of Truth
+> ```
+>
+> 不改物理表名的理由：SQLite `ALTER TABLE RENAME` 会涉及引用它的 FK 子句，是本次设计里
+> 风险最高、收益最低的一步；而“两份任职历史”这个真正要防的问题，靠**单一实体映射**已经解决。
+>
+> 为什么必须把这条写进文档：否则后继开发者会把 `employments` 当成与职位无关的
+> “HR 入离职记录”，再开第二张表。调岗、晋升、降职、代理、兼任**只操作这一条时间轴**。
+>
+> ORM：`class PositionAssignment(Base): __tablename__ = "employments"`；
+> `models/lifecycle.py` 保留**名字别名** `Employment = PositionAssignment`（不是第二个 mapper），
+> 仅供未迁移调用点过渡，P15 清除。
 
 | 列                                                                                                                          | 来源                            | 说明                                               |
 | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | -------------------------------------------------- |

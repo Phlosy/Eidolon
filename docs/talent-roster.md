@@ -37,22 +37,41 @@ OFFBOARDING   离职流程中
 OFFBOARDED    已离职（保留历史，不在名册默认视图）
 ```
 
-**派生规则（唯一函数，ADR-4）**
+**派生规则（唯一入口：`WorkforceStatusResolver`，ADR-4 拍板正式命名）**
 
+两个正交轴（拍板口径）：
+
+```text
+Lifecycle Axis （来自 employees.lifecycle_status）
+  ONBOARDING · ACTIVE · SUSPENDED · TRANSFERRING · OFFBOARDING · OFFBOARDED
+
+Assignment Axis （来自 employments / PositionAssignment）
+  no active assignment · active PRIMARY · transferring（旧关新未开之间）
 ```
-workforce_status(employee, active_primary_assignment, job_running):
-    if lifecycle_status == offboarded:    OFFBOARDED
-    if lifecycle_status == offboarding:   OFFBOARDING
-    if lifecycle_status == suspended:     SUSPENDED
-    if lifecycle_status == transferring:  TRANSFERRING
-    if lifecycle_status == onboarding or person_resources_not_ready: ONBOARDING
-    if active_primary_assignment is not None: ASSIGNED
+
+两个轴**都不加状态列**；前端看到的 `AVAILABLE` / `ASSIGNED` / … 是下面这个
+唯一 resolver 的输出（API / service / 前端均不得各自再推一遍）：
+
+```python
+# app/workforce/status.py —— 单一事实源
+resolve(employee, lifecycle, active_assignments) -> WorkforceStatus
+```
+
+```text
+resolve(employee, lifecycle, active_assignments):
+    if lifecycle == offboarded:    OFFBOARDED
+    if lifecycle == offboarding:   OFFBOARDING
+    if lifecycle == suspended:     SUSPENDED
+    if lifecycle == transferring:  TRANSFERRING
+    if lifecycle == onboarding or person_resources_not_ready: ONBOARDING
+    if any(a.is_primary and a.effective_to is None for a in active_assignments): ASSIGNED
     return AVAILABLE
 ```
 
 - `RECRUITING` 只在"招募草稿"存在时出现在候选列表，不落 `employees` 行（避免半个人进名册）。
-- 状态**不入库**：由 `position_service.workforce_status()` 读时计算，杜绝漂移；
-  名册分页需要索引时再引入物化列，且唯一写入方仍是该函数（现在不留半实现）。
+- 状态**不入库**：由 `WorkforceStatusResolver` 读时计算，杜绝漂移。
+  将来若名册需对百万级数据筛 `AVAILABLE`，再引入 materialized status / generated column /
+  denormalized read model，但那时**写入方仍只能是这个 resolver**（现在不留半实现列）。
 - `AVAILABLE` 的员工必须**可以**被派任务（人级 runtime 就绪），只是不承担职位职责；
   不允许任何代码因为"没有职位"而把该员工排除在工作循环之外 —— 这条有测试（§6 #4）。
 

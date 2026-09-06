@@ -30,7 +30,11 @@ AssessmentRun       一次考核（谁、对谁、依据哪些证据、算法版
 `evidence_kinds(JSON)`、`order`、`uq(profile_id, code)`。
 
 一条 criterion 可以贡献给多个 competency 吗？第一版：**一对多**用 `assessment_criterion_competencies`
-（`criterion_id`、`competency_definition_id`、`share` 0-1，同一 criterion 的 `Σshare ≤ 1`）。
+`assessment_criterion_competencies`（`criterion_id`、`competency_definition_id`、
+**`contribution_weight`** 0-1、**`evidence_type`**）；同一 criterion 的 `Σcontribution_weight ≤ 1`。
+`evidence_type` 让"同一维度不向同一能力重复供证"成为声明而非约定
+（例：`Delivery Reliability` 的执行类证据只计给 `execution`，质量类证据计给 `quality_reliability`）。
+拍板理由：硬压一对一会逼设计为了库结构拆出许多语义重复的 Criterion。
 理由：`Delivery Reliability` 同时轻微支撑 `execution` 与 `quality_reliability` 是真实情况，
 硬压成一一对应会逼设计扭曲。约束由 `validate_profile()` 在写入与启动时检查。
 
@@ -41,10 +45,35 @@ AssessmentRun       一次考核（谁、对谁、依据哪些证据、算法版
 `status`(`pending`|`running`|`completed`|`failed`|`superseded`)、
 `window_from`/`window_to`（本 run 只看这段时间的证据）、
 `evidence_ids(JSON)`（**采集到的证据 id 清单，可重放的关键**）、
-`algorithm_version`、`inputs_hash`（sha256(evidence ids + weights + config) → 同输入同输出的证明）、
+`algorithm_version`、`inputs_hash`（**规范化输入指纹**，覆盖范围见 §1.5）、
 `started_at`/`finished_at`、`error`、`metadata_json`。
 
 `inputs_hash` 是"可追溯"的硬保证：同一 hash 必须产出同一结果，测试直接重放验证。
+
+### 1.5 `inputs_hash` 的覆盖范围（拍板修订：**更严格**）
+
+hash 输入必须含以下全部项（按 key 排序后规范化序列化，再取 sha256）：
+
+```text
+assessment_profile_version        含 profile.id + updated_at
+assessment_version                考核引擎版本（与 algorithm_version 同步）
+criterion definitions             每个 criterion 的 code/weight/evidence_kinds + 中间表的
+                                  contribution_weight / evidence_type
+evidence ids + evidence hashes     不只是 id：每条证据的 signal/quality/weight/occurred_at 规范化摘要
+employee_id
+evaluated time range              window_from / window_to
+relevant configuration            half_life_days / K / LEARN_RATE / clamp 区间 / source_quality 表
+```
+
+因此承诺分成两段，**不笼统承诺确定性**：
+
+```text
+非 LLM 聚合部分：  same normalized inputs + same assessment engine version
+                 = 完全相同的 result（确定性，测试重放断言）
+LLM 判定部分：     不承诺同输入必同输出，但记录完整请求上下文使其可复现：
+                   model / provider / prompt_version / temperature /
+                   request_hash / raw_result_hash
+```
 
 ### 1.4 `assessment_results`
 
@@ -137,7 +166,7 @@ criterion_confidence = clamp(n / (n + K), 0, 1)   K = 3（3 单位证据 ≈ 0.5
 ### 4.3 能力分更新（有界 EMA，可解释）
 
 ```
-raw_new       = Σ over criteria (share(c,i) × observed(c))   # 该 competency 收到的观测
+raw_new       = Σ over criteria (contribution_weight(c,i) × observed(c))   # 该 competency 收到的观测
 delta         = raw_new − score_old
 step          = clamp(LEARN_RATE × criterion_confidence, 0.02, 0.35)   # LEARN_RATE = 0.25
 score_new     = round(score_old + step × delta)              # 证据不足时几乎不动

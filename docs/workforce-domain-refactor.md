@@ -114,21 +114,27 @@ class Employment(Base):                      # employments：注释写明"IS the
 
 ## 4. ADR（决定，锁定后不再讨论）
 
-### ADR-1 收编 `positions`/`employments`，不造第三套概念
+### ADR-1 收编 `positions`/`employments`，不造第三套概念（拍板修订：**物理表不改名**）
 
 - `positions` → 新表 `position_definitions`；旧行按 `(department, title)` 生成定义 + 一个编制。
-- `employments` → **重命名**为 `position_assignments` 并加列（`assignment_type`、`is_primary`、
-  `assigned_by`、`reason`、`position_slot_id`）。`id`、`employee_id`、`manager_employee_id`、
-  `effective_from/to`、`metadata_json` **原值保留**。
+- `employments` → **表名不变**，只加列（`position_slot_id`、`assignment_type`、`is_primary`、
+  `assigned_by`、`reason`、`position_title_snapshot`）；领域实体正式命名 `PositionAssignment`，
+  `models/lifecycle.py` 保留名字别名 `Employment = PositionAssignment`（**不是第二个 mapper**）。
+  `id`、`employee_id`、`manager_employee_id`、`effective_from/to`、`metadata_json` **原值保留**。
 - 只有 `position_slots` 是全新表。
-- 备选（否决）：新表 `position_assignments` 与 `employments` 并存 —— 会出现两份任职历史，
-  谁写谁读永远说不清。
+- 两条否决：❌ 新表与 `employments` 并存（两份任职历史，说不清谁写谁读）；
+  ❌ `op.rename_table`（SQLite 改名会牵扯引用它的 FK 子句，风险最高收益最低，
+  而“两个真相”靠单一实体映射已消除）。详见 `docs/position-system.md` §2.4 拍板记录。
 
 ### ADR-2 Slot 的占用态是派生态
 
-`position_slots.status` 只允许人工值 `PLANNED / FROZEN / CLOSED`；
-`VACANT / OCCUPIED` 由"是否存在生效中的 PRIMARY 任职"计算，**不提供写入口**。
-配测试：写入 `OCCUPIED` 直接 fail（枚举里就没这个值）。
+`position_slots` 存**行政态** `administrative_status ∈ {PLANNED, ACTIVE, FROZEN, CLOSED}`
+（这四个值才是人/业务决定的）；`occupancy_status ∈ {VACANT, OCCUPIED, FROZEN, CLOSED}`
+由“是否存在生效中的 PRIMARY 任职”计算，**不提供写入口**，也不入列。
+API 必返两个字段（拍板要求），不得合并成一个 `status`：
+`{"administrative_status": "ACTIVE", "occupancy_status": "OCCUPIED"}`。
+配测试：枚举里没有 `VACANT`/`OCCUPIED` 的写入值，试图入列即 fail；
+“库里写 VACANT 而实际有人任职”这个漂移场景**结构上不可表达**。
 
 ### ADR-3 权限分两层，沿用 Desired State + Provisioner
 
@@ -140,7 +146,7 @@ class Employment(Base):                      # employments：注释写明"IS the
 ### ADR-4 Workforce 状态是**读时派生**，不加列
 
 `RECRUITING / ONBOARDING / AVAILABLE / ASSIGNED / TRANSFERRING / SUSPENDED / OFFBOARDING / OFFBOARDED`
-由 (`lifecycle_status`, 是否有生效 PRIMARY) 单一函数派生（`position_service.workforce_status()`）。
+由 (`lifecycle_status`, 是否有生效 PRIMARY) 单一函数派生（**正式命名 `WorkforceStatusResolver`**，`app/workforce/status.py`）。
 理由：这两个轴本来就有正交状态，物化列必然漂移。
 **AVAILABLE 不是异常态**：已入册、人级资源就绪、暂无职位 —— 完全合法。
 若将来名册分页需要，再加物化列，届时以本函数为唯一写入方（现在不留半成品列）。
@@ -219,15 +225,15 @@ Company
 **总原则**：先加后删；每一步 schema 与模型同步（`alembic check` 无漂移）；回填分批 + 时间预算 +
 可重入（沿用 v10 的做法）；旧列保留为镜像，删除列放在最后一个迁移且只删已无人读的空表。
 
-| 迁移                                           | 内容                                                                                                                                                                                                                                                                                                                                                                 | 回填                                                                                                                                                                                                                                 | 可逆性                                   |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
-| **v12** `position_definitions`                 | 新表 + `company_id`/`code`/`job_family`/`level`/`description`/`responsibilities(JSON)`/`career_path_metadata(JSON)`/`assessment_profile_id`/`template_scope`/`legacy_role`；`uq(company_id, code)`；`position_definition_packages`（定义↔默认包）                                                                                                                    | 为每个现存 `(department, title)` 造一个定义，`legacy_role` 用 `DEPARTMENT_TO_ROLE[dept.slug]` 反推，默认包 = `ROLE_TO_PACKAGE_SLUG` 指向的现有包                                                                                     | drop 表即可逆                            |
-| **v13** `position_slots`                       | 新表，FK→department/definition；`uq(department_id, definition_id, headcount_index)`；`status` 默认 `PLANNED`；`manager_slot_id` 自引用                                                                                                                                                                                                                               | 每个部门按现有 `positions` 行各开 1 个 slot（index=1），status 由是否有生效 employment 决定（先填 PLANNED，生效态由派生）                                                                                                            | drop 表                                  |
-| **v14** `employments` → `position_assignments` | `op.rename_table`；加 `position_slot_id`/`assignment_type`/`is_primary`/`assigned_by`/`reason`；`position_id` 置 nullable 并标 deprecated；索引 `ix(employee_id, effective_to)`、`uq` 部分唯一 `(position_slot_id) WHERE effective_to IS NULL AND assignment_type='PRIMARY'`；同样 `uq` for `(employee_id) WHERE effective_to IS NULL AND assignment_type='PRIMARY'` | 每条 employment 用 `(department_id, position_id)` 找到 v13 的 slot 回填；`assignment_type='PRIMARY'`，`is_primary=True`，`reason=metadata_json.kind`；缺 slot 的历史行保留 slot_id=NULL 并在 metadata 记 `orphan:true`（**不删行**） | rename 反向 + drop 列                    |
-| **v15** 能力域                                 | `competency_domains`、`competency_definitions`（`uq(code)`、`domain_id`、`kind∈{general,professional}`）、`employee_competencies`（`uq(employee,definition)`、`score`、`confidence`、`evidence_count`、`last_assessed_at`、`last_used_at`、`trend`、`status∈{UNRATED,PROVISIONAL,ASSESSED}`）、`competency_evidence`                                                 | 目录 seed（10 通用 + §17 专业域）；**不给任何员工造能力行**（新员工 UNRATED）                                                                                                                                                        | drop 表                                  |
-| **v16** 职位×能力                              | `position_competency_requirements`（`uq(definition,competency)`、`minimum`、`weight`、`kind`）                                                                                                                                                                                                                                                                       | 5 个内置定义各配一组需求（`legacy_role` 已知者用 §26-28 的权重）                                                                                                                                                                     | drop 表                                  |
-| **v17** 考核域                                 | `assessment_profiles`、`assessment_criteria`、`assessment_runs`、`assessment_results`、`career_events`；`PositionDefinition.assessment_profile_id` FK 生效                                                                                                                                                                                                           | 内置 3 个 profile（Software Engineer / Researcher / CEO-Manager）+ criteria 权重；为**已有** employment 历史生成 `career_events`（append-only，不改旧行）                                                                            | drop 表                                  |
-| **v18** 清理                                   | drop `positions`（空表，内容已在 v12/v13 收编）、drop `position_assignments.position_id`、`employees.role` 保留列但注释 deprecated                                                                                                                                                                                                                                   | —                                                                                                                                                                                                                                    | 需要前向修复，不做自动 downgrade（写明） |
+| 迁移                                                                    | 内容                                                                                                                                                                                                                                                                                                                                        | 回填                                                                                                                                                                                                                                                                                                                                                                                                                   | 可逆性                                   |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| **v12** `position_definitions`                                          | 新表 + `company_id`/`code`/`job_family`/`level`/`description`/`responsibilities(JSON)`/`career_path_metadata(JSON)`/`assessment_profile_id`/`template_scope`/`legacy_role`；`uq(company_id, code)`；`position_definition_packages`（定义↔默认包）                                                                                           | 为每个现存 `(department, title)` 造一个定义，`legacy_role` 用 `DEPARTMENT_TO_ROLE[dept.slug]` 反推，默认包 = `ROLE_TO_PACKAGE_SLUG` 指向的现有包                                                                                                                                                                                                                                                                       | drop 表即可逆                            |
+| **v13** `position_slots`                                                | 新表，FK→department/definition；`uq(department_id, definition_id, headcount_index)`；`status` 默认 `PLANNED`；`manager_slot_id` 自引用                                                                                                                                                                                                      | 每个部门按现有 `positions` 行各开 1 个 slot（index=1），status 由是否有生效 employment 决定（先填 PLANNED，生效态由派生）                                                                                                                                                                                                                                                                                              | drop 表                                  |
+| **v14** `employments` 加列（**不改表名**；实体叫 `PositionAssignment`） | 表名不变、只 `ADD COLUMN`：加 `position_slot_id`/`assignment_type`/`is_primary`/`assigned_by`/`reason`/`position_title_snapshot`；`position_id` 保留为 deprecated 只读；索引 `ix(employee_id, effective_to)`、两个部分唯一 `(position_slot_id) WHERE effective_to IS NULL AND assignment_type='PRIMARY'` 与 `(employee_id) WHERE … PRIMARY` | 每条 employment 用 `(department_id, position_id)` 找到 v13 的 slot 回填；`assignment_type='PRIMARY'`，`is_primary=True`，`reason=metadata_json.kind`；**先清洗后建索引**：同一员工/同一 slot 出现多条生效 PRIMARY 时按 `effective_from` 最新保留，其余确定性关窗并在 `metadata_json.normalized` 留痕，清洗条数写进迁移输出（不静默改历史）；缺 slot 的行保留 slot_id=NULL 并在 metadata 记 `orphan:true`（**不删行**） | drop 新增列（表名未动，无需反向 rename） |
+| **v15** 能力域                                                          | `competency_domains`、`competency_definitions`（`uq(code)`、`domain_id`、`kind∈{general,professional}`）、`employee_competencies`（`uq(employee,definition)`、`score`、`confidence`、`evidence_count`、`last_assessed_at`、`last_used_at`、`trend`、`status∈{UNRATED,PROVISIONAL,ASSESSED}`）、`competency_evidence`                        | 目录 seed（10 通用 + §17 专业域）；**不给任何员工造能力行**（新员工 UNRATED）                                                                                                                                                                                                                                                                                                                                          | drop 表                                  |
+| **v16** 职位×能力                                                       | `position_competency_requirements`（`uq(definition,competency)`、`minimum`、`weight`、`kind`）                                                                                                                                                                                                                                              | 5 个内置定义各配一组需求（`legacy_role` 已知者用 §26-28 的权重）                                                                                                                                                                                                                                                                                                                                                       | drop 表                                  |
+| **v17** 考核域                                                          | `assessment_profiles`、`assessment_criteria`、`assessment_runs`、`assessment_results`、`career_events`；`PositionDefinition.assessment_profile_id` FK 生效                                                                                                                                                                                  | 内置 3 个 profile（Software Engineer / Researcher / CEO-Manager）+ criteria 权重；为**已有** employment 历史生成 `career_events`（append-only，不改旧行）                                                                                                                                                                                                                                                              | drop 表                                  |
+| **v18** 清理                                                            | drop `positions`（空表，内容已在 v12/v13 收编）、drop `position_assignments.position_id`、`employees.role` 保留列但注释 deprecated                                                                                                                                                                                                          | —                                                                                                                                                                                                                                                                                                                                                                                                                      | 需要前向修复，不做自动 downgrade（写明） |
 
 **迁移正确性的机器验收**（每个迁移都必须过）：
 
@@ -291,14 +297,14 @@ Slot 占用态、workforce status、Fit 都是函数输出；任何试图持久�
 
 ## 9. 风险登记（会真咬人的那几个）
 
-| 风险                                           | 后果                                       | 处置                                                                                  |
-| ---------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `seed_lifecycle()` 每次启动都跑                | 与迁移打架、重复造 slot                    | 幂等键：`uq(dept,definition,index)` + 只补空，不重建                                  |
-| 教程进度按 step id 存库                        | 改步骤会清空老玩家进度                     | 步骤 id 冻结，只换 requirement 判定（P13 明确）                                       |
-| `Position.title` 自由文本 vs `definition.code` | 老数据同名不同义                           | 回填时按 `(dept,title)` 归并，冲突保留 `title` 快照到 assignment                      |
-| SQLite `rename_table` + 部分唯一索引           | 老 SQLite 行为差异                         | v14 用 `op.rename_table`（SQLite 底层 `ALTER TABLE RENAME TO`），索引单独建；实测两向 |
-| 6 个未格式化 WIP 文件                          | CI 的 `ruff format --check` 红（已进历史） | 与本次重构无关，但挡 `make lint`；等用户点头单独一条 chore(style)                     |
-| 26 个 role 读点分阶段清理                      | 中途出现"两个真相"                         | ADR-5 白名单：未迁移的读点必须留在白名单里，迁移完一个删一个，白名单只减不增          |
+| 风险                                           | 后果                                       | 处置                                                                                                                                                                       |
+| ---------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `seed_lifecycle()` 每次启动都跑                | 与迁移打架、重复造 slot                    | 幂等键：`uq(dept,definition,index)` + 只补空，不重建                                                                                                                       |
+| 教程进度按 step id 存库                        | 改步骤会清空老玩家进度                     | 步骤 id 冻结，只换 requirement 判定（P13 明确）                                                                                                                            |
+| `Position.title` 自由文本 vs `definition.code` | 老数据同名不同义                           | 回填时按 `(dept,title)` 归并，冲突保留 `title` 快照到 assignment                                                                                                           |
+| SQLite `rename_table` + 部分唯一索引           | 老 SQLite 行为差异                         | ~~SQLite `rename_table` 行为差异~~ —— 拍板后 v14 **不再改名**，只 `ADD COLUMN` + 建索引；真正危险降为“存量脏数据 vs 部分唯一索引”，处置见 v14 行（先清洗、留痕、输出条数） |
+| 6 个未格式化 WIP 文件                          | CI 的 `ruff format --check` 红（已进历史） | 与本次重构无关，但挡 `make lint`；等用户点头单独一条 chore(style)                                                                                                          |
+| 26 个 role 读点分阶段清理                      | 中途出现"两个真相"                         | ADR-5 白名单：未迁移的读点必须留在白名单里，迁移完一个删一个，白名单只减不增                                                                                               |
 
 ---
 
@@ -317,3 +323,28 @@ Slot 占用态、workforce status、Fit 都是函数输出；任何试图持久�
    Engineering 专属 entitlement 被 REMOVE、Research 被 ADD、base 保留；
    旧 assignment `effective_to` 关闭（不删），Fit/考核档案/工位随之变化。
 7. 全库回归：`pytest`、`vitest`、`build`、`alembic check`、历史不变量测试全绿。
+
+---
+
+## 11. 拍板记录（ADR 定稿）
+
+用户已亽 5 项调整全部拍板通过（并追加一条命名要求），本表是权威结论，与正文冲突时以本节为准：
+
+| #   | 拍板                                                                           | 与初稿的差异                                                                                                                                                                                                                                                   |
+| --- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `PositionAssignment` **不新建表**，由现有 `employments` 演进为唯一任职关系 SoT | 初稿要 `op.rename_table`；拍板为**物理表名不变**，只在领域层叫 `PositionAssignment`，文档写死映射（避免后人把 HR 入离职与任职关系混用）                                                                                                                        |
+| 2   | Slot 的 `VACANT`/`OCCUPIED` 改为派生态                                         | 初稿枚举好包含 `PLANNED/FROZEN/CLOSED`；拍板**补上 `ACTIVE`**（行政态四个值），并要求 API 分开返 `administrative_status` 与 `occupancy_status`                                                                                                                 |
+| 3   | `workforce_status` 不落库，并且**正式命名 `WorkforceStatusResolver`**          | 初稿只说"单一函数派生"；拍板要求它成为具名组件，API / service / 前端都不得各自再推一遍；Lifecycle Axis 与 Assignment Axis 正交写入文档                                                                                                                         |
+| 4   | Criterion → Competency 一对多，中间表带权重                                    | 字段按拍板命名为 `contribution_weight` + `evidence_type`（后者让"同一证据不重复供证"成为声明）                                                                                                                                                                 |
+| 5   | 保留 `assessment_runs.inputs_hash`，但**覆盖面更宽**                           | 需覆盖 profile 版本 / criterion 定义 / 证据 id **与内容摘要** / employee / 时间区间 / 算法版本 / 相关配置；并区分两段承诺：非 LLM 部分确定性可重放，LLM 部分只承诺可追溯（`model`/`provider`/`prompt_version`/`temperature`/`request_hash`/`raw_result_hash`） |
+
+拍板后的领域骨架（取代本文 §5 图中的命名歧义）：
+
+```text
+Employee ── lifecycle axis（不新增列）
+    └── employments  （DB 表名｜领域实体 PositionAssignment）
+            └── PositionSlot （administrative_status 入库；occupancy_status 派生）
+
+PositionSlot Occupancy = derived from active PRIMARY employment
+WorkforceStatus        = Lifecycle State + Assignment State + Transfer State（WorkforceStatusResolver）
+```
