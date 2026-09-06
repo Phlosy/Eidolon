@@ -164,6 +164,37 @@ LearningKind:    reflection | research
 3. `employees.memory_namespace`、`workspace_path` 全局唯一。
 4. Task 状态机合法迁移：`backlog→todo→in_progress→in_review→done/failed/rejected`（rejected→todo 允许 QA 驳回重做）。
 5. Runtime 切换只改 `employees.runtime_type/runtime_config`；身份、记忆、技能、经历全部保留。
+6. （重构目标，见 §3.5）人级数据不得因职位变化被删除或重置。
+7. （重构目标）Trait 不得直接决定 Competency、成功率、置信度或验收 verdict。
+
+### 3.5 劳动力领域：人才经营 × 组织经营（**设计定稿，尚未实施**）
+
+> 状态说明：本节描述的是已定稿的目标领域模型与迁移方案，**当前代码尚未实现**。
+> 现状仍是 `Employee.role` 直接承载职位语义（v0.4 已有 `positions` / `employments` 两张半成品表）。
+> 实施进度以 [docs/workforce-domain-refactor.md](workforce-domain-refactor.md) 的 §7 阶段表为准。
+
+核心切分（六个词各管一件事，禁止互相代偿）：
+
+| 概念 | 归属 | 语义 |
+|---|---|---|
+| `Employee` | 人才经营 | **这个人是谁** |
+| `PositionDefinition` | 组织经营 | **公司需要什么职位** |
+| `PositionSlot` | 组织经营 | **哪个部门开第几号编制**（VACANT/OCCUPIED 为派生态） |
+| `PositionAssignment` | 连接点 | **这段时间这个人承担这个坑** |
+| `Trait` | 人 | 倾向于怎样工作（不考核、不给分） |
+| `Competency` | 人 | 已被证据证明能做什么（0-100 + 独立置信度） |
+| `Skill` | 人 | 具体可复用的做法（Competency 的证据来源之一） |
+| `Assessment` | 度量过程 | 能力如何被量出来（Work→Evidence→Assessment→Competency） |
+
+由此得到的两条产品口径：
+
+- 招募完成先进**人才名册**（`Talent Roster`），状态 `AVAILABLE` 是合法常态，不要求立刻有职位。
+- 权限分两层：人级（workspace / git / docs / runtime / provider / base-employee 包，**永不随调岗消失**）
+  与职位级（随 `PositionAssignment` ADD/REMOVE），继续复用 Desired State + Provisioner + Access Package。
+
+规格文档：[人才名册](talent-roster.md) · [组织与职位](position-system.md) ·
+[能力体系](competency-system.md) · [考核体系](assessment-system.md) ·
+[重构总纲与迁移方案](workforce-domain-refactor.md)
 
 ## 4. Agent Runtime Gateway
 
