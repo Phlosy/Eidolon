@@ -53,5 +53,6 @@
     "deleteConfirm": "Send confirmation email",
     "deleteSent": "Confirmation email sent to {{email}}. Open the link in it to finish deleting the account.",
     "deleteSentDev": "Development mode: the deletion confirmation link is printed to the backend console log (eidolon.email)."
-  }
+  },
+  "positions": "Positions"
 }

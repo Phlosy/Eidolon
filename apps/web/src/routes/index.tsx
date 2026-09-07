@@ -24,6 +24,16 @@ const EmployeeDetailPage = lazy(() =>
     default: module.EmployeeDetailPage,
   })),
 );
+const PositionsPage = lazy(() =>
+  import("../pages/positions/positions-page").then((module) => ({
+    default: module.PositionsPage,
+  })),
+);
+const PositionDetailPage = lazy(() =>
+  import("../pages/positions/position-detail-page").then((module) => ({
+    default: module.PositionDetailPage,
+  })),
+);
 const ProjectsPage = lazy(() =>
   import("../pages/projects/projects-page").then((module) => ({ default: module.ProjectsPage })),
 );
@@ -118,6 +128,8 @@ export const router = createBrowserRouter([
           { path: "/office", element: route(<OfficePage />) },
           { path: "/employees", element: route(<EmployeesPage />) },
           { path: "/employees/:id", element: route(<EmployeeDetailPage />) },
+          { path: "/positions", element: route(<PositionsPage />) },
+          { path: "/positions/:id", element: route(<PositionDetailPage />) },
           { path: "/projects", element: route(<ProjectsPage />) },
           { path: "/projects/:id", element: route(<ProjectDetailPage />) },
           { path: "/projects/:id/reviews/:reviewId", element: route(<ReviewRoomPage />) },

@@ -10,6 +10,7 @@ import {
   Users,
   X,
   type LucideIcon,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { useEmployees } from "../../hooks/useEmployees";
@@ -51,7 +52,10 @@ export function CompanySidebar({
     },
     {
       key: "workforce",
-      items: [{ to: "/employees", key: "employees", icon: Users, badge: employees.length }],
+      items: [
+        { to: "/employees", key: "employees", icon: Users, badge: employees.length },
+        { to: "/positions", key: "positions", icon: ClipboardList },
+      ],
     },
     {
       key: "work",

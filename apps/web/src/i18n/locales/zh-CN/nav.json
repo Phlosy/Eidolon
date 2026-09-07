@@ -53,5 +53,6 @@
     "deleteConfirm": "发送确认邮件",
     "deleteSent": "确认邮件已发送至 {{email}}，点击邮件中的链接完成注销。",
     "deleteSentDev": "开发模式：注销确认链接已打印到后端控制台日志（eidolon.email）。"
-  }
+  },
+  "positions": "职位标准"
 }

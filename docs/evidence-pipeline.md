@@ -70,3 +70,14 @@ GET  /employees/{id}/competency-evidence?competency=&source_type=&…   证据�
 - 能力衰减曲线（只允许标记 stale，不改分）、自动晋升/推荐（P8+）。
 - 事件实时消费在部分模块仍是"事件后重扫"语义（reconcile 保证一致），
   完整 per-event 接线可随业务模块继续接入 pipeline.handle_event。
+---
+
+## 6. P6.1 附记 —— 测试隔离技术债调查（P7 阶段登记，不阻塞主线）
+
+现象：`test_updates` 偶发全量失败、单跑必绿；历史 batch-reader 3-SELECT 断言也曾出现
+同款一过性失败。上一阶段已给 batch-reader 加**同线程过滤**（断言语义不变，后台线程
+查询不再污染计数）。`test_updates` 剩下的是**时序型**：update-checker 线程 / lifespan
+后台 consumer 与测试共享 engine，偶发在断言窗口内插入状态推进 —— 未找到确定根因
+（不采用 retry/sleep/rerun-until-green 掩盖）。后续若需要根治：把更新检查线程改为
+可注入 clock + 每测试独立事件循环（fixture 级 `monkeypatch`），并让 lifespan 后台
+任务统一走 `EventLoopFixture` 生命周期管理（登记为 P6.1，独立、不阻塞 P7 主线）。

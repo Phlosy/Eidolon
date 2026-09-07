@@ -1328,6 +1328,100 @@ export interface CompetencyExplanation {
   }>;
 }
 
+// ---------- P7: Position competency profile (docs/position-competency-profile.md) ----------
+
+/** 岗位对能力的要求类型 —— 与后端 REQUIREMENT_TYPES 一致（契约测试钉死）。 */
+export const POSITION_REQUIREMENT_TYPES = ["required", "preferred"] as const;
+export type PositionRequirementType = (typeof POSITION_REQUIREMENT_TYPES)[number];
+
+/** 画像版本状态。 */
+export const POSITION_PROFILE_STATUSES = ["draft", "active", "retired"] as const;
+export type PositionProfileStatus = (typeof POSITION_PROFILE_STATUSES)[number];
+
+export interface ProfileRequirement {
+  id: number;
+  competency_definition_id: number;
+  code: string;
+  name: string;
+  domain_id: number | null;
+  domain_code: string;
+  domain_name: string;
+  kind: "general" | "professional";
+  requirement_type: PositionRequirementType;
+  minimum_score: number | null;
+  target_score: number | null;
+  minimum_confidence: number | null;
+  critical: boolean;
+  priority: number;
+  weight: number;
+  notes: string;
+}
+
+export interface ProfileIntegrationCoverage {
+  required_count: number;
+  covered_count: number;
+  uncovered_competency_ids: number[];
+}
+
+export interface ProfileIntegrity {
+  status: string;
+  codes: string[];
+  coverage: ProfileIntegrationCoverage;
+  read_only: boolean;
+}
+
+export interface ProfileAssessmentInfo {
+  id: number;
+  code: string;
+  version: number;
+  name: string;
+  algorithm_version: string;
+}
+
+export interface ProfileVersionItem {
+  id: number;
+  version: number;
+  status: PositionProfileStatus;
+  effective_from: string | null;
+  effective_to: string | null;
+  published_at: string | null;
+  published_note: string;
+  requirement_count: number;
+}
+
+export interface PositionCompetencyProfile {
+  position_definition_id: number;
+  position_code: string;
+  configured: boolean;
+  profile_version: number | null;
+  profile_status: PositionProfileStatus | null;
+  effective_from: string | null;
+  effective_to: string | null;
+  assessment_profile: ProfileAssessmentInfo | null;
+  general: ProfileRequirement[];
+  professional: ProfileRequirement[];
+  integrity: ProfileIntegrity;
+  versions: ProfileVersionItem[];
+}
+
+export interface PositionProfileSummary {
+  position_definition_id: number;
+  code: string;
+  name: string;
+  active_version: number | null;
+  profile_status: PositionProfileStatus | null;
+  requirement_count: number;
+  assessment_profile_code: string | null;
+}
+
+export interface ProfileTemplate {
+  template_version_id: number;
+  position_code: string;
+  position_name: string;
+  version: number;
+  requirement_count: number;
+}
+
 // ---------- v0.4: Employee lifecycle (docs/design-v0.4-lifecycle.md §10) ----------
 
 export type LifecycleStatus =

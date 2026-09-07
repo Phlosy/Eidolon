@@ -118,7 +118,14 @@ def occupancy_state(slot, active_assignments) -> OccupancyState:
 - `uq_employee_primary`：`UNIQUE(employee_id) WHERE effective_to IS NULL AND assignment_type='PRIMARY'`
   → MVP 一人同时只有一个主职；`ACTING`/`SECONDARY` 不受此约束（为兼任/代理预留）。
 
-### 2.5 `position_competency_requirements`
+### 2.5 `position_competency_requirements`（P7 已升级为岗位能力画像核心表）
+
+见 **docs/position-competency-profile.md**。需求挂在 `position_profile_versions` 下
+（版本化：draft/active/retired、单 ACTIVE），字段：requirement_type(required/preferred)、
+minimum_score / target_score（分开）、minimum_confidence、critical、priority、weight、
+notes。`assessment_profile_id`（v17）绑定“这个岗位通常如何考核”。
+
+### 2.5.1 旧表结构留痕
 
 `position_definition_id`、`competency_definition_id`、`kind`(`general`|`professional`)、
 `minimum`(0-100)、`weight`(0-1)、`uq(definition, competency)`。

@@ -17,6 +17,7 @@ import eventZh from "./locales/zh-CN/event.json";
 import lifecycleZh from "./locales/zh-CN/lifecycle.json";
 import authZh from "./locales/zh-CN/auth.json";
 import tutorialZh from "./locales/zh-CN/tutorial.json";
+import positionZh from "./locales/zh-CN/position.json";
 
 import commonEn from "./locales/en-US/common.json";
 import navEn from "./locales/en-US/nav.json";
@@ -33,6 +34,7 @@ import eventEn from "./locales/en-US/event.json";
 import lifecycleEn from "./locales/en-US/lifecycle.json";
 import authEn from "./locales/en-US/auth.json";
 import tutorialEn from "./locales/en-US/tutorial.json";
+import positionEn from "./locales/en-US/position.json";
 
 /**
  * Supported UI languages. Adding a language = create `locales/<code>/` with
@@ -64,6 +66,7 @@ export const NAMESPACES = [
   "lifecycle",
   "auth",
   "tutorial",
+  "position",
 ] as const;
 
 const resources = {
@@ -83,6 +86,7 @@ const resources = {
     lifecycle: lifecycleZh,
     auth: authZh,
     tutorial: tutorialZh,
+    position: positionZh,
   },
   "en-US": {
     common: commonEn,
@@ -100,6 +104,7 @@ const resources = {
     lifecycle: lifecycleEn,
     auth: authEn,
     tutorial: tutorialEn,
+    position: positionEn,
   },
 };
 
