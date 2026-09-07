@@ -16,6 +16,13 @@ from app.models.auth import (
     WebAuthnChallenge,
 )
 from app.models.base import Base
+from app.models.career import (
+    CareerEvent,
+    CareerPath,
+    CareerPathStep,
+    DevelopmentPlan,
+    DevelopmentPlanItem,
+)
 from app.models.competency import (
     AssessmentRun,
     CompetencyDefinition,
@@ -89,6 +96,9 @@ __all__ = [
     "AssessmentResult",
     "AssessmentRun",
     "AuditLog",
+    "CareerEvent",
+    "CareerPath",
+    "CareerPathStep",
     "CompetencyExpectation",
     "Base",
     "Company",
@@ -146,6 +156,8 @@ __all__ = [
     "Baseline",
     "ChangeRequest",
     "DeliveryPackage",
+    "DevelopmentPlan",
+    "DevelopmentPlanItem",
     "DocumentArtifact",
     "ProjectPhase",
     "ProjectRequirement",

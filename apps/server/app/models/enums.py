@@ -509,3 +509,59 @@ class AssessmentTriggerType(StrEnum):
     promotion = "promotion"
     position_change = "position_change"
     position_fit = "position_fit"
+
+
+# ---------- P10: Career & Talent Development ----------
+
+
+class CareerEventType(StrEnum):
+    """职业履历审计事件（CareerEvent=发生过什么的记录；当前任职仍来自 PositionAssignment）。"""
+
+    joined = "joined"
+    position_assigned = "position_assigned"
+    position_released = "position_released"
+    transferred = "transferred"
+    promoted = "promoted"
+    demoted = "demoted"
+    acting_assigned = "acting_assigned"
+    acting_ended = "acting_ended"
+    suspended = "suspended"
+    resumed = "resumed"
+    assessment_completed = "assessment_completed"
+    development_plan_created = "development_plan_created"
+    development_plan_completed = "development_plan_completed"
+
+
+class CareerTransitionType(StrEnum):
+    """职业路径上 from→to 的发展类型。"""
+
+    promotion = "promotion"
+    lateral = "lateral"
+    specialization = "specialization"
+    management = "management"
+    cross_functional = "cross_functional"
+
+
+class DevelopmentPlanStatus(StrEnum):
+    draft = "draft"
+    active = "active"
+    paused = "paused"
+    completed = "completed"
+    cancelled = "cancelled"
+
+
+class DevelopmentItemStatus(StrEnum):
+    planned = "planned"
+    in_progress = "in_progress"
+    waiting_evidence = "waiting_evidence"
+    completed = "completed"
+    cancelled = "cancelled"
+
+
+class DevelopmentNeedType(StrEnum):
+    competency_gap = "competency_gap"
+    target_gap = "target_gap"
+    evidence_gap = "evidence_gap"
+    skill_gap = "skill_gap"
+    experience_gap = "experience_gap"
+    assessment_gap = "assessment_gap"
