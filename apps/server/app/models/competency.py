@@ -29,7 +29,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, utcnow
@@ -111,6 +121,19 @@ class CompetencyEvidence(TimestampMixin, Base):
     """一条能力证据 —— 为什么"这个人是 82 分"的答案来源。"""
 
     __tablename__ = "competency_evidence"
+    __table_args__ = (
+        Index(
+            "ix_competency_evidence_emp_comp_kind",
+            "employee_id",
+            "competency_definition_id",
+            "source_kind",
+        ),
+        Index(
+            "ix_competency_evidence_employee_occurred",
+            "employee_id",
+            "occurred_at",
+        ),
+    )
 
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
     competency_definition_id: Mapped[int] = mapped_column(
@@ -129,6 +152,13 @@ class CompetencyEvidence(TimestampMixin, Base):
     signal: Mapped[int | None] = mapped_column(Integer, nullable=True)
     #: 证据可信度 0..1；NULL = 由聚合器按 source_kind 的固定质量表取值
     quality: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # P6：strength = 对目标能力的证明力度，reliability = 这条证据本身多可信（均 0..1）。
+    # quality 是 P5 旧口径（≈reliability 别名，向后兼容）；新证据一律写 strength/reliability，
+    # 由 EvidencePolicy 提供默认值。
+    strength: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reliability: Mapped[float | None] = mapped_column(Float, nullable=True)
+    #: 证据产生的环境（"" = 真实；mock = 模拟/教程，可靠性按策略打折）
+    environment: Mapped[str] = mapped_column(String(20), default="")
     occurred_at: Mapped[datetime] = mapped_column(default=utcnow)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
 
@@ -149,6 +179,9 @@ class AssessmentRun(TimestampMixin, Base):
     profile_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     position_assignment_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     triggered_by: Mapped[str] = mapped_column(String(30), default="recompute")
+    # P6：正式 assessment_type（automatic / project_end / …）与 profile 版本快照
+    assessment_type: Mapped[str] = mapped_column(String(30), default="")
+    profile_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="completed")
     window_from: Mapped[datetime | None] = mapped_column(nullable=True)
     window_to: Mapped[datetime | None] = mapped_column(nullable=True)

@@ -1,3 +1,10 @@
+from app.models.assessment import (
+    AssessmentCriterion,
+    AssessmentCriterionCompetency,
+    AssessmentProfile,
+    AssessmentResult,
+    CompetencyExpectation,
+)
 from app.models.auth import (
     CompanyMembership,
     EmailVerificationToken,
@@ -75,8 +82,13 @@ __all__ = [
     "AccessPackage",
     "AccessPackageItem",
     "Artifact",
+    "AssessmentCriterion",
+    "AssessmentCriterionCompetency",
+    "AssessmentProfile",
+    "AssessmentResult",
     "AssessmentRun",
     "AuditLog",
+    "CompetencyExpectation",
     "Base",
     "Company",
     "CompetencyDefinition",

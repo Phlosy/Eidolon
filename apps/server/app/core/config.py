@@ -56,6 +56,12 @@ class Settings(BaseSettings):
     # 启动补收敛也不跑 —— 任职照常生效，只是职位包不会自动加减（回滚锚点）。
     position_access_sync: bool = True
 
+    # P6 — 真实工作 → Evidence → Assessment 的自动流水线（docs/evidence-pipeline.md）。
+    # 关掉之后：业务事件不再自动收证据、项目结束不自动跑考核（回滚锚点）。
+    # 测试默认关闭（conftest），由专门的 pipeline 测试显式开启 —— 避免像 P4d 那样
+    # 后台消费者跟测试抢同一份状态。
+    evidence_pipeline_enabled: bool = True
+
     # v0.7 — human user authentication. Sessions are opaque, hashed server-side,
     # and transported only in an HttpOnly cookie.
     auth_required: bool = True

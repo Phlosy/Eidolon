@@ -467,7 +467,12 @@ class CompetencyStatus(StrEnum):
 
 
 class EvidenceSourceKind(StrEnum):
-    """能力证据来源类型（docs/competency-system.md §6）。值全小写，与仓库枚举风格一致。"""
+    """能力证据来源类型（docs/competency-system.md §6）。值全小写，与仓库枚举风格一致。
+
+    P6 集中维护：任何新来源必须在这里登记，不允许业务模块散落字符串。
+    对应 spec（docs/evidence-pipeline.md）的 TASK/PROJECT/TEST/REVIEW/ARTIFACT/
+    USER_FEEDBACK/PEER_REVIEW/ASSESSMENT/LEARNING/SKILL_USAGE。
+    """
 
     task = "task"
     project = "project"
@@ -479,3 +484,28 @@ class EvidenceSourceKind(StrEnum):
     assessment = "assessment"
     learning = "learning"
     skill_usage = "skill_usage"
+
+
+class ExpectationRole(StrEnum):
+    """工作项对能力的期望角色（docs/evidence-pipeline.md §八）：
+
+    - PRIMARY：该项主要验证的能力，Evidence 权重更高；
+    - SUPPORTING：辅助佐证；
+    - OPTIONAL：只在真实 Evidence 出现时才采纳（不会凭空造证据）。
+    """
+
+    primary = "primary"
+    supporting = "supporting"
+    optional = "optional"
+
+
+class AssessmentTriggerType(StrEnum):
+    """Assessment 触发类型。第一版实现 automatic / project_end；其余仅预留。"""
+
+    automatic = "automatic"
+    project_end = "project_end"
+    manual = "manual"
+    periodic = "periodic"
+    promotion = "promotion"
+    position_change = "position_change"
+    position_fit = "position_fit"

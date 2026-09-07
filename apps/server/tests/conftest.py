@@ -25,6 +25,8 @@ os.environ["EIDOLON_AUTH_REQUIRED"] = "false"
 # 是自己调 converge 起的作用，其实事件早被消费掉了）。消费者本体由
 # tests/test_position_access_events.py 直接 await handle() 覆盖。
 os.environ["EIDOLON_POSITION_ACCESS_SYNC"] = "false"
+# P6：证据流水线同样默认关（由专门测试显式开启并直接 await/调用处理，不靠后台消费者）。
+os.environ["EIDOLON_EVIDENCE_PIPELINE_ENABLED"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
