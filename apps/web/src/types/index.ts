@@ -1085,10 +1085,59 @@ export interface StreamEvent {
   ts: string;
 }
 
+/** 任职完整性折叠视图（只读诊断）。与后端 AssignmentIntegrityOut 一致。 */
+export interface AssignmentIntegrity {
+  /** valid | invalid —— issues 为空 = 真的没问题，不是“没算”。 */
+  status: "valid" | "invalid";
+  issues: string[];
+  read_only: boolean;
+}
+
+/** 当前任职派生视图（CurrentPositionOut）。为 null ⇒ 这个人 AVAILABLE。 */
+export interface CurrentPositionView {
+  definition_id: number;
+  code: string;
+  name: string;
+  level: number;
+  job_family: string;
+  legacy_role: string | null;
+  department_id: number | null;
+  department_name: string | null;
+  slot_id: number;
+  slot_code: string;
+  since: string;
+  assignment_type: string;
+  position_is_custom: boolean;
+}
+
+/**
+ * 员工详情主接口契约（/employees/{id} 最终形态，P6 WIP 落地后接线）。
+ * 当前由 GET /talent-roster/{id} 承载同一形状（后端 EmployeeDetailOut）。
+ * 派生三区只读、无 PATCH 入口、统一来源于 WorkforceStatusResolver / position_compat。
+ */
+export interface EmployeeDetail extends Employee {
+  workforce_status: WorkforceStatus;
+  has_primary_assignment: boolean;
+  occupies_establishment: boolean;
+  current_position: CurrentPositionView | null;
+  assignment_integrity: AssignmentIntegrity;
+}
+
 // ---------- v0.4: Employee lifecycle (docs/design-v0.4-lifecycle.md §10) ----------
 
 export type LifecycleStatus =
   "pending" | "onboarding" | "active" | "transferring" | "suspended" | "offboarding" | "offboarded";
+
+/** WorkforceStatus —— WorkforceStatusResolver 读时派生（不入库）。 */
+export type WorkforceStatus =
+  | "recruiting"
+  | "onboarding"
+  | "available"
+  | "assigned"
+  | "transferring"
+  | "suspended"
+  | "offboarding"
+  | "offboarded";
 
 export type AccountStatus =
   | "pending"

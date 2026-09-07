@@ -175,6 +175,44 @@ P4b 落地差额（写在这里，免得前端按上面的清单去调不存在�
 `actions` 由服务端按状态给（例如 `AVAILABLE` 才有 `assign_position`，`ASSIGNED` 才有 `transfer`），
 前端不自己推断 —— 避免第二个状态机。
 
+### 3.3 单人详情 = `EmployeeDetailOut`（/employees/{id} 的最终契约）
+
+P4 收尾拍板：`/employees/{id}` = **人物详情 + 当前派生任职视图**；`/talent-roster` =
+**名册查询 / 筛选 / 分页视图** —— 不长期让 `/talent-roster/{id}` 当第二套详情 SoT。
+
+当前实现把 `EmployeeDetailOut`（`app/schemas/organization.py`）挂在 `GET /talent-roster/{id}`
+（`position_compat.enrich_employee()` 的唯一出口），因为 `app/api/v1/employees.py` 是并行
+WIP（约定不混改别人在写的文件）。等 WIP 落地，`/employees/{id}` 调同一个出口即可
+（行为不变，端点收敛）。
+
+派生三区**只读**、**无 PATCH 入口**（`EmployeePatch` 不含这些键，写面只在 assignment 工作流）：
+
+```jsonc
+{
+  "id": 24, "name": "Charlie",
+  // ... EmployeeOut 原有字段（role 已变成派生镜像）...
+
+  "workforce_status": "assigned",          // WorkforceStatusResolver
+  "has_primary_assignment": true,
+  "occupies_establishment": true,
+  "current_position": {                     // CurrentPositionOut：无主职时为 null
+    "definition_id": 3, "code": "software_engineer", "name": "Software Engineer",
+    "level": 1, "job_family": "engineering", "legacy_role": "engineer",
+    "department_id": 7, "department_name": "Engineering",
+    "slot_id": 12, "slot_code": "SE-1", "since": "…",
+    "assignment_type": "primary", "position_is_custom": false
+  },
+  "assignment_integrity": {                 // 与 /integrity、名册行 integrity 同源
+    "status": "valid",                     // valid | invalid
+    "issues": [],
+    "read_only": true
+  }
+}
+```
+
+契约测试：`tests/test_employee_detail_contract.py`（AVAILABLE / ASSIGNED 两态、单 resolver
+同源、无 PATCH 入口、read_only 公开）。
+
 ---
 
 ## 4. UI 契约（Phase 12）

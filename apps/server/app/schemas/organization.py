@@ -1,8 +1,10 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
 from app.models.enums import EmployeeRole, EmployeeStatus, RuntimeType
+from app.schemas.position import CurrentPositionOut
 
 
 class ORMModel(BaseModel):
@@ -81,3 +83,36 @@ class EmployeePerformance(BaseModel):
     success_rate: float
     artifacts_count: int
     learning_records_count: int
+
+
+class AssignmentIntegrityOut(BaseModel):
+    """任职完整性（只读诊断，不是状态；ADR-12：字段必须由 serializer 计算）。
+
+    与 `/talent-roster/integrity`、名册每行的 `integrity` 同源（position_service.integrity），
+    这里只是员工维度的折叠视图：`issues` 为空 = 真的没问题，不是“没算”。
+    """
+
+    status: Literal["valid", "invalid"]
+    issues: list[str]
+    read_only: bool = True
+
+
+class EmployeeDetailOut(EmployeeOut):
+    """**员工详情主接口契约**（/employees/{id} 的最终形态，P6 WIP 落地时接线）。
+
+    派生三区（`workforce_status` / `current_position` / `assignment_integrity`）只读、
+    无 PATCH 入口，统一来源于 `WorkforceStatusResolver` / `position_compat` / 名册完整性
+    —— 本 schema 只是把它们锁成一个可校验的形态。当前暂挂在 `/talent-roster/{id}`
+    （`position_compat.enrich_employee()` 直接产出本形状），等 employees.py WIP 合并后
+    由同一个出口接入 `/employees/{id}`。
+
+    分层职责：`/employees/{id}` = 人物详情 + 当前派生任职视图；
+    `/talent-roster` = 名册查询/筛选/分页 —— 不要长期让后者当第二套详情 SoT。
+    """
+
+    workforce_status: str
+    has_primary_assignment: bool
+    occupies_establishment: bool
+    current_position: CurrentPositionOut | None = None
+    assignment_integrity: AssignmentIntegrityOut
+    role: str

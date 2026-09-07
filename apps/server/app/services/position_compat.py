@@ -115,14 +115,29 @@ def workforce_status_of(db: Session, employee: Employee) -> str:
     return WorkforceStatusResolver(db).resolve(employee).value
 
 
+def assignment_integrity_of(db: Session, employee: Employee) -> dict:
+    """任职完整性的员工维度折叠视图（只读诊断）。
+
+    与名册每行 `integrity`、`/talent-roster/integrity` 同源：都来自
+    `position_service.integrity_by_employee()` —— 这里**不写第二段判断**。
+    `issues` 为空 = 真的没问题（ADR-12：空是算出来的空，不是没算）。
+    """
+    from app.services import position_service
+
+    issues = position_service.integrity_by_employee(db).get(int(employee.id), [])
+    return {"status": "invalid" if issues else "valid", "issues": issues, "read_only": True}
+
+
 def enrich_employee(db: Session, employee: Employee, payload: dict) -> dict:
-    """给员工响应补 `current_position` / `workforce_status`，并让 `role` 成为派生镜像。
+    """给员工响应补 `current_position` / `workforce_status` / `assignment_integrity`，
+    并让 `role` 成为派生镜像。
 
     放在这里而不是各个 API 里，是为了保证"同一个字段在哪个接口都是同一个算法"。
+    输出形状 = `EmployeeDetailOut`（/employees/{id} 的最终契约）。
     """
     from app.workforce.status import WorkforceStatusResolver
 
-    # 一次派生，三个字段同源：`workforce_status` / `has_primary_assignment` /
+    # 一次派生，几个字段同源：`workforce_status` / `has_primary_assignment` /
     # `occupies_establishment` 都取自同一个 WorkforceView。分开各算一遍的话，
     # 同一份响应里可能出现"状态是 ASSIGNED 但 occupies=False"这种自相矛盾的行。
     view = WorkforceStatusResolver(db).view(employee)
@@ -131,6 +146,7 @@ def enrich_employee(db: Session, employee: Employee, payload: dict) -> dict:
     payload["workforce_status"] = view.workforce_status.value
     payload["has_primary_assignment"] = view.has_primary_assignment
     payload["occupies_establishment"] = view.occupies_establishment
+    payload["assignment_integrity"] = assignment_integrity_of(db, employee)
     payload["role"] = legacy_role_of(db, employee)
     return payload
 

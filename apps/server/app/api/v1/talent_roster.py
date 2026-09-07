@@ -24,7 +24,7 @@ from app.core.database import get_db
 from app.models.organization import Employee
 from app.models.position import PositionAssignment
 from app.repositories import position as position_repo
-from app.schemas.organization import EmployeeOut
+from app.schemas.organization import EmployeeDetailOut, EmployeeOut
 from app.schemas.position import (
     AssignmentIn,
     AssignmentOut,
@@ -111,17 +111,18 @@ def integrity(
     return position_service.integrity(db, company_id)
 
 
-@router.get("/{employee_id}")
+@router.get("/{employee_id}", response_model=EmployeeDetailOut)
 def roster_detail(
     employee_id: int,
     company_id: int | None = Depends(resolve_company_id),
     db: Session = Depends(get_db),
 ) -> dict:
-    """单人详情：v0.4 员工形状 + `current_position` / `workforce_status`。
+    """单人详情：v0.4 员工形状 + 派生三区（`workforce_status` / `current_position` /
+    `assignment_integrity`）。输出 = `EmployeeDetailOut` —— **/employees/{id} 的最终契约**。
 
-    `talent-roster.md §3` 把这份数据挂在 `GET /employees/{id}` 上。现在先挂在这里，
-    因为 `app/api/v1/employees.py` 是当前未提交 WIP 的一部分 —— 按"不混改别人的
-    在写文件"的约定，等它落地之后把这三个字段并过去（行为不变，端点收敛）。
+    现在先挂在这里，因为 `app/api/v1/employees.py` 是未提交 WIP（约定不混改别人在写的
+    文件）；等它落地后，`/employees/{id}` 调同一个 `position_compat.enrich_employee()`
+    出口即可（行为不变，端点收敛），名册回归查询/筛选/分页职责。
     """
     employee = _employee_or_404(db, employee_id, company_id)
     payload = EmployeeOut.model_validate(employee).model_dump()
