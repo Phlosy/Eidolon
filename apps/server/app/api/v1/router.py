@@ -15,10 +15,12 @@ from app.api.v1 import (
     lifecycle,
     messages,
     meta,
+    organizations,
     project_delivery,
     projects,
     providers,
     runtimes,
+    talent_roster,
     tasks,
     tutorial,
 )
@@ -40,6 +42,8 @@ protected.include_router(providers.router)
 protected.include_router(git.router)
 protected.include_router(runtimes.router)
 protected.include_router(lifecycle.router)
+protected.include_router(organizations.router)
+protected.include_router(talent_roster.router)
 protected.include_router(meta.router)
 protected.include_router(tutorial.router)
 protected.include_router(tutorial.practice_router)

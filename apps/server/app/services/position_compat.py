@@ -83,9 +83,17 @@ def enrich_employee(db: Session, employee: Employee, payload: dict) -> dict:
 
     放在这里而不是各个 API 里，是为了保证"同一个字段在哪个接口都是同一个算法"。
     """
+    from app.workforce.status import WorkforceStatusResolver
+
+    # 一次派生，三个字段同源：`workforce_status` / `has_primary_assignment` /
+    # `occupies_establishment` 都取自同一个 WorkforceView。分开各算一遍的话，
+    # 同一份响应里可能出现"状态是 ASSIGNED 但 occupies=False"这种自相矛盾的行。
+    view = WorkforceStatusResolver(db).view(employee)
     position = derived_current_position(db, employee)
     payload["current_position"] = position.model_dump() if position is not None else None
-    payload["workforce_status"] = workforce_status_of(db, employee)
+    payload["workforce_status"] = view.workforce_status.value
+    payload["has_primary_assignment"] = view.has_primary_assignment
+    payload["occupies_establishment"] = view.occupies_establishment
     payload["role"] = legacy_role_of(db, employee)
     return payload
 
