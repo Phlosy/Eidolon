@@ -899,5 +899,13 @@ def seed_lifecycle(db: Session) -> None:
         logger.info("assessment profiles seeded: %d rows", profile_count)
         changed = True
 
+    # P7：五个内置职位的默认岗位画像（ACTIVE v1 + assessment_profile 绑定，幂等）
+    from app.services import position_profile_templates
+
+    position_profile_count = position_profile_templates.seed_default_profiles(db, company.id)
+    if position_profile_count:
+        logger.info("position profiles seeded: %d rows", position_profile_count)
+        changed = True
+
     if changed:
         db.commit()

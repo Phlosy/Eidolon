@@ -161,7 +161,7 @@ def test_position_competency_requirement_schema_is_usable(db):
             competency_definition_id=definition_id,
             minimum_score=70,
             weight=1.0,
-            required=True,
+            requirement_type="required",
         )
     )
     db.commit()
@@ -179,6 +179,7 @@ def test_position_competency_requirement_schema_is_usable(db):
             position_definition_id=position_id,
             competency_definition_id=definition_id,
             minimum_score=80,
+            requirement_type="required",
         )
     )
     with pytest.raises(sa.exc.IntegrityError):
