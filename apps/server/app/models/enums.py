@@ -331,6 +331,9 @@ class EntitlementType(StrEnum):
 class PackageSource(StrEnum):
     manual = "manual"
     role = "role"
+    # P4d 职位层：随 assignment 生效/结束而 ADD/REMOVE（docs/position-system.md §4）。
+    # 刻意与 role 分开：`role` 是**人级**遗留映射，`position` 才跟着编制走。
+    position = "position"
     project = "project"
 
 
