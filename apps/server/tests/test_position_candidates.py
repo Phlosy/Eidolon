@@ -269,20 +269,29 @@ def test_candidates_100_employees_query_bounded(client, db, default_company_id):
         _set_comp(db, employee_id, "execution", 60 + (index % 30), 0.8)
     db.commit()
 
-    owner = threading.get_ident()
-    statements: list[str] = []
-    engine = db.get_bind()
+    def _analyze_count() -> int:
+        owner = threading.get_ident()
+        statements: list[str] = []
+        engine = db.get_bind()
 
-    def _count(conn, cursor, statement, parameters, context, executemany):
-        if threading.get_ident() == owner:
-            statements.append(statement)
+        def _count(conn, cursor, statement, parameters, context, executemany):
+            if threading.get_ident() == owner:
+                statements.append(statement)
 
-    sa_event.listen(engine, "before_cursor_execute", _count)
-    try:
-        body = candidates.analyze(db, position_definition_id=int(position.id))
-    finally:
-        sa_event.remove(engine, "before_cursor_execute", _count)
+        sa_event.listen(engine, "before_cursor_execute", _count)
+        try:
+            candidates.analyze(db, position_definition_id=int(position.id))
+        finally:
+            sa_event.remove(engine, "before_cursor_execute", _count)
+        return len(statements)
+
+    body = candidates.analyze(db, position_definition_id=int(position.id))
     total = sum(group["count"] for group in body["bands"])
     assert total >= 90
-    # 共享 profile/批量能力：100 人固定 ~15 条查询（视用户数固定），远小于 N×每候选
-    assert len(statements) <= 30, f"候选批量 query 数不可控：{len(statements)}"
+    base = _analyze_count()
+    for _ in range(50):
+        _hire(db, default_company_id)
+    db.commit()
+    grown = _analyze_count()
+    # 员工数 +50% 查询增量 ≤ 6 ⇒ 不做逐候选 N+1（基地中有按编制数收敛的固定查询）
+    assert grown <= base + 6, f"候选批量随员工数爆炸：{base} → {grown}"

@@ -82,7 +82,7 @@ def list_roster(
     trait_code: str | None = Query(None, description="人格倾向筛选（Behavioral Preference）"),
     min_trait_value: float | None = Query(None, ge=0, le=1),
     q: str | None = Query(None, alias="search", description="按姓名/简称搜索"),
-    limit: int = Query(default=200, ge=1, le=500),
+    limit: int = Query(default=500, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     include_offboarded: bool = Query(default=False, description="默认排除历史离职"),
     company_id: int | None = Depends(resolve_company_id),

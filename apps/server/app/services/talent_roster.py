@@ -72,7 +72,7 @@ def roster_query(
     trait_code: str | None = None,
     min_trait_value: float | None = None,
     search: str | None = None,
-    limit: int = 200,
+    limit: int = 500,
     offset: int = 0,
     include_offboarded: bool = False,
 ) -> dict:
