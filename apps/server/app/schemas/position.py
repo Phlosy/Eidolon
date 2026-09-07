@@ -172,6 +172,14 @@ class RosterEntryOut(BaseModel):
     current_position: CurrentPositionOut | None = None
     # 只读诊断（不是状态）：区分"正常待分配"与"历史悬空引用"（ADR-12：无默认值）
     integrity: list[str]
+    # ---- P9 名册富化字段（均由序列化出口批量计算；低置信/未评估 = 空列表而非 0） ----
+    runtime: dict | None = None
+    provider: dict | None = None
+    traits_summary: list[dict] = Field(default_factory=list)
+    top_general_competencies: list[dict] = Field(default_factory=list)
+    top_professional_competencies: list[dict] = Field(default_factory=list)
+    assessment_summary: dict | None = None
+    recent_activity: dict | None = None
 
 
 class RosterStatsOut(BaseModel):

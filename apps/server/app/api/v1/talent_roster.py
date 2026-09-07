@@ -68,29 +68,56 @@ def _department_of(entry: dict) -> int | None:
 @router.get("", response_model=list[RosterEntryOut])
 def list_roster(
     workforce_status: list[str] | None = Query(None, alias="status"),
-    department_id: int | None = None,
+    department_id: int | None = Query(None, description="按员工团队/任职部门过滤"),
     position_code: str | None = Query(
         None, description="按当前任职的定义 code 过滤；`none` = 未分配"
     ),
+    runtime_type: str | None = Query(None, description="runtime 类型（mock/hermes/…）"),
+    provider_id: int | None = Query(None, description="绑定模型供应商 id"),
+    competency_code: str | None = Query(
+        None, description="能力筛选 code（与 min_score/min_confidence 同用）"
+    ),
+    min_competency_score: float | None = Query(None, ge=0, le=100),
+    min_competency_confidence: float | None = Query(None, ge=0, le=1),
+    trait_code: str | None = Query(None, description="人格倾向筛选（Behavioral Preference）"),
+    min_trait_value: float | None = Query(None, ge=0, le=1),
+    q: str | None = Query(None, alias="search", description="按姓名/简称搜索"),
+    limit: int = Query(default=200, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    include_offboarded: bool = Query(default=False, description="默认排除历史离职"),
     company_id: int | None = Depends(resolve_company_id),
     db: Session = Depends(get_db),
 ) -> list:
-    entries = position_service.roster(db, company_id)
-    if workforce_status:
-        wanted = {item.strip().lower() for item in workforce_status if item.strip()}
-        entries = [entry for entry in entries if entry["workforce_status"] in wanted]
-    if department_id is not None:
-        entries = [entry for entry in entries if _department_of(entry) == department_id]
-    if position_code:
-        if position_code == "none":
-            entries = [entry for entry in entries if entry["current_position"] is None]
-        else:
-            entries = [
-                entry
-                for entry in entries
-                if (entry["current_position"] or {}).get("position_code") == position_code
-            ]
-    return entries
+    """人才名册（P9）：company-scoped 分页/过滤/搜索 + 富化（batch 派生，无 N+1）。
+
+    默认只显示当前在册人才（排除 offboarded/pending）；`available` 是 WorkforceStatus
+    （待分配），与员工 Runtime 活动态（idle/working…）是两个维度。
+    """
+    from app.services import talent_roster as roster_service
+
+    result = roster_service.roster_query(
+        db,
+        company_id,
+        statuses=(
+            [item.strip().lower() for item in workforce_status if item.strip()]
+            if workforce_status
+            else None
+        ),
+        department_id=department_id,
+        position_code=position_code,
+        runtime_type=runtime_type,
+        provider_id=provider_id,
+        competency_code=competency_code,
+        min_competency_score=min_competency_score,
+        min_competency_confidence=min_competency_confidence,
+        trait_code=trait_code,
+        min_trait_value=min_trait_value,
+        search=q,
+        limit=limit,
+        offset=offset,
+        include_offboarded=include_offboarded,
+    )
+    return result["items"]
 
 
 @router.get("/stats", response_model=RosterStatsOut)
