@@ -1,12 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { EntitlementList } from "./access-tab";
-import type { EmployeeEntitlement } from "../../types";
+import type { EmployeeEntitlement, EntitlementSource } from "../../types";
 
 function makeEntitlement(
   id: number,
   resourceType: string,
-  sources: { package_id: number; package_name: string }[],
+  sources: EntitlementSource[],
 ): EmployeeEntitlement {
   return {
     entitlement: {
@@ -26,8 +26,12 @@ describe("EntitlementList", () => {
     render(
       <EntitlementList
         entitlements={[
-          makeEntitlement(1, "git", [{ package_id: 1, package_name: "Engineering" }]),
-          makeEntitlement(2, "docs", [{ package_id: 1, package_name: "Engineering" }]),
+          makeEntitlement(1, "git", [
+            { package_id: 1, package_name: "Engineering", layer: "person" },
+          ]),
+          makeEntitlement(2, "docs", [
+            { package_id: 1, package_name: "Engineering", layer: "person" },
+          ]),
         ]}
       />,
     );
@@ -41,8 +45,8 @@ describe("EntitlementList", () => {
       <EntitlementList
         entitlements={[
           makeEntitlement(1, "git", [
-            { package_id: 1, package_name: "Base Employee" },
-            { package_id: 2, package_name: "Engineering" },
+            { package_id: 1, package_name: "Base Employee", layer: "person" },
+            { package_id: 2, package_name: "Engineering", layer: "position" },
           ]),
         ]}
       />,

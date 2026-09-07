@@ -1,6 +1,7 @@
 """Lifecycle schemas (v0.4, frozen API contract: docs/design-v0.4-lifecycle.md §10)."""
 
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -101,7 +102,8 @@ class EntitlementSourceOut(BaseModel):
     package_name: str
     # P4d：这条权限是哪一层给的（`person` / `position`）。默认人级 ——
     # 职位层是唯一需要显式声明的例外，所以旧调用方不传也不会被误标。
-    layer: str = "person"
+    # Literal 锁死两值：TS 侧 `AccessSourceLayer` 与这里的枚举一致（契约测试）。
+    layer: Literal["person", "position"] = "person"
 
 
 class EffectiveEntitlementOut(BaseModel):

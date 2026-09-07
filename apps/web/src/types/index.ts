@@ -1133,10 +1133,24 @@ export interface Entitlement {
   description: string | null;
 }
 
+/** 权限来源层级 —— 与后端 `EntitlementSourceOut.layer` 逐字一致（契约测试钉死）。
+ * 单一来源派生：改层级只能改 ACCESS_SOURCE_LAYERS，类型会自动跟着变。 */
+export const ACCESS_SOURCE_LAYERS = ["person", "position"] as const;
+
+export type AccessSourceLayer = (typeof ACCESS_SOURCE_LAYERS)[number];
+
+/** GET /employees/{id}/access 与 /entitlements 的 `sources[].layer` 载体。 */
+export interface EntitlementSource {
+  package_id: number;
+  package_name: string;
+  /** 人级（随人走，离职才回收）| 职位级（随编制走，卸任即 REMOVE）。 */
+  layer: AccessSourceLayer;
+}
+
 /** Effective entitlement with the packages it comes from (GET /employees/{id}/entitlements). */
 export interface EmployeeEntitlement {
   entitlement: Entitlement;
-  sources: { package_id: number; package_name: string }[];
+  sources: EntitlementSource[];
 }
 
 export interface AccessPackage {

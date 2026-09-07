@@ -215,8 +215,11 @@ Provisioning job 在事务提交后异步跑（沿用现有 `ProvisioningEngine.
 - 读面：`GET /employees/{id}/access` → `{person, position, effective, declared_by_position,
 already_held_by_person, pending_from_position}`；`sources[].layer` 新增，默认 `person`（向后兼容）。
 - 开关：`EIDOLON_POSITION_ACCESS_SYNC=false` ⇒ 任职照常、职位包不自动加减（回滚锚点；测试环境默认关）。
-- **未做**：前端消费 `/access`（属 P12）——注意 `apps/web/src/types/index.ts:1139` 的 `sources: { package_id; package_name }[]` 还没有 `layer`，接 UI 时先补类型再用字段；`department_id` 降级为"最后任职部门"镜像、
-  AVAILABLE 允许 NULL（§4 第 4 条，属 P6）。
+- **前端契约已补（P4 收尾）**：`sources[].layer` 类型已进 `apps/web/src/types/index.ts`
+  （`AccessSourceLayer` = `"person" | "position"`，由 `ACCESS_SOURCE_LAYERS` 常量派生），并有前后端两侧
+  契约测试锁死（`test_access_layer_contract.py` ↔ `access-source-layer.contract.test.ts`）。
+  前端**消费** `/access` 视图仍属 P12 —— 接 UI 时直接用现成字段即可。
+  `department_id` 降级为“最后任职部门”镜像、AVAILABLE 允许 NULL（§4 第 4 条，属 P6）。
 
 ---
 
