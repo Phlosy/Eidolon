@@ -460,3 +460,61 @@ v0.2 把 "One Employee = One Persistent Agent" 落地为持久容器化 Runtime�
 | GET | /runtime-images | 镜像登记与版本状态 |
 | POST | /runtime-images/check-updates | 立即检查更新 |
 | POST | /runtime-images/{type}/update | 触发 managed update |
+
+---
+
+## 16. 派生数据的两条纪律（v0.9–v1.0 期间立的）
+
+### ADR-10 派生字段禁止带"语义上合法"的默认值
+
+> **Derived fields must never have semantically-valid fallback defaults unless absence and zero mean the same thing.**
+
+`slot_count`、`vacant_count`、`occupied_slot`、`package_slugs` 这类字段是**算出来的**。
+如果它们在 Pydantic schema 上写成 `= 0` / `= False` / `= []`，那么"忘了算"与"真的是 0"
+在响应体里长得一模一样 —— 端点直接 `response_model=XOut` 返回 ORM 对象时，ORM 上没有这个属性，
+pydantic 就静悄悄拿默认值填上。这不是缺数据，是**假数据**，而且它会一路骗过类型检查、
+骗过前端、骗过看数字的人。
+
+实测就是这么翻车的：`GET /organizations/definitions` 返回过"每个职位模板都没有编制"，
+而库里明明有 5 个坑。
+
+纪律：
+
+1. 派生字段必须经过**唯一出口**计算：`position_service.slots_out()` / `definitions_out()` /
+   `assignment_out()`；组织树复用 `slots_out()`，不允许出现第二段序列化代码。
+2. 出口没覆盖到的地方，宁可返回 `null`（缺失是可见的），也不要 `0 / false / []`。
+   同一逻辑见 `/employees/{id}/skill-usages/benchmarks`：`null` ≠ 0%。
+3. 只要一个 Out schema 带派生字段，就必须有一条用例断言"这个值出自计算"，
+   而不是只断言字段存在。
+
+### ADR-11 统计必须带公司边界；全局数字只用于诊断
+
+`WorkforceStatusResolver.counts()` 这类**全库**便利统计会把多家公司的数据加在一起。
+dev 库里堆着 11 家公司（历次探针留下的），于是 P4a 报出过"available 7 / on_roster 14"，
+而默认公司的真实分布是 8 人、`available 0`。两个数字都没算错，错在没说口径。
+
+纪律（写进 `tests/test_dev_inventory.py`）：
+
+- 任何面向业务的统计都从名册读面（`position_service.roster(db, company_id)`）出，
+  不接受另写一条跨公司 SQL；
+- 全局合计只允许由逐公司结果相加得到，并且必须带着这句声明：
+  *Global totals are diagnostic only; business status must be interpreted within a company boundary.*
+
+### `make dev-inventory` —— 只读清点工具
+
+定位是 **Inventory / Audit**，不是 cleanup：不删、不改、不补坑，也不给"这是测试数据"的判决。
+
+- 逐公司列出：名册两个轴的分布、编制占用、`AssignmentIntegrity`（复用
+  `position_service.integrity()`，不重写判断）、项目 / 文档 / 事件 / 账号 / 工作区计数；
+- `suspected_probe` 永远伴随 `reasons` 与 `counter_evidence`，并且要 **≥2 条正证据且无强反证据**
+  才成立。真实公司 `eidolon-studio` 一开始被单条"owner 没登录过"误伤；而探针账号恰恰也会走
+  注册+验证流程 —— 所以"登录过 / 邮箱已验证"根本不是人类证据，它被从反证据里降级掉了。
+  真正的人类信号换成：有项目、有文档、事件量、以及与主公司同邮箱的 owner。
+- 孤儿检查同时给 `count` 与 `samples`（只 `LIMIT 5` 再 `len()` 会把 11 条报成 5 条）；
+  并且知道工作区目录按 `slug` 命名、员工数据目录按 `employee_id` 命名 —— 这两把键混用过一次，
+  把 24 个正常目录全报成了孤儿。
+- SQLite 用 `mode=ro` 连接（驱动层就拒写），相对 sqlite 路径锚定到 `apps/server`，
+  结尾断言 session 未被弄脏；报告里刻意没有 `verdict` / `is_test` 字段。
+
+v0.4 遗留的 11 条无坑生效主职按拍板**保持原样**，工具只负责让它可见。
+清理要等 P4/P5 稳定之后单独设计（dry-run、显式 company id、确认、备份、事务）。
