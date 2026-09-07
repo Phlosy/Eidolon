@@ -4,6 +4,12 @@
 一句话：**Work → Evidence → Assessment → Competency Update**。
 任何绕过 Assessment 直接改 `employee_competencies.score` 的路径都不存在（写入口只有一个）。
 
+> **落地状态（P6, 2026-09）**：`assessment_profiles/criteria/criterion_competencies/results`
+> 已落表（v16）；四套内置档案（Engineer/QA/Researcher/Manager，code+version 唯一）幂等 seed；
+> 档案驱动确定性引擎 v2（`app/services/assessment.py`，assessment-profile-v1）已实现；
+> Evidence Collector/Normalizer/Reconcile 与事件消费者（settings 门控）已落地；
+> 说明：本文件 §1.1~§2 里的"profile 模板权重表"已由 seed 数据承载（Engineer 见 §2.1 权重表）。
+
 ---
 
 ## 1. 四张表 + 一条链

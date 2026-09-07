@@ -197,6 +197,17 @@
     "evidenceTitle": "能力证据（可追溯）",
     "evidenceHint": "每条能力数值都应该能回答「为什么是这个分数」。",
     "empty": "还没有被评估的能力维度。",
-    "noBehaviorEffect": "当前不影响执行"
+    "noBehaviorEffect": "当前不影响执行",
+    "detailTitle": "能力详情",
+    "historyCount": "次考核",
+    "skillsTitle": "项相关技能",
+    "close": "关闭",
+    "score": "Score",
+    "confidenceShort": "置信度",
+    "trend": "Trend",
+    "evidenceShort": "Evidence",
+    "assessmentHistory": "考核历史（可追溯）",
+    "sources": "来源分布",
+    "recentEvidence": "最近证据"
   }
 }

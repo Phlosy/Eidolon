@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import {
+  getAssessment,
   getCompetencies,
   getCompetencyDomains,
+  getCompetencyExplanation,
+  getEmployeeAssessments,
   getEmployeeCapabilities,
   getEmployeeCompetencyEvidence,
   getEmployeeTraits,
@@ -40,5 +43,28 @@ export function useEmployeeCompetencyEvidence(employeeId: number) {
   return useQuery({
     queryKey: ["employees", employeeId, "competency-evidence"],
     queryFn: () => getEmployeeCompetencyEvidence(employeeId),
+  });
+}
+
+export function useCompetencyExplanation(employeeId: number, competency: string | null) {
+  return useQuery({
+    queryKey: ["employees", employeeId, "competencies", competency, "explanation"],
+    queryFn: () => getCompetencyExplanation(employeeId, competency as string),
+    enabled: competency !== null,
+  });
+}
+
+export function useEmployeeAssessments(employeeId: number) {
+  return useQuery({
+    queryKey: ["employees", employeeId, "assessments"],
+    queryFn: () => getEmployeeAssessments(employeeId),
+  });
+}
+
+export function useAssessment(runId: number | null) {
+  return useQuery({
+    queryKey: ["assessments", runId],
+    queryFn: () => getAssessment(runId as number),
+    enabled: runId !== null,
   });
 }

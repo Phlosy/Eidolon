@@ -319,10 +319,18 @@ def test_batch_readers_do_not_fan_out_per_employee(db: Session, graph: dict):
         _assign(db, graph, person, slot_id=slot_id)
     db.flush()
 
+    # 统计只认**本线程**发出的语句：全量 suite 里先跑的用例可能启动过 runtime 更新/
+    # 健康检查等后台线程，它们与测试共用 engine，会在计数窗口里掺进 SELECT ——
+    # 那是本次 3 条断言偶发 flaky 的根因（单跑必绿、全量偶红）。按线程过滤后，
+    # “本测试自己只发了 3 条”的语义不变，且不再被后台噪声污染。
+    import threading
+
+    owner_thread = threading.get_ident()
     statements: list[str] = []
 
     def _count(conn, cursor, statement, parameters, context, executemany):
-        statements.append(statement)
+        if threading.get_ident() == owner_thread:
+            statements.append(statement)
 
     engine = db.get_bind()
     sa.event.listen(engine, "before_cursor_execute", _count)

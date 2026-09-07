@@ -1,8 +1,12 @@
-import { get } from "./client";
+import { get, post } from "./client";
 import type {
+  AssessmentProfileView,
+  AssessmentRunDetail,
+  AssessmentRunSummary,
   CompetencyDefinition,
   CompetencyDomain,
   CompetencyEvidenceView,
+  CompetencyExplanation,
   EmployeeCapabilities,
   TraitView,
 } from "../types";
@@ -36,4 +40,29 @@ export function getEmployeeTraits(id: number): Promise<TraitView[]> {
 
 export function getEmployeeCompetencyEvidence(id: number): Promise<CompetencyEvidenceView[]> {
   return get<CompetencyEvidenceView[]>(`/employees/${id}/competency-evidence`);
+}
+
+export function getCompetencyExplanation(
+  id: number,
+  competency: string,
+): Promise<CompetencyExplanation> {
+  return get<CompetencyExplanation>(`/employees/${id}/competencies/${competency}/explanation`);
+}
+
+export function getEmployeeAssessments(id: number): Promise<AssessmentRunSummary[]> {
+  return get<AssessmentRunSummary[]>(`/employees/${id}/assessments`);
+}
+
+export function getAssessment(runId: number): Promise<AssessmentRunDetail> {
+  return get<AssessmentRunDetail>(`/assessments/${runId}`);
+}
+
+export function getAssessmentProfiles(): Promise<AssessmentProfileView[]> {
+  return get<AssessmentProfileView[]>("/assessment-profiles");
+}
+
+export function triggerAssessmentRun(id: number, codes?: string[]): Promise<AssessmentRunDetail> {
+  return post<AssessmentRunDetail>(`/employees/${id}/assessments/run`, {
+    profile_code: codes?.[0],
+  });
 }

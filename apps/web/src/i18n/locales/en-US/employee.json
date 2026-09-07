@@ -197,6 +197,17 @@
     "evidenceTitle": "Evidence (traceable)",
     "evidenceHint": "Every number should answer \"why this score\".",
     "empty": "No competency assessed yet.",
-    "noBehaviorEffect": "Not affecting execution yet"
+    "noBehaviorEffect": "Not affecting execution yet",
+    "detailTitle": "Competency detail",
+    "historyCount": "assessments",
+    "skillsTitle": "relevant skills",
+    "close": "Close",
+    "score": "Score",
+    "confidenceShort": "Confidence",
+    "trend": "Trend",
+    "evidenceShort": "Evidence",
+    "assessmentHistory": "Assessment history (traceable)",
+    "sources": "Source distribution",
+    "recentEvidence": "Recent evidence"
   }
 }

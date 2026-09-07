@@ -1199,6 +1199,135 @@ export interface CompetencyEvidenceView {
   occurred_at: string;
 }
 
+// ---------- P6: Assessment & evidence pipeline (docs/evidence-pipeline.md) ----------
+
+export interface CriterionCompetencyView {
+  competency_definition_id: number;
+  code: string;
+  name: string;
+  domain_code: string;
+  domain_name: string;
+  contribution_weight: number;
+  evidence_type: string;
+}
+
+export interface CriterionView {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  weight: number;
+  order_index: number;
+  evidence_kinds: string[];
+  competencies: CriterionCompetencyView[];
+}
+
+export interface AssessmentProfileView {
+  id: number;
+  code: string;
+  version: number;
+  name: string;
+  description: string;
+  applies_to_kind: string;
+  position_definition_id: number | null;
+  min_evidence_count: number;
+  half_life_days: number;
+  algorithm_version: string;
+  built_in: boolean;
+}
+
+export interface AssessmentRunSummary {
+  id: number;
+  employee_id: number;
+  profile_id: number | null;
+  profile_code: string | null;
+  profile_version: number | null;
+  assessment_type: string;
+  triggered_by: string;
+  status: string;
+  window_from: string | null;
+  window_to: string | null;
+  evidence_count: number;
+  inputs_hash: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface AssessmentResultView {
+  kind: "criterion" | "contribution";
+  criterion_id: number | null;
+  criterion_code: string | null;
+  competency_definition_id: number | null;
+  competency_code: string | null;
+  observed_score: number | null;
+  confidence: number | null;
+  evidence_count: number;
+  contribution: number | null;
+  rationale: string;
+}
+
+export interface AssessmentRunDetail extends AssessmentRunSummary {
+  outputs: Record<string, unknown>;
+  results: AssessmentResultView[];
+}
+
+/** 能力解释（为什么是这个分）。score/confidence 为 null = 未评估（不是 0）。 */
+export interface CompetencyExplanation {
+  competency_definition_id: number;
+  code: string;
+  name: string;
+  domain_code: string;
+  domain_name: string;
+  score: number | null;
+  confidence: number | null;
+  evidence_count: number;
+  status: string;
+  trend: number | null;
+  trend_direction: "up" | "stable" | "down" | "unknown";
+  last_assessed_at: string | null;
+  assessment_history: Array<{
+    run_id: number;
+    profile_code: string | null;
+    profile_version: number | null;
+    assessment_type: string;
+    triggered_by: string;
+    window_from: string | null;
+    window_to: string | null;
+    score: number | null;
+    previous_score: number | null;
+    trend: number | null;
+    status: string | null;
+    evidence_count: number | null;
+    created_at: string;
+  }>;
+  recent_evidence: Array<{
+    id: number;
+    source_kind: string;
+    source_id: number | null;
+    source_ref: string;
+    signal: number | null;
+    strength: number | null;
+    reliability: number | null;
+    occurred_at: string;
+  }>;
+  source_distribution: Array<{ source_kind: string; count: number }>;
+  recent_criterion_results: Array<{
+    criterion_code: string | null;
+    criterion_name: string | null;
+    observed: number | null;
+    confidence: number | null;
+    contribution: number | null;
+    evidence_count: number;
+  }>;
+  relevant_skills: Array<{
+    id: number;
+    name: string;
+    attempts: number;
+    success_count: number;
+    validation_status: string;
+  }>;
+}
+
 // ---------- v0.4: Employee lifecycle (docs/design-v0.4-lifecycle.md §10) ----------
 
 export type LifecycleStatus =
