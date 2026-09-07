@@ -198,9 +198,14 @@ class AssessmentRun(TimestampMixin, Base):
 
 
 class PositionCompetencyRequirement(Base):
-    """职位对能力的要求（schema 先行，P8/P10 才做正式匹配计算）。
+    """职位对能力的要求 —— P7 升级为“岗位能力画像”核心模型
+    （docs/position-competency-profile.md）。
 
     Position **不决定人拥有什么能力**，只声明需要什么 —— 本表是"需求侧"。
+    需求挂在 `position_profile_versions` 下（版本化）；`position_definition_id` 列保留
+    为历史兼容（新写入置 NULL，SQLite 的 NULL 唯一是分离的 ⇒ 同定义多版本各持同一
+    competency 不会撞旧约束；真正的唯一由 `uq_position_profile_requirement` 唯一索引
+    按 (version, competency) 保证）。
     """
 
     __tablename__ = "position_competency_requirements"
@@ -210,18 +215,39 @@ class PositionCompetencyRequirement(Base):
             "competency_definition_id",
             name="uq_position_competency_requirement",
         ),
+        Index(
+            "uq_position_profile_requirement",
+            "position_profile_version_id",
+            "competency_definition_id",
+            unique=True,
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    position_definition_id: Mapped[int] = mapped_column(
-        ForeignKey("position_definitions.id"), index=True
+    #: historical compat：新写入不填（NULL），见类 docstring
+    position_definition_id: Mapped[int | None] = mapped_column(
+        ForeignKey("position_definitions.id"), nullable=True, index=True
+    )
+    # P7：需求所属的岗位画像版本（新写入必填）。
+    # 刻意不加 FK（与 employments.position_slot_id 同一纪律：SQLite 不能 ALTER 加 FK，
+    # 完整性由服务层校验）。唯一性由 uq_position_profile_requirement 唯一索引保证。
+    position_profile_version_id: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, index=True
     )
     competency_definition_id: Mapped[int] = mapped_column(
         ForeignKey("competency_definitions.id"), index=True
     )
-    #: 达标线；NULL = 没有分数下限，只需"被证明存在"
+    #: required | preferred（OPTIONAL 预留）
+    requirement_type: Mapped[str] = mapped_column(String(20), default="required")
+    #: 该职业对能力的两种标准：最低胜任门槛 / 该岗位理想水平（0-100）
     minimum_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    target_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: 0..1 —— 岗位要求必须考虑"分数有多可信"，不能只看 Score
+    minimum_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    #: 是否职位关键能力（P8 的 Critical Gap 与普通 Gap 分开）
+    critical: Mapped[bool] = mapped_column(Boolean, default=False)
+    priority: Mapped[int] = mapped_column(Integer, default=0)
     weight: Mapped[float] = mapped_column(Float, default=1.0)
-    required: Mapped[bool] = mapped_column(Boolean, default=True)
+    notes: Mapped[str] = mapped_column(String(500), default="")
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)

@@ -55,6 +55,7 @@ from app.models.position import (
     PositionDefinitionPackage,
     PositionSlot,
 )
+from app.models.position_profile import PositionProfileVersion
 from app.models.project import (
     Artifact,
     Message,
@@ -115,6 +116,7 @@ __all__ = [
     "ModelBinding",
     "Position",
     "PositionCompetencyRequirement",
+    "PositionProfileVersion",
     "PositionSlot",
     "PositionDefinitionPackage",
     "PositionDefinition",

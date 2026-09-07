@@ -54,8 +54,9 @@ class PositionDefinition(TimestampMixin, Base):
     built_in: Mapped[bool] = mapped_column(Boolean, default=False)
     # 仅用于迁移与兼容镜像（映射到旧 EmployeeRole）；新业务禁止读（ADR-5 守卫锁死）。
     legacy_role: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    # `assessment_profile_id` 留给 v17（考核表落地时再加 FK）：
-    # 提前挂一个指向不存在表的 FK，会让本迁移在空库路径上变成一句谎话。
+    # P7：这个职位通常如何考核（绑定 AssessmentProfile；能力结果仍只能来自 Evidence→Assessment）。
+    # 不加 FK（SQLite 无法 ALTER 加 FK；由服务层校验 id 存在）。
+    assessment_profile_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class PositionDefinitionPackage(Base):
