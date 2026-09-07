@@ -120,10 +120,30 @@ def employee_packages(db: Session, employee_id: int) -> list[tuple[EmployeePacka
     return out
 
 
+def _package_layers(
+    pairs: list[tuple[EmployeePackage, AccessPackage]],
+) -> dict[int, str]:
+    """包 id → 层级。**同一个包被人级与职位级各授予一行时报人级**。
+
+    并集本身按 entitlement 去重，标签歧义不影响谁有权限；但层级会显示在 UI 上，
+    答错就意味着用户以为"卸任要收走它"（实际受 `person_claimed` 保护）。
+    与 `sync_role_packages` 的人级认领同一条规则，两处的答案必须一致。
+    """
+    layers: dict[int, str] = {}
+    for row, package in pairs:
+        layer = layer_of_source(row.source)
+        if layers.get(package.id) == "person":
+            continue
+        layers[package.id] = layer
+    return layers
+
+
 def employee_entitlements(db: Session, employee_id: int) -> list[EffectiveEntitlement]:
     pairs = employee_packages(db, employee_id)
-    layers = {package.id: layer_of_source(row.source) for row, package in pairs}
-    return union_entitlements(db, [package for _, package in pairs], layer_by_package=layers)
+    seen: dict[int, AccessPackage] = {}
+    for _, package in pairs:
+        seen.setdefault(package.id, package)
+    return union_entitlements(db, list(seen.values()), layer_by_package=_package_layers(pairs))
 
 
 def effective_access(db: Session, employee_id: int) -> dict[str, list[EffectiveEntitlement]]:
@@ -138,14 +158,25 @@ def effective_access(db: Session, employee_id: int) -> dict[str, list[EffectiveE
     "这条权限是我本来就有的，还是当上这个职位才有的"，只给并集就答不出来。
     """
     pairs = employee_packages(db, employee_id)
-    person = [package for row, package in pairs if layer_of_source(row.source) == "person"]
-    position = [package for row, package in pairs if layer_of_source(row.source) == "position"]
-    layers = {row.package_id: layer_of_source(row.source) for row, package in pairs}
+    person: dict[int, AccessPackage] = {}
+    position: dict[int, AccessPackage] = {}
+    for row, package in pairs:
+        target = position if layer_of_source(row.source) == "position" else person
+        target[package.id] = package
+    all_packages: dict[int, AccessPackage] = {}
+    for _, package in pairs:
+        all_packages.setdefault(package.id, package)
+    # 两层视图各自强制自己的标签（"职位视图"里冒出 layer=person 没有意义）；
+    # 只有并集视图需要 `_package_layers` 去解决"同一个包两行"的歧义。
     return {
-        "person": union_entitlements(db, person, layer_by_package=layers),
-        "position": union_entitlements(db, position, layer_by_package=layers),
+        "person": union_entitlements(
+            db, list(person.values()), layer_by_package=dict.fromkeys(person, "person")
+        ),
+        "position": union_entitlements(
+            db, list(position.values()), layer_by_package=dict.fromkeys(position, "position")
+        ),
         "effective": union_entitlements(
-            db, [package for _, package in pairs], layer_by_package=layers
+            db, list(all_packages.values()), layer_by_package=_package_layers(pairs)
         ),
     }
 

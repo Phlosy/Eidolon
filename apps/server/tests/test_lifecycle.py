@@ -561,8 +561,11 @@ def test_preview_computes_plan_without_writes(client, gitea_down, db):
 
 def test_access_packages_seeded(client):
     packages = client.get("/api/v1/access-packages").json()
-    slugs = {p["slug"] for p in packages}
-    assert slugs == {
+    # 只对**内置那六个**取等，不对整个列表取等：权限包是可再生资源
+    # （P4d 的职位包、用户自建包都会进这个列表）。全库相等断言在共享测试库里
+    # 迟早被别的测试造出的包打破 —— P4d 就打破过一次，而且是"合跑红、单跑绿"。
+    seeded = {p["slug"] for p in packages if p["built_in"]}
+    assert seeded == {
         "base-employee",
         "ceo",
         "product-manager",
@@ -570,7 +573,6 @@ def test_access_packages_seeded(client):
         "engineer",
         "qa-engineer",
     }
-    assert all(p["built_in"] for p in packages)
     engineer = next(p for p in packages if p["slug"] == "engineer")
     engineer_keys = {e["key"] for e in engineer["entitlements"]}
     assert engineer_keys == {"git:engineering-team", "docs:engineering", "workspace:dev"}
