@@ -518,3 +518,54 @@ dev 库里堆着 11 家公司（历次探针留下的），于是 P4a 报出过"
 
 v0.4 遗留的 11 条无坑生效主职按拍板**保持原样**，工具只负责让它可见。
 清理要等 P4/P5 稳定之后单独设计（dry-run、显式 company id、确认、备份、事务）。
+
+## 17. ADR-12 —— 派生字段序列化规则（Derived Field Serialization Rule）
+
+> **not computed ≠ 0；not computed ≠ []；not computed ≠ false。**
+
+任何派生字段（`slot_count`、`vacant_count`、`occupied_slot`、`package_slugs`、
+`position_fit`、`competency_score`、`confidence`、`trend`、`runtime_health`、
+`assessment_result`…）都**必须经过 Resolver / Serializer 计算后才能出现在 API 响应里**。
+不经过计算，就不得依赖 Pydantic / Schema 的"看起来合理"的默认值（`0` / `[]` / `false` / `""`）
+把它伪装成真实数据 —— 忘了算和真的是 0，在响应体里长得一模一样，而且会一路骗过
+类型检查、骗过前端、骗过看数字的人。
+
+推荐数据流（唯一出口）：
+
+```text
+Domain / ORM
+    ↓
+Resolver（计算派生值）
+    ↓
+Dedicated Serializer（一个字段只在**一个**函数里算）
+    ↓
+Out Schema（派生字段**无默认值**，漏填就校验失败）
+```
+
+禁止：
+
+```text
+ORM
+    ↓
+Out Schema 默认值（0/[]/false）
+    ↓
+API
+```
+
+规则：
+
+1. **Out schema 上派生字段不带假默认值**：缺了它就报错（漏算可见），而不是用 `0/[]/false` 填空。
+   带默认值的字段一旦端点直接返回 ORM 对象，Pydantic 就拿默认值静默填充 —— ADR-10 实测翻车过。
+2. **缺数据就缺得明白**：无法计算时返回 `null`（缺失可见）或整条省略，不要 `0/[]/false`。
+3. **空 = 真算出来的空**：如果 `0` / `[]` / `false` 确实是合法业务值（例如"这个定义确实
+   一个编制都没有"），它必须来自计算路径（`definitions_out()` 里 `counts.get(id, 0)`），
+   而不是 schema 默认值 —— 由唯一出口保证。
+4. **唯一出口**：同一派生字段只允许在一处计算（`slots_out()` / `definitions_out()` /
+   `assignment_out()` / 未来的 competency serializer）；出现第二段算法就是两个真相。
+5. **Guard 随清单走**：`tests/test_derived_field_serialization.py` 里维护派生字段名清单
+   （`DERIVED_OUT_FIELDS`），逐 schema 检查它们没有 `0/[]/false/""` 类默认值。
+   给新领域（competency/assessment）加字段时，把字段名加进清单，测试自动兜底。
+
+适用范围包括（不限于）未来能力域的 `score` / `confidence` / `evidence_count` / `trend`：
+`score = null` 表示"未评估"，**绝不能**序列化成 `0` 分；`confidence = null` 表示
+"未知置信度"，**绝不**显示成 `0% 已确认`。
