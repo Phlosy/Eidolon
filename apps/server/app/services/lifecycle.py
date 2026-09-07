@@ -891,5 +891,13 @@ def seed_lifecycle(db: Session) -> None:
         logger.info("position expectations seeded: %d rows", expected)
         changed = True
 
+    # P6：四个内置考核档案（Engineer/QA/Researcher/Manager），code+version 唯一、幂等
+    from app.assessment import catalog as assessment_catalog
+
+    profile_count = assessment_catalog.seed_profiles(db)
+    if profile_count:
+        logger.info("assessment profiles seeded: %d rows", profile_count)
+        changed = True
+
     if changed:
         db.commit()

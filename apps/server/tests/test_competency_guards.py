@@ -24,8 +24,12 @@ _COMPETENCY_WRITE_FILES = (
     "app/competency/catalog.py",
 )
 
-#: 允许构造 EmployeeCompetency 行的文件（单一写入口纪律）。
-_EMPLOYEE_COMPETENCY_WRITER_FILES = {"app/services/competency.py"}
+#: 允许构造 EmployeeCompetency 行的文件 —— 两个聚合服务（P5 base / P6 profile engine）。
+#: 其它任何文件构造该模型 ⇒ 红（能力只能被证明，不能随手写分）。
+_EMPLOYEE_COMPETENCY_WRITER_FILES = {
+    "app/services/competency.py",
+    "app/services/assessment.py",
+}
 
 _FORBIDDEN_IMPORTS = {"random"}
 _FORBIDDEN_NAMES = {"curiosity", "traits", "BrainTraits", "position_fit"}
