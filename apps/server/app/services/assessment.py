@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -259,11 +259,14 @@ def run_assessment(
             raise ValueError("该员工没有匹配的 AssessmentProfile（需先任职内置职位）")
 
     window_to = _now_day()
+    # 证据窗口：以“今天零点”为观察日，窗口上界为次日零点 —— 当天新产生的证据（occurred_at
+    # 在白天任意时刻）都在窗口内；hash 仍用日粒度，保证同一天重放逐字一致。
+    window_end = window_to + timedelta(days=1)
     window_from = _utc(window_from) if window_from else None
     evidence_scope = select(CompetencyEvidence).where(CompetencyEvidence.employee_id == employee_id)
     if window_from is not None:
         evidence_scope = evidence_scope.where(CompetencyEvidence.occurred_at >= _utc(window_from))
-    evidence_scope = evidence_scope.where(CompetencyEvidence.occurred_at <= _utc(window_to))
+    evidence_scope = evidence_scope.where(CompetencyEvidence.occurred_at <= _utc(window_end))
     evidence_rows = list(db.scalars(evidence_scope.order_by(CompetencyEvidence.id)))
     criteria = _criteria_of(db, profile)
     inputs_hash = inputs_hash_for(
