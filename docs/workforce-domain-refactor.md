@@ -316,7 +316,7 @@ P4b 接上名册端点后**再错一次**：上面那个分布是跨公司混算
 | P4    | `position_service`：`recruit()`（不再要求职位）、`assign()`、`transfer()`、`unassign()`、`workforce_status()`；旧 `onboard()` 转调 | 名册 API + 20 项任职测试                       |
 | P5    | 名册 API：`GET /talent-roster`、`GET/PATCH /employees/{id}/assignments`、`GET /positions/definitions                               | slots                                          | vacancies` | 契约测试 + 权限 |
 | P6 ◐ | `position_compat`：API 响应 `derived_current_position`；`role` 转 deprecated 镜像；**架构守卫禁止新读点**。守卫与两座桥已落地（内部编号 P4c）；`GET /employees/{id}` 的派生字段合并待前端 WIP | 守卫测试 ✅（18 条，含会红元测试） |
-| P7 | 权限两层化（= 内部编号 P4d）：`PositionDefinition.default_access_packages` 接线、`PackageSource.position`、调岗 KEEP/REMOVE/ADD diff                 | 复用现有 `diff_entitlements` 测试 + 新调岗测试 |
+| P7 ✅ | 权限两层化（= 内部编号 P4d）：`PositionDefinition.default_access_packages` 接线、`PackageSource.position`、调岗 KEEP/REMOVE/ADD diff、事件驱动收敛 + 启动补收敛                 | 两层 26 条用例（含幂等、误撤、开通失败不回滚任职） |
 | P8    | Traits 扩到 8 维（registry + schema + 投影 + UI），**行为只接已定义策略的那几个**                                                  | 扩展性测试（已存在，扩到 8）                   |
 | P9    | 能力目录 + `employee_competencies`（含 UNRATED/PROVISIONAL 语义）                                                                  | 禁止随机 + 无证据不可变                        |
 | P10   | 考核系统（profiles/criteria/runs/results/evidence + 聚合 + confidence + trend）                                                    | §48 全部不变量 + 可重放                        |

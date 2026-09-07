@@ -167,9 +167,9 @@ Provisioning job 在事务提交后异步跑（沿用现有 `ProvisioningEngine.
 实现要点：
 
 1. 复用 `access.union_entitlements()` + `access.diff_entitlements()`，不写第二套 diff。
-2. `EmployeePackage.source` 新增 `position`；老的 `role` 行 v14 回填为 `position` + 指向映射后的定义。
-3. `sync_role_packages()` → 改名 `sync_position_packages()`，仍遵守既有不变量：
-   **`manual` 行永不隐式移除**（这条现在有测试，必须继续绿）。
+2. `EmployeePackage.source` 新增 `position` ✅。**老 `role` 行不回填**（原计划要回填 —— 见下方"落地修正"）。
+3. 新增独立的 `sync_position_packages()`，`sync_role_packages()` **保留不改名**（原计划是改名 —— 见下方"落地修正"）；
+   两层各管各的 `source` 行，共同遵守既有不变量：**`manual` 行永不隐式移除**（原有测试继续绿 ✅）。
 4. 部门归属：`employee.department_id` 降级为"最后任职部门"的兼容镜像，真实归属来自 assignment 的 slot。
    AVAILABLE 的人 `department_id` 允许为 NULL（不假装他属于某部门）。
 5. 调岗序列（§38）：
@@ -183,6 +183,40 @@ Provisioning job 在事务提交后异步跑（沿用现有 `ProvisioningEngine.
    ```
    注意 REMOVE 与 ADD 的顺序：先 ADD 后 REMOVE，避免"两职位共有的 entitlement"被误撤
    （现有 diff 已按 key 计算，天然安全；测试要覆盖"SE 与 Researcher 共享 `git:company-org-member`"）。
+
+### 4.1 落地修正（P4d：两条原计划被实测否掉）
+
+**① 不把老 `role` 行回填成 `position`。** 原计划是 v14 把 `role` 行改成 `position` 并指向映射后的定义。
+实测反对它：dev 库里 5 个定义声明的包（`ceo`、`product-manager`…）与人级角色包**是同一批包**，
+一旦把行改成职位层，"卸任"就会收走这些人本来就有的东西 —— 而 §4 表格承诺的正是"调岗绝不动人级"。
+代价是两层并存一段时间，P6 撤 `role` 列时一并收尾。
+
+**② 不把 `sync_role_packages` 改名成 `sync_position_packages`。** 改名等于宣称"角色包就是职位包"，
+而它们是生命周期不同的两个东西：前者跟人（离职才回收），后者跟编制（卸任即 REMOVE）。
+两层需要**两个各自只碰自己行**的函数，不是一个函数换个名字。
+
+由此推出两条实现规则（都有测试）：
+
+1. **人级优先。** 同一个包被两层同时声称时行归人级：`sync_role_packages()` 会把 `source=position`
+   的行**认领**成人级行（改 provenance、不改权限集合，log 一条）。不这么做，下次职位层收敛
+   就把人级该有的删了 —— 这是两层化最容易造的 bug。
+2. **差集要拆两种语义。** "职位声明了却没拿到"可能是 ① 人级本来就有（dev 库全员如此）
+   ② 真的还在开通。合成一个数字，UI 只能把 ① 画成永远转圈，所以读面分成
+   `already_held_by_person` 与 `pending_from_position`。
+
+### 4.2 P4d 实际接口
+
+- 事件：`employee.position_assigned` / `employee.position_released`（由 `position_service` 发出）
+  → `app/workforce/access.py` 的 `PositionAccessConsumer` 收敛。
+  **收敛不在分配事务里**：任职提交成功即成功，开通失败只落在 `job.status=partial`。
+- `converge_employee_access(db, employee_id)` 幂等：期望集没变化就不生成工单（事件重放安全）。
+- 补收敛 `converge_all()` 启动时跑一次（进程死在"提交任职"与"处理事件"之间的恢复路径）。
+  dev 库副本实测：16 个有生效任职的人、0 变更、授予行 37→37、工单 21→21。
+- 读面：`GET /employees/{id}/access` → `{person, position, effective, declared_by_position,
+already_held_by_person, pending_from_position}`；`sources[].layer` 新增，默认 `person`（向后兼容）。
+- 开关：`EIDOLON_POSITION_ACCESS_SYNC=false` ⇒ 任职照常、职位包不自动加减（回滚锚点；测试环境默认关）。
+- **未做**：前端消费 `/access`（属 P12）；`department_id` 降级为"最后任职部门"镜像、
+  AVAILABLE 允许 NULL（§4 第 4 条，属 P6）。
 
 ---
 
