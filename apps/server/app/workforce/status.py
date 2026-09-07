@@ -56,6 +56,21 @@ def has_active_primary(active_assignments: Sequence[PositionAssignment]) -> bool
     )
 
 
+def row_occupies_establishment(assignment: PositionAssignment) -> bool:
+    """**单条**任职是否占住编制。派生字段 `occupied_slot` 的判据就这一处。
+
+    刻意不要求"坑能解析到定义"：坑丢了定义是**诊断**（`MISSING_DEFINITION`），
+    不是另一种占用答案 —— 坑侧的 `slot_incumbents()` 数的也是"生效 PRIMARY"。
+    两边用同一把尺，组织页才不会说 OCCUPIED 而名册说 AVAILABLE。
+    """
+    return (
+        assignment.assignment_type == AssignmentType.primary.value
+        and assignment.is_primary
+        and assignment.effective_to is None
+        and assignment.position_slot_id is not None
+    )
+
+
 def occupies_establishment(active_assignments: Sequence[PositionAssignment]) -> bool:
     """任职轴的业务判据：存在一个**占住编制**的生效主职。
 
@@ -65,7 +80,7 @@ def occupies_establishment(active_assignments: Sequence[PositionAssignment]) -> 
     也直接违背本次迁移"宁缺不错"的拍板。
     """
     return has_active_primary(active_assignments) and any(
-        assignment.position_slot_id is not None for assignment in active_assignments
+        row_occupies_establishment(assignment) for assignment in active_assignments
     )
 
 

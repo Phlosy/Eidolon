@@ -120,8 +120,35 @@ def definition_packages(db: Session, definition_id: int) -> list[AccessPackage]:
     )
 
 
-def definition_package_slugs(db: Session, definition_id: int) -> list[str]:
+def definition_packages_map(
+    db: Session, definition_ids: Sequence[int] | None = None
+) -> dict[int, list[str]]:
+    """批量版：定义 id → 权限包 slug 列表（Definitions 列表页一次取完）。
+
+    P4d 的第二层权限（职位带来的包）读的就是这份映射，所以它必须是**唯一**的
+    "定义→包"解法；再写一个 join 就会在两处给出不同的默认权限。
+    """
+    rows = db.execute(
+        select(PositionDefinitionPackage.position_definition_id, AccessPackage.slug)
+        .join(AccessPackage, AccessPackage.id == PositionDefinitionPackage.package_id)
+        .order_by(PositionDefinitionPackage.position_definition_id, AccessPackage.slug)
+    ).all()
+    grouped: dict[int, list[str]] = {}
+    for definition_id, slug in rows:
+        if definition_id is None or (definition_ids and definition_id not in set(definition_ids)):
+            continue
+        grouped.setdefault(int(definition_id), []).append(slug)
+    return grouped
     return [package.slug for package in definition_packages(db, definition_id)]
+
+
+def definition_package_slugs(db: Session, definition_id: int) -> list[str]:
+    """单定义版：`definition_packages_map()` 的包装。
+
+    之前它是自己 join 一遍，现在只保留一份 join 实现 —— 职位权限包（P4d）会同时用到
+    单点与批量两种读法，两份实现迟早给出不同答案。
+    """
+    return definition_packages_map(db, [definition_id]).get(definition_id, [])
 
 
 # --------------------------------------------------------------------- slots
@@ -206,6 +233,29 @@ def slot_incumbents(db: Session, slot_id: int) -> list[PositionAssignment]:
     )
 
 
+def incumbents_by_slot(db: Session, slot_ids: Sequence[int]) -> dict[int, list[int]]:
+    """批量版在任者：坑 → 员工 id 列表（组织页一次取完，不逐坑查）。"""
+    if not slot_ids:
+        return {}
+    # 用 execute 而不是 scalars：scalars() 会把多列行**降成第一列**，
+    # 于是 `for slot_id, employee_id in rows` 拿到的是裸 int 而炸在这里。
+    rows = db.execute(
+        select(PositionAssignment.position_slot_id, PositionAssignment.employee_id)
+        .where(
+            PositionAssignment.position_slot_id.in_(set(slot_ids)),
+            PositionAssignment.effective_to.is_(None),
+            PositionAssignment.assignment_type == AssignmentType.primary.value,
+        )
+        .order_by(PositionAssignment.position_slot_id, PositionAssignment.effective_from)
+    ).all()
+    grouped: dict[int, list[int]] = {}
+    for slot_id, employee_id in rows:
+        if slot_id is None:
+            continue
+        grouped.setdefault(int(slot_id), []).append(int(employee_id))
+    return grouped
+
+
 def vacant_slots(db: Session, company_id: int | None = None) -> list[PositionSlot]:
     slots = list_slots(db, company_id)
     occupancy = occupancy_map(db, slots)
@@ -287,38 +337,115 @@ def career_history(db: Session, employee_id: int) -> list[PositionAssignment]:
     )
 
 
-def employee_current_position(db: Session, employee_id: int) -> CurrentPosition | None:
-    """当前职位视图：生效 PRIMARY 任职 → 坑 → 定义。
+def current_positions_by_employee(
+    db: Session, employee_ids: Sequence[int]
+) -> dict[int, CurrentPosition]:
+    """批量当前职位：坑与定义各自**去重后一次取**，所以一页名册不会 N+1。
 
-    没有主职就返回 None —— 这是 `AVAILABLE`，不是错误，也**不许**回落到
-    `employees.role` 去假装有一个职位（那正是本次重构消灭的第二个真相）。
+    没有主职、或主职的坑/定义解析不到的人，直接不出现在结果里（= `AVAILABLE`）。
     """
-    assignment = active_primary_assignment(db, employee_id)
-    if assignment is None or assignment.position_slot_id is None:
+    primaries = active_primaries_by_employee(db, employee_ids)
+    slots: dict[int, PositionSlot | None] = {}
+    definitions: dict[int, PositionDefinition | None] = {}
+    departments: dict[int, str | None] = {}
+    for assignment in primaries.values():
+        if assignment.position_slot_id is None:
+            continue
+        slot_id = int(assignment.position_slot_id)
+        if slot_id not in slots:
+            slots[slot_id] = get_slot(db, slot_id)
+        slot = slots[slot_id]
+        if slot is None:
+            continue
+        if slot.position_definition_id not in definitions:
+            definitions[slot.position_definition_id] = get_definition(
+                db, slot.position_definition_id
+            )
+        if slot.department_id not in departments:
+            department = db.get(Department, slot.department_id)
+            departments[slot.department_id] = department.name if department else None
+    result: dict[int, CurrentPosition] = {}
+    for employee_id, assignment in primaries.items():
+        if assignment.position_slot_id is None:
+            continue
+        slot = slots.get(int(assignment.position_slot_id))
+        if slot is None:
+            # 悬空引用（无 DB FK 的代价）：宁缺不错 —— 报无职位，不编一个职位。
+            continue
+        definition = definitions.get(slot.position_definition_id)
+        if definition is None:
+            continue
+        result[int(employee_id)] = CurrentPosition(
+            employee_id=int(employee_id),
+            definition_id=definition.id,
+            code=definition.code,
+            name=definition.name,
+            level=definition.level,
+            job_family=definition.job_family,
+            legacy_role=definition.legacy_role,
+            department_id=slot.department_id,
+            department_name=departments.get(slot.department_id),
+            slot_id=slot.id,
+            slot_code=slot.slot_code,
+            since=assignment.effective_from,
+            assignment_type=assignment.assignment_type,
+        )
+    return result
+
+
+def employee_current_position(db: Session, employee_id: int) -> CurrentPosition | None:
+    """当前职位视图：生效 PRIMARY 任职 → 坑 → 定义；解析不到就是 None。
+
+    单条走法只是批量走法的一个元素 —— 两处实现迟早给出不一致的职位。
+    """
+    return current_positions_by_employee(db, [employee_id]).get(int(employee_id))
+
+
+def legacy_position_id_of_slot(slot: PositionSlot) -> int | None:
+    """读 v13 存在坑上的回填补丁 —— **映射只存一份，不重跑 slug 规则**。
+
+    新开的坑没有这个标记（它是纯历史对应关系），所以回 None 是正常的：
+    旧 `employments.position_id` 从此只是给 v0.4 UI 读的兼容镜像，不再是真相。
+    """
+    marker = slot.metadata_json.get("__position_id") if slot.metadata_json else None
+    return int(marker) if isinstance(marker, int) else None
+
+
+def slot_for_legacy_position(db: Session, position_id: int | None) -> PositionSlot | None:
+    """v0.4 的 `position_id` → 坑。靠 `__position_id` 标记找，不靠名字推断。
+
+    在 Python 里过滤而不是 `json_extract`：SQLite 有 `json_extract`、PG 没有等价函数，
+    而坑的量级很细（一个编制一行），不值得为此把服务锁到单一方言。
+    """
+    if position_id is None:
         return None
-    slot = get_slot(db, int(assignment.position_slot_id))
-    if slot is None:
-        # 悬空引用（无 DB FK 的代价）：宁缺不错 —— 报无职位，不编一个职位。
-        return None
-    definition = get_definition(db, slot.position_definition_id)
-    if definition is None:
-        return None
-    department = db.get(Department, slot.department_id)
-    return CurrentPosition(
-        employee_id=employee_id,
-        definition_id=definition.id,
-        code=definition.code,
-        name=definition.name,
-        level=definition.level,
-        job_family=definition.job_family,
-        legacy_role=definition.legacy_role,
-        department_id=slot.department_id,
-        department_name=department.name if department else None,
-        slot_id=slot.id,
-        slot_code=slot.slot_code,
-        since=assignment.effective_from,
-        assignment_type=assignment.assignment_type,
+    for slot in db.scalars(select(PositionSlot).order_by(PositionSlot.id)):
+        if legacy_position_id_of_slot(slot) == position_id:
+            return slot
+    return None
+
+
+def next_headcount_index(db: Session, department_id: int, position_definition_id: int) -> int:
+    """下一个编制序号：取已有最大值 +1，而不是 count +1 —— 坑可以被关，count 会重复。"""
+    highest = db.scalar(
+        select(func.max(PositionSlot.headcount_index)).where(
+            PositionSlot.department_id == department_id,
+            PositionSlot.position_definition_id == position_definition_id,
+        )
     )
+    return int(highest or 0) + 1
+
+
+def definition_slot_counts(db: Session, definition_ids: Sequence[int]) -> dict[int, int]:
+    """每个职位定义开了多少坑（批量，组织页用）。"""
+    if not definition_ids:
+        return {}
+    rows = db.execute(
+        select(PositionSlot.position_definition_id, func.count(PositionSlot.id))
+        .where(PositionSlot.position_definition_id.in_(set(definition_ids)))
+        .group_by(PositionSlot.position_definition_id)
+    ).all()
+    return {int(definition_id): int(count) for definition_id, count in rows}
 
 
 def employees_in_position(

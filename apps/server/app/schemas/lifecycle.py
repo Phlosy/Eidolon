@@ -42,6 +42,10 @@ class OnboardRequest(BaseModel):
 
 class TransferRequest(BaseModel):
     department_id: int
+    # P4b：转岗到某个**编制**用 slot_id；position_id 是 v0.4 旧口径（按 __position_id
+    # 标记映射到坑，映射不到就 409，绝不静默造一条无坑主职）。两者都不给 = 纯搬部门，
+    # 此时现有主职被关闭、人派生成 AVAILABLE。
+    slot_id: int | None = None
     position_id: int | None = None
     manager_employee_id: int | None = None
     access_package_ids: list[int] | None = None
