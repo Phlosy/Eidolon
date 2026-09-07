@@ -128,6 +128,12 @@ status:
 dev-inventory: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/dev_inventory.py $(INV_ARGS)
 
+## dev-cleanup-plan: **只读**清理规划（dry-run；必须显式传 COMPANY_IDS，如 COMPANY_IDS="1 3"；不删不改）
+.PHONY: dev-cleanup-plan
+dev-cleanup-plan: check-env
+	@[ -n "$(COMPANY_IDS)" ] || { echo "ERROR: dev-cleanup-plan 必须显式传 COMPANY_IDS（如 make dev-cleanup-plan COMPANY_IDS=\"1 3\"）—— 拒绝默认全库"; exit 2; }
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/dev_cleanup_plan.py --company $(COMPANY_IDS) $(CLEANUP_ARGS)
+
 ## logs: 跟随前后端日志（Ctrl-C 退出）
 .PHONY: logs
 logs:
