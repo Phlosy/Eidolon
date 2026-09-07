@@ -1123,6 +1123,82 @@ export interface EmployeeDetail extends Employee {
   assignment_integrity: AssignmentIntegrity;
 }
 
+// ---------- P5: Talent profile & competency foundation (docs/competency-system.md) ----------
+
+export type CompetencyRowStatus = "unrated" | "provisional" | "assessed" | "stale";
+export type TrendDirection = "up" | "stable" | "down" | "unknown";
+
+/** competency_domains（company_id null = 全局内置目录）。 */
+export interface CompetencyDomain {
+  id: number;
+  company_id: number | null;
+  code: string;
+  name: string;
+  kind: "general" | "professional";
+  description: string;
+  order_index: number;
+  built_in: boolean;
+}
+
+export interface CompetencyDefinition {
+  id: number;
+  domain_id: number;
+  code: string;
+  name: string;
+  description: string;
+  order_index: number;
+  built_in: boolean;
+}
+
+/** 8 维人格的 UI 数据契约（只描述倾向；affects_execution=false ⇒ 当前不影响执行）。 */
+export interface TraitView {
+  code: string;
+  label: string;
+  description: string;
+  value: number; // 0..1（存储口径）
+  display: number; // 派生 round(value*100)
+  affects_execution: boolean;
+}
+
+/** 员工能力维度（score/confidence 为 null = 未评估 —— 绝不显示 0 分）。 */
+export interface EmployeeCompetencyView {
+  competency_definition_id: number;
+  domain_id: number;
+  domain_code: string;
+  domain_name: string;
+  code: string;
+  name: string;
+  description: string;
+  kind: "general" | "professional";
+  score: number | null;
+  confidence: number | null;
+  evidence_count: number;
+  status: CompetencyRowStatus;
+  trend: number | null;
+  trend_direction: TrendDirection;
+  last_assessed_at: string | null;
+}
+
+export interface EmployeeCapabilities {
+  general: EmployeeCompetencyView[];
+  professional: EmployeeCompetencyView[];
+}
+
+export interface CompetencyEvidenceView {
+  id: number;
+  employee_id: number;
+  competency_definition_id: number;
+  competency_code: string;
+  competency_name: string;
+  source_kind: string;
+  source_id: number | null;
+  source_ref: string;
+  assessment_run_id: number | null;
+  signal: number | null;
+  quality: number | null;
+  occurred_at: string;
+}
+
 // ---------- v0.4: Employee lifecycle (docs/design-v0.4-lifecycle.md §10) ----------
 
 export type LifecycleStatus =

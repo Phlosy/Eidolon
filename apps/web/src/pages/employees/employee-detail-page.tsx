@@ -22,6 +22,7 @@ import { WorkspaceTab } from "../../components/employee/workspace-tab";
 import { MemoryTab } from "../../components/employee/memory-tab";
 import { PerformanceTab } from "../../components/employee/performance-tab";
 import { BehaviorTab } from "../../components/employee/behavior-tab";
+import { CapabilitiesTab } from "../../components/employee/capabilities-tab";
 import { CareerTab } from "../../components/employee/career-tab";
 import { LifecycleActions } from "../../components/lifecycle/lifecycle-actions";
 import { ProvisioningJobPanel } from "../../components/lifecycle/provisioning-job-panel";
@@ -49,6 +50,7 @@ type Tab =
   | "skills"
   | "learning"
   | "behavior"
+  | "capabilities"
   | "performance"
   | "career";
 
@@ -75,6 +77,7 @@ const TABS: Tab[] = [
   "skills",
   "learning",
   "behavior",
+  "capabilities",
   "performance",
   "career",
 ];
@@ -203,6 +206,7 @@ export function EmployeeDetailPage() {
           )
         ) : null}
         {tab === "behavior" ? <BehaviorTab employeeId={employeeId} /> : null}
+        {tab === "capabilities" ? <CapabilitiesTab employeeId={employeeId} /> : null}
         {tab === "performance" ? <PerformanceTab employeeId={employeeId} /> : null}
         {tab === "career" ? <CareerTab employeeId={employeeId} /> : null}
       </Panel>

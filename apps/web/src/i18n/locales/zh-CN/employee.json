@@ -47,7 +47,8 @@
     "learning": "学习",
     "behavior": "行为",
     "performance": "绩效",
-    "career": "履历"
+    "career": "履历",
+    "capabilities": "能力"
   },
   "profile": {
     "id": "ID",
@@ -182,5 +183,20 @@
     "projectionMirrorOn": "是",
     "projectionMirrorOff": "否（下次重建实例时同步）",
     "projectionNote": "brain/ 目录不挂载进容器，真正生效的是随任务内联下发的行为块。"
+  },
+  "capabilities": {
+    "traitsTitle": "人格 Traits（8 维）",
+    "traitsHint": "行为倾向：这个人通常倾向怎样工作。不改变能力分、成功率或验收判定。",
+    "generalTitle": "通用能力（10 维）",
+    "generalHint": "被证据证明的通用能力。未评估的维度显示「未评估」，不会显示 0 分。",
+    "professionalTitle": "专业能力",
+    "professionalHint": "动态目录：只有被实际证明的维度会列出。",
+    "unrated": "未评估",
+    "confidence": "置信度 {{value}}",
+    "evidenceCount": "{{count}} Evidence",
+    "evidenceTitle": "能力证据（可追溯）",
+    "evidenceHint": "每条能力数值都应该能回答「为什么是这个分数」。",
+    "empty": "还没有被评估的能力维度。",
+    "noBehaviorEffect": "当前不影响执行"
   }
 }

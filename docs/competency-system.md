@@ -5,6 +5,10 @@
 它和 `docs/employee-brain-behavior-policy.md`（trait：倾向怎样工作）是**两套独立数值**，
 和既有 `skills`（具体可复用做法）是**第三套**。三者不得互相代偿。
 
+> **落地状态见 [docs/talent-profile.md](talent-profile.md)**（v0.10 / migration v15）：
+> 8 维人格已注册、目录已种子、employee_competencies/competency_evidence/assessment_runs
+> 已落表、确定性聚合器 assessment-base-v1 已实现、五个读端点已提供。本文仍是规格本体。
+
 ---
 
 ## 1. 三层数值，互不换算
