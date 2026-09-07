@@ -67,9 +67,11 @@ class PositionDefinitionOut(PositionORMModel):
     description: str
     legacy_role: str | None
     built_in: bool
-    slot_count: int = 0
-    vacant_count: int = 0
-    package_slugs: list[str] = Field(default_factory=list)
+    # 三个派生字段**不得带默认值**（ADR-12）：默认 0/[] 会让“忘了算”与“真的为 0”
+    # 在响应体里长得一模一样。只能由 definitions_out() 显式填入后交给 schema 校验。
+    slot_count: int
+    vacant_count: int
+    package_slugs: list[str]
 
 
 class RosterIncumbent(BaseModel):
@@ -152,7 +154,8 @@ class AssignmentOut(PositionORMModel):
     effective_to: datetime | None
     position_title_snapshot: str
     reason: str
-    occupied_slot: bool = Field(default=False, description="派生：这条任职是否真的占住编制")
+    # 派生字段（ADR-12）：无默认值，只能由 assignment_out() 填入
+    occupied_slot: bool
 
 
 class RosterEntryOut(BaseModel):
@@ -167,8 +170,8 @@ class RosterEntryOut(BaseModel):
     has_primary_assignment: bool
     occupies_establishment: bool
     current_position: CurrentPositionOut | None = None
-    #: 只读诊断（不是状态）：区分"正常待分配"与"历史悬空引用"
-    integrity: list[str] = Field(default_factory=list)
+    # 只读诊断（不是状态）：区分"正常待分配"与"历史悬空引用"（ADR-12：无默认值）
+    integrity: list[str]
 
 
 class RosterStatsOut(BaseModel):

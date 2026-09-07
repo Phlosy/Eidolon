@@ -64,9 +64,14 @@ def create_definition(
     payload: PositionDefinitionIn,
     company_id: int | None = Depends(resolve_company_id),
     db: Session = Depends(get_db),
-) -> PositionDefinitionOut:
-    """自定义模板只能落在本 scope（`build_definition_layers()` 决定它不会被继承污染）。"""
-    return position_service.create_definition(db, payload, company_id)
+) -> dict:
+    """自定义模板只能落在本 scope（`build_definition_layers()` 决定它不会被继承污染）。
+
+    返回经 `definition_out()` 回读的完整形状：派生字段（slot_count / vacant_count /
+    package_slugs）必须在同一个出口算，直接返回 ORM 会让 ADR-12 的 schema 校验当场报错。
+    """
+    definition = position_service.create_definition(db, payload, company_id)
+    return position_service.definition_out(db, definition.id, company_id)
 
 
 @router.post(

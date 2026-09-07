@@ -213,6 +213,18 @@ def definitions_out(db: Session, company_id: int | None) -> list[dict]:
     return result
 
 
+def definition_out(db: Session, definition_id: int, company_id: int | None) -> dict:
+    """单条定义出口：复用 `definitions_out` 的批量算法（派生值必须同源，不允许第二段实现）。
+
+    `POST /definitions` 曾直接返回 ORM 对象 —— ADR-12 去掉 schema 假默认值后当场报错
+    （ResponseValidationError: slot_count required）。创建后必须经这里回读再返回。
+    """
+    for payload in definitions_out(db, company_id):
+        if payload["id"] == definition_id:
+            return payload
+    raise HTTPException(status_code=404, detail="position definition not found")
+
+
 def assignment_out(db: Session, assignment: PositionAssignment) -> dict:
     """单条任职 → API 形状，并填入派生的 `occupied_slot`。
 
