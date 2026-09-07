@@ -39,6 +39,7 @@ from app.models.runtime import RuntimeInstance
 from app.repositories import git as git_repo
 from app.repositories import project as project_repo
 from app.repositories import project_delivery as delivery_repo
+from app.services import position_compat
 
 logger = get_logger(__name__)
 
@@ -84,6 +85,11 @@ class Facts:
     reviews: dict[str, str] = field(default_factory=dict)
     phases: dict[str, str] = field(default_factory=dict)
     delivery_count: int = 0
+    # 旧 role 口径的**派生**镜像（员工 id -> role）。`load()` 一次算完，之后所有 role
+    # 判断都读它，不再读 `employee.role` 列（P4c）。
+    # `None` 表示"没算过"，**不是**"没人有 role"：手工构造 Facts 而不给这个字段，
+    # 一碰 role 门禁就会抛错，而不是静默把所有门禁判成 False（ADR-10）。
+    role_of: dict[int, str] | None = None
 
     @classmethod
     def load(cls, db: Session, company: Company | None, project_id: int | None = None) -> Facts:
@@ -96,6 +102,7 @@ class Facts:
                 select(Employee).where(Employee.company_id == company.id).order_by(Employee.id)
             )
         )
+        facts.role_of = position_compat.role_mirror(db, facts.employees)
         ids = [employee.id for employee in facts.employees]
         if ids:
             for runtime in db.scalars(
@@ -159,10 +166,19 @@ class Facts:
     # workspace provisioning 发生过（见 onboarded 档），点"下一步"造不出来。
     IN_POST = (LifecycleStatus.active.value, LifecycleStatus.onboarding.value)
 
+    def role(self, employee: Employee) -> str | None:
+        """某个人的旧 role 口径（派生镜像的唯一读法）。"""
+        if self.role_of is None:
+            raise RuntimeError(
+                "Facts.role_of 未计算：请用 Facts.load(db, ...)，或手工传 role_of=。"
+                "缺了它不让 role 门禁静默全 False —— 那是假阴性，比报错更难查。"
+            )
+        return self.role_of.get(getattr(employee, "id", None))
+
     def in_post_of(self, role: str) -> Employee | None:
         match = None
         for employee in self.employees:
-            if employee.role != role or employee.lifecycle_status not in self.IN_POST:
+            if self.role(employee) != role or employee.lifecycle_status not in self.IN_POST:
                 continue
             # 同时存在时优先真正 active 的那位
             if match is None or (
@@ -224,7 +240,8 @@ def _role_gate(role: str, part: str) -> Callable[[Facts], bool]:
         # 严格档：只有 lifecycle_status == active 才算。核心教程用它会被可选资源
         # 卡死，所以留给"确实需要活着的运行时"的场景。
         return lambda facts: any(
-            employee.role == role and employee.lifecycle_status == LifecycleStatus.active.value
+            facts.role(employee) == role
+            and employee.lifecycle_status == LifecycleStatus.active.value
             for employee in facts.employees
         )
     if part == "onboarded":
@@ -335,6 +352,10 @@ def evaluate(requirement: str, facts: Facts | None) -> bool:
         if check is None:
             logger.warning("unknown tutorial requirement: %s", requirement)
         return False
+    # 派生输入没算过是**编程错误**，不是"门没过"：放在 try 外面，免得被下面那个
+    # 兜底 except 吞成 False（那会让人以为门禁逻辑坏了，而不是 Facts 少填了一个字段）。
+    if facts.employees and facts.role_of is None:
+        raise RuntimeError("Facts.role_of 未计算：用 Facts.load(db, ...) 构造，或显式传 role_of=。")
     try:
         return bool(check(facts))
     except Exception:  # noqa: BLE001 - 一个坏门不能把整个教程打挂

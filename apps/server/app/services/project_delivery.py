@@ -52,6 +52,7 @@ from app.schemas.project_delivery import (
 )
 from app.services import auth as auth_service
 from app.services import drive as drive_service
+from app.services import position_compat
 from app.services.document_generation import (
     DocumentSection,
     DocumentSource,
@@ -201,7 +202,10 @@ def get_lifecycle(db: Session, project: Project) -> ProjectLifecycleOut:
         ),
         None,
     )
-    qa = org_repo.get_employee_by_role(db, project.company_id, EmployeeRole.qa_engineer.value)
+    # 同 projects.py：测试任务派给"占着 QA 编制的人"，不是镜像里写着 qa_engineer 的人
+    qa = position_compat.employee_by_legacy_role(
+        db, project.company_id, EmployeeRole.qa_engineer.value
+    )
     return ProjectLifecycleOut(
         project=ProjectOut.model_validate(project),
         requirements=[RequirementOut.model_validate(row) for row in requirements],
@@ -1035,7 +1039,9 @@ def _ensure_development_tasks(db: Session, project: Project) -> None:
     phase = _phase_by_type(db, project.id, ProjectPhaseType.development.value)
     if any(task.phase_id == phase.id for task in project_repo.list_tasks(db, project.id)):
         return
-    engineer = org_repo.get_employee_by_role(db, project.company_id, EmployeeRole.engineer.value)
+    engineer = position_compat.employee_by_legacy_role(
+        db, project.company_id, EmployeeRole.engineer.value
+    )
     for sequence, title in enumerate(
         ["Game Engine", "Input Control", "Score System", "User Interface", "Automated Tests"],
         start=1,

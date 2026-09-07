@@ -36,6 +36,25 @@ def test_empty_facts_do_not_satisfy_any_business_gate():
     assert unsatisfied == [], f"空状态下就通过了这些门：{unsatisfied}"
 
 
+def test_facts_without_a_computed_role_mirror_fails_loudly():
+    """派生输入没算过 ⇒ 报错，不是把门禁静默判成 False（ADR-10）。
+
+    手工构造 Facts 却忘了 `role_of` 时，静默 False 会让人以为"门禁坏了"；
+    缺计算与答案是"否"必须可区分。
+    """
+    from types import SimpleNamespace
+
+    from app.tutorials import requirements as R
+
+    employee = SimpleNamespace(id=1, role="ceo", lifecycle_status="active", runtime_type="mock")
+    facts = R.Facts(company=SimpleNamespace(id=1), employees=[employee])
+    with pytest.raises(RuntimeError, match="role_of"):
+        R.evaluate("CEO_ACTIVE", facts)
+
+    # 空 Facts 没有员工，压根不会走到 role 判断 —— 仍然老实返回 False
+    assert R.evaluate("CEO_ACTIVE", R.Facts()) is False
+
+
 def test_core_and_practice_are_separate_tutorials():
     core, practice = DEFINITIONS[CORE_TUTORIAL_ID], DEFINITIONS[PRACTICE_TUTORIAL_ID]
     assert core["sets_operating_stage"] is True
@@ -146,6 +165,8 @@ def test_onboarded_gate_is_relaxed_but_active_gate_is_not():
     facts = R.Facts(
         company=SimpleNamespace(id=1),
         employees=[employee],
+        # role 口径现在是派生输入（P4c：不再读 employee.role 列），手工构造就得给。
+        role_of={1: "ceo"},
         runtimes={1: runtime},
         accounts={1: {"workspace": workspace}},
     )
@@ -154,7 +175,11 @@ def test_onboarded_gate_is_relaxed_but_active_gate_is_not():
 
     # 缺 provisioning 产物 → 两档都不过
     assert (
-        R.evaluate("CEO_ONBOARDED", R.Facts(company=facts.company, employees=[employee])) is False
+        R.evaluate(
+            "CEO_ONBOARDED",
+            R.Facts(company=facts.company, employees=[employee], role_of={1: "ceo"}),
+        )
+        is False
     )
 
     # 离岗的人不算数
@@ -165,6 +190,7 @@ def test_onboarded_gate_is_relaxed_but_active_gate_is_not():
             R.Facts(
                 company=facts.company,
                 employees=[gone],
+                role_of={2: "ceo"},
                 runtimes={2: runtime},
                 accounts={2: {"workspace": workspace}},
             ),

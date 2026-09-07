@@ -34,6 +34,7 @@ from app.repositories import organization as org_repo
 from app.repositories import project as project_repo
 from app.repositories import project_delivery as delivery_repo
 from app.schemas.project_delivery import TutorialProgressOut, TutorialTemplateOut
+from app.services import position_compat
 from app.tutorials import (
     CORE_TUTORIAL_ID,
     DEFINITIONS,
@@ -251,7 +252,7 @@ def practice_preview(db: Session) -> dict[str, Any]:
             {
                 "employee_id": employee.id,
                 "name": employee.name,
-                "role": employee.role,
+                "role": facts.role_of.get(employee.id, "engineer"),
                 "lifecycle_status": employee.lifecycle_status,
                 "runtime": runtime.runtime_type,
                 "provider": provider.name if provider else None,
@@ -345,8 +346,10 @@ def _reconcile(db: Session, progress) -> None:
     context = dict(progress.context or {})
     employees = org_repo.list_employees(db, company.id)
     for role, key in (("ceo", "ceo_employee_id"), ("engineer", "engineer_employee_id")):
-        match = next((employee for employee in employees if employee.role == role), None)
-        if match is not None:
+        # 教程上下文里"谁是 CEO"也走职位域优先的桥：占着编制的人 > 镜像列。
+        # `employees` 这行原本只是为了一次线性扫描，现在两个角色各自最多查一次。
+        match = position_compat.employee_by_legacy_role(db, company.id, role)
+        if match is not None and match.id in {e.id for e in employees}:
             context[key] = match.id
     project_id = _project_id(db, progress, company)
     if project_id is not None and not context.get("project_id"):

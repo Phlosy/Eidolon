@@ -24,6 +24,7 @@ from app.schemas.project import (
 )
 from app.services import artifacts as artifact_service
 from app.services import drive as drive_service
+from app.services import position_compat
 from app.services import tasks as task_service
 
 
@@ -36,8 +37,11 @@ def create_order(db: Session, payload: ProjectCreate) -> Project:
     company = org_repo.get_default_company(db)
     if company is None:
         raise HTTPException(status_code=409, detail="no company seeded")
-    pm = org_repo.get_employee_by_role(db, company.id, EmployeeRole.product_manager.value)
-    ceo = org_repo.get_employee_by_role(db, company.id, EmployeeRole.ceo.value)
+    # 职位域优先：谁**占着** PM/CEO 的编制才算那个人；只有没人任职才回退旧列镜像
+    # （v0.4 老公司）。以前直接 `WHERE employees.role=...`，会把名册上 AVAILABLE
+    # 但镜像写着 ceo 的人拉去审批。
+    pm = position_compat.employee_by_legacy_role(db, company.id, EmployeeRole.product_manager.value)
+    ceo = position_compat.employee_by_legacy_role(db, company.id, EmployeeRole.ceo.value)
     schedule_start = utcnow()
     project = project_repo.create_project(
         db,

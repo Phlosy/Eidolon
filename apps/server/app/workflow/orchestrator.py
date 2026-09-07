@@ -33,6 +33,7 @@ from app.repositories import runtimes as runtime_repo
 from app.runtimes.base import RuntimeEventKind, TaskContext
 from app.runtimes.gateway import gateway
 from app.services import artifacts as artifact_service
+from app.services import position_compat
 from app.services import tasks as task_service
 
 logger = get_logger(__name__)
@@ -191,7 +192,8 @@ class Orchestrator:
                     description=task.description,
                     acceptance_criteria=task.acceptance_criteria,
                     employee_name=employee.name,
-                    employee_role=employee.role,
+                    # 提示词里的身份说来自职位定义（派生），不是镜像列
+                    employee_role=position_compat.legacy_role_of(db, employee),
                     prior_knowledge=prior_knowledge,
                     validated_skills=validated_skills,
                 )
