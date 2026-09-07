@@ -404,7 +404,8 @@ class Orchestrator:
 
             if task.kind == TaskKind.order_review.value:
                 project.status = ProjectStatus.planning.value
-                pm = org_repo.get_employee_by_role(
+                # 立项后接手的 PM：先问"谁占着 PM 编制"，没人任职才回退旧列镜像
+                pm = position_compat.employee_by_legacy_role(
                     db, company_id, EmployeeRole.product_manager.value
                 )
                 planning_start = project.planned_start_at or project.created_at
@@ -457,7 +458,9 @@ class Orchestrator:
         project.planned_end_at = schedule_start + timedelta(days=18)
         for order, (milestone_name, kind, role, deps) in enumerate(GRAPH_TEMPLATE, start=1):
             start_offset, end_offset = schedule_windows[order - 1]
-            assignee = org_repo.get_employee_by_role(db, project.company_id, role)
+            # 里程碑负责人同理：`role` 是 GRAPH_TEMPLATE 里的旧口径，
+            # 桥把它换算成"现在谁占着这个编制"，而不是"谁身上写着这个字符串"
+            assignee = position_compat.employee_by_legacy_role(db, project.company_id, role)
             milestone = project_repo.create_milestone(
                 db,
                 project_id=project.id,

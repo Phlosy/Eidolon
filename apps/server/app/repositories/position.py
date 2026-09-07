@@ -504,7 +504,12 @@ def _position_holder_query(*conditions):
 def employees_in_position(
     db: Session, definition_code: str, company_id: int | None = None
 ) -> list[int]:
-    """按职位 code 找人（取代 `get_employee_by_role`，orchestrator 里程碑负责人用它）。"""
+    """按职位 **code** 找在任者。
+
+    与 `employee_id_holding_legacy_role()` 共用 `_position_holder_query()`（同一把尺），
+    区别只在查询键：这里按 `PositionDefinition.code`，那里按 `legacy_role`。
+    旧 `get_employee_by_role` 的生产调用点已改走 `position_compat.employee_by_legacy_role`。
+    """
     target = _scoped_company_id(db, company_id)
     conditions = [PositionDefinition.code == definition_code]
     if target is not None:
