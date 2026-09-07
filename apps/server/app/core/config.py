@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     # 这是 §3.4 验收条件 5 的回滚语义锚点。
     behavior_policy_enabled: bool = True
 
+    # P4d — 职位层权限的事件收敛（docs/position-system.md §4）。
+    # 关掉之后：`employee.position_*` 事件不再触发 Desired State 收敛，
+    # 启动补收敛也不跑 —— 任职照常生效，只是职位包不会自动加减（回滚锚点）。
+    position_access_sync: bool = True
+
     # v0.7 — human user authentication. Sessions are opaque, hashed server-side,
     # and transported only in an HttpOnly cookie.
     auth_required: bool = True

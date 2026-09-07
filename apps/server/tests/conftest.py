@@ -20,6 +20,12 @@ os.environ["EIDOLON_SEED_DEMO_WORKFORCE"] = "true"
 # the auth endpoints explicitly; protected legacy routes retain their old seam.
 os.environ["EIDOLON_AUTH_REQUIRED"] = "false"
 
+# P4d：职位层权限的事件消费者默认不起。lifespan 一跑起来，"分配 → 事件 → 收敛"
+# 会在后台线程里真的把权限发完，测试就会和它抢同一份状态（实测 flaky：测试以为
+# 是自己调 converge 起的作用，其实事件早被消费掉了）。消费者本体由
+# tests/test_position_access_events.py 直接 await handle() 覆盖。
+os.environ["EIDOLON_POSITION_ACCESS_SYNC"] = "false"
+
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 

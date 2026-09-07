@@ -24,6 +24,7 @@ from app.services import lifecycle as lifecycle_service
 from app.services.drive_migration import migrate_artifacts_to_drive
 from app.services.seed import seed_default_company
 from app.workflow.orchestrator import orchestrator
+from app.workforce import access as workforce_access
 
 logger = get_logger(__name__)
 
@@ -39,12 +40,20 @@ async def lifespan(app: FastAPI):
         get_secret_store().register_existing(db)  # arm log/event redaction
     bus.attach_loop()
     orchestrator.start()
+    # P4d：职位权限消费者（`employee.position_*` → Desired State → ProvisioningJob）。
+    # 先补一轮收敛再进循环：进程死在"提交任职"与"处理事件"之间时靠它兜住。
+    if settings.position_access_sync:
+        swept = workforce_access.sweep_on_startup()
+        if swept:
+            logger.info("启动补收敛修正了 %d 人的职位层权限", len(swept))
+        await workforce_access.consumer.start()
     manager = get_manager()
     await manager.start_healthcheck_loop()
     update_service = get_update_service()
     await update_service.start_update_loop()
     logger.info("eidolon server started (runtime_mode=%s)", settings.runtime_mode)
     yield
+    await workforce_access.consumer.stop()
     await orchestrator.stop()
     await manager.stop_healthcheck_loop()
     await update_service.stop_update_loop()
