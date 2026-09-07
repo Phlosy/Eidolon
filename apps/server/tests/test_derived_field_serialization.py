@@ -58,6 +58,7 @@ _SCHEMA_MODULES = (
     "app.schemas.organization",
     "app.schemas.competency",
     "app.schemas.assessment",
+    "app.schemas.position_profile",
     "app.schemas.runtime",
     "app.schemas.lifecycle",
     "app.schemas.knowledge",
