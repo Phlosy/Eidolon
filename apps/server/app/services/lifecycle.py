@@ -722,6 +722,15 @@ def seed_lifecycle(db: Session) -> None:
     """
     changed = False
 
+    # P5：全局能力目录（通用 10 维 + 专业域）是全局数据（company_id NULL），
+    # 与公司是否存在无关 —— 先于任何 company 分支种子。
+    from app.competency import catalog as competency_catalog
+
+    created = competency_catalog.ensure_global_catalog(db)
+    if created:
+        logger.info("competency catalog seeded: %d rows", created)
+        changed = True
+
     registry = get_registry()
     for provisioner in registry.all():
         if lifecycle_repo.get_provider_by_key(db, provisioner.key) is None:

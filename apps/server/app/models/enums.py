@@ -444,3 +444,38 @@ class TutorialStatus(StrEnum):
     paused = "paused"
     skipped = "skipped"
     completed = "completed"
+
+
+# ---------- P5: Talent Profile & Competency Foundation ----------
+
+
+class CompetencyKind(StrEnum):
+    """能力目录类型：通用能力（人人适用的 10 维）与专业能力（按领域扩展）。"""
+
+    general = "general"
+    professional = "professional"
+
+
+class CompetencyStatus(StrEnum):
+    """员工能力行状态。`unrated` 不落行 —— 无证据的维度由查询/序列化呈现为 unrated
+    （score=null），行内只可能出现 provisional / assessed / stale。"""
+
+    unrated = "unrated"
+    provisional = "provisional"
+    assessed = "assessed"
+    stale = "stale"
+
+
+class EvidenceSourceKind(StrEnum):
+    """能力证据来源类型（docs/competency-system.md §6）。值全小写，与仓库枚举风格一致。"""
+
+    task = "task"
+    project = "project"
+    test = "test"
+    review = "review"
+    artifact = "artifact"
+    user_feedback = "user_feedback"
+    peer_review = "peer_review"
+    assessment = "assessment"
+    learning = "learning"
+    skill_usage = "skill_usage"

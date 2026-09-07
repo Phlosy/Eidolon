@@ -9,6 +9,14 @@ from app.models.auth import (
     WebAuthnChallenge,
 )
 from app.models.base import Base
+from app.models.competency import (
+    AssessmentRun,
+    CompetencyDefinition,
+    CompetencyDomain,
+    CompetencyEvidence,
+    EmployeeCompetency,
+    PositionCompetencyRequirement,
+)
 from app.models.drive import DriveCollaborator, DriveNode, DriveRevision
 from app.models.event import Event
 from app.models.git import GitConnection
@@ -67,15 +75,20 @@ __all__ = [
     "AccessPackage",
     "AccessPackageItem",
     "Artifact",
+    "AssessmentRun",
     "AuditLog",
     "Base",
     "Company",
+    "CompetencyDefinition",
+    "CompetencyDomain",
+    "CompetencyEvidence",
     "Department",
     "DriveCollaborator",
     "DriveNode",
     "DriveRevision",
     "Employee",
     "EmployeeBrain",
+    "EmployeeCompetency",
     "EmployeePackage",
     "Employment",
     "Entitlement",
@@ -89,6 +102,7 @@ __all__ = [
     "Milestone",
     "ModelBinding",
     "Position",
+    "PositionCompetencyRequirement",
     "PositionSlot",
     "PositionDefinitionPackage",
     "PositionDefinition",

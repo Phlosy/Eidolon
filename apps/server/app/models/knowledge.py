@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -57,6 +57,11 @@ class Skill(TimestampMixin, Base):
     validation_status: Mapped[str] = mapped_column(
         String(50), default=SkillValidationStatus.candidate.value
     )
+    # P5：Skill → Competency 的显式映射（可选）。SkillUsage 被确认有用时，可以
+    # 为这条 competency 产生 Evidence —— Skill ≠ Competency，只是 Skill 的真实使用
+    # 可以作为 Competency 的证据来源（docs/competency-system.md §6）。
+    # 刻意不加 FK（与 employments.position_slot_id 同一纪律，见 v15 迁移 docstring）。
+    competency_definition_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
 
 class LearningRecord(TimestampMixin, Base):
