@@ -8,6 +8,7 @@ API_HOST      ?= $(or $(EIDOLON_API_HOST),127.0.0.1)
 API_PORT      ?= $(or $(EIDOLON_API_PORT),26881)
 WEB_PORT      ?= $(or $(EIDOLON_WEB_PORT),26880)
 RUNTIME_MODE  ?= $(or $(EIDOLON_RUNTIME_MODE),mock)
+INV_ARGS      ?=   # 传给 make dev-inventory 的参数，如 INV_ARGS="--format json"
 
 SERVER_DIR    := apps/server
 WEB_DIR       := apps/web
@@ -121,6 +122,11 @@ ps:
 .PHONY: status
 status:
 	@EIDOLON_API_PORT=$(API_PORT) EIDOLON_WEB_PORT=$(WEB_PORT) sh $(DEVCTL) status
+
+## dev-inventory: **只读**清点开发库（按公司口径；不删不改。JSON 用 INV_ARGS="--format json"）
+.PHONY: dev-inventory
+dev-inventory: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/dev_inventory.py $(INV_ARGS)
 
 ## logs: 跟随前后端日志（Ctrl-C 退出）
 .PHONY: logs
