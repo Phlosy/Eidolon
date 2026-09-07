@@ -1422,6 +1422,87 @@ export interface ProfileTemplate {
   requirement_count: number;
 }
 
+// ---------- P8: Position fit (docs/position-fit.md) ----------
+
+export const FIT_STATUSES = [
+  "NOT_EVALUABLE",
+  "INSUFFICIENT_DATA",
+  "EVALUABLE",
+  "STRONG_MATCH",
+  "PARTIAL_MATCH",
+  "WEAK_MATCH",
+  "CRITICAL_GAP",
+] as const;
+export type FitStatus = (typeof FIT_STATUSES)[number];
+
+export const QUALIFICATION_STATUSES = [
+  "QUALIFIED",
+  "QUALIFIED_WITH_GAPS",
+  "NOT_QUALIFIED",
+  "INSUFFICIENT_DATA",
+] as const;
+export type QualificationStatus = (typeof QUALIFICATION_STATUSES)[number];
+
+export interface FitRequirementEvaluation {
+  requirement_id: number;
+  competency_definition_id: number;
+  code: string;
+  name: string;
+  domain_code: string;
+  domain_name: string;
+  kind: "general" | "professional";
+  requirement_type: "required" | "preferred";
+  critical: boolean;
+  minimum_score: number | null;
+  target_score: number | null;
+  minimum_confidence: number | null;
+  weight: number;
+  employee_score: number | null;
+  employee_confidence: number | null;
+  evaluation_status: string;
+  reason_code: string;
+  gap_type: string | null;
+  is_strength: boolean;
+  is_development_opportunity: boolean;
+  is_unknown: boolean;
+  normalized_fit: number | null;
+  margin_to_minimum: number | null;
+  margin_to_target: number | null;
+}
+
+export interface PositionFitResult {
+  employee_id: number;
+  position_definition_id: number;
+  position_code: string;
+  configured: boolean;
+  profile_version_id: number | null;
+  profile_version: number | null;
+  profile_status: string | null;
+  assessment_profile_code: string | null;
+  fit_status: FitStatus;
+  qualification_status: QualificationStatus;
+  known_fit_score: number | null;
+  overall_fit_score: number | null;
+  fit_confidence: number | null;
+  requirement_coverage: number;
+  required_coverage: number;
+  preferred_coverage: number;
+  known_count: number;
+  total_count: number;
+  general_fit: number | null;
+  professional_fit: number | null;
+  strengths: FitRequirementEvaluation[];
+  gaps: FitRequirementEvaluation[];
+  uncertainties: FitRequirementEvaluation[];
+  development_opportunities: FitRequirementEvaluation[];
+  requirement_evaluations: FitRequirementEvaluation[];
+  engine_version: string;
+  policy_version: string;
+  serializer_version: string;
+  inputs_hash: string;
+  calculated_at: string | null;
+}
+
 // ---------- v0.4: Employee lifecycle (docs/design-v0.4-lifecycle.md §10) ----------
 
 export type LifecycleStatus =

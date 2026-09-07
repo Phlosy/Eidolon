@@ -48,7 +48,8 @@
     "behavior": "行为",
     "performance": "绩效",
     "career": "履历",
-    "capabilities": "能力"
+    "capabilities": "能力",
+    "positionFit": "匹配"
   },
   "profile": {
     "id": "ID",

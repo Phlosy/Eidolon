@@ -37,6 +37,27 @@
     "editorHint": "草稿可编辑；正式标准修改=新建版本",
     "noProfileHint": "该职位尚未配置能力画像（Not Configured ≠ 空画像）",
     "cloneFrom": "从内置职位克隆",
-    "confirmPublish": "发布后旧 ACTIVE 将 RETIRED"
+    "confirmPublish": "发布后旧 ACTIVE 将 RETIRED",
+    "fitTitle": "岗位匹配分析",
+    "fit": "匹配度",
+    "fitConfidence": "证据置信度",
+    "requiredCoverage": "必需覆盖",
+    "preferredCoverage": "优先覆盖",
+    "knownCount": "已知/全部",
+    "strength": "强项",
+    "gap": "差距",
+    "uncertainty": "不确定",
+    "developmentOpportunity": "发展机会",
+    "unrated": "未评估",
+    "minConfidence": "最低置信度",
+    "score": "Score",
+    "evidence": "Evidence",
+    "history": "考核次数",
+    "insufficientData": "证据覆盖不足 —— 结论不可靠（Unknown ≠ Bad，未评估 ≠ 能力不足）",
+    "qualification": "资格",
+    "evaluateTalent": "评估人才",
+    "selectEmployee": "选择员工",
+    "currentPositionFit": "当前任职匹配",
+    "noCurrentFitHint": "该员工当前无任职或岗位未配置画像"
   }
 }

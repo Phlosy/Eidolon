@@ -37,6 +37,27 @@
     "editorHint": "Drafts are editable; changing a formal standard requires a new version",
     "noProfileHint": "No competency profile configured (Not configured ≠ empty profile)",
     "cloneFrom": "Clone from built-in position",
-    "confirmPublish": "Publishing will retire the current ACTIVE version"
+    "confirmPublish": "Publishing will retire the current ACTIVE version",
+    "fitTitle": "Position fit analysis",
+    "fit": "Fit",
+    "fitConfidence": "Fit confidence",
+    "requiredCoverage": "Required coverage",
+    "preferredCoverage": "Preferred coverage",
+    "knownCount": "Known / Total",
+    "strength": "Strengths",
+    "gap": "Gaps",
+    "uncertainty": "Uncertainties",
+    "developmentOpportunity": "Development opportunities",
+    "unrated": "Unrated",
+    "minConfidence": "Min confidence",
+    "score": "Score",
+    "evidence": "Evidence",
+    "history": "Assessments",
+    "insufficientData": "Evidence coverage insufficient — conclusion is unreliable (Unknown ≠ Bad, unrated ≠ weak)",
+    "qualification": "Qualification",
+    "evaluateTalent": "Evaluate talent",
+    "selectEmployee": "Select employee",
+    "currentPositionFit": "Current position fit",
+    "noCurrentFitHint": "No current assignment or no profile configured"
   }
 }

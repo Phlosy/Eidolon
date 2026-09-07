@@ -48,7 +48,8 @@
     "behavior": "Behaviour",
     "performance": "Performance",
     "career": "Career",
-    "capabilities": "Capabilities"
+    "capabilities": "Capabilities",
+    "positionFit": "Fit"
   },
   "profile": {
     "id": "ID",
