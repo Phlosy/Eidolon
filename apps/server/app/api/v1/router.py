@@ -18,6 +18,7 @@ from app.api.v1 import (
     messages,
     meta,
     organizations,
+    position_fit,
     position_profiles,
     project_delivery,
     projects,
@@ -49,6 +50,7 @@ protected.include_router(runtimes.router)
 protected.include_router(lifecycle.router)
 protected.include_router(organizations.router)
 protected.include_router(position_profiles.router)
+protected.include_router(position_fit.router)
 protected.include_router(talent_roster.router)
 protected.include_router(meta.router)
 protected.include_router(tutorial.router)
