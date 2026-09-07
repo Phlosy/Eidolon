@@ -14,11 +14,20 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
+import sqlalchemy as sa
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.scope import resolve_company_id
 from app.core.database import get_db
+from app.models.competency import (
+    CompetencyDefinition,
+    CompetencyDomain,
+    CompetencyEvidence,
+)
 from app.models.organization import Employee
 from app.repositories import competency as competency_repo
 from app.schemas.competency import (
@@ -31,6 +40,26 @@ from app.services import competency as competency_service
 from app.services import traits as traits_service
 
 router = APIRouter(tags=["competency"])
+
+
+def _resolve_definition(db: Session, competency: str) -> CompetencyDefinition:
+    """按 code（全局目录）或数字 id 解析能力定义。"""
+    if competency.isdigit():
+        definition = db.get(CompetencyDefinition, int(competency))
+        if definition is None:
+            raise HTTPException(status_code=404, detail="competency not found")
+        return definition
+    definition = db.scalar(
+        select(CompetencyDefinition)
+        .join(CompetencyDomain, CompetencyDomain.id == CompetencyDefinition.domain_id)
+        .where(
+            CompetencyDefinition.code == competency,
+            CompetencyDomain.company_id.is_(None),
+        )
+    )
+    if definition is None:
+        raise HTTPException(status_code=404, detail="competency not found")
+    return definition
 
 
 def _employee_or_404(db: Session, employee_id: int, company_id: int | None) -> Employee:
@@ -93,13 +122,40 @@ def employee_traits(
 )
 def employee_competency_evidence(
     employee_id: int,
+    competency: str | None = Query(None, description="competency code（或数字 id），可选"),
+    source_type: str | None = Query(None, description="EvidenceSourceKind，如 test/review"),
+    assessment_run_id: int | None = Query(None, description="只查被某次 run 引用的证据"),
+    occurred_from: datetime | None = Query(None),
+    occurred_to: datetime | None = Query(None),
     limit: int = Query(default=100, ge=1, le=500),
     company_id: int | None = Depends(resolve_company_id),
     db: Session = Depends(get_db),
 ) -> list:
-    """该员工的证据（按时间倒序）。每条都能反查到源对象（source_kind/source_ref）。"""
+    """该员工的证据（按时间倒序）。每条都能反查到源对象（source_kind/source_ref）。
+
+    过滤参数可选：competency / source_type / assessment_run_id / 时间区间。
+    没有任意 POST evidence：人工反馈必须走明确业务入口（如技能评价）。
+    """
     _employee_or_404(db, employee_id, company_id)
-    rows = competency_repo.list_evidence(db, employee_id, limit=limit)
+    query = sa.select(CompetencyEvidence).where(CompetencyEvidence.employee_id == employee_id)
+    if source_type:
+        query = query.where(CompetencyEvidence.source_kind == source_type)
+    if assessment_run_id is not None:
+        query = query.where(CompetencyEvidence.assessment_run_id == assessment_run_id)
+    if occurred_from is not None:
+        query = query.where(CompetencyEvidence.occurred_at >= occurred_from)
+    if occurred_to is not None:
+        query = query.where(CompetencyEvidence.occurred_at <= occurred_to)
+    if competency:
+        definition = _resolve_definition(db, competency)
+        query = query.where(CompetencyEvidence.competency_definition_id == definition.id)
+    rows = list(
+        db.scalars(
+            query.order_by(
+                CompetencyEvidence.occurred_at.desc(), CompetencyEvidence.id.desc()
+            ).limit(limit)
+        )
+    )
     definitions = competency_repo.definitions_by_id(
         db, [row.competency_definition_id for row in rows]
     )

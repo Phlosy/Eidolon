@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from app.api.dependencies import require_user
 from app.api.v1 import (
     artifacts,
+    assessment,
     auth,
     behavior,
     company,
@@ -40,6 +41,7 @@ protected.include_router(messages.router)
 protected.include_router(knowledge.router)
 protected.include_router(behavior.router)
 protected.include_router(competencies.router)
+protected.include_router(assessment.router)
 protected.include_router(providers.router)
 protected.include_router(git.router)
 protected.include_router(runtimes.router)
