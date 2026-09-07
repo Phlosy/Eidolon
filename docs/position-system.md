@@ -278,6 +278,55 @@ GET    /api/v1/positions/fit-estimate?employee_id=&slot_id=   显式试算（调
 
 写端点一律要求 CSRF（沿用现有中间件），并要求 `membership_role` 具备管理权限（现状即有，不新增鉴权模型）。
 
+### 8.1 P4b 实际落地（与上面清单的差额）
+
+**路径为什么是 `/organizations/...` 而不是 `/positions/...`。** 实现时先按直觉挂了 `/positions`，
+结果 `GET /api/v1/positions` 被 v0.4 的旧职位端点先注册抢走，返回的是旧表形状
+（`{id, department_id, title}`），新语义（定义 / 编制 / 占用态）静默消失 —— 路由按注册顺序匹配，
+这种"看谁先注册"的歧义不能靠运气解决。v0.4 的 `/positions` 保留（§12 契约测试仍在读它），
+新域整体走 `/organizations`，v18 旧表退役时再把名字收回来。
+
+P4b 已交付：
+
+| 端点                                                                                         | 语义                                                       |
+| -------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `GET /organizations/tree`                                                                    | 部门 → 编制 → 在任者，两个状态字段并列                     |
+| `GET /organizations/vacancies`                                                               | 派生空缺（`FROZEN`/`CLOSED` 不算空缺）                     |
+| `GET/POST /organizations/definitions`                                                        | 定义列表（含派生 `slot_count`/`vacant_count`）与自定义模板 |
+| `POST /organizations/definitions/{id}/slots`                                                 | 开编制（一次多个，序号只增不复用）                         |
+| `GET /organizations/slots/{id}`                                                              | 单坑详情                                                   |
+| `POST /organizations/slots/{id}/freeze\|close\|activate`                                     | 行政态动作（唯一可写的那个轴）                             |
+| `GET /talent-roster`（`?status=&department_id=&position_code=none`）、`/stats`、`/integrity` | 名册读面                                                   |
+| `GET/POST /talent-roster/{id}/assignments`、`POST /talent-roster/{id}/unassign`              | 任职时间轴与**全系统唯一**的 PRIMARY 写口                  |
+
+尚未交付（按阶段推后，不放占位实现）：`PATCH /definitions/{id}`、`/slots/{id}/candidates`、
+`/positions/fit-estimate`（P6/P7）、`talent-roster` 列表项里的 `position_fit` / `actions` /
+`traits_summary` / `runtime` / `provider` / `top_*_competencies`（P4d/P9/P12）。
+`GET /api/v1/employees/{id}` 也还不含派生三字段 —— 该文件当前有并行 WIP，字段先挂在
+`GET /talent-roster/{id}` 上，等 WIP 落地后并入（同一算法，端点收敛）。
+
+三条行为契约在 P4b 定型，旧测试按新契约重写而不是放宽：
+
+1. **只搬部门、没有编制承接的转岗不创建任职行。** 人改了部门、权限换了、履历里没有一条职位，
+   状态派生成 `AVAILABLE`。旧实现"转岗必留一行"正是 dev 库那 11 条无编制主职的生产方式。
+2. **离职一定关窗。** 生效主职不关，坑就被永久数成 `OCCUPIED`；离职流程是唯一允许自动关窗的
+   地方（除此之外只有显式卸任）。dev 库存量核实：已离职/暂停者的主职全是**无坑**历史行，
+   所以这一步是为将来准备的规则，不是给存量擦数据。
+3. **启动引导不做人决定。** `seed_lifecycle()` 只保证内置部门"有坑可分配"，并且只把 5 位创始人
+   放进各自部门的坑；坑被别人占着就跳过（并记日志），服务起不来才是更大的故障。
+   UI 招来的人一律 `AVAILABLE` —— 这条由 `test_seed_never_assigns_people_the_recruit_flow_created` 钉住。
+
+实测踩到并修掉的三个真 bug（都由新用例抓出，不是重构前就存在的）：
+
+- `open_slots()` 批量开坑时未逐轮 `flush()`，`next_headcount_index()` 读不到上一轮，
+  一次开 3 个全部拿到同一序号 → 撞 `uq_position_slot_index`。
+- `incumbents_by_slot()` 用 `db.scalars()` 跑多列 `select()`，行被降成第一列 →
+  `TypeError: cannot unpack non-iterable int object`。
+- 派生字段（`slot_count` / `vacant_count` / `package_slugs` / `occupied_slot`）在 Out schema 上有默认值，
+  端点直接返回 ORM 对象时它们**静默**变成 `0` / `[]` / `false` —— 那不是"没有数据"，是假数据。
+  现在统一由 `position_service.slots_out() / definitions_out() / assignment_out()` 填，
+  并且 `GET /organizations/tree` 复用同一个坑序列化出口，避免两处算法分家。
+
 ---
 
 ## 9. 机器验收（对应 §52 后半）

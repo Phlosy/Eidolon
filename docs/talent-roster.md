@@ -111,6 +111,21 @@ POST /api/v1/talent-roster/{id}/suspend         暂停
 POST /api/v1/talent-roster/{id}/offboard        离职
 ```
 
+P4b 落地差额（写在这里，免得前端按上面的清单去调不存在的端点）：
+
+- 已可用：`GET /talent-roster`（含 `?status=&department_id=&position_code=none`）、
+  `GET /talent-roster/stats`、`GET /talent-roster/integrity`、
+  `GET/POST /talent-roster/{id}/assignments`、`POST /talent-roster/{id}/unassign`、
+  以及单人派生视图 `GET /talent-roster/{id}`。
+- `recruit / suspend / offboard` **不在名册上**：它们仍是 v0.4 生命周期端点
+  （`POST /employees/onboard`、`/employees/{id}/suspend`、`/offboard`）。
+  名册刻意不提供 recruit —— "招聘与任命是两个流程"这条裁定要体现在端点上，
+  否则一次调用就能同时造人 + 塞职位，两个轴的边界会在 API 层重新糊掉。
+- 列表项尚无 `position_fit` / `actions` / `traits_summary` / `runtime` / `provider` /
+  `top_*_competencies`。特别是 `actions`：它由服务端按状态给（`AVAILABLE` 才有
+  `assign_position`），必须与 fit 一起做，提前给一个假的 `actions` 数组就是
+  §3.2 结尾警告的"第二个状态机"。
+
 ### 3.1 查询参数
 
 | 参数                                          | 语义                                                              |

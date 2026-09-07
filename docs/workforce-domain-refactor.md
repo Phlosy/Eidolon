@@ -259,12 +259,22 @@ Company
 
 最后一行是这次实测最有价值的发现：**v0.4 的 `positions` 表基本没被写过**，入职与调岗只落 `employees.role` 文本。所以迁移之后 11 条生效任职是"有记录、没有编制"。这不是数据损坏，而是旧模型一直藏着的真实状态被显式暴露出来。
 
-**P4a 复核后订正本节的初版结论。** 当时写成"11 名在岗者会是 `AVAILABLE`"是错的：那 11 条无坑主职属于 lifecycle 轴上非 `active` 的人（8 `onboarding` + 2 `transferring` + 1 `offboarded`），会被 lifecycle 轴盖住。两轴派生后的真实分布是 `assigned 5 / available 7 / onboarding 8 / transferring 2 / offboarding 1 / offboarded 1`，`on_roster = 14`。也就是说 **7 名**已就绪员工处于 `AVAILABLE`，另外 11 条无编制记录属于还在途或已离开的人 —— 这个数字差异本身就证明了"两个正交轴"比"一个 role 字段"能说的话多。
+**两次复核。** 初版写成"11 名在岗者会是 `AVAILABLE`"，错了：那 11 条无坑主职属于 lifecycle 轴上非 `active` 的人（8 `onboarding` + 2 `transferring` + 1 `offboarded`），会被 lifecycle 轴先短路。P4a 修正为 `assigned 5 / available 7 / onboarding 8 / transferring 2 / offboarding 1 / offboarded 1`（`on_roster = 14`）。
+
+P4b 接上名册端点后**再错一次**：上面那个分布是跨公司混算的。dev 库里堆了 11 个公司（历次探针留下的），上表的 24 人也是全库口径。名册按请求的公司边界过滤，默认公司（`eidolon-studio`）里只有 8 人，派生结果是：
+
+| 口径                     | 分布                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| 全库（11 个公司，24 人） | assigned 5 / available 7 / onboarding 8 / transferring 2 / offboarding 1 / offboarded 1 |
+| 默认公司（8 人）         | assigned 5 / transferring 2 / offboarded 1，**available 0**，`on_roster = 7`            |
+
+两个数字都对，但必须先说口径。这条纪律由此写进 §6.2 的复核表：任何派生统计都要注明公司边界，否则"7 人待分配"会被当成一个可以拿去开会的事实。
 
 由此定下两条纪律，P4 之后都受它约束：
 
 1. **迁移绝不代为猜坑。** `position_id` 为空就留空，孤儿 `position_id` 也不映射 —— 宁缺不错。
 2. **补编制是业务动作，不是数据修补。** 走 P4 的 `position_service` 分配工作流，产出 `PositionAssignment` 与履历事件，而不是在迁移里悄悄补一行。
+3. **报数必带公司边界。** `WorkforceStatusResolver.counts()` 这类全库统计与 `GET /talent-roster/stats`（公司内）是两个东西；前者只能用于诊断，后者才是用户看到的名册。
 
 ---
 
