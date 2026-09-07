@@ -12,11 +12,11 @@ from __future__ import annotations
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import event
+from test_position_service import _definition, _department, _employee, _slot, _uniq
 
 from app.models.organization import Company
 from app.schemas.position import AssignmentIn, SlotAdminIn
 from app.services import position_compat, position_service
-from test_position_service import _definition, _department, _employee, _slot, _uniq
 
 
 @pytest.fixture()

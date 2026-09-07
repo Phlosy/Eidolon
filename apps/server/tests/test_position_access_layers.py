@@ -14,15 +14,15 @@ from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.orm import Session
+from test_position_service import _department, _employee, _slot
 
 from app.lifecycle import access
 from app.models.enums import PackageSource
 from app.models.lifecycle import AccessPackage, AccessPackageItem, EmployeePackage
-from app.models.position import PositionAssignment, PositionDefinition, PositionSlot
+from app.models.position import PositionAssignment, PositionDefinition
 from app.repositories import lifecycle as lifecycle_repo
-from app.services import position_service
 from app.schemas.position import AssignmentIn
-from test_position_service import _department, _employee, _slot
+from app.services import position_service
 
 NOW = datetime.now(UTC)
 _counter = itertools.count(1)
@@ -39,7 +39,7 @@ def _entitlement(db: Session, key: str):
 
 
 def _package(db: Session, *, name: str, entitlement_keys: list[str]) -> AccessPackage:
-    package = AccessPackage(slug=_uniq("pkg"), name=name, built_in=False)
+    package = AccessPackage(slug=_uniq("pkgL"), name=name, built_in=False)
     db.add(package)
     db.flush()
     for key in entitlement_keys:
@@ -53,7 +53,7 @@ def _package(db: Session, *, name: str, entitlement_keys: list[str]) -> AccessPa
 def stage(db, default_company_id):
     """一个部门 + 一个声明了权限包的职位定义 + 一个空坑 + 两个人。"""
     department = _department(db, default_company_id)
-    code = _uniq("SE")
+    code = _uniq("SEL")
     definition = PositionDefinition(
         company_id=default_company_id,
         template_scope="company",
