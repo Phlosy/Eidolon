@@ -50,19 +50,21 @@ def _assign(db, employee, slot):
 def test_bridge_prefers_the_establishment_holder_over_the_mirror(stage):
     """`AVAILABLE` 但镜像写着 ceo 的人不算 CEO —— 占着编制的那位才算。"""
     db, s = stage["db"], stage
-    assert position_compat.employee_by_legacy_role(db, s["company"].id, "ceo").id == s[
-        "mirror_only"
-    ].id, "前置：没人任职时回退旧列"
+    assert (
+        position_compat.employee_by_legacy_role(db, s["company"].id, "ceo").id
+        == s["mirror_only"].id
+    ), "前置：没人任职时回退旧列"
 
     _assign(db, s["incumbent"], s["slot"])
-    assert position_compat.employee_by_legacy_role(db, s["company"].id, "ceo").id == s[
-        "incumbent"
-    ].id, "派活跟着编制走，不跟着旧文本列走"
+    assert (
+        position_compat.employee_by_legacy_role(db, s["company"].id, "ceo").id == s["incumbent"].id
+    ), "派活跟着编制走，不跟着旧文本列走"
 
     position_service.release_position(db, s["incumbent"], reason="编制收回")
-    assert position_compat.employee_by_legacy_role(db, s["company"].id, "ceo").id == s[
-        "mirror_only"
-    ].id, "离坑之后才退回镜像口径"
+    assert (
+        position_compat.employee_by_legacy_role(db, s["company"].id, "ceo").id
+        == s["mirror_only"].id
+    ), "离坑之后才退回镜像口径"
 
 
 def test_bridge_never_lets_an_available_person_lose_the_fallback(stage):
@@ -105,9 +107,9 @@ def test_freezing_a_slot_does_not_evict_its_holder(stage):
     position_service.set_slot_administrative_status(
         db, s["slot"].id, SlotAdminIn(administrative_status="frozen", reason="暂停招聘")
     )
-    assert position_compat.employee_by_legacy_role(db, s["company"].id, "ceo").id == s[
-        "incumbent"
-    ].id
+    assert (
+        position_compat.employee_by_legacy_role(db, s["company"].id, "ceo").id == s["incumbent"].id
+    )
     assert position_compat.role_mirror(db, [s["incumbent"]])[s["incumbent"].id] == "ceo"
     with pytest.raises(HTTPException) as exc:
         _assign(db, s["mirror_only"], s["slot"])
@@ -194,6 +196,4 @@ def test_compat_has_exactly_one_direct_read_of_the_legacy_column():
         and node.value.id.startswith("employee")
     ]
     assert len(reads) == 1, f"compat 里出现 {len(reads)} 处直读：L{reads[0].lineno}"
-    assert hasattr(position_compat, "role_mirror") and hasattr(
-        position_compat, "legacy_role_of"
-    )
+    assert hasattr(position_compat, "role_mirror") and hasattr(position_compat, "legacy_role_of")
