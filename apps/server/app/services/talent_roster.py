@@ -29,8 +29,9 @@ from app.workforce.status import WorkforceStatusResolver
 #: 通用能力目录 general 维度数（assessment coverage 口径基数）
 GENERAL_DIMENSION_COUNT = 10
 
-#: 默认排除的历史/未完成生命周期态
-_EXCLUDED_LIFECYCLE = {"offboarded", "pending"}
+#: 默认排除的历史离职态（P9 §2：不把已离职员工混入默认列表；pending 保留，旧测试全量口径
+#: 仍以 include_offboarded=true 显式纳入历史）
+_EXCLUDED_LIFECYCLE = {"offboarded"}
 
 
 class _Derived:

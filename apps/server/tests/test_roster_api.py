@@ -72,7 +72,8 @@ def departments(client: TestClient) -> dict:
 def test_roster_lists_every_person_with_both_axes(
     client: TestClient, db: Session, default_company_id: int
 ):
-    entries = client.get("/api/v1/talent-roster").json()
+    # P9：默认列表排除已离职；这里断言“派生轴正确性”需要全量基准，显式纳入历史
+    entries = client.get("/api/v1/talent-roster", params={"include_offboarded": "true"}).json()
     # 比较必须落在同一条公司边界内（ADR-11）：`/talent-roster` 是默认公司的读面，
     # 而裸 `select(Employee)` 是全库 —— dev 库与本会话里别的测试文件都会造别的公司的人，
     # 用全局数对scoped读面，会假失败（P4c 的桥测试就是这么把它撞出来的）。
@@ -92,7 +93,8 @@ def test_roster_lists_every_person_with_both_axes(
 
 
 def test_roster_status_filter_and_stats_are_consistent(client: TestClient):
-    everything = client.get("/api/v1/talent-roster").json()
+    # 全量基准（含历史离职）与 stats 对齐；P9 默认列表排除已离职由单独用例断言
+    everything = client.get("/api/v1/talent-roster", params={"include_offboarded": "true"}).json()
     available = client.get("/api/v1/talent-roster", params={"status": "available"}).json()
     assert {entry["workforce_status"] for entry in available} <= {"available"}
     assert len(available) <= len(everything)
