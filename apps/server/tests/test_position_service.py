@@ -332,6 +332,24 @@ def test_release_returns_the_establishment_without_touching_the_person(stage: di
 # ----------------------------------------- 4. 启动引导不许替用户做人事决定
 
 
+def test_seed_never_assigns_people_the_recruit_flow_created(db: Session, default_company_id: int):
+    """反"智能补坑"守卫。
+
+    曾经的 `legacy_backfill` 会给"没有任职记录的每个人"补一条无坑 PRIMARY ——
+    那正是 dev 库 14 条无编制主职的来源。P4b 之后 seed 只允许落 5 位创始人。
+    """
+    department = _department(db, default_company_id)
+    recruited = _employee(db, default_company_id, department, lifecycle="active")
+    hired_through_ui = _employee(db, default_company_id, department, lifecycle="active")
+    db.commit()
+    lifecycle_service.seed_lifecycle(db)
+    db.commit()
+    for person in (recruited, hired_through_ui):
+        assert position_repo.active_assignments(db, person.id) == [], (
+            "seed 给非创始人补了任职 —— 这会把 AVAILABLE 伪装成已分配"
+        )
+
+
 def test_seed_is_idempotent_and_never_displaces_an_incumbent(db: Session):
     """seed 每次启动都跑，所以它必须既不重复落子、也不挤掉任何人。
 
@@ -366,6 +384,70 @@ def test_seed_is_idempotent_and_never_displaces_an_incumbent(db: Session):
         )
     }
     assert pairs_after == pairs_before, "第二次 seed 改动了既成任职 —— 那等于重启覆盖用户决定"
+
+
+# ------------------------------------------------------- 空库开局（bootstrap）
+
+
+def test_bootstrap_from_an_empty_db_puts_each_founder_in_one_establishment(tmp_path):
+    """空库 → 迁移到 head → 跑启动引导：必须"有坑可分配"且"创始人各占一坑"。
+
+    这是 P4b 的落地前提：全新库里如果不存在编制，招聘出来的人永远分配不了职位；
+    反过来如果引导给人补的是**无坑 PRIMARY**，那就把这次重构要消灭的形态又造出来了。
+    """
+    from alembic import command
+
+    from app.core.database import _alembic_config
+    from app.services.seed import seed_default_company
+
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'bootstrap.db'}")
+    config = _alembic_config()
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        command.upgrade(config, "head")
+
+    with Session(engine) as db:
+        seed_default_company(db)
+        db.commit()
+        lifecycle_service.seed_lifecycle(db)
+        db.commit()
+
+        slots = db.scalar(sa.text("SELECT COUNT(*) FROM position_slots"))
+        assert slots >= 5, "五个内置部门都应当有一个编制"
+        founders = db.execute(
+            sa.text(
+                "SELECT e.slug, a.position_slot_id, d.code FROM employments a"
+                " JOIN employees e ON e.id = a.employee_id"
+                " JOIN position_slots s ON s.id = a.position_slot_id"
+                " JOIN position_definitions d ON d.id = s.position_definition_id"
+                " WHERE a.effective_to IS NULL AND a.assignment_type = 'primary'"
+                " ORDER BY e.slug"
+            )
+        ).all()
+        assert {row[0] for row in founders} == {"alice", "bob", "charlie", "dana", "morgan"}, (
+            founders
+        )
+        assert len({row[1] for row in founders}) == 5, "五个创始人各占一个不同的坑"
+        assert {row[2] for row in founders} == {
+            "ceo",
+            "product_manager",
+            "researcher",
+            "engineer",
+            "qa_engineer",
+        }, founders
+        # 关键负面断言：引导不再生产"有任职没编制"的行（dev 库那 14 条的来源）
+        slotless = db.scalar(
+            sa.text(
+                "SELECT COUNT(*) FROM employments WHERE effective_to IS NULL"
+                " AND assignment_type = 'primary' AND position_slot_id IS NULL"
+            )
+        )
+        assert slotless == 0
+        # 每个编制的占用态都是派生出来的 occupied
+        assert all(
+            position_repo.slot_occupancy(db, slot) == OccupancyStatus.occupied
+            for slot in db.scalars(sa.select(PositionSlot))
+        )
 
 
 # ------------------------------------------------------- 只读诊断（不修数据）

@@ -36,6 +36,22 @@ def _unique_slug(prefix: str) -> str:
     return f"{prefix}-{uuid.uuid4().hex[:8]}"
 
 
+def _open_slot(client, department_id: int, note: str = "test establishment") -> int:
+    """给某部门新开一个编制并返回 slot_id。
+
+    用新开而不是复用已有坑：已有坑可能被创始员工占着，而部分唯一索引会让
+    "往同一个坑塞第二个人"合法地失败 —— 那正是另一个用例要测的东西。
+    """
+    definitions = client.get("/api/v1/organizations/definitions").json()
+    assert definitions, "职位模板应已由 seed / v12 建好"
+    response = client.post(
+        f"/api/v1/organizations/definitions/{definitions[0]['id']}/slots",
+        json={"department_id": department_id, "note": note},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()[0]["id"]
+
+
 def _onboard(client, slug, dept_slug="engineering", role="engineer"):
     response = client.post(
         "/api/v1/employees/onboard",
@@ -259,14 +275,54 @@ def test_transfer_diff_and_employment_history(client, fake_gitea):
     assert any(d.startswith("REMOVE git:engineering-team") for d in descriptions)
     assert any(d.startswith("KEEP workspace:private") for d in descriptions)
 
+    # P4b 契约（拍板）：只搬部门、没有编制承接 ⇒ **不创建无坑 PRIMARY**。
+    # 人还在、权限已换、履历里没有一条"职位"—— 状态派生成 AVAILABLE。
+    # 这条断言取代了旧期望"transfer 必然留下 2 行任职"：旧写法正是 14 条
+    # 无编制主职的生产方式，所以它是被裁定换掉的，不是被放宽的。
     employment = client.get(f"/api/v1/employees/{employee_id}/employment").json()
-    assert len(employment["history"]) == 2
-    old, new = employment["history"]
+    assert employment["history"] == []
+    assert employment["current"] is None
+    # 单人派生视图挂在名册详情上（`GET /employees/{id}` 的字段并入等 employees.py 的
+    # WIP 落地后一起做，见 position-system.md §5 的落地说明）
+    derived = client.get(f"/api/v1/talent-roster/{employee_id}").json()
+    assert derived["workforce_status"] == "available"
+    assert derived["current_position"] is None
+    assert derived["has_primary_assignment"] is False
+
+    # 显式分配工作流：给出坑才有 PRIMARY 任职
+    first_slot = _open_slot(client, research_id, note="appoint researcher")
+    assigned = client.post(
+        f"/api/v1/talent-roster/{employee_id}/assignments",
+        json={"slot_id": first_slot, "reason": "appoint"},
+    )
+    assert assigned.status_code == 201, assigned.text
+    assert assigned.json()["position_slot_id"] == first_slot
+    assert assigned.json()["occupied_slot"] is True
+
+    # 再转岗到另一个坑：关旧行 + 开新行，旧行状态字保持 v0.4 契约的 "transferred"
+    second_slot = _open_slot(client, research_id, note="next establishment")
+    moved = client.post(
+        f"/api/v1/employees/{employee_id}/transfer",
+        json={"department_id": research_id, "slot_id": second_slot, "reason": "reorg 2"},
+    )
+    assert moved.status_code == 200, moved.text
+    history = client.get(f"/api/v1/employees/{employee_id}/employment").json()
+    assert len(history["history"]) == 2
+    old, new_row = history["history"]
     assert old["effective_to"] is not None
     assert old["employment_status"] == "transferred"
-    assert new["effective_to"] is None
-    assert new["department_id"] == research_id
-    assert employment["current"]["id"] == new["id"]
+    assert new_row["effective_to"] is None
+    assert new_row["department_id"] == research_id
+    assert history["current"]["id"] == new_row["id"]
+    # 坑的占用态随转岗迁移：旧坑回到 vacant，新坑 occupied（都是派生值）
+    assert (
+        client.get(f"/api/v1/organizations/slots/{first_slot}").json()["occupancy_status"]
+        == "vacant"
+    )
+    assert (
+        client.get(f"/api/v1/organizations/slots/{second_slot}").json()["occupancy_status"]
+        == "occupied"
+    )
 
     employee = client.get(f"/api/v1/employees/{employee_id}").json()
     assert employee["lifecycle_status"] == "active"
@@ -282,7 +338,6 @@ def test_transfer_diff_and_employment_history(client, fake_gitea):
     keys = [e["entitlement"]["key"] for e in entitlements]
     assert len(keys) == len(set(keys))
     assert "docs:research" in keys and "docs:engineering" not in keys
-    assert len(employment["history"]) == 2
 
 
 # ---- suspend / resume ----
@@ -335,9 +390,25 @@ def test_offboard_transfers_assets_and_archives(client, fake_gitea):
     employee_id = body["employee"]["id"]
     dept_id = body["employee"]["department_id"]
 
+    # 先经分配工作流拿到一个编制 —— 这样才能验证"离职交还坑"这条新规则
+    slot_id = _open_slot(client, dept_id, note="offboard fixture establishment")
+    client.post(
+        f"/api/v1/talent-roster/{employee_id}/assignments",
+        json={"slot_id": slot_id, "reason": "hire in"},
+    )
+    assert (
+        client.get(f"/api/v1/organizations/slots/{slot_id}").json()["occupancy_status"]
+        == "occupied"
+    )
+
     job = client.post(f"/api/v1/employees/{employee_id}/offboard", json={"reason": "left"}).json()
     assert job["kind"] == "offboarding"
     assert job["status"] == "done"
+
+    # P4b：离职必须把编制还回去。不关窗的话这个坑会被一个已离开的人永久占住
+    # —— dev 库里现在就有一个 offboarded 的人挂在生效主职上。
+    slot_after = client.get(f"/api/v1/organizations/slots/{slot_id}").json()
+    assert slot_after["occupancy_status"] == "vacant", slot_after
 
     employee = client.get(f"/api/v1/employees/{employee_id}").json()
     assert employee["lifecycle_status"] == "offboarded"
@@ -356,7 +427,10 @@ def test_offboard_transfers_assets_and_archives(client, fake_gitea):
     # employee row + employment history survive
     assert employee["slug"] == slug
     employment = client.get(f"/api/v1/employees/{employee_id}/employment").json()
+    # 历史存活：关窗不是删行，离职之后仍能查到他任过什么职
     assert len(employment["history"]) == 1
+    assert employment["history"][0]["effective_to"] is not None
+    assert employment["current"] is None
 
     # timeline shows the lifecycle events
     timeline = client.get(f"/api/v1/employees/{employee_id}/timeline").json()
@@ -521,6 +595,8 @@ def test_legacy_employees_backfilled(client, db):
     keys = {e["entitlement"]["key"] for e in entitlements}
     assert {"workspace:private", "docs:company-read", "git:company-org-member"} <= keys
 
+    # v0.4 的 `/positions`（部门头衔）与新域的 `/organizations/definitions`（职位定义）
+    # 是两个不同端点：这条 §12 契约测的是前者，别把它顺手改成新路径。
     positions = client.get("/api/v1/positions").json()
     titles = {p["title"] for p in positions}
     assert {"CEO", "Product Manager", "Researcher", "Engineer", "QA Engineer"} <= titles

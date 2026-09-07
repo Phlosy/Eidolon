@@ -8,6 +8,8 @@ assignment, audit entries and lifecycle events; the engine owns job execution.
 Legacy migration (§12) is ``seed_lifecycle`` — idempotent, runs at startup.
 """
 
+import logging
+
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -21,7 +23,6 @@ from app.lifecycle.engine import ProvisioningEngine
 from app.lifecycle.naming import naming
 from app.lifecycle.provisioners.base import Drift, ProvisionContext
 from app.lifecycle.provisioners.registry import get_registry
-from app.models.base import utcnow
 from app.models.enums import (
     EmployeeStatus,
     LifecycleStatus,
@@ -33,8 +34,10 @@ from app.models.enums import (
 )
 from app.models.lifecycle import AccessPackage, ProvisioningJob
 from app.models.organization import Department, Employee
+from app.models.position import PositionSlot
 from app.repositories import lifecycle as lifecycle_repo
 from app.repositories import organization as org_repo
+from app.repositories import position as position_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
 from app.schemas.lifecycle import (
@@ -44,8 +47,9 @@ from app.schemas.lifecycle import (
     PreviewRequest,
     TransferRequest,
 )
+from app.schemas.position import AssignmentIn
 from app.schemas.provider import EmployeeProviderCreate, ModelEntryIn
-from app.services import seed
+from app.services import position_service, seed
 from app.services.providers import provider_service, validate_model_name
 
 engine = ProvisioningEngine()
@@ -59,6 +63,12 @@ DEPARTMENT_POSITION_TITLES = {
 }
 
 ROLE_TO_DEPARTMENT_SLUG = {role: slug for slug, role in access.DEPARTMENT_TO_ROLE.items()}
+
+#: 开局剧本里的 5 位创始人。只有她们允许被 seed 落位（UI 招来的人一律 AVAILABLE）。
+FOUNDER_SLUGS = {slug for _name, slug, _role, _dept, _title in seed.EMPLOYEES}
+
+#: `seed_lifecycle()` 在启动路径上跑，它的问题必须进日志而不是把服务弄挂。
+logger = logging.getLogger("eidolon.lifecycle")
 
 
 # entitlement catalog seeded for the builtin packages (§9)
@@ -251,15 +261,38 @@ async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, Provi
         workspace_path=f"{settings.workspace_root}/{slug}",
         memory_namespace=f"emp_{slug}",
     )
-    lifecycle_repo.create_employment(
-        db,
-        employee_id=employee.id,
-        department_id=department.id,
-        position_id=payload.position_id,
-        manager_employee_id=payload.manager_employee_id,
-        employment_status="active",
-        metadata_json={"kind": "hire"},
-    )
+    # P4b 拍板：招聘只造人与人级资源，**不写无坑的 PRIMARY 任职**。
+    # 旧实现在这里直接 create_employment(...)，不关联 position_slot ——
+    # dev 库 19 条任职里 14 条没坑、其中 11 条至今还是“生效主职”，源头就是这一行。
+    # 调用方点名了职位（v0.4 向导会传 position_id）时，那仍然是一次**显式**分配，
+    # 所以走分配工作流：必须 `require_slot()` 绑到真实编制，绑不到就如实留空
+    # （人完成后派生成 AVAILABLE）—— 不新建坑、不按 title 反推。
+    if payload.position_id is not None:
+        try:
+            position_service.assign_position(
+                db,
+                employee,
+                AssignmentIn(
+                    position_id=payload.position_id,
+                    manager_employee_id=payload.manager_employee_id,
+                    reason=payload.title or "onboarding",
+                    kind="assign",
+                ),
+            )
+        except HTTPException as exc:
+            if exc.status_code != 409:
+                raise
+            # 聘到没有编制的职位：不因此拒绝一整个入职，但必须留下一条看得见的痕迹
+            audit.record(
+                db,
+                action="employee.position_not_established",
+                employee_id=employee.id,
+                before=None,
+                after={"position_id": payload.position_id, "detail": exc.detail},
+                reason="onboarding",
+            )
+            changed_note = exc.detail
+            print(f"[onboard] {slug}: 指定职位无编制，保持待分配 —— {changed_note}")
     packages = access.resolve_packages(
         db,
         role=payload.role.value,
@@ -409,23 +442,30 @@ async def transfer(db: Session, employee: Employee, payload: TransferRequest) ->
     diff = access.diff_entitlements(current, access.union_entitlements(db, desired_packages))
 
     before = audit.employee_snapshot(employee)
-    current_employment = lifecycle_repo.get_current_employment(db, employee.id)
-    joined_at = current_employment.joined_at if current_employment else utcnow()
-    if current_employment is not None:
-        current_employment.effective_to = utcnow()
-        current_employment.employment_status = "transferred"
-    lifecycle_repo.create_employment(
-        db,
-        employee_id=employee.id,
-        department_id=department.id,
-        position_id=payload.position_id,
-        manager_employee_id=payload.manager_employee_id,
-        employment_status="active",
-        joined_at=joined_at,
-        metadata_json={"kind": "transfer", "reason": payload.reason},
-    )
     previous_department_id = employee.department_id
-    employee.department_id = department.id
+    # P4b：调岗里的“任职”部分同样只能走分配工作流。
+    #   · 给了 slot_id（或旧 position_id 能映射到坑）⇒ 真正的转岗：关旧坑、开新坑
+    #   · 两者都没给 ⇒ 只搬人（部门与权限），并关掉现有主职 —— 没有编制承接就是
+    #     AVAILABLE，而不是发明一条无坑 PRIMARY（那是旧模型造假的方式）
+    if payload.slot_id is not None or payload.position_id is not None:
+        position_service.assign_position(
+            db,
+            employee,
+            AssignmentIn(
+                slot_id=payload.slot_id,
+                position_id=payload.position_id,
+                manager_employee_id=payload.manager_employee_id,
+                reason=payload.reason,
+                kind="transfer",
+            ),
+        )
+        department = _get_department_or_404(db, employee.department_id)
+    else:
+        position_service.release_position(
+            db, employee, reason=f"department_transfer:{payload.reason or 'reorg'}"
+        )
+        employee.department_id = department.id
+        db.commit()
     access.sync_role_packages(db, employee.id, desired_packages)
     employee.lifecycle_status = LifecycleStatus.transferring.value
     db.commit()
@@ -571,6 +611,13 @@ async def offboard(db: Session, employee: Employee, payload: OffboardRequest) ->
     )
     target = _resolve_transfer_target(db, employee, payload.transfer_to)
     before = audit.employee_snapshot(employee)
+    # P4b：离职必须交还编制。生效主职不关窗，那个坑就永远被 `slot_incumbents` 数成
+    # OCCUPIED —— 离职流程是唯一允许自动关窗的地方（分配工作流之外它不写任职）。
+    # dev 库现状核实过：已离职/暂停者的生效主职全是**无坑**历史行，没占住任何编制，
+    # 所以这一步是为将来"带着编制离开"准备的规则，不是给存量擦数据 ——
+    # 存量那 11 条按"宁缺不错"留给名册诊断，不在启动路径上自动改。
+    # 只关窗、不删行：任职时间轴仍是完整的职业履历。
+    position_service.release_position(db, employee, reason=f"offboard:{payload.reason or ''}")
     employee.lifecycle_status = LifecycleStatus.offboarding.value
     db.commit()
     audit.record(
@@ -728,6 +775,7 @@ def seed_lifecycle(db: Session) -> None:
 
     departments = list(db.scalars(select(Department).where(Department.company_id == company.id)))
     position_by_dept: dict[int, int] = {}
+    slot_by_dept: dict[int, PositionSlot] = {}
     for department in departments:
         title = DEPARTMENT_POSITION_TITLES.get(department.slug)
         if title is None:
@@ -739,6 +787,12 @@ def seed_lifecycle(db: Session) -> None:
             )
             changed = True
         position_by_dept[department.id] = position.id
+        # P4b：为内置部门保证存在"定义 + 编制"。没有这一步，全新库里根本不存在坑，
+        # 招聘与转岗就永远分配不了职位 —— 这是组织模板的存在性，不是给人补位子。
+        _definition, slot = position_service.ensure_definition_and_slot_for_position(db, position)
+        slot_by_dept[department.id] = slot
+        if db.new:  # 只有真的建了定义/坑才算变更；否则每次启动都白 commit 一次
+            changed = True
 
     for employee in org_repo.list_employees(db, company.id):
         if not employee.username:
@@ -750,18 +804,47 @@ def seed_lifecycle(db: Session) -> None:
         ):
             employee.lifecycle_status = LifecycleStatus.active.value
             changed = True
-        if not lifecycle_repo.list_employments(db, employee.id):
-            lifecycle_repo.create_employment(
-                db,
-                employee_id=employee.id,
-                department_id=employee.department_id,
-                position_id=position_by_dept.get(employee.department_id),
-                employment_status="active",
-                joined_at=employee.created_at,
-                effective_from=employee.created_at,
-                metadata_json={"kind": "legacy_backfill"},
-            )
-            changed = True
+        # P4b 删掉了 `legacy_backfill`：给"没有任职记录的人"补写一条无坑 PRIMARY，
+        # 正是那 11 条无编制主职的生产者。新招的人现在就是零任职行 ——
+        # 那是 `AVAILABLE`，不是需要被补的洞。
+        if (
+            employee.slug in FOUNDER_SLUGS
+            and not position_repo.active_assignments(db, employee.id)
+            and employee.department_id in slot_by_dept
+        ):
+            # 开局剧本写死的事实：5 位创始人各占自己部门的一个编制。
+            # 严格限定"没有任何生效任职"才补，所以用户手工调岗/解任之后重启不会被覆盖。
+            slot = slot_by_dept[employee.department_id]
+            incumbents = position_repo.slot_incumbents(db, slot.id)
+            if incumbents:
+                # 坑已经被别人占着 —— 这是既成的组织事实，seed 不许插手。
+                # 用户把 CEO 坑给了非创始人之后重启，这里跳过，不是崩溃。
+                logger.info(
+                    "seed: 编制 %s 已有在任者 %s，创始人 %s 保持 AVAILABLE",
+                    slot.slot_code,
+                    [item.employee_id for item in incumbents],
+                    employee.slug,
+                )
+                continue
+            try:
+                position_service.assign_position(
+                    db,
+                    employee,
+                    AssignmentIn(
+                        slot_id=slot.id,
+                        reason="founding",
+                        kind="assign",
+                    ),
+                )
+                changed = True
+            except HTTPException as exc:
+                # `seed_lifecycle()` 在启动路径上跑。组织冲突应该在名册/诊断里被看见，
+                # 不该让服务起不来（409 尤其常见：两个人抢同一个坑的历史遗留）。
+                logger.warning(
+                    "seed: 创始人 %s 分配编制失败（%s）—— 跳过，此人保持 AVAILABLE",
+                    employee.slug,
+                    exc.detail,
+                )
         packages = access.resolve_packages(db, role=employee.role)
         for package in packages:
             if lifecycle_repo.get_employee_package(db, employee.id, package.id) is None:
