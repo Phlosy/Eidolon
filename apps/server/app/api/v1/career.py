@@ -256,7 +256,7 @@ def create_learning_priority(
     }
 
 
-@router.post("/employees/{employee_id}/promote", response_model=PositionChangeOut)
+@router.post("/employees/{employee_id}/career/promote", response_model=PositionChangeOut)
 def promote_employee(
     employee_id: int,
     payload: PositionChangeIn,
@@ -277,7 +277,7 @@ def promote_employee(
         raise _career_error(exc) from exc
 
 
-@router.post("/employees/{employee_id}/transfer", response_model=PositionChangeOut)
+@router.post("/employees/{employee_id}/career/transfer", response_model=PositionChangeOut)
 def transfer_employee_career(
     employee_id: int,
     payload: PositionChangeIn,
