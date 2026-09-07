@@ -56,6 +56,11 @@ schema / UI / 投影**，`affects=()`，因此不会改动任何额度 —— �
 - 任何 trait 的 `affects` **不得**指向 success/confidence/verdict/competency（`BehaviorPolicy`
   里根本没有这些字段，结构上就写不进去 —— 这是 behavior-v1 留下的护栏）。
 
+> **落地补记（P5）**：8 维已全部注册（`registry.py`），curiosity 维持既有行为映射，其余 7 维
+> `affects=()` 只建 schema / UI 数据契约 / 投影（注册 ≠ 生效）。traits 存 `EmployeeBrain.traits`
+> JSON，无 migration；缺失键读侧补齐注册表默认值，写侧按注册表补全。每个 `TraitSpec` 带
+> `label` / `description` /（由 affects 推导的）`affects_execution` 供 UI 消费。
+
 UI 文案（§32）：只描述行为，不写加成。
 
 ```

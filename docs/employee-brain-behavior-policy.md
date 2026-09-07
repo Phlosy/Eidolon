@@ -675,3 +675,22 @@ retrieval / reflection / prompt / 投影消费"并指向本文；§11 启动流�
 - **Company 设置界面的 `behavior_policy` 覆盖编辑器**：后端读取
   `Company.settings["behavior_policy"]`，非法覆盖整体回落默认配置（半个阈值集比没有更糟），
   但 UI 还没给公司改这块的入口。
+
+---
+
+## 20. v1.1 补记 —— 人格扩到第一版 8 维（schema / UI / 投影先行）
+
+**只改注册表，不改行为。** `docs/competency-system.md §2` 定的 8 维在 P5 全部注册
+（`registry.py`）：`curiosity` 维持 behavior-v1 既有映射不动；`warmth` /
+`independence` / `conscientiousness` / `collaboration` / `risk_tolerance` /
+`adaptability` / `creativity` 现阶段 **`affects=()`** —— 注册 ≠ 生效，
+未接入的维度取任意值都不会改变任何检索/反思/延伸额度（有测试逐字段证明）。
+
+- traits 仍是 `EmployeeBrain.traits` JSON，**无 migration**；缺失键读侧补齐注册表默认值
+  （中性 0.5），写侧按注册表补全全部键。
+- 每个 `TraitSpec` 现在带 `label` / `description` /（由 `affects` 推导的
+  `affects_execution`），供 UI 展示"倾向怎样工作"，禁止渲染成"加成"。
+- 未来接入某一维的完整工作量 = registry 加 `affects` 字段 + resolver 里消费一处；
+  业务层与 orchestrator 不改（`test_trait_eight_dimensions.py` 锁死这套契约）。
+- 明确不做：8 维里的行为**映射**这一轮不接（不在 v1.1 名）；人格参数与能力系统
+  （Competency）依旧零耦合 —— 这条边界由 `test_evidence_invariants.py` 总闸门守护。

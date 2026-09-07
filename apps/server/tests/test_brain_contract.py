@@ -68,8 +68,10 @@ def test_adding_an_unregistered_trait_cannot_change_policy():
 
 
 def test_missing_brain_and_missing_traits_fall_back_to_defaults():
-    assert BrainTraits.from_brain(None).snapshot() == {"curiosity": 0.5}
-    assert BrainTraits.from_brain(FakeBrain(traits={})).snapshot() == {"curiosity": 0.5}
+    # 8 维注册后：缺失键全部回落注册表默认值（中性 0.5）—— 读侧永不抛 KeyError
+    expected = {spec.key: spec.default for spec in TRAIT_REGISTRY.values()}
+    assert BrainTraits.from_brain(None).snapshot() == expected
+    assert BrainTraits.from_brain(FakeBrain(traits={})).snapshot() == expected
 
 
 def test_legacy_curiosity_column_is_used_until_traits_exist():
@@ -105,7 +107,10 @@ def test_higher_schema_version_still_resolves_and_backfills_defaults():
 def test_write_traits_syncs_legacy_mirror_column():
     brain = FakeBrain(curiosity=0.1)
     write_traits_to_brain(brain, BrainTraits.build({"curiosity": 0.77}))
-    assert brain.traits == {"schema_version": 1, "curiosity": 0.77}
+    # traits 是权威：写侧按注册表补齐全部键（缺失键=中性默认），并双写 legacy 镜像列
+    assert brain.traits["schema_version"] == 1
+    assert brain.traits["curiosity"] == 0.77
+    assert set(brain.traits) == {"schema_version", *TRAIT_REGISTRY}
     assert brain.curiosity == 0.77  # 双写：镜像列不漂移
 
 

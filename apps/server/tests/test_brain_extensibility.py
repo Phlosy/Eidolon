@@ -83,7 +83,11 @@ def test_new_trait_flows_through_the_brain_channel(methodical):
     write_traits_to_brain(brain, BrainTraits.build({"curiosity": 0.5, "methodical": 0.9}))
     policy = resolve(brain, DEFAULT_CONFIG)
 
-    assert dict(policy.runtime.trait_snapshot) == {"curiosity": 0.5, "methodical": 0.9}
+    snapshot = dict(policy.runtime.trait_snapshot)
+    assert snapshot["curiosity"] == 0.5
+    assert snapshot["methodical"] == 0.9
+    # 8 维注册后 snapshot 是完整键集（缺失键补齐注册表默认）；methodical 是额外临时维
+    assert set(snapshot) == set(TRAIT_REGISTRY)
     # 人格变了就换修订号：投影文件必须能区分"只加了一个未生效特质"与"什么都没变"
     assert (
         policy.runtime.profile_revision
@@ -100,7 +104,8 @@ def test_unregistering_degrades_gracefully(methodical):
     with pytest.raises(UnknownTrait):
         BrainTraits.build({"methodical": 0.9})  # 写入仍然拒绝未知特质
     coerced = BrainTraits.coerce(traits)
-    assert coerced.snapshot() == {"curiosity": 0.5}  # 读入被安全忽略
+    assert "methodical" not in coerced.snapshot()  # 未知键被安全忽略
+    assert coerced.snapshot()["curiosity"] == 0.5
     # 落库的未知键被忽略 ⇒ 与"从未有过该特质"的行完全同策略
     assert resolve(_brain(traits), DEFAULT_CONFIG) == resolve(_brain(None), DEFAULT_CONFIG)
 
