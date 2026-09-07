@@ -28,7 +28,11 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.request_context import get_request_identity
-from app.models.enums import AssignmentType, OccupancyStatus, SlotAdministrativeStatus
+from app.models.enums import (
+    AssignmentType,
+    OccupancyStatus,
+    SlotAdministrativeStatus,
+)
 from app.models.lifecycle import AccessPackage
 from app.models.organization import Department
 from app.models.position import (
@@ -448,12 +452,39 @@ def definition_slot_counts(db: Session, definition_ids: Sequence[int]) -> dict[i
     return {int(definition_id): int(count) for definition_id, count in rows}
 
 
-def employees_in_position(
-    db: Session, definition_code: str, company_id: int | None = None
-) -> list[int]:
-    """按职位 code 找人（取代 `get_employee_by_role`，orchestrator 里程碑负责人用它）。"""
-    target = _scoped_company_id(db, company_id)
-    stmt = (
+def employee_id_holding_legacy_role(db: Session, company_id: int, legacy_role: str) -> int | None:
+    """占着"声明了该旧 role 的职位"的那个人 id；问不到返回 None（由调用方决定回退）。
+
+    `get_employee_by_role` 的职位域版本：答案来自 **生效 PRIMARY → slot → definition**，
+    所以一个 `AVAILABLE`（没任职）的人即使 `employees.role` 镜像里写着 `ceo`，
+    也不会被当成 CEO 派活 —— 那正是本次重构要消灭的假阳性。
+
+    判据与 `employees_in_position()` 共用 `_position_holder_query()`：**不**额外要求坑是
+    `active` 行政态。冻结只挡**新的**分配，不把在任者降级成"不是这个人"，
+    否则名册说 OCCUPIED、派活却说没人，就变成第二把尺（ADR-2）。
+
+    多个在任者（同 role 多个坑）取工号最小的一位，与旧查询 `order_by(Employee.id)` 一致。
+    """
+    rows = (
+        db.execute(
+            _position_holder_query(
+                PositionDefinition.company_id == company_id,
+                PositionDefinition.legacy_role == legacy_role,
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return min((int(row) for row in rows), default=None)
+
+
+def _position_holder_query(*conditions):
+    """ "谁占着某个职位"的唯一查询构造器 —— code 口与 legacy_role 口共用（ADR-2）。
+
+    生效主职的三条判据（`effective_to IS NULL` + `assignment_type=primary` + `is_primary`）
+    只写在这里；任何地方再手写一遍，坑侧与人侧就会开始漂移。
+    """
+    return (
         select(PositionAssignment.employee_id)
         .join(PositionSlot, PositionAssignment.position_slot_id == PositionSlot.id)
         .join(
@@ -461,13 +492,21 @@ def employees_in_position(
             PositionSlot.position_definition_id == PositionDefinition.id,
         )
         .where(
-            PositionDefinition.code == definition_code,
             PositionAssignment.effective_to.is_(None),
             PositionAssignment.assignment_type == AssignmentType.primary.value,
             PositionAssignment.is_primary.is_(True),
+            *conditions,
         )
         .order_by(PositionAssignment.effective_from)
     )
+
+
+def employees_in_position(
+    db: Session, definition_code: str, company_id: int | None = None
+) -> list[int]:
+    """按职位 code 找人（取代 `get_employee_by_role`，orchestrator 里程碑负责人用它）。"""
+    target = _scoped_company_id(db, company_id)
+    conditions = [PositionDefinition.code == definition_code]
     if target is not None:
-        stmt = stmt.where(PositionDefinition.company_id == target)
-    return [int(row) for row in db.execute(stmt).scalars()]
+        conditions.append(PositionDefinition.company_id == target)
+    return [int(row) for row in db.execute(_position_holder_query(*conditions)).scalars()]

@@ -12,11 +12,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from sqlalchemy.orm import Session
 
 from app.core.request_context import get_request_identity
 from app.models.enums import EmployeeRole
 from app.models.organization import Employee
+from app.repositories import organization as org_repo
 from app.repositories import position as position_repo
 from app.schemas.position import CurrentPositionOut
 
@@ -52,23 +55,57 @@ def derived_current_position(db: Session, employee: Employee) -> CurrentPosition
     )
 
 
-def legacy_role_of(db: Session, employee: Employee) -> str:
-    """旧 `role` 口径的取值顺序（每一步都写在返回值里，不留隐式魔法）：
+def role_mirror(db: Session, employees: Sequence[Employee]) -> dict[int, str]:
+    """一批人的旧 `role` 口径取值（**批量**：一页名册只查一次职位）。
 
-    1. 生效主职的职位定义带 `legacy_role` —— 真值，占绝大多数；
-    2. 自定义职位（无 legacy 对应）⇒ 如实返回 `engineer` 兜底，并由
-       `derived_current_position().position_is_custom = True` 说明"这不是真的 role"；
-    3. 完全没有主职（`AVAILABLE`）⇒ 读 `employees.role` **镜像**，只为旧前端不破；
-    4. 镜像也不是合法枚举值 ⇒ 兜 `engineer`。
+    取值顺序（每一步都写在返回值里，不留隐式魔法）：
+
+    1. 生效主职的职位定义带 `legacy_role` —— 真值，占绝大多数；自定义职位没有 legacy
+       对应，如实兜 `engineer`，并由 `derived_current_position().position_is_custom`
+       说明"这不是真的 role"；
+    2. 完全没有主职（`AVAILABLE`）⇒ 读 `employees.role` **镜像**，只为旧前端不破；
+    3. 镜像也不是合法枚举值 ⇒ 兜 `engineer`。
+
+    这是全仓唯一允许读 `employee.role` 的地方（P4c 的架构守卫按此放行）。
     """
-    current = position_repo.employee_current_position(db, int(employee.id))
-    if current is not None:
-        # 有主职时以职位定义为准；自定义职位没有 legacy 对应，不谎报成某个存在的 role。
-        return current.legacy_role or _FALLBACK_ROLE
-    mirror = (employee.role or "").strip()
-    if mirror in {member.value for member in EmployeeRole}:
-        return mirror
-    return _FALLBACK_ROLE
+    ids = [int(e.id) for e in employees]
+    positions = position_repo.current_positions_by_employee(db, ids)
+    valid = {member.value for member in EmployeeRole}
+    out: dict[int, str] = {}
+    for employee in employees:
+        current = positions.get(int(employee.id))
+        if current is not None:
+            out[int(employee.id)] = current.legacy_role or _FALLBACK_ROLE
+            continue
+        mirror = (employee.role or "").strip()
+        out[int(employee.id)] = mirror if mirror in valid else _FALLBACK_ROLE
+    return out
+
+
+def legacy_role_of(db: Session, employee: Employee) -> str:
+    """单个员工的旧 `role` 口径 —— 走 `role_mirror`，避免两份实现漂移。"""
+    return role_mirror(db, [employee])[int(employee.id)]
+
+
+def employee_by_legacy_role(db: Session, company_id: int, role: str) -> Employee | None:
+    """按旧 `role` 口径找人：**先问谁真的占着那个编制**，问不到才回退旧列。
+
+    `projects` / `project_delivery` / `tutorial` 里"派给 QA""找 CEO 审批"这类分支原来直接
+    `WHERE employees.role = 'qa_engineer'`，于是"没任职但 role 写着 qa_engineer 的人"也会被派活
+    （名册上他明明是 `AVAILABLE`）。这里把优先级倒回来：
+
+    1. 生效 PRIMARY 占着"声明了该 role 的职位定义"的人 —— 组织事实；
+    2. 没有这种人（v0.4 老数据、只招不派的公司都属此类）⇒ 回退旧列镜像，
+       行为与改之前一致，不制造新的"找不到人"。
+
+    回退分支保留是因为**它还必须能用**：删掉它等于在 P6 之前让老公司派不出活。
+    """
+    holder_id = position_repo.employee_id_holding_legacy_role(db, company_id, role)
+    if holder_id is not None:
+        holder = db.get(Employee, holder_id)
+        if holder is not None:
+            return holder
+    return org_repo.get_employee_by_role(db, company_id, role)
 
 
 def workforce_status_of(db: Session, employee: Employee) -> str:
