@@ -28,7 +28,7 @@ from app.models.competency import (
     CompetencyEvidence,
     EmployeeCompetency,
 )
-from app.models.enums import CompetencyStatus, EvidenceSourceKind
+from app.models.enums import CompetencyKind, CompetencyStatus, EvidenceSourceKind
 from app.models.knowledge import Skill, SkillUsage
 from app.models.organization import Employee
 
@@ -391,3 +391,94 @@ def assess_employee_competencies(
     if commit:
         db.commit()
     return run
+
+
+# --------------------------------------------------------------------------
+# 序列化出口（ADR-12）：派生/状态字段在这里显式计算，schema 上不带假默认值
+# --------------------------------------------------------------------------
+
+
+def trend_direction_of(trend: int | None) -> str:
+    """由趋势差值派生展示方向。NULL（无历史）⇒ unknown —— 不要显示成 STABLE。"""
+    if trend is None:
+        return "unknown"
+    if trend > 0:
+        return "up"
+    if trend < 0:
+        return "down"
+    return "stable"
+
+
+def employee_capabilities_out(db: Session, employee_id: int) -> dict:
+    """员工能力读面：general（10 维全量，未评估如实 unrated）+ professional（动态，仅已评估）。
+
+    没有"总能力分"：general/professional 都是逐维对象。score/confidence 用 null 表示
+    未评估；unrated 的 evidence_count=0 是"真的没有证据"（absence 计算），不是没算。
+    """
+    from app.repositories import competency as competency_repo
+
+    domains = competency_repo.list_domains(db)
+    domain_by_id = {domain.id: domain for domain in domains}
+    definitions = competency_repo.list_definitions(db, domain_ids=list(domain_by_id))
+    definition_by_id = {definition.id: definition for definition in definitions}
+    rows = competency_repo.employee_competency_rows(db, employee_id)
+    row_by_definition = {row.competency_definition_id: row for row in rows}
+
+    general_definitions = competency_repo.general_definitions(db)
+    general: list[dict] = []
+    for definition in general_definitions:
+        row = row_by_definition.get(definition.id)
+        general.append(_competency_payload(definition, domain_by_id.get(definition.domain_id), row))
+
+    professional_domain_ids = {
+        domain.id for domain in domains if domain.kind == CompetencyKind.professional.value
+    }
+    professional: list[dict] = []
+    for row in rows:
+        definition = definition_by_id.get(row.competency_definition_id)
+        if definition is None:
+            continue
+        domain = domain_by_id.get(definition.domain_id)
+        if domain is None or domain.id not in professional_domain_ids:
+            continue
+        professional.append(_competency_payload(definition, domain, row))
+
+    return {"general": general, "professional": professional}
+
+
+def _competency_payload(definition, domain, row) -> dict:
+    """把"定义 + 可选员工行"合成响应（unrated = 无行 ⇒ 如实给 null）。"""
+    domain_code = domain.code if domain is not None else ""
+    domain_name = domain.name if domain is not None else ""
+    kind = domain.kind if domain is not None else CompetencyKind.general.value
+    if row is not None:
+        score = row.score
+        confidence = row.confidence
+        evidence_count = row.evidence_count
+        status = row.status
+        trend = row.trend
+        last_assessed_at = row.last_assessed_at
+    else:
+        score = None
+        confidence = None
+        evidence_count = 0
+        status = CompetencyStatus.unrated.value
+        trend = None
+        last_assessed_at = None
+    return {
+        "competency_definition_id": definition.id,
+        "domain_id": domain.id if domain is not None else definition.domain_id,
+        "domain_code": domain_code,
+        "domain_name": domain_name,
+        "code": definition.code,
+        "name": definition.name,
+        "description": definition.description,
+        "kind": kind,
+        "score": score,
+        "confidence": confidence,
+        "evidence_count": evidence_count,
+        "status": status,
+        "trend": trend,
+        "trend_direction": trend_direction_of(trend),
+        "last_assessed_at": last_assessed_at,
+    }

@@ -56,6 +56,7 @@ DERIVED_OUT_FIELDS: frozenset[str] = frozenset(
 _SCHEMA_MODULES = (
     "app.schemas.position",
     "app.schemas.organization",
+    "app.schemas.competency",
     "app.schemas.runtime",
     "app.schemas.lifecycle",
     "app.schemas.knowledge",

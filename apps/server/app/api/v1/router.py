@@ -8,6 +8,7 @@ from app.api.v1 import (
     auth,
     behavior,
     company,
+    competencies,
     drive,
     employees,
     git,
@@ -38,6 +39,7 @@ protected.include_router(drive.router)
 protected.include_router(messages.router)
 protected.include_router(knowledge.router)
 protected.include_router(behavior.router)
+protected.include_router(competencies.router)
 protected.include_router(providers.router)
 protected.include_router(git.router)
 protected.include_router(runtimes.router)
