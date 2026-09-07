@@ -69,10 +69,16 @@ def departments(client: TestClient) -> dict:
 # ---------------------------------------------------------------- 名册（只读）
 
 
-def test_roster_lists_every_person_with_both_axes(client: TestClient, db: Session):
+def test_roster_lists_every_person_with_both_axes(
+    client: TestClient, db: Session, default_company_id: int
+):
     entries = client.get("/api/v1/talent-roster").json()
-    people = db.scalars(sa.select(Employee)).all()
+    # 比较必须落在同一条公司边界内（ADR-11）：`/talent-roster` 是默认公司的读面，
+    # 而裸 `select(Employee)` 是全库 —— dev 库与本会话里别的测试文件都会造别的公司的人，
+    # 用全局数对scoped读面，会假失败（P4c 的桥测试就是这么把它撞出来的）。
+    people = db.scalars(sa.select(Employee).where(Employee.company_id == default_company_id)).all()
     assert len(entries) == len(people), "名册不许漏人，也不许凭空造人"
+    assert {entry["employee_id"] for entry in entries} == {person.id for person in people}
     for entry in entries:
         assert ROSTER_KEYS <= set(entry), set(entry)
         # 两个轴各自独立出现：lifecycle 是输入，workforce 是派生
@@ -330,7 +336,13 @@ def test_roster_marks_historical_rows_so_available_and_dangling_are_distinguisha
     from app.models.enums import AssignmentType
     from app.models.position import PositionAssignment
 
-    department = db.scalars(sa.select(Employee).limit(1)).first().department_id
+    company_id = db.scalar(sa.text("SELECT id FROM companies ORDER BY id LIMIT 1"))
+    # 部门要取自**同一家公司**的人，否则造出来的孤儿行本身就跨了边界
+    department = (
+        db.scalars(sa.select(Employee).where(Employee.company_id == company_id).limit(1))
+        .first()
+        .department_id
+    )
     orphan = Employee(
         company_id=db.scalar(sa.text("SELECT id FROM companies ORDER BY id LIMIT 1")),
         department_id=department,
