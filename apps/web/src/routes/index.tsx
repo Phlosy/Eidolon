@@ -24,6 +24,11 @@ const EmployeeDetailPage = lazy(() =>
     default: module.EmployeeDetailPage,
   })),
 );
+const TalentRosterPage = lazy(() =>
+  import("../pages/talent-roster/talent-roster-page").then((module) => ({
+    default: module.TalentRosterPage,
+  })),
+);
 const PositionsPage = lazy(() =>
   import("../pages/positions/positions-page").then((module) => ({
     default: module.PositionsPage,
@@ -128,6 +133,7 @@ export const router = createBrowserRouter([
           { path: "/office", element: route(<OfficePage />) },
           { path: "/employees", element: route(<EmployeesPage />) },
           { path: "/employees/:id", element: route(<EmployeeDetailPage />) },
+          { path: "/talent-roster", element: route(<TalentRosterPage />) },
           { path: "/positions", element: route(<PositionsPage />) },
           { path: "/positions/:id", element: route(<PositionDetailPage />) },
           { path: "/projects", element: route(<ProjectsPage />) },

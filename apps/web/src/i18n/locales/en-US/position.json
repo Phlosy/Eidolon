@@ -58,6 +58,17 @@
     "evaluateTalent": "Evaluate talent",
     "selectEmployee": "Select employee",
     "currentPositionFit": "Current position fit",
-    "noCurrentFitHint": "No current assignment or no profile configured"
+    "noCurrentFitHint": "No current assignment or no profile configured",
+    "candidates": "候选人才",
+    "includeAssigned": "含已任职",
+    "assign": "分配",
+    "assignPreview": "分配预览",
+    "cancel": "取消",
+    "stillAssign": "仍然任命",
+    "compareTitle": "候选比较",
+    "requirement": "能力要求",
+    "assignWarningCritical": "该员工当前存在关键能力差距，仍然可以继续任命。",
+    "assignWarningEvidence": "当前 Evidence 不足，系统无法可靠判断其岗位适配情况。",
+    "unavailable": "暂不可用"
   }
 }

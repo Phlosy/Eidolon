@@ -1422,6 +1422,119 @@ export interface ProfileTemplate {
   requirement_count: number;
 }
 
+// ---------- P9: Talent roster & candidate analysis ----------
+
+export const CANDIDATE_BANDS = [
+  "RECOMMENDED",
+  "VIABLE",
+  "DEVELOPMENTAL",
+  "NEEDS_EVIDENCE",
+  "CRITICAL_GAP",
+] as const;
+export type CandidateBand = (typeof CANDIDATE_BANDS)[number];
+
+export interface RosterTraitSummary {
+  code: string;
+  value: number;
+}
+
+export interface RosterTopCompetency {
+  code: string;
+  score: number;
+  confidence: number | null;
+}
+
+export interface TalentRosterItem {
+  employee_id: number;
+  name: string;
+  slug: string;
+  avatar: string;
+  department_id: number | null;
+  department_name: string | null;
+  lifecycle_status: string;
+  workforce_status: string;
+  has_primary_assignment: boolean;
+  occupies_establishment: boolean;
+  current_position: {
+    definition_id: number;
+    code: string;
+    name: string;
+    slot_code: string;
+    department_id: number | null;
+    department_name: string | null;
+  } | null;
+  integrity: string[];
+  runtime: { type: string; status: string } | null;
+  provider: { provider_id: number; name: string | null; model: string | null } | null;
+  traits_summary: RosterTraitSummary[];
+  top_general_competencies: RosterTopCompetency[];
+  top_professional_competencies: RosterTopCompetency[];
+  assessment_summary: {
+    assessed_general_count: number;
+    general_total: number;
+    evidence_coverage: "none" | "low" | "medium" | "high";
+  } | null;
+  recent_activity: { type: string; at: string } | null;
+}
+
+export interface CandidateEmployee {
+  employee_id: number;
+  name: string;
+  slug: string;
+  avatar: string;
+  workforce_status: string;
+  department_id: number | null;
+  department_name: string | null;
+  current_position: {
+    definition_id: number;
+    code: string;
+    name: string;
+    slot_code: string;
+  } | null;
+}
+
+export interface CandidateFit {
+  known_fit_score: number | null;
+  fit_confidence: number | null;
+  required_coverage: number;
+  required_required_coverage: number;
+  qualification_status: QualificationStatus;
+  fit_status: FitStatus;
+  critical_gap_count: number;
+  required_gap_count: number;
+  uncertainty_count: number;
+  strengths: string[];
+  gaps: string[];
+  uncertainties: string[];
+  development_opportunities: string[];
+}
+
+export interface CandidateItem {
+  employee: CandidateEmployee;
+  fit: CandidateFit;
+}
+
+export interface CandidateBandGroup {
+  band: CandidateBand;
+  count: number;
+  candidates: CandidateItem[];
+}
+
+export interface CandidateAnalysisResult {
+  position: { id: number; code: string; name: string };
+  profile: { version_id: number; version: number; status: string } | null;
+  evaluable: boolean;
+  bands: CandidateBandGroup[];
+  meta: {
+    engine_version: string;
+    policy_version: string;
+    candidate_analysis_version: string;
+    inputs_hash: string;
+    include_assigned: boolean;
+    calculated_at: string | null;
+  };
+}
+
 // ---------- P8: Position fit (docs/position-fit.md) ----------
 
 export const FIT_STATUSES = [

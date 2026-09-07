@@ -53,7 +53,7 @@ export function CompanySidebar({
     {
       key: "workforce",
       items: [
-        { to: "/employees", key: "employees", icon: Users, badge: employees.length },
+        { to: "/talent-roster", key: "talentRoster", icon: Users, badge: employees.length },
         { to: "/positions", key: "positions", icon: ClipboardList },
       ],
     },

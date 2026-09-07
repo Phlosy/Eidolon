@@ -8,6 +8,7 @@ import { useEmployeePositionFit } from "../../hooks/usePositionFit";
 import { FitAnalysis } from "../../components/position-fit/fit-analysis";
 import { listCompetenciesForPicker } from "../../api/positionProfiles";
 import { ProfileEditor } from "../../components/position-profile/profile-editor";
+import { CandidatePanel } from "../../components/position-candidates/candidate-panel";
 import { RequirementRow } from "../../components/position-profile/requirement-row";
 import { Badge } from "../../components/common/badge";
 import { ErrorState } from "../../components/common/states";
@@ -110,6 +111,11 @@ export function PositionDetailPage() {
           positionId={positionId}
           definitions={definitionsQuery.data ?? []}
         />
+      </Panel>
+
+      <Panel className="p-4">
+        <h2 className="mb-3 text-sm font-medium">{t("position:positions.candidates")}</h2>
+        <CandidatePanel positionId={positionId} positionName={profile.position_code} />
       </Panel>
 
       <Panel className="p-4">
