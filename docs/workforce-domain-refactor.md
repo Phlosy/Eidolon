@@ -276,6 +276,34 @@ P4b 接上名册端点后**再错一次**：上面那个分布是跨公司混算
 2. **补编制是业务动作，不是数据修补。** 走 P4 的 `position_service` 分配工作流，产出 `PositionAssignment` 与履历事件，而不是在迁移里悄悄补一行。
 3. **报数必带公司边界。** `WorkforceStatusResolver.counts()` 这类全库统计与 `GET /talent-roster/stats`（公司内）是两个东西；前者只能用于诊断，后者才是用户看到的名册。
 
+### 6.3 P4c 落地：`employee.role` 读取守卫（数字来自实测，不是估计）
+
+内部编号 P4c ≈ §7 表里 P6 的「守卫」那一半。做完的三件事：
+
+1. **先给桥，再锁门。** 直接锁会把 6 处**真实业务判断**悬空，所以先改道：
+   `projects`（PM/CEO 审批）、`project_delivery`（QA 验收、工程师开发任务）、
+   `orchestrator`（order_review 后接手人、里程碑 assignee）、`tutorial`（上下文取人、团队展示）、
+   `requirements`（教程 role 门禁）—— 全部走
+   `position_compat.employee_by_legacy_role()`：**先问「谁占着这个编制」，问不到才回退旧列。**
+   这修的是一个真实的错：以前 `WHERE employees.role='qa_engineer'` 会把名册上 `AVAILABLE`、
+   只是镜像列写着 `qa_engineer` 的人拉去派活。
+2. **读取面从 15 处降到 10 处 / 6 文件**，剩下的每处都带「谁在读 + 哪个阶段撤」（P4d/P5/P6）。
+   `get_employee_by_role` 的生产调用者只剩 compat 的回退分支。
+3. **守卫要能证明会红。** 三条元测试在合成源码上验证判定函数真的抓得到
+   `employee.role` / `Employee.role` / `emp.role` 与 `get_employee_by_role` 调用点；
+   另外真跑了一次变异（新建 `services/reports.py` 写一行 `return employee.role`）→ 红并指名行号。
+   基线是「数量精确相等」，所以**变少也红**：不逼着人更新清单，清单三个月就烂掉。
+
+两个刻意保留的不对称：
+
+- 镜像的**写入**（招聘、种子）继续允许并锁数量 —— P6 撤列之前必须有人写它，否则旧前端没数据。
+- `lifecycle/audit.py` 允许读列原值：审计快照要的是「当时库里是什么」，不是派生结论。
+  派生值进快照 = 用今天的规则改写昨天的证据。
+
+已知盲区（写进测试而不是藏起来）：接收者叫 `row` / `c` 这类中性名时按「非员工」处理，
+因为 `DriveCollaborator`、`CompanyMembership` 确实也有自己的 `role` 维度。
+`NON_EMPLOYEE_ROLE_RECEIVERS` 每加一项，守卫就瞎一分。
+
 ---
 
 ## 7. 分阶段实施与 PR 切分（对齐你给的 Phase 0–14）
@@ -287,8 +315,8 @@ P4b 接上名册端点后**再错一次**：上面那个分布是跨公司混算
 | P3    | v12–v14 迁移 + 回填 + 保留性验收测试                                                                                               | 迁移往返、历史不变量                           |
 | P4    | `position_service`：`recruit()`（不再要求职位）、`assign()`、`transfer()`、`unassign()`、`workforce_status()`；旧 `onboard()` 转调 | 名册 API + 20 项任职测试                       |
 | P5    | 名册 API：`GET /talent-roster`、`GET/PATCH /employees/{id}/assignments`、`GET /positions/definitions                               | slots                                          | vacancies` | 契约测试 + 权限 |
-| P6    | `position_compat`：API 响应 `derived_current_position`；`role` 转 deprecated 镜像；**架构守卫禁止新读点**                          | 守卫测试                                       |
-| P7    | 权限两层化：`PositionDefinition.default_access_packages` 接线、`PackageSource.position`、调岗 KEEP/REMOVE/ADD diff                 | 复用现有 `diff_entitlements` 测试 + 新调岗测试 |
+| P6 ◐ | `position_compat`：API 响应 `derived_current_position`；`role` 转 deprecated 镜像；**架构守卫禁止新读点**。守卫与两座桥已落地（内部编号 P4c）；`GET /employees/{id}` 的派生字段合并待前端 WIP | 守卫测试 ✅（18 条，含会红元测试） |
+| P7 | 权限两层化（= 内部编号 P4d）：`PositionDefinition.default_access_packages` 接线、`PackageSource.position`、调岗 KEEP/REMOVE/ADD diff                 | 复用现有 `diff_entitlements` 测试 + 新调岗测试 |
 | P8    | Traits 扩到 8 维（registry + schema + 投影 + UI），**行为只接已定义策略的那几个**                                                  | 扩展性测试（已存在，扩到 8）                   |
 | P9    | 能力目录 + `employee_competencies`（含 UNRATED/PROVISIONAL 语义）                                                                  | 禁止随机 + 无证据不可变                        |
 | P10   | 考核系统（profiles/criteria/runs/results/evidence + 聚合 + confidence + trend）                                                    | §48 全部不变量 + 可重放                        |
