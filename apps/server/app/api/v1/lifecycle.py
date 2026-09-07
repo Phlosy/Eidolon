@@ -145,21 +145,34 @@ def list_entitlements(
 def read_effective_access(employee_id: int, db: Session = Depends(get_db)) -> EffectiveAccessOut:
     """两层权限视图：人级 / 职位级 / 并集（P4d，docs/position-system.md §4）。
 
-    `declared_by_position` 是"当前任职**应该**带来的包"，与 `position`（已经拿到的）
-    并列返回 —— 因为收敛是事件驱动的异步过程，两者的差就是"还没开通完"。
-    只返回后者的话，界面会把"正在收敛"显示成"这个职位没有权限"，那是假信息。
+    职位声明与人级已有的重叠是常态（种子定义声明的就是 `engineer` 这类角色包），
+    所以差集被拆成 `already_held_by_person` 与 `pending_from_position` 两种语义。
     """
     from app.lifecycle import access
 
     _get_employee_or_404(db, employee_id)
     view = access.effective_access(db, employee_id)
+    declared = [package.slug for package in access.position_packages_for(db, employee_id)]
+    person_slugs = {
+        package.slug
+        for row, package in access.employee_packages(db, employee_id)
+        if access.layer_of_source(row.source) == "person"
+    }
+    position_slugs = {
+        package.slug
+        for row, package in access.employee_packages(db, employee_id)
+        if access.layer_of_source(row.source) == "position"
+    }
+    # 差集要分两种语义：人级已有 ≠ 待开通（见 schema 里的说明）
+    already = [slug for slug in declared if slug in person_slugs and slug not in position_slugs]
+    pending = [slug for slug in declared if slug not in person_slugs and slug not in position_slugs]
     return EffectiveAccessOut(
         person=_entitlements_out(view["person"]),
         position=_entitlements_out(view["position"]),
         effective=_entitlements_out(view["effective"]),
-        declared_by_position=[
-            package.slug for package in access.position_packages_for(db, employee_id)
-        ],
+        declared_by_position=declared,
+        already_held_by_person=already,
+        pending_from_position=pending,
     )
 
 

@@ -278,6 +278,8 @@ def test_access_endpoint_separates_declared_from_granted(client, stage):
     body = _access(client, s["person"].id)
     assert body["declared_by_position"] == [s["package"].slug], body
     assert _keys(body["position"]) == set(), "还没收敛就说有了 = 假绿"
+    assert body["pending_from_position"] == [s["package"].slug], body
+    assert body["already_held_by_person"] == []
 
     workforce_access.converge_employee_access(db, s["person"].id)
     body = _access(client, s["person"].id)
@@ -309,6 +311,37 @@ def test_access_endpoint_person_layer_survives_the_whole_cycle(client, stage):
     # 职位包与 base 包共享 `git:company-org-member`：卸任后人级仍然有它
     # （docs/position-system.md §4 特别要求覆盖的"共享 entitlement 不误撤"）
     assert "git:company-org-member" in _keys(after["effective"])
+
+
+def test_declared_but_already_held_is_not_reported_as_pending(client, stage):
+    """职位声明的包人级已经有了 ⇒ 进 `already_held_by_person`，不是"待开通"。
+
+    真实 dev 库就是这个情形（5 个定义各声明 1 个包，全部命中人级已有 ⇒ 补收敛零变更），
+    所以这条不是假想场景：混起来的话 UI 会永远转圈。
+    """
+    db, s = stage["db"], stage
+    base = lifecycle_repo.get_package_by_slug(db, access.BASE_PACKAGE_SLUG)
+    lifecycle_repo.create_employee_package(
+        db,
+        employee_id=s["person"].id,
+        package_id=base.id,
+        source=PackageSource.role.value,
+    )
+    # 让职位声明**同一个包**（dev 库的真实形状：定义声明 `engineer`，人级也发过 `engineer`）
+    db.query(PositionDefinitionPackage).filter_by(
+        position_definition_id=s["definition"].id
+    ).delete()
+    db.add(PositionDefinitionPackage(position_definition_id=s["definition"].id, package_id=base.id))
+    db.commit()
+    position_service.assign_position(db, s["person"], AssignmentIn(slot_id=s["slot"].id))
+    # 不收敛：职位声明的 git:company-org-member 人级已经有
+    body = _access(client, s["person"].id)
+    assert body["declared_by_position"] == [base.slug], body
+    assert body["already_held_by_person"] == [base.slug], body
+    assert body["pending_from_position"] == [], "人级已有还报待开通 = 假等待"
+    assert workforce_access.converge_employee_access(db, s["person"].id) is None, (
+        "人级已有的包不该再生成职位行 / 工单"
+    )
 
 
 def test_access_endpoint_requires_a_real_employee(client):

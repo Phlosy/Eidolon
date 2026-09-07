@@ -112,14 +112,23 @@ class EffectiveEntitlementOut(BaseModel):
 class EffectiveAccessOut(BaseModel):
     """两层权限视图（docs/position-system.md §4：Effective = 人级 + 职位级）。
 
-    `position_packages` 是"当前任职解析出来的包"（可能为空 —— 多数定义还没声明默认权限）；
-    `pending_job_id` 是收敛生成的权限工单，仅在刚发生收敛时有值。
+    `position` 是"因为占着编制才拿到的"；`declared_by_position` 是"当前任职**应该**带来的包"。
+    两者的差**必须**再拆一次，否则语义是含糊的：
+
+      · `already_held_by_person` —— 人级本来就有（base 包或角色包重叠），不是待开通；
+        真实 dev 库上就是这个情形：5 个定义各声明 1 个包，全部命中人级已有，
+        所以职位层视图为空但没有一次收敛产生变更。
+      · `pending_from_position` —— 两边都没有，等收敛/工单执行。
+
+    只给"声明集 vs 已拿到"的话，界面会把"你本来就有"画成转圈，那是假信息。
     """
 
     person: list[EffectiveEntitlementOut]
     position: list[EffectiveEntitlementOut]
     effective: list[EffectiveEntitlementOut]
     declared_by_position: list[str] = []
+    already_held_by_person: list[str] = []
+    pending_from_position: list[str] = []
     note: str = "人级随人走（离职才回收）；职位级随编制走（卸任即 REMOVE）"
 
 
