@@ -60,6 +60,7 @@ _SCHEMA_MODULES = (
     "app.schemas.assessment",
     "app.schemas.position_profile",
     "app.schemas.position_fit",
+    "app.schemas.position_candidates",
     "app.schemas.runtime",
     "app.schemas.lifecycle",
     "app.schemas.knowledge",

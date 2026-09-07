@@ -340,3 +340,133 @@ def _fill_status(result: PositionFitResult, evaluations: list[RequirementEvaluat
         result.fit_status = FitStatus.PARTIAL_MATCH
     else:
         result.fit_status = FitStatus.WEAK_MATCH
+
+
+def calculate_many(
+    db: Session,
+    *,
+    position: PositionDefinition,
+    employee_ids: list[int],
+    profile_version_id: int | None = None,
+) -> dict[int, PositionFitResult]:
+    """一个职位 × 一批员工的批量匹配：共享 profile/requirements/definitions/domains，
+    员工能力一次批量取 —— 每个候选不再重复读同一 Position Profile（N+1 守卫）。"""
+    position_id = int(position.id)
+    version = None
+    if profile_version_id is not None:
+        version = db.get(PositionProfileVersion, profile_version_id)
+        if version is None or version.position_definition_id != position_id:
+            return {
+                employee_id: _nonevaluable(position, reason="profile_version_not_found")
+                for employee_id in employee_ids
+            }
+    else:
+        version = profile_service.active_profile(db, position_id)
+
+    nonevaluable = _nonevaluable(position, reason="no_active_profile")
+    if version is None:
+        return {employee_id: nonevaluable for employee_id in employee_ids}
+
+    requirements = _requirements(db, version)
+    definitions = _competency_map(db, {req.competency_definition_id for req in requirements})
+    domains = _domain_map(db, {definition.domain_id for definition in definitions.values()})
+    competency_rows: dict[int, dict[int, EmployeeCompetency]] = {
+        employee_id: {} for employee_id in employee_ids
+    }
+    for row in db.scalars(
+        select(EmployeeCompetency).where(
+            EmployeeCompetency.employee_id.in_(list(employee_ids)),
+            EmployeeCompetency.competency_definition_id.in_(
+                [req.competency_definition_id for req in requirements]
+            ),
+        )
+    ):
+        competency_rows.setdefault(row.employee_id, {})[row.competency_definition_id] = row
+    now = datetime.now(UTC)
+    assessment_code = None
+    if position.assessment_profile_id:
+        from app.models.assessment import AssessmentProfile
+
+        _assessment = db.get(AssessmentProfile, position.assessment_profile_id)
+        assessment_code = _assessment.code if _assessment else None
+    results: dict[int, PositionFitResult] = {}
+    for employee_id in employee_ids:
+        result = PositionFitResult(
+            employee_id=employee_id,
+            position_definition_id=position_id,
+            position_code=position.code,
+            engine_version=POSITION_FIT_ENGINE_VERSION,
+            policy_version=POSITION_FIT_POLICY_VERSION,
+            calculated_at=now,
+        )
+        result.configured = True
+        result.profile_version_id = version.id
+        result.profile_version = version.version
+        result.profile_status = version.status
+        result.assessment_profile_code = assessment_code
+
+        evaluations: list[RequirementEvaluation] = []
+        rows = competency_rows.get(employee_id, {})
+        for req in requirements:
+            definition = definitions.get(req.competency_definition_id)
+            domain = domains.get(definition.domain_id) if definition else None
+            evaluation = RequirementEvaluation(
+                requirement_id=req.id,
+                competency_definition_id=req.competency_definition_id,
+                code=definition.code if definition else "",
+                name=definition.name if definition else "",
+                domain_code=domain.code if domain else "",
+                domain_name=domain.name if domain else "",
+                kind=domain.kind if domain else "general",
+                requirement_type=req.requirement_type,
+                critical=req.critical,
+                minimum_score=req.minimum_score,
+                target_score=req.target_score,
+                minimum_confidence=req.minimum_confidence,
+                weight=req.weight,
+            )
+            row = rows.get(req.competency_definition_id)
+            evaluate(
+                evaluation,
+                employee_score=row.score if row else None,
+                employee_confidence=row.confidence if row else None,
+            )
+            evaluation.normalized_fit = normalized_fit(evaluation)
+            classify(evaluation)
+            evaluations.append(evaluation)
+
+        result.requirement_evaluations = evaluations
+        result.total_count = len(evaluations)
+        result.known_count = sum(1 for item in evaluations if not item.is_unknown)
+        _fill_main_numbers(result, evaluations)
+        _fill_classifications(result, evaluations)
+        _fill_status(result, evaluations)
+        result.inputs_hash = hashing.inputs_hash(
+            employee_id=employee_id,
+            position_definition_id=position_id,
+            profile_version=version.version,
+            requirements=[
+                {
+                    "requirement_id": req.id,
+                    "competency_definition_id": req.competency_definition_id,
+                    "requirement_type": req.requirement_type,
+                    "minimum_score": req.minimum_score,
+                    "target_score": req.target_score,
+                    "minimum_confidence": req.minimum_confidence,
+                    "critical": req.critical,
+                    "weight": req.weight,
+                }
+                for req in requirements
+            ],
+            competencies=[
+                {
+                    "competency_definition_id": entry.competency_definition_id,
+                    "score": entry.score,
+                    "confidence": entry.confidence,
+                    "last_assessed_at": entry.last_assessed_at,
+                }
+                for entry in rows.values()
+            ],
+        )
+        results[employee_id] = result
+    return results
