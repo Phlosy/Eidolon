@@ -1422,6 +1422,105 @@ export interface ProfileTemplate {
   requirement_count: number;
 }
 
+// ---------- P10: Career & talent development ----------
+
+export type CareerReadinessStatus =
+  "READY" | "NEAR_READY" | "DEVELOPMENT_NEEDED" | "NEEDS_EVIDENCE" | "CRITICAL_GAPS";
+
+export interface CareerNextPosition {
+  target_position: { id: number; code: string; name: string };
+  transition_type: string;
+  readiness_status: CareerReadinessStatus;
+  position_fit: {
+    known_fit_score: number | null;
+    fit_confidence: number | null;
+    required_coverage: number;
+    qualification_status: string;
+    fit_status: string;
+  };
+  required_gaps: string[];
+  uncertainties: string[];
+}
+
+export interface CareerPlanItem {
+  id: number;
+  plan_id: number;
+  competency_definition_id: number;
+  code: string;
+  name: string;
+  need_type: string;
+  objective: string;
+  target_score: number | null;
+  target_confidence: number | null;
+  priority: number;
+  status: string;
+  recommended_actions: string[];
+  progress_metadata: Record<string, unknown>;
+}
+
+export interface CareerPlan {
+  id: number;
+  employee_id: number;
+  target_position_definition_id: number | null;
+  target_position: { id: number; code: string; name: string } | null;
+  status: string;
+  title: string;
+  description: string;
+  source_fit_hash: string;
+  created_at: string | null;
+  items: CareerPlanItem[];
+}
+
+export interface CareerTimelineEvent {
+  type: string;
+  at: string | null;
+  title: string;
+  reason: string;
+  source: string;
+}
+
+export interface CareerOverview {
+  employee_id: number;
+  current_position: { definition_id: number; code: string; name: string; since: string } | null;
+  next_positions: CareerNextPosition[];
+  plans: Array<{
+    id: number;
+    title: string;
+    status: string;
+    target_position_definition_id: number | null;
+    item_count: number;
+    completed_count: number;
+    created_at: string | null;
+  }>;
+  timeline: CareerTimelineEvent[];
+}
+
+export interface CareerReadiness {
+  employee_id: number;
+  target_position: { id: number; code: string; name: string };
+  position_fit: {
+    known_fit_score: number | null;
+    fit_confidence: number | null;
+    required_coverage: number;
+    qualification_status: string;
+    fit_status: string;
+  };
+  critical_gaps: string[];
+  uncertainties: string[];
+  required_gaps: string[];
+  experience: {
+    tasks_completed: number;
+    projects_completed: number;
+    reviews_presented: number;
+    assessments_count: number;
+    active_plans: number;
+  };
+  experience_readiness: { tenure_days: number | null; minimum_tenure_days: number; met: boolean };
+  readiness_status: CareerReadinessStatus;
+  reasons: string[];
+  inputs_hash: string;
+}
+
 // ---------- P9: Talent roster & candidate analysis ----------
 
 export const CANDIDATE_BANDS = [

@@ -49,7 +49,8 @@
     "performance": "Performance",
     "career": "Career",
     "capabilities": "Capabilities",
-    "positionFit": "Fit"
+    "positionFit": "Fit",
+    "careerDev": "Growth"
   },
   "profile": {
     "id": "ID",
@@ -122,8 +123,30 @@
     "learningRecords": "Learning records"
   },
   "career": {
-    "emptyTitle": "No career events yet",
-    "emptyHint": "Milestones will appear over time."
+    "careerTitle": "Career",
+    "currentPosition": "Current position",
+    "nextPositions": "Next positions",
+    "readiness": "Readiness",
+    "fit": "Fit",
+    "confidence": "Confidence",
+    "requiredGaps": "Gaps",
+    "uncertainties": "Uncertainties",
+    "plansTitle": "Development plans",
+    "createPlan": "Create plan",
+    "activate": "Activate",
+    "addLearningPriority": "Add to learning priority",
+    "timelineTitle": "Career timeline",
+    "promote": "Promote",
+    "promotePreview": "Promotion preview",
+    "highRisk": "High-risk position change (critical gaps; still possible)",
+    "confirmPromote": "Promote anyway",
+    "cancel": "Cancel",
+    "ready": "Ready",
+    "nearReady": "Near ready",
+    "developmentNeeded": "Development needed",
+    "needsEvidence": "Needs evidence",
+    "criticalGaps": "Critical gaps",
+    "positionChanged": "Position changed"
   },
   "roster": {
     "rosterTitle": "Talent roster",

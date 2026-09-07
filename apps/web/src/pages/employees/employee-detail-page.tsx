@@ -24,6 +24,7 @@ import { PerformanceTab } from "../../components/employee/performance-tab";
 import { BehaviorTab } from "../../components/employee/behavior-tab";
 import { CapabilitiesTab } from "../../components/employee/capabilities-tab";
 import { CurrentPositionFitTab } from "../../components/position-fit/current-position-fit-tab";
+import { CareerDevelopmentTab } from "../../components/employee/career-development-tab";
 import { CareerTab } from "../../components/employee/career-tab";
 import { LifecycleActions } from "../../components/lifecycle/lifecycle-actions";
 import { ProvisioningJobPanel } from "../../components/lifecycle/provisioning-job-panel";
@@ -53,6 +54,7 @@ type Tab =
   | "behavior"
   | "capabilities"
   | "positionFit"
+  | "careerDev"
   | "performance"
   | "career";
 
@@ -81,6 +83,7 @@ const TABS: Tab[] = [
   "behavior",
   "capabilities",
   "positionFit",
+  "careerDev",
   "performance",
   "career",
 ];
@@ -211,6 +214,7 @@ export function EmployeeDetailPage() {
         {tab === "behavior" ? <BehaviorTab employeeId={employeeId} /> : null}
         {tab === "capabilities" ? <CapabilitiesTab employeeId={employeeId} /> : null}
         {tab === "positionFit" ? <CurrentPositionFitTab employeeId={employeeId} /> : null}
+        {tab === "careerDev" ? <CareerDevelopmentTab employeeId={employeeId} /> : null}
         {tab === "performance" ? <PerformanceTab employeeId={employeeId} /> : null}
         {tab === "career" ? <CareerTab employeeId={employeeId} /> : null}
       </Panel>

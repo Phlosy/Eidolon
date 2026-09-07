@@ -47,9 +47,10 @@
     "learning": "学习",
     "behavior": "行为",
     "performance": "绩效",
-    "career": "履历",
+    "career": "职业",
     "capabilities": "能力",
-    "positionFit": "匹配"
+    "positionFit": "匹配",
+    "careerDev": "发展"
   },
   "profile": {
     "id": "ID",
@@ -122,8 +123,30 @@
     "learningRecords": "学习记录"
   },
   "career": {
-    "emptyTitle": "暂无履历事件",
-    "emptyHint": "里程碑会随时间出现。"
+    "careerTitle": "职业发展",
+    "currentPosition": "当前职位",
+    "nextPositions": "下一步职位",
+    "readiness": "发展就绪",
+    "fit": "匹配度",
+    "confidence": "置信度",
+    "requiredGaps": "缺口",
+    "uncertainties": "不确定",
+    "plansTitle": "发展计划",
+    "createPlan": "创建发展计划",
+    "activate": "激活",
+    "addLearningPriority": "加入学习计划",
+    "timelineTitle": "职业时间线",
+    "promote": "晋升",
+    "promotePreview": "晋升预览",
+    "highRisk": "高风险职位变更（存在关键差距，仍可继续）",
+    "confirmPromote": "仍然晋升",
+    "cancel": "取消",
+    "ready": "就绪",
+    "nearReady": "接近就绪",
+    "developmentNeeded": "需要发展",
+    "needsEvidence": "证据不足",
+    "criticalGaps": "关键差距",
+    "positionChanged": "职位已变更"
   },
   "roster": {
     "rosterTitle": "人才名册",
