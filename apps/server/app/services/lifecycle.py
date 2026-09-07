@@ -907,5 +907,13 @@ def seed_lifecycle(db: Session) -> None:
         logger.info("position profiles seeded: %d rows", position_profile_count)
         changed = True
 
+    # P10：默认职业路径（只对已存在的职位定义接线，公司可 Clone/Customize）
+    from app.services import career as career_service
+
+    career_path_count = career_service.seed_career_paths(db, company.id)
+    if career_path_count:
+        logger.info("career paths seeded: %d rows", career_path_count)
+        changed = True
+
     if changed:
         db.commit()
