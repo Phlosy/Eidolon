@@ -238,3 +238,89 @@ def test_startup_sweep_fixes_a_missed_event(stage, monkeypatch):
 
 def test_convergence_of_an_unknown_employee_is_a_noop(db):
     assert workforce_access.converge_employee_access(db, 999_999) is None
+
+
+# ---------------------------------------------------------------- 读面（API）
+
+
+def _access(client, employee_id) -> dict:
+    response = client.get(f"/api/v1/employees/{employee_id}/access")
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def _keys(entries) -> set[str]:
+    return {entry["entitlement"]["key"] for entry in entries}
+
+
+def test_access_endpoint_shows_the_position_layer_after_convergence(client, stage):
+    db, s = stage["db"], stage
+    position_service.assign_position(db, s["person"], AssignmentIn(slot_id=s["slot"].id))
+    workforce_access.converge_employee_access(db, s["person"].id)
+
+    body = _access(client, s["person"].id)
+    assert "git:company-org-member" in _keys(body["position"]), body["position"]
+    assert "git:company-org-member" in _keys(body["effective"])
+    entry = next(e for e in body["position"] if e["entitlement"]["key"] == "git:company-org-member")
+    assert {src["layer"] for src in entry["sources"]} == {"position"}, (
+        "职位层视图里出现别的层级标签，说明序列化没有强制层归属"
+    )
+
+
+def test_access_endpoint_separates_declared_from_granted(client, stage):
+    """分配之后、收敛之前：`declared_by_position` 有、`position` 还没有。
+
+    这是异步收敛的诚实表达方式。只返回"已拿到"的话，界面会把"正在收敛"
+    显示成"这个职位没有权限"，用户看到的是一条假信息。
+    """
+    db, s = stage["db"], stage
+    position_service.assign_position(db, s["person"], AssignmentIn(slot_id=s["slot"].id))
+    body = _access(client, s["person"].id)
+    assert body["declared_by_position"] == [s["package"].slug], body
+    assert _keys(body["position"]) == set(), "还没收敛就说有了 = 假绿"
+
+    workforce_access.converge_employee_access(db, s["person"].id)
+    body = _access(client, s["person"].id)
+    assert _keys(body["position"]) == {"git:company-org-member"}
+
+
+def test_access_endpoint_person_layer_survives_the_whole_cycle(client, stage):
+    db, s = stage["db"], stage
+    base = lifecycle_repo.get_package_by_slug(db, access.BASE_PACKAGE_SLUG)
+    lifecycle_repo.create_employee_package(
+        db,
+        employee_id=s["person"].id,
+        package_id=base.id,
+        source=PackageSource.role.value,
+    )
+    db.commit()
+    before = _access(client, s["person"].id)
+    base_keys = {"workspace:private", "docs:company-read", "git:company-org-member"}
+    assert _keys(before["person"]) == base_keys, before["person"]
+
+    position_service.assign_position(db, s["person"], AssignmentIn(slot_id=s["slot"].id))
+    workforce_access.converge_employee_access(db, s["person"].id)
+    position_service.release_position(db, s["person"], reason="项目结束")
+    workforce_access.converge_employee_access(db, s["person"].id)
+
+    after = _access(client, s["person"].id)
+    assert _keys(after["person"]) == base_keys, "调岗/卸任不该动人级"
+    assert _keys(after["position"]) == set(), "职位层没收回去"
+    # 职位包与 base 包共享 `git:company-org-member`：卸任后人级仍然有它
+    # （docs/position-system.md §4 特别要求覆盖的"共享 entitlement 不误撤"）
+    assert "git:company-org-member" in _keys(after["effective"])
+
+
+def test_access_endpoint_requires_a_real_employee(client):
+    assert client.get("/api/v1/employees/999999/access").status_code == 404
+
+
+def test_entitlements_endpoint_still_works_and_now_labels_layers(client, stage):
+    """旧端点契约不破：还是扁平列表，只是多了一个带默认值的 `layer` 字段。"""
+    db, s = stage["db"], stage
+    position_service.assign_position(db, s["person"], AssignmentIn(slot_id=s["slot"].id))
+    workforce_access.converge_employee_access(db, s["person"].id)
+    rows = client.get(f"/api/v1/employees/{s['person'].id}/entitlements").json()
+    assert "git:company-org-member" in {r["entitlement"]["key"] for r in rows}
+    layers = {src["layer"] for r in rows for src in r["sources"]}
+    assert layers == {"position"}, f"这个人只有职位层：{layers}"

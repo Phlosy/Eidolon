@@ -17,6 +17,7 @@ from app.schemas.knowledge import EventOut
 from app.schemas.lifecycle import (
     AccessPackageCreate,
     AccessPackageOut,
+    EffectiveAccessOut,
     EffectiveEntitlementOut,
     EmploymentHistoryOut,
     EmploymentOut,
@@ -116,6 +117,20 @@ def list_accounts(employee_id: int, db: Session = Depends(get_db)) -> list[Resou
     ]
 
 
+def _entitlements_out(entries) -> list[EffectiveEntitlementOut]:
+    """`EffectiveEntitlement` → API 形状。**唯一出口**，两个端点共用。
+
+    留两份转换代码迟早漂移（层级字段就是先加在一份里、另一份忘了的那种）。
+    """
+    return [
+        EffectiveEntitlementOut(
+            entitlement=EntitlementOut.model_validate(entry.entitlement),
+            sources=entry.sources,
+        )
+        for entry in entries
+    ]
+
+
 @router.get("/employees/{employee_id}/entitlements", response_model=list[EffectiveEntitlementOut])
 def list_entitlements(
     employee_id: int, db: Session = Depends(get_db)
@@ -123,13 +138,29 @@ def list_entitlements(
     from app.lifecycle import access
 
     _get_employee_or_404(db, employee_id)
-    return [
-        EffectiveEntitlementOut(
-            entitlement=EntitlementOut.model_validate(entry.entitlement),
-            sources=entry.sources,
-        )
-        for entry in access.employee_entitlements(db, employee_id)
-    ]
+    return _entitlements_out(access.employee_entitlements(db, employee_id))
+
+
+@router.get("/employees/{employee_id}/access", response_model=EffectiveAccessOut)
+def read_effective_access(employee_id: int, db: Session = Depends(get_db)) -> EffectiveAccessOut:
+    """两层权限视图：人级 / 职位级 / 并集（P4d，docs/position-system.md §4）。
+
+    `declared_by_position` 是"当前任职**应该**带来的包"，与 `position`（已经拿到的）
+    并列返回 —— 因为收敛是事件驱动的异步过程，两者的差就是"还没开通完"。
+    只返回后者的话，界面会把"正在收敛"显示成"这个职位没有权限"，那是假信息。
+    """
+    from app.lifecycle import access
+
+    _get_employee_or_404(db, employee_id)
+    view = access.effective_access(db, employee_id)
+    return EffectiveAccessOut(
+        person=_entitlements_out(view["person"]),
+        position=_entitlements_out(view["position"]),
+        effective=_entitlements_out(view["effective"]),
+        declared_by_position=[
+            package.slug for package in access.position_packages_for(db, employee_id)
+        ],
+    )
 
 
 @router.get("/employees/{employee_id}/employment", response_model=EmploymentHistoryOut)

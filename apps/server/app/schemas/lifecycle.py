@@ -99,11 +99,28 @@ class EntitlementOut(ORMModel):
 class EntitlementSourceOut(BaseModel):
     package_id: int
     package_name: str
+    # P4d：这条权限是哪一层给的（`person` / `position`）。默认人级 ——
+    # 职位层是唯一需要显式声明的例外，所以旧调用方不传也不会被误标。
+    layer: str = "person"
 
 
 class EffectiveEntitlementOut(BaseModel):
     entitlement: EntitlementOut
     sources: list[EntitlementSourceOut]
+
+
+class EffectiveAccessOut(BaseModel):
+    """两层权限视图（docs/position-system.md §4：Effective = 人级 + 职位级）。
+
+    `position_packages` 是"当前任职解析出来的包"（可能为空 —— 多数定义还没声明默认权限）；
+    `pending_job_id` 是收敛生成的权限工单，仅在刚发生收敛时有值。
+    """
+
+    person: list[EffectiveEntitlementOut]
+    position: list[EffectiveEntitlementOut]
+    effective: list[EffectiveEntitlementOut]
+    declared_by_position: list[str] = []
+    note: str = "人级随人走（离职才回收）；职位级随编制走（卸任即 REMOVE）"
 
 
 class AccessPackageOut(ORMModel):
