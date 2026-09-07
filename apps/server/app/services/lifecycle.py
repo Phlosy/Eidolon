@@ -725,6 +725,7 @@ def seed_lifecycle(db: Session) -> None:
     # P5：全局能力目录（通用 10 维 + 专业域）是全局数据（company_id NULL），
     # 与公司是否存在无关 —— 先于任何 company 分支种子。
     from app.competency import catalog as competency_catalog
+    from app.evidence.expectations import seed_position_expectations
 
     created = competency_catalog.ensure_global_catalog(db)
     if created:
@@ -883,6 +884,12 @@ def seed_lifecycle(db: Session) -> None:
                     metadata_json={"provider_key": provider_key, "granted": [], "legacy": True},
                 )
                 changed = True
+
+    # P6：内置职位模板的能力期望（挂在 position_definition 上；真实工作才产生 Evidence）
+    expected = seed_position_expectations(db)
+    if expected:
+        logger.info("position expectations seeded: %d rows", expected)
+        changed = True
 
     if changed:
         db.commit()

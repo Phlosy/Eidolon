@@ -47,6 +47,11 @@ async def lifespan(app: FastAPI):
         if swept:
             logger.info("启动补收敛修正了 %d 人的职位层权限", len(swept))
         await workforce_access.consumer.start()
+    # P6：真实工作 → Evidence → Assessment 的事件消费者（settings 门控，测试默认关）
+    from app.evidence import pipeline as evidence_pipeline
+
+    if settings.evidence_pipeline_enabled:
+        await evidence_pipeline.consumer.start()
     manager = get_manager()
     await manager.start_healthcheck_loop()
     update_service = get_update_service()
@@ -54,6 +59,9 @@ async def lifespan(app: FastAPI):
     logger.info("eidolon server started (runtime_mode=%s)", settings.runtime_mode)
     yield
     await workforce_access.consumer.stop()
+    from app.evidence import pipeline as evidence_pipeline
+
+    await evidence_pipeline.consumer.stop()
     await orchestrator.stop()
     await manager.stop_healthcheck_loop()
     await update_service.stop_update_loop()

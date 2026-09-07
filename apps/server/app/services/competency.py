@@ -23,6 +23,10 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.evidence.policy import (
+    DEFAULT_SOURCE_RELIABILITY as DEFAULT_SOURCE_QUALITY,
+)
+from app.evidence.policy import SOURCE_RELIABILITY as SOURCE_QUALITY
 from app.models.competency import (
     AssessmentRun,
     CompetencyEvidence,
@@ -37,20 +41,6 @@ ENGINE_VERSION = "competency-base-v1"
 ALGORITHM_VERSION = "assessment-base-v1"
 
 #: 证据来源固定质量表（assessment-system.md §4.1）。可预测、可审计。
-SOURCE_QUALITY = {
-    EvidenceSourceKind.assessment.value: 1.0,
-    EvidenceSourceKind.test.value: 0.9,
-    EvidenceSourceKind.review.value: 0.85,
-    EvidenceSourceKind.artifact.value: 0.8,
-    EvidenceSourceKind.peer_review.value: 0.75,
-    EvidenceSourceKind.project.value: 0.75,
-    EvidenceSourceKind.task.value: 0.7,
-    EvidenceSourceKind.skill_usage.value: 0.65,
-    EvidenceSourceKind.user_feedback.value: 0.6,
-    EvidenceSourceKind.learning.value: 0.5,
-}
-DEFAULT_SOURCE_QUALITY = 0.5
-
 #: 新近度半衰期（天）：证据每过一个半衰期有效权重减半（§4.1）。
 HALF_LIFE_DAYS = 90.0
 #: criterion 置信度常量：n 单位证据 ≈ n/(n+K)。

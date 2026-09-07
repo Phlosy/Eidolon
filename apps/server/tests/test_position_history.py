@@ -400,12 +400,21 @@ def test_upgrade_downgrade_reupgrade_is_lossless(tmp_path):
             sa.text("SELECT id, position_slot_id, employment_status FROM employments ORDER BY id")
         ).all()
 
-    _run(engine, "downgrade", "-4")  # v14 → v13 → v12 → v11
+    _run(engine, "downgrade", V11)  # head(v16) → … → v11：确认 v12~v16 的表/列全部撤掉
     with engine.connect() as conn:
         columns = {c["name"] for c in sa.inspect(conn).get_columns("employments")}
         assert not (set(EMPLOYMENT_COLUMNS_ADDED) & columns)
         tables = set(sa.inspect(conn).get_table_names())
         assert "position_slots" not in tables and "position_definitions" not in tables
+        # P6 新增的表也必须被撤掉（否则 downgrade 不是真的可逆）
+        for table in (
+            "assessment_profiles",
+            "assessment_criteria",
+            "assessment_criterion_competencies",
+            "assessment_results",
+            "competency_expectations",
+        ):
+            assert table not in tables, f"downgrade 到 v11 后 {table} 仍在"
         ids = [row[0] for row in conn.execute(sa.text("SELECT id FROM employments ORDER BY id"))]
         assert ids == [1, 2, 3, 4, 5, 6], "downgrade 删掉了历史行"
 
