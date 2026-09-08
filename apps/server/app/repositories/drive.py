@@ -59,10 +59,54 @@ def create_node(db: Session, **fields) -> DriveNode:
         elif fields.get("owner_employee_id") is not None:
             employee = db.get(Employee, fields["owner_employee_id"])
             fields["company_id"] = employee.company_id if employee else None
+    # 带 path 的创建一律碰撞安全（所有 drive 目录的唯一切入点）。
+    # SQLite：INSERT ... ON CONFLICT DO NOTHING + 回查 —— 无异常、不毒化
+    # 会话、任意事务内可用；并发创建同一目录（入职/补收敛/教程轮询）由唯一
+    # 索引兜底，谁先提交谁赢，后到者返回赢家行（幂等语义）。
+    if fields.get("path"):
+        return _create_node_collision_safe(db, fields)
     node = DriveNode(**fields)
     db.add(node)
     db.flush()
     return node
+
+
+def _create_node_collision_safe(db: Session, fields: dict) -> DriveNode:
+    from app.models.base import utcnow
+    from app.models.enums import DriveZone
+
+    path: str = fields["path"]
+    values = {
+        "company_id": fields.get("company_id"),
+        "parent_id": fields.get("parent_id"),
+        "kind": fields.get("kind", DriveNodeKind.document.value),
+        "name": fields["name"],
+        "path": path,
+        "zone": fields.get("zone", DriveZone.projects.value),
+        "project_id": fields.get("project_id"),
+        "doc_type": fields.get("doc_type"),
+        "owner_employee_id": fields.get("owner_employee_id"),
+        "current_version": fields.get("current_version", 1),
+        "work_session_id": fields.get("work_session_id"),
+        "created_at": fields.get("created_at") or utcnow(),
+        "updated_at": fields.get("updated_at") or utcnow(),
+    }
+    if db.get_bind().dialect.name == "sqlite":
+        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+
+        stmt = (
+            sqlite_insert(DriveNode)
+            .values(**values)
+            .on_conflict_do_nothing(index_elements=["path"])
+        )
+        db.execute(stmt)
+    else:
+        # 非 SQLite（如 postgres）：唯一索引 + 冲突即回查（回查前需要 flush 让本
+        # 事务内的插入先落位，冲突则由索引拦住）
+        db.execute(
+            DriveNode.__table__.insert().values(**values).prefix_with("ON CONFLICT DO NOTHING")
+        )
+    return db.scalar(select(DriveNode).where(DriveNode.path == path))
 
 
 def create_revision(db: Session, **fields) -> DriveRevision:

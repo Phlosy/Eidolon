@@ -186,3 +186,41 @@ def test_step_timeout_marks_failed_quickly_not_stuck(db, monkeypatch):
     assert row[0] == ProvisioningStepStatus.failed.value, "不能再无限 running"
     assert "timed out" in row[1]
     assert db.get(ProvisioningJob, job.id).status == ProvisioningJobStatus.partial.value
+
+
+def test_docs_folder_race_between_sessions_is_serialized(db):
+    """两个会话并发创建同一 docs 目录：独立短事务 + 逐层提交 ⇒ 后到者看到
+    已提交的行，不再抛 drive_nodes.path IntegrityError（此前入职的根因）。"""
+    import threading
+
+    from app.core.database import SessionLocal
+    from app.lifecycle.provisioners.base import ProvisionContext
+    from app.lifecycle.provisioners.docs_builtin import CloudDocsProvisioner
+
+    company_id, employee_id = _fresh(db)
+    provisioner = CloudDocsProvisioner()
+    path = f"drive/knowledge/departments/engineering-{employee_id}"
+
+    errors: list[str] = []
+
+    def create_docs_folder():
+        try:
+            with SessionLocal() as s:
+                ctx2 = ProvisionContext(db=s)
+                provisioner._ensure_folder(ctx2, path, company_id=company_id)
+                s.commit()
+        except Exception as exc:  # pragma: no cover
+            errors.append(str(exc))
+
+    threads = [threading.Thread(target=create_docs_folder) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == [], f"并发创建竞态未消除: {errors}"
+    with SessionLocal() as check:
+        rows = check.execute(
+            sa.text("SELECT COUNT(*) FROM drive_nodes WHERE path=:p"), {"p": path}
+        ).scalar()
+    assert rows == 1, "同一条 path 只应有一行"
