@@ -105,14 +105,24 @@
     }
   },
   "learning": {
-    "emptyTitle": "No learning records yet.",
-    "kind": {
-      "reflection": "Reflection",
-      "research": "Research"
-    },
-    "lesson": "Lesson:",
-    "solution": "Solution:",
-    "confidence": "Confidence {{value}}"
+    "learningTitle": "Autonomous learning",
+    "learningHint": "Learning is for growth: Knowledge / Skill Candidates / Open Questions — never direct competency change",
+    "costWarning": "Autonomous learning may consume model/API credits — confirm company & personal policy first.",
+    "disabledHint": "Autonomous learning is off (avoid surprise token costs); manual start is not gated by this.",
+    "manualStart": "Start learning",
+    "topic": "Topic",
+    "mode": "Mode",
+    "webResearch": "Web research",
+    "knowledgeReview": "Knowledge review",
+    "documentStudy": "Document study",
+    "start": "Start",
+    "cancel": "Cancel",
+    "recentSessions": "Recent sessions",
+    "statusPlanned": "PLANNED",
+    "statusRunning": "RUNNING",
+    "statusCompleted": "COMPLETED",
+    "statusFailed": "FAILED",
+    "budget": "Budget"
   },
   "performance": {
     "emptyTitle": "No performance data",

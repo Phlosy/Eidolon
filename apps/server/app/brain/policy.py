@@ -143,7 +143,6 @@ class CreativityPolicy:
     solution_diversity: float = 0.0  # 0..1 方案多样性倾向
 
 
-
 @dataclass(frozen=True)
 class BehaviorPolicy:
     retrieval: RetrievalPolicy = field(default_factory=RetrievalPolicy)
@@ -191,7 +190,6 @@ class BehaviorPolicy:
 
 # 关闭开关 / 无 brain / 新员工的兜底：**逐字等于**本次改造前的常量行为（回滚语义锚点）。
 DEFAULT_POLICY = BehaviorPolicy()
-
 
 
 _POLICY_CLASSES = {

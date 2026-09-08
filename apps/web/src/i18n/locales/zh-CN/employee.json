@@ -105,14 +105,24 @@
     }
   },
   "learning": {
-    "emptyTitle": "暂无学习记录。",
-    "kind": {
-      "reflection": "复盘",
-      "research": "调研"
-    },
-    "lesson": "教训：",
-    "solution": "方案：",
-    "confidence": "置信度 {{value}}"
+    "learningTitle": "自主学习",
+    "learningHint": "学习为自身成长：产生 Knowledge/Skill Candidate/OpenQuestion，不直接提升能力",
+    "costWarning": "自主学习会消耗模型/API 额度 —— 请确认公司与个人政策。",
+    "disabledHint": "自主学习当前关闭（避免意外 Token 成本）；手工开始不受此限制。",
+    "manualStart": "开始学习",
+    "topic": "主题",
+    "mode": "模式",
+    "webResearch": "Web 检索",
+    "knowledgeReview": "知识复习",
+    "documentStudy": "文档研读",
+    "start": "开始",
+    "cancel": "取消",
+    "recentSessions": "最近学习会话",
+    "statusPlanned": "PLANNED",
+    "statusRunning": "RUNNING",
+    "statusCompleted": "COMPLETED",
+    "statusFailed": "FAILED",
+    "budget": "预算"
   },
   "performance": {
     "emptyTitle": "暂无绩效数据",

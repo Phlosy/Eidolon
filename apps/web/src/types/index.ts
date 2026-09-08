@@ -1422,6 +1422,47 @@ export interface ProfileTemplate {
   requirement_count: number;
 }
 
+// ---------- P11: Autonomous learning ----------
+
+export interface LearningPolicyView {
+  enabled: boolean;
+  daily_token_budget: number;
+  daily_cost_budget: number;
+  max_session_minutes: number;
+  max_sessions_per_day: number;
+  allow_web_research: boolean;
+  allow_practice: boolean;
+  idle_delay_minutes: number;
+  cooldown_minutes: number;
+}
+
+export interface EmployeeLearningPolicyView {
+  inherit_company_policy: boolean;
+  enabled: boolean;
+  personal_daily_budget_override: number | null;
+  idle_delay_override: number | null;
+  autonomous_learning_warning: boolean;
+}
+
+export interface LearningSessionView {
+  id: number;
+  employee_id: number;
+  topic: string;
+  reason: string;
+  source_type: string;
+  status: string;
+  learning_mode: string;
+  budget_tokens: number;
+  tokens_used: number;
+  cost_used: number;
+  runtime_type: string;
+  provider_name: string;
+  started_at: string | null;
+  completed_at: string | null;
+  summary: string;
+  outputs: Record<string, unknown>;
+}
+
 // ---------- P10: Career & talent development ----------
 
 export type CareerReadinessStatus =
