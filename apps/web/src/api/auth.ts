@@ -21,8 +21,11 @@ export interface AccountActionRequestResult {
 /** 重发注册验证邮件：后端 60s 限频，旧链接作废。 */
 export const resendVerificationEmail = (email: string) =>
   post<AccountActionRequestResult>("/auth/verify-email/resend", { email });
-export const loginWithPassword = (email: string, password: string) =>
-  post<AuthState>("/auth/login", { email, password });
+export const loginWithPassword = (identifier: string, password: string) =>
+  post<AuthState>("/auth/login", {
+    [identifier.includes("@") ? "email" : "username"]: identifier,
+    password,
+  });
 export const logout = () => post<void>("/auth/logout");
 export const logoutAll = () => post<void>("/auth/logout-all");
 export const updateProfile = (input: { display_name: string }) =>

@@ -13,7 +13,7 @@ export function LoginPage() {
   const { setAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState<"password" | "passkey" | null>(null);
   const [error, setError] = useState("");
@@ -24,7 +24,7 @@ export function LoginPage() {
     setError("");
     setPending("password");
     try {
-      const auth = await loginWithPassword(email, password);
+      const auth = await loginWithPassword(identifier, password);
       setAuth(auth);
       navigate(destination, { replace: true });
     } catch (reason) {
@@ -62,18 +62,18 @@ export function LoginPage() {
       </div>
 
       <form onSubmit={submit} className="mt-7 space-y-4">
-        <label className="block text-xs font-medium" htmlFor="login-email">
-          {t("fields.email")}
+        <label className="block text-xs font-medium" htmlFor="login-identifier">
+          {t("fields.identifier")}
           <span className="relative mt-2 block">
             <Mail className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              id="login-email"
+              id="login-identifier"
               className="h-11 pl-10"
-              type="email"
-              autoComplete="email"
+              type="text"
+              autoComplete="username"
               required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
             />
           </span>
         </label>

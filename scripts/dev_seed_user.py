@@ -26,12 +26,21 @@ _DEPARTMENTS = [
 ]
 
 
+def _username_from_email(email: str) -> str:
+    """邮箱未配套 username 时按 local part 派生（与 app 注册同规则）。"""
+    base = "".join(
+        c if c.isalnum() or c in "-_" else "-" for c in email.split("@")[0].lower()
+    )
+    return base.strip("-") or "user"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="seed local test user (make dev-seed-user)"
     )
     parser.add_argument("--email", default="user@example.com", help="login email")
     parser.add_argument("--password", default="user", help="login password")
+    parser.add_argument("--username", default="user", help="login username")
     parser.add_argument("--display-name", default="user")
     parser.add_argument("--company-slug", default="test-co")
     parser.add_argument("--company-name", default="TestCo")
@@ -74,6 +83,7 @@ def main() -> int:
         if user is None:
             user = User(
                 email=email,
+                username=args.username.strip().lower() or _username_from_email(email),
                 password_hash=hasher.hash(args.password),
                 display_name=args.display_name,
                 email_verified=True,
@@ -84,6 +94,7 @@ def main() -> int:
             action = "created"
         else:
             user.password_hash = hasher.hash(args.password)
+            user.username = args.username.strip().lower() or _username_from_email(email)
             user.email_verified = True
             user.status = "active"
             db.flush()
