@@ -35,7 +35,8 @@
       "prev": "上一步",
       "next": "下一步",
       "exit": "退出回放"
-    }
+    },
+    "remindBody": "还没完成聚光灯处的操作 —— 完成后再进入下一步"
   },
   "tutorials": {
     "companyFounding": {

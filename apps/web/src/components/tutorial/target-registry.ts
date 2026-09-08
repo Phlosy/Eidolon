@@ -20,12 +20,15 @@ export interface TutorialTargetSnapshot {
   status: TutorialTargetStatus;
   element: HTMLElement | null;
   rect: DOMRect | null;
+  /** 用户最近在聚光灯目标上操作过（点击/输入）—— "操作过就不必再点下一步"。 */
+  engaged: boolean;
 }
 
 export const MISSING_SNAPSHOT: TutorialTargetSnapshot = {
   status: "missing",
   element: null,
   rect: null,
+  engaged: false,
 };
 
 /** 迁移期同时认旧的 data-tutorial，避免"改了属性名的页面"教程直接瞎掉。 */
@@ -87,52 +90,76 @@ function openModal(): HTMLElement | null {
 export function readTargetSnapshot(query: TutorialTargetQuery): TutorialTargetSnapshot {
   const element = findTargetElement(query);
   if (!element) return MISSING_SNAPSHOT;
-  if (!isElementVisible(element)) return { status: "hidden", element, rect: null };
+  if (!isElementVisible(element)) {
+    return { status: "hidden", element, rect: null, engaged: false };
+  }
   // 目标存在但落在当前打开的弹窗之外：先让用户处理弹窗，否则聚光灯会打在
   // 一个他根本点不到的地方（§"目标被 Modal 遮挡时给出明确提示"）。
   const modal = openModal();
   if (modal && !modal.contains(element)) {
-    return { status: "covered", element, rect: element.getBoundingClientRect() };
+    return {
+      status: "covered",
+      element,
+      rect: element.getBoundingClientRect(),
+      engaged: false,
+    };
   }
-  return { status: "visible", element, rect: element.getBoundingClientRect() };
+  return {
+    status: "visible",
+    element,
+    rect: element.getBoundingClientRect(),
+    engaged: false,
+  };
 }
 
 function snapshotKey(snapshot: TutorialTargetSnapshot): string {
-  if (!snapshot.rect) return `${snapshot.status}:none`;
+  if (!snapshot.rect) return `${snapshot.status}:none:${snapshot.engaged ? 1 : 0}`;
   const { x, y, width, height } = snapshot.rect;
   // 亚像素抖动会让 rAF 每一帧都"看起来变了"，这里量化到整像素
-  return `${snapshot.status}:${Math.round(x)},${Math.round(y)},${Math.round(width)}x${Math.round(height)}`;
+  return `${snapshot.status}:${Math.round(x)},${Math.round(y)},${Math.round(width)}x${Math.round(height)}:${snapshot.engaged ? 1 : 0}`;
 }
 
 type Listener = (snapshot: TutorialTargetSnapshot) => void;
 
+interface ListenerEntry {
+  onSnapshot: Listener;
+  onEngage?: () => void;
+}
+
 class TutorialTargetRegistry {
-  private listeners = new Map<string, Set<Listener>>();
+  private listeners = new Map<string, Set<ListenerEntry>>();
   private latest = new Map<string, string>();
   private observer: MutationObserver | null = null;
   private resizeObserver: ResizeObserver | null = null;
   private tracked = new Map<HTMLElement, Set<string>>();
   private frame: number | null = null;
   private started = false;
+  /** 目标被用户操作过的查询键集合（"操作过就不用重教"）。 */
+  private engagedKeys = new Set<string>();
 
-  subscribe(query: TutorialTargetQuery, listener: Listener): () => void {
+  subscribe(query: TutorialTargetQuery, listener: Listener, onEngage?: () => void): () => void {
     const key = this.keyOf(query);
     let set = this.listeners.get(key);
     if (!set) {
       set = new Set();
       this.listeners.set(key, set);
     }
-    set.add(listener);
+    const entry: ListenerEntry = { onSnapshot: listener, onEngage };
+    set.add(entry);
     this.ensureObservers();
     // 立刻给一次当前值，React 首帧不至于空白
     listener(readTargetSnapshot(query));
     return () => {
-      set.delete(listener);
+      set.delete(entry);
       if (!set.size) {
         this.listeners.delete(key);
         this.latest.delete(key);
       }
     };
+  }
+
+  isEngaged(query: TutorialTargetQuery): boolean {
+    return this.engagedKeys.has(this.keyOf(query));
   }
 
   /** 供测试与"刚点完按钮 DOM 才变"的场景手动催一次测量。 */
@@ -166,6 +193,12 @@ class TutorialTargetRegistry {
         ],
       });
     }
+    // 用户在聚光灯目标上的任何操作都算"学过这一步"：点过聚光灯照的区域，
+    // 教学卡片就不该再要求重复下一步；操作卡自己的下一步/确定也算操作。
+    for (const eventName of ["click", "pointerdown", "change"] as const) {
+      document.addEventListener(eventName, this.onEngageInteraction, { capture: true });
+    }
+    document.addEventListener("keydown", this.onEngageInteraction, { capture: true });
     if (typeof ResizeObserver !== "undefined") {
       this.resizeObserver = new ResizeObserver(() => this.schedule());
     }
@@ -177,6 +210,29 @@ class TutorialTargetRegistry {
   }
 
   private onViewportChange = () => this.schedule();
+
+  private onEngageInteraction = (event: Event): void => {
+    const target = event.target as HTMLElement | null;
+    if (event.type === "keydown" && !["Enter", " "].includes((event as KeyboardEvent).key)) {
+      return;
+    }
+    const hit = target?.closest<HTMLElement>(TARGET_SELECTOR);
+    const id = hit?.getAttribute("data-tutorial-target") ?? hit?.getAttribute("data-tutorial");
+    if (!id || !hit) return;
+    for (const key of this.listeners.keys()) {
+      const [queryId] = key.split("\u0000");
+      if (queryId !== id) continue;
+      const fresh = !this.engagedKeys.has(key);
+      if (fresh) {
+        this.engagedKeys.add(key);
+        this.schedule();
+      }
+      const entries = this.listeners.get(key);
+      if (fresh && entries) {
+        for (const entry of entries) entry.onEngage?.();
+      }
+    }
+  };
 
   private schedule(): void {
     if (this.frame !== null || this.listeners.size === 0) return;
@@ -191,15 +247,16 @@ class TutorialTargetRegistry {
   }
 
   private run(): void {
-    for (const [key, listeners] of this.listeners) {
+    for (const [key, entries] of this.listeners) {
       const [id, rawKey] = key.split("\u0000");
       const query: TutorialTargetQuery = { id, key: rawKey || null };
       const snapshot = readTargetSnapshot(query);
+      snapshot.engaged = this.engagedKeys.has(key);
       const marker = snapshotKey(snapshot);
       if (this.latest.get(key) === marker) continue;
       this.latest.set(key, marker);
       this.retrack(snapshot.element);
-      for (const listener of listeners) listener(snapshot);
+      for (const entry of entries) entry.onSnapshot(snapshot);
     }
   }
 

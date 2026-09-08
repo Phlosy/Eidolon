@@ -175,3 +175,25 @@ describe("订阅：DOM 与视口变化", () => {
     expect(listener.mock.calls.length).toBe(initialCalls);
   });
 });
+
+describe("engagement（操作过聚光灯目标）", () => {
+  it("点击目标元素 → onEngage 触发，快照 engaged=true", () => {
+    mount(
+      '<button data-tutorial-target="employee-provider-bind" data-rect="10,10,60,24">Bind</button>',
+    );
+    const snapshots: string[] = [];
+    let engaged = 0;
+    const off = tutorialTargets.subscribe(
+      { id: "employee-provider-bind" },
+      (snapshot) => snapshots.push(`${snapshot.status}:${snapshot.engaged}`),
+      () => {
+        engaged += 1;
+      },
+    );
+    expect(snapshots[0]).toBe("visible:false");
+    document.querySelector<HTMLElement>("[data-tutorial-target]")!.click();
+    expect(engaged).toBe(1);
+    expect(tutorialTargets.isEngaged({ id: "employee-provider-bind" })).toBe(true);
+    off();
+  });
+});

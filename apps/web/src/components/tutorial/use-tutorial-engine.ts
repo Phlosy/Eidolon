@@ -54,6 +54,19 @@ function uiHintsOf(step: TutorialStep | null): TutorialUiHint[] {
     .filter((item): item is TutorialUiHint => item !== null);
 }
 
+/**
+ * 教学卡片"下一步"的门禁（纯函数，可测）：
+ * 需要先在聚光灯处操作（engage_to_advance）且还没操作、且目标可见时，
+ * 点了下一步不推进，转成聚光灯提醒。
+ */
+export function shouldRemindStep(
+  needsEngagement: boolean,
+  engaged: boolean,
+  targetVisible: boolean,
+): boolean {
+  return needsEngagement && !engaged && targetVisible;
+}
+
 function modalOpen(): boolean {
   return Boolean(document.querySelector('[role="dialog"][aria-modal="true"]'));
 }
@@ -83,6 +96,13 @@ export interface TutorialEngine {
   nextHint: () => void;
   previousHint: () => void;
   acknowledge: () => void;
+  /** 步骤要求"先在聚光灯处操作"（step.metadata.engage_to_advance） */
+  needsEngagement: boolean;
+  /** 当前步骤的聚光灯目标已被操作过 —— 教学卡片不再要求重复下一步 */
+  engaged: boolean;
+  /** 点了下一步但没操作 → 聚光灯提醒（remind 当前步骤 id） */
+  remindStep: string | null;
+  dismissRemind: () => void;
   skipStep: () => void;
   togglePause: () => void;
   goToTarget: () => void;
@@ -170,6 +190,8 @@ export function useTutorialEngine(): TutorialEngine {
   // 会赶在弹窗状态生效之前把用户从弹窗里拽走（实测过）。
   const [dialogOpen, setDialogOpen] = useState(modalOpen);
   const [manualHint, setManualHint] = useState<number | null>(null);
+  const [engagedStep, setEngagedStep] = useState<string | null>(null);
+  const [remindStep, setRemindStep] = useState<string | null>(null);
   const lastVisibleHint = useRef(0);
   useEffect(() => {
     // 之后靠 MutationObserver 跟进弹窗开关，不轮询
@@ -179,9 +201,11 @@ export function useTutorialEngine(): TutorialEngine {
     return () => observer.disconnect();
   }, []);
   useEffect(() => {
-    // 换步骤就从"跟随向导"重新开始
+    // 换步骤就从"跟随向导"重新开始；聚光灯操作与提醒也按步清零
     setManualHint(null);
     lastVisibleHint.current = 0;
+    setEngagedStep(null);
+    setRemindStep(null);
   }, [step?.id]);
   const hintCandidate =
     Boolean(step) && active && stepHints.length > 0 && step?.kind !== "INFORMATION";
@@ -204,9 +228,24 @@ export function useTutorialEngine(): TutorialEngine {
     Math.max(0, stepHints.length - 1),
   );
   const hint = hinting ? (stepHints[workingIndex] ?? null) : null;
+  const needsEngagement = Boolean(
+    step && step.metadata && step.metadata.engage_to_advance === true,
+  );
+  const onTargetInteract = () => {
+    if (!step || mode !== "live") return;
+    setEngagedStep(step.id);
+    setRemindStep(null);
+    // 操作过的"下一步/确定"可以覆盖教学卡片的下一步：指引模式下自动前进一条，
+    // 已完成的不重复要求（完成与否仍由后端 reconcile 决定）。
+    if (!stepDone && hinting) {
+      const peek = Math.min(workingIndex + 1, Math.max(0, stepHints.length - 1));
+      if (peek > workingIndex) setManualHint(peek);
+    }
+  };
   const snapshot = useTutorialTarget(
     active ? (hint ? hint.targetId : (step?.target_id ?? null)) : null,
     hint ? null : targetKey,
+    onTargetInteract,
   );
 
   // 每一步最多自动跳转一次；有弹窗打开时不抢方向盘
@@ -257,9 +296,23 @@ export function useTutorialEngine(): TutorialEngine {
       resume.isPending ||
       skipPractice.isPending,
     errorMessage: dismissedError ? null : rawError,
+    needsEngagement,
+    engaged: Boolean(step && engagedStep === step.id),
+    remindStep,
+    dismissRemind: () => setRemindStep(null),
     acknowledge: () => {
       clearError();
-      if (step && mode === "live") completeStep.mutate(step.id);
+      if (step && mode === "live") {
+        if (
+          shouldRemindStep(needsEngagement, engagedStep === step.id, snapshot.status === "visible")
+        ) {
+          // 教学卡片点了下一步但界面还没操作完：不推进，让聚光灯再次提醒
+          setRemindStep(step.id);
+          return;
+        }
+        setRemindStep(null);
+        completeStep.mutate(step.id);
+      }
     },
     skipStep: () => {
       clearError();

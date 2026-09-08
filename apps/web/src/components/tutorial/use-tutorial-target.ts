@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MISSING_SNAPSHOT,
   readTargetSnapshot,
@@ -11,15 +11,18 @@ import {
 export function useTutorialTarget(
   targetId: string | null,
   targetKey?: string | null,
+  onInteract?: () => void,
 ): TutorialTargetSnapshot {
   const [snapshot, setSnapshot] = useState<TutorialTargetSnapshot>(MISSING_SNAPSHOT);
+  const onInteractRef = useRef(onInteract);
+  onInteractRef.current = onInteract;
   useEffect(() => {
     if (!targetId) {
       setSnapshot(MISSING_SNAPSHOT);
       return undefined;
     }
     const query: TutorialTargetQuery = { id: targetId, key: targetKey ?? null };
-    return tutorialTargets.subscribe(query, setSnapshot);
+    return tutorialTargets.subscribe(query, setSnapshot, () => onInteractRef.current?.());
   }, [targetId, targetKey]);
   return snapshot;
 }

@@ -159,6 +159,7 @@ export function TutorialOverlay() {
             // 指引态强制降级为非拦截：TARGET_ONLY 的遮罩会把向导自己的"下一步"
             // 一起吃掉，用户就被教程锁死在弹窗里（实测过）。
             interactionMode={hinting ? "FOCUS_ONLY" : step.interaction_mode}
+            pulse={engine.remindStep === step.id}
           />
         )
       ) : null}
@@ -238,6 +239,16 @@ export function TutorialOverlay() {
               </button>
             </div>
           </div>
+        ) : null}
+
+        {engine.remindStep === step.id ? (
+          <p
+            data-tutorial-remind="true"
+            className="mt-3 flex items-start gap-1.5 rounded-xl border border-danger/40 bg-danger/5 p-3 text-[11px] text-danger"
+          >
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {t("ui.remindBody")}
+          </p>
         ) : null}
 
         {degraded ? (
@@ -326,6 +337,20 @@ export function TutorialOverlay() {
                   className="inline-flex h-9 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-xs font-medium text-primary-foreground"
                 >
                   {t("ui.openPage")}
+                </button>
+              ) : engine.needsEngagement &&
+                !engine.engaged &&
+                engine.snapshot.status === "visible" ? (
+                // 要求"先操作聚光灯处"的步骤：未操作前，教学卡片的下一步
+                // 只负责提醒（acknowledge 被门禁拦下 → 光环转红脉动）。
+                <button
+                  type="button"
+                  data-tutorial-action="engage-next"
+                  onClick={engine.acknowledge}
+                  disabled={engine.busy}
+                  className="inline-flex h-9 flex-1 items-center justify-center rounded-xl bg-primary px-4 text-xs font-medium text-primary-foreground disabled:opacity-60"
+                >
+                  {t("ui.next")}
                 </button>
               ) : (
                 <p className="flex-1 text-[11px] leading-5 text-muted-foreground">

@@ -35,7 +35,8 @@
       "prev": "Back",
       "next": "Next",
       "exit": "Exit replay"
-    }
+    },
+    "remindBody": "Finish the highlighted action first, then continue."
   },
   "tutorials": {
     "companyFounding": {

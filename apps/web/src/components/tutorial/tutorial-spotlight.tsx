@@ -19,6 +19,8 @@ const PADDING = 8;
 interface SpotlightProps {
   snapshot: TutorialTargetSnapshot;
   interactionMode: TutorialInteractionMode;
+  /** 提醒模式：用户没操作就点了下一步 → 光环换成醒目提醒色。 */
+  pulse?: boolean;
 }
 
 function box(style: CSSProperties, className: string, blocking: boolean) {
@@ -31,7 +33,7 @@ function box(style: CSSProperties, className: string, blocking: boolean) {
   );
 }
 
-export function TutorialSpotlight({ snapshot, interactionMode }: SpotlightProps) {
+export function TutorialSpotlight({ snapshot, interactionMode, pulse }: SpotlightProps) {
   if (snapshot.status !== "visible" || !snapshot.rect) return null;
 
   const { left, top, width, height } = snapshot.rect;
@@ -74,8 +76,14 @@ export function TutorialSpotlight({ snapshot, interactionMode }: SpotlightProps)
       ) : null}
       <div
         data-tutorial-halo="true"
-        className="absolute animate-pulse rounded-xl ring-2 ring-primary/80 ring-offset-2 ring-offset-black/40 motion-reduce:animate-none"
+        data-tutorial-halo-pulse={pulse ? "true" : "false"}
+        className={
+          pulse
+            ? "absolute animate-pulse rounded-xl ring-[3px] ring-danger ring-offset-2 ring-offset-black/40 motion-reduce:animate-none"
+            : "absolute animate-pulse rounded-xl ring-2 ring-primary/80 ring-offset-2 ring-offset-black/40 motion-reduce:animate-none"
+        }
         style={{ left: x, top: y, width: w, height: h }}
+        aria-hidden="true"
       />
     </div>,
     document.body,
