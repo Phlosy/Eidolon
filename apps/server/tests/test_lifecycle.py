@@ -5,7 +5,6 @@ import uuid
 from pathlib import Path
 
 import pytest
-from fake_gitea import FakeGiteaProvisioner
 from sqlalchemy import select
 
 from app.core.config import settings

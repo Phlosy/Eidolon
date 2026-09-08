@@ -157,3 +157,32 @@ def asyncio_run(fn, db, *args):
     import asyncio
 
     asyncio.run(fn(db, *args))
+
+
+def test_step_timeout_marks_failed_quickly_not_stuck(db, monkeypatch):
+    import asyncio
+    import time
+
+    from app.core.config import settings
+
+    company_id, employee_id = _fresh(db)
+    job = _job_with_steps(db, employee_id, [("docs:builtin", "provision")])
+    monkeypatch.setattr(settings, "provisioning_step_timeout_seconds", 0.05)
+
+    async def slow_execute(db, job, step, employee, extras):
+        await asyncio.sleep(5)  # 外部资源挂起
+
+    monkeypatch.setattr(engine, "_execute", slow_execute)
+    start = time.monotonic()
+    asyncio_run(engine.run, db, job)
+    elapsed = time.monotonic() - start
+
+    assert elapsed < 3, f"超时机制必须快速返回（实际 {elapsed:.2f}s）"
+    db.expire_all()
+    row = db.execute(
+        sa.text("SELECT status, error FROM provisioning_steps WHERE job_id=:j"),
+        {"j": job.id},
+    ).first()
+    assert row[0] == ProvisioningStepStatus.failed.value, "不能再无限 running"
+    assert "timed out" in row[1]
+    assert db.get(ProvisioningJob, job.id).status == ProvisioningJobStatus.partial.value

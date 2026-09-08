@@ -9,10 +9,12 @@ ProvisioningSteps, executed step-by-step through the ProvisionerRegistry.
   account step never deletes the workspace).
 """
 
+import asyncio
 from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.redaction import redact
 from app.events.bus import bus
@@ -357,8 +359,21 @@ class ProvisioningEngine:
         # flush 失败后 session 处于 DEACTIVE：此刻任何 ORM 属性访问（连 step.id）
         # 都会触发刷新 SELECT 并抛 PendingRollback —— 所以 id 必须在执行前预取。
         step_id, job_id, provider_key = step.id, job.id, step.provider_key
+        timeout = settings.provisioning_step_timeout_seconds
         try:
-            await self._execute(db, job, step, employee, extras)
+            await asyncio.wait_for(self._execute(db, job, step, employee, extras), timeout=timeout)
+        except TimeoutError:
+            # 外部资源挂起（gitea/runtime 等）：超时强制结束，绝不无限 running；
+            # 与启动补收敛（sweep）配套：一层兜进程死亡、一层兜活体挂起。
+            message = f"provisioning step timed out after {timeout:g}s"
+            logger.error(
+                "provisioning step %s timed out (job %s, provider %s)",
+                step_id,
+                job_id,
+                provider_key,
+            )
+            self._fail_step(db, job, step, employee, message)
+            return
         except SkippableStepError as exc:
             # git:gitea 等未安装：跳过步骤而不是堵死整个 job（入职教程不被卡住）
             self._skip_step(db, job, step, employee, str(exc))
@@ -462,9 +477,7 @@ class ProvisioningEngine:
         step.completed_at = utcnow()
         if step.action == "provision":
             # 账户留痕：不是 active 也不是 failed，而是"本次未开通"（装上后可重跑）
-            account = lifecycle_repo.get_account_by_provider_key(
-                db, employee.id, step.provider_key
-            )
+            account = lifecycle_repo.get_account_by_provider_key(db, employee.id, step.provider_key)
             if account is not None and account.provisioning_state != "skipped":
                 account.provisioning_state = "skipped"
         job.done_steps = self._count_finished(db, job.id)

@@ -423,3 +423,9 @@ job 卡 `running`，教程/入职步骤无限轮询。`app/workforce/access.py` 
 
 `make restart` 即可自愈；重跑后仍未成功的资源（如本地无 Gitea 容器）会以
 `failed` 步骤 + `partial` job 呈现，可调 `/provisioning-jobs/{id}/retry`。
+
+**活体挂起超时**：`settings.provisioning_step_timeout_seconds`（默认 120s，
+env `EIDOLON_PROVISIONING_STEP_TIMEOUT_SECONDS`）给每一步执行加
+`asyncio.wait_for` 硬上限 —— 外部资源（gitea http、runtime 启动等）真挂起时
+该步会 `failed`（错误注明 timed out）而不是无限 `running`。两层合计：
+超时兜"活着但挂住"，启动补收敛兜"进程死亡"。
