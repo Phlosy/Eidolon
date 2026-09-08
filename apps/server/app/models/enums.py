@@ -565,3 +565,40 @@ class DevelopmentNeedType(StrEnum):
     skill_gap = "skill_gap"
     experience_gap = "experience_gap"
     assessment_gap = "assessment_gap"
+
+
+# ---------- P11: Behavioral Intelligence & Autonomous Learning ----------
+
+
+class LearningSessionStatus(StrEnum):
+    planned = "planned"
+    waiting_budget = "waiting_budget"
+    running = "running"
+    paused = "paused"
+    completed = "completed"
+    failed = "failed"
+    cancelled = "cancelled"
+
+
+class LearningSourceType(StrEnum):
+    development_plan = "development_plan"
+    learning_priority = "learning_priority"
+    project_need = "project_need"
+    repeated_failure = "repeated_failure"
+    skill_candidate = "skill_candidate"
+    competency_gap = "competency_gap"
+    employee_interest = "employee_interest"
+    curiosity = "curiosity"
+    manual = "manual"
+
+
+class LearningMode(StrEnum):
+    web_research = "web_research"
+    knowledge_review = "knowledge_review"
+    practice = "practice"
+    document_study = "document_study"
+
+
+class KnowledgeFreshness(StrEnum):
+    fresh = "fresh"
+    stale = "stale"

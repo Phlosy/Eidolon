@@ -41,6 +41,7 @@ from app.models.knowledge import (
     MemoryEntry,
     Skill,
 )
+from app.models.learning import LearningSession
 from app.models.lifecycle import (
     AccessPackage,
     AccessPackageItem,
@@ -119,6 +120,7 @@ __all__ = [
     "GitConnection",
     "KnowledgeItem",
     "LearningPriority",
+    "LearningSession",
     "LearningRecord",
     "MemoryEntry",
     "Message",

@@ -40,6 +40,10 @@ class KnowledgeItem(TimestampMixin, Base):
     # Target scope recorded when a promotion proposal is submitted
     # (proposals have no dedicated table in the MVP).
     proposed_scope: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # P11：知识新鲜度（Learned ≠ Truth；stale 时检索可降置信或要求再验证）
+    freshness_status: Mapped[str] = mapped_column(String(20), default="fresh")
+    learned_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    last_validated_at: Mapped[datetime | None] = mapped_column(nullable=True)
 
 
 class Skill(TimestampMixin, Base):

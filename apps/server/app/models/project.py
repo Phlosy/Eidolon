@@ -108,6 +108,9 @@ class WorkSession(TimestampMixin, Base):
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"))
     runtime_type: Mapped[str] = mapped_column(String(50))
     runtime_session_ref: Mapped[str] = mapped_column(String(200), default="")
+    # P11：本次会话使用的行为策略快照（可解释"为什么这次主动请求 Peer Review"）
+    behavior_snapshot_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    behavior_snapshot_hash: Mapped[str] = mapped_column(String(64), default="")
     status: Mapped[str] = mapped_column(String(50), default=WorkSessionStatus.running.value)
     summary: Mapped[str] = mapped_column(Text, default="")
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
