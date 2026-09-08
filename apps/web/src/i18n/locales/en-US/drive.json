@@ -124,5 +124,19 @@
     "contentPlaceholder": "Markdown content (optional)",
     "submit": "Create",
     "hint": "Create a .md document here — or import an existing file via Upload; either way counts."
+  },
+  "newMenu": {
+    "title": "Create",
+    "markdown": "New document",
+    "folder": "New folder",
+    "table": "New table",
+    "slides": "New slides",
+    "board": "New whiteboard",
+    "soon": "Coming soon"
+  },
+  "uploadMenu": {
+    "title": "Upload",
+    "file": "Upload file",
+    "folder": "Upload folder"
   }
 }

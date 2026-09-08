@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { DrivePage } from "./drive-page";
@@ -89,6 +89,26 @@ describe("DrivePage", () => {
         <DrivePage />
       </MemoryRouter>,
     );
+
+  it("faishu-style icon dropdowns: create/upload unfold their own entries", () => {
+    renderPage();
+    const createTrigger = screen.getByRole("button", { name: "Create" });
+    fireEvent.click(createTrigger);
+    expect(screen.getByTestId("drive-create-menu")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "New document" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "New folder" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "New table" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    expect(screen.getByTestId("drive-upload-menu")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Upload file" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Upload folder" })).toBeInTheDocument();
+  });
+
+  it("no big 'Drive' title header at top — toolbar starts right away", () => {
+    renderPage();
+    expect(screen.queryByRole("heading", { name: "Drive" })).not.toBeInTheDocument();
+  });
 
   it("renders the four document spaces in the workspace navigation", () => {
     renderPage();

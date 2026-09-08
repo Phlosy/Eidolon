@@ -121,7 +121,8 @@ COMPANY_FOUNDING_TUTORIAL = {
                     requirement="COMPANY_DOCUMENT_CREATED",
                     route="/drive",
                     target_id="create-document",
-                    placement="bottom",
+                    # left：教学卡片放在按钮左侧，不压住按钮本身/弹出的菜单
+                    placement="left",
                 ),
                 step(
                     "git_setup",

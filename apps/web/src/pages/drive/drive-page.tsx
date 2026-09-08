@@ -1,17 +1,21 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   BookOpen,
+  ChartNoAxesColumn,
   Clock3,
-  Cloud,
   FilePlus2,
+  FileText,
   FolderKanban,
   FolderPlus,
   LayoutGrid,
   List,
+  Presentation,
   Search,
+  SquarePen,
   Upload,
 } from "lucide-react";
 import { useCreateDriveDocument, useDriveTree, useUploadDriveFile } from "../../hooks/useDrive";
@@ -24,7 +28,7 @@ import { NewFolderForm } from "../../components/drive/new-folder-form";
 import { Dialog } from "../../components/common/dialog";
 import { Button } from "../../components/common/button";
 import { DOC_TYPE_META } from "../../components/drive/constants";
-import { ErrorState, PageHeader } from "../../components/common/states";
+import { ErrorState } from "../../components/common/states";
 import { Skeleton } from "../../components/common/skeleton";
 import { Input } from "../../components/common/input";
 import { cn } from "../../utils/cn";
@@ -63,7 +67,10 @@ export function DrivePage() {
   const [view, setView] = useState<"list" | "grid">("list");
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newDocOpen, setNewDocOpen] = useState(false);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const uploadMutation = useUploadDriveFile();
   const nodes = useMemo(() => treeQuery.data ?? [], [treeQuery.data]);
   const selectedNode =
@@ -177,8 +184,9 @@ export function DrivePage() {
   ];
 
   return (
+    // 顶部不再放"云文档"大标题：左侧空间栏已经表明这是云文档区（项目文件/公司
+    // 文档统一文件层级），工具栏直接从搜索 + 新建/上传开始，内容整体上移。
     <div className="space-y-5 panel-enter">
-      <PageHeader icon={Cloud} title={t("drive:title")} description={t("drive:description")} />
       {treeQuery.isLoading ? (
         <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
           <Skeleton className="h-[720px] rounded-[var(--radius-panel)]" />
@@ -207,23 +215,6 @@ export function DrivePage() {
                     onChange={(event) => setSearch(event.target.value)}
                   />
                 </label>
-                <button
-                  type="button"
-                  data-tutorial-target="create-document"
-                  className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[var(--glow-primary)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => setNewDocOpen(true)}
-                >
-                  <FilePlus2 className="h-4 w-4" />
-                  {t("drive:newDocument.button")}
-                </button>
-                <button
-                  type="button"
-                  className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[var(--glow-primary)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  onClick={() => setNewFolderOpen((open) => !open)}
-                >
-                  <FolderPlus className="h-4 w-4" />
-                  {t("drive:newFolder.button")}
-                </button>
                 <input
                   ref={uploadInputRef}
                   type="file"
@@ -246,18 +237,45 @@ export function DrivePage() {
                     event.target.value = "";
                   }}
                 />
-                <button
-                  type="button"
-                  disabled={uploadMutation.isPending}
-                  className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background/65 px-4 text-sm font-semibold text-foreground transition hover:border-border-active hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60"
-                  title={t("drive:workspace.uploadHint")}
-                  onClick={() => uploadInputRef.current?.click()}
-                >
-                  <Upload className="h-4 w-4" />
-                  {uploadMutation.isPending
-                    ? t("drive:workspace.uploading")
-                    : t("drive:workspace.upload")}
-                </button>
+                <input
+                  ref={folderInputRef}
+                  type="file"
+                  hidden
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  {...({ webkitdirectory: "" } as Record<string, string>)}
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    for (const file of files) {
+                      if (!file) continue;
+                      uploadMutation.mutate({
+                        file,
+                        zone: newFolderZone,
+                        parent_id: newFolderParent?.id,
+                        project_id: newFolderParent?.project_id,
+                      });
+                    }
+                    event.target.value = "";
+                  }}
+                />
+                {/* 飞书式：新建/上传 各是一个图标，点开向下展开条目 */}
+                <DriveCreateMenu
+                  open={createMenuOpen}
+                  onToggle={() => setCreateMenuOpen((value) => !value)}
+                  onClose={() => setCreateMenuOpen(false)}
+                  onNewDocument={() => setNewDocOpen(true)}
+                  onNewFolder={() => {
+                    setNewFolderOpen((value) => !value);
+                  }}
+                />
+                <DriveUploadMenu
+                  open={uploadMenuOpen}
+                  onToggle={() => setUploadMenuOpen((value) => !value)}
+                  onClose={() => setUploadMenuOpen(false)}
+                  onUploadFile={() => uploadInputRef.current?.click()}
+                  onUploadFolder={() => folderInputRef.current?.click()}
+                  busy={uploadMutation.isPending}
+                />
               </div>
 
               {uploadMutation.isError ? (
@@ -519,5 +537,196 @@ function CreateDocumentDialog({
         </div>
       </div>
     </Dialog>
+  );
+}
+function useOutsideClose(
+  ref: React.RefObject<HTMLDivElement | null>,
+  open: boolean,
+  onClose: () => void,
+) {
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointerDown = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) onClose();
+    };
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, onClose, ref]);
+}
+
+function DriveCreateMenu({
+  open,
+  onToggle,
+  onClose,
+  onNewDocument,
+  onNewFolder,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onNewDocument: () => void;
+  onNewFolder: () => void;
+}) {
+  const { t } = useTranslation();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
+  useOutsideClose(menuRef, open, onClose);
+
+  useEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setCoords({ left: rect.left, top: rect.bottom + 6 });
+  }, [open]);
+
+  const items = [
+    { icon: FileText, label: t("drive:newMenu.markdown"), onClick: onNewDocument, enabled: true },
+    { icon: FolderPlus, label: t("drive:newMenu.folder"), onClick: onNewFolder, enabled: true },
+    {
+      icon: ChartNoAxesColumn,
+      label: t("drive:newMenu.table"),
+      onClick: undefined,
+      enabled: false,
+    },
+    { icon: Presentation, label: t("drive:newMenu.slides"), onClick: undefined, enabled: false },
+    { icon: SquarePen, label: t("drive:newMenu.board"), onClick: undefined, enabled: false },
+  ];
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        data-tutorial-target="create-document"
+        aria-label={t("drive:newMenu.title")}
+        aria-expanded={open}
+        onClick={onToggle}
+        className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-[var(--glow-primary)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        title={t("drive:newMenu.title")}
+      >
+        <FilePlus2 className="h-4 w-4" />
+      </button>
+      {open && coords
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              data-testid="drive-create-menu"
+              className="fixed z-[70] w-52 rounded-xl border border-border bg-popover p-1.5 shadow-xl"
+              style={{ left: coords.left, top: coords.top }}
+            >
+              {items.map(({ icon: ItemIcon, label, onClick: handle, enabled }) => (
+                <button
+                  key={label}
+                  type="button"
+                  role="menuitem"
+                  disabled={!enabled}
+                  onClick={() => {
+                    if (!enabled) return;
+                    onClose();
+                    handle?.();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45"
+                  title={enabled ? undefined : t("drive:newMenu.soon")}
+                >
+                  <ItemIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  {label}
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
+/** 飞书式「上传」下拉：文件 / 文件夹。 */
+function DriveUploadMenu({
+  open,
+  onToggle,
+  onClose,
+  onUploadFile,
+  onUploadFolder,
+  busy,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onUploadFile: () => void;
+  onUploadFolder: () => void;
+  busy: boolean;
+}) {
+  const { t } = useTranslation();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
+  useOutsideClose(menuRef, open, onClose);
+
+  useEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    setCoords({ left: rect.left, top: rect.bottom + 6 });
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label={t("drive:uploadMenu.title")}
+        aria-expanded={open}
+        onClick={onToggle}
+        disabled={busy}
+        className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background/65 text-foreground transition hover:border-border-active hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60"
+        title={t("drive:uploadMenu.title")}
+      >
+        <Upload className="h-4 w-4" />
+      </button>
+      {open && coords
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              data-testid="drive-upload-menu"
+              className="fixed z-[70] w-48 rounded-xl border border-border bg-popover p-1.5 shadow-xl"
+              style={{ left: coords.left, top: coords.top }}
+            >
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onClose();
+                  onUploadFile();
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-foreground hover:bg-muted"
+              >
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                {t("drive:uploadMenu.file")}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  onClose();
+                  onUploadFolder();
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-foreground hover:bg-muted"
+              >
+                <FolderKanban className="h-3.5 w-3.5 text-muted-foreground" />
+                {t("drive:uploadMenu.folder")}
+              </button>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }

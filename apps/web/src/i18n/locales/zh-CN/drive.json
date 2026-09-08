@@ -122,5 +122,19 @@
     "contentPlaceholder": "Markdown 内容（可选）",
     "submit": "创建",
     "hint": "新建一个 .md 文档（也可用「上传」导入现成文件，二者都算建立文档）"
+  },
+  "newMenu": {
+    "title": "新建",
+    "markdown": "新建文档",
+    "folder": "新建文件夹",
+    "table": "新建表格",
+    "slides": "新建演示文稿",
+    "board": "新建画板",
+    "soon": "即将支持"
+  },
+  "uploadMenu": {
+    "title": "上传",
+    "file": "上传文件",
+    "folder": "上传文件夹"
   }
 }
