@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.scope import resolve_company_id
@@ -25,6 +26,24 @@ from app.services import career as career_service
 from app.services.career import CareerError
 
 router = APIRouter(tags=["career"])
+
+
+@router.get("/employees/{employee_id}/behavior-policy")
+def employee_behavior_policy(
+    employee_id: int,
+    task_type: str | None = None,
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """P11：行为策略解释（Trait Snapshot + advisory 数值 + reasons；缺省中性上下文）。"""
+    from app.brain.resolver import explain_behavior
+    from app.brain.trait_policies import BehaviorContext
+    from app.models.runtime import EmployeeBrain
+
+    _employee_or_404(db, employee_id, company_id)
+    brain = db.scalar(select(EmployeeBrain).where(EmployeeBrain.employee_id == employee_id))
+    context = BehaviorContext(task_type=task_type or "general")
+    return explain_behavior(brain, context)
 
 
 def _employee_or_404(db: Session, employee_id: int, company_id: int | None) -> Employee:

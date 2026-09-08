@@ -64,7 +64,12 @@ def render_profile_markdown(
         "",
     ]
     lines += [f"- `{key}` = {value:.2f}" for key, value in sorted(traits.items())]
-    lines += ["", "## 工作方式", ""]
+    lines += ["", "## 工作方式（行为化摘要）", ""]
+    from app.brain.trait_policies import working_style_summary
+
+    for style in working_style_summary(traits):
+        lines += [f"- {style}"]
+    lines += ["", "## 工作方式（指令）", ""]
     directives = list(policy.runtime.work_directives)
     lines += [f"- {line}" for line in directives] or ["- （默认：不额外改变工作方式）"]
     lines += ["", "## 本任务的行为额度", ""]
