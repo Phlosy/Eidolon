@@ -211,6 +211,14 @@ format: check-env
 build:
 	cd $(WEB_DIR) && pnpm build
 
+## dev-seed-user: 注入本地测试账号（默认 **user@example.com / user**；OWNER + 自建 test-co 公司）
+##   · 幂等：已存在则重置密码并强制 active/verified；自定义用 SEED_EMAIL= SEED_PASSWORD= SEED_DISPLAY_NAME=
+##   · 前置 migrate（清库后**无需先 make run**，直接 make dev-seed-user 即可登录测试）
+##   · 只允许本地 SQLite（拒绝外部库）；.env 与其他表不动
+.PHONY: dev-seed-user
+dev-seed-user: migrate
+	@cd $(SERVER_DIR) && EIDOLON_DATABASE_URL="$(or $(EIDOLON_DATABASE_URL),sqlite:///./data/eidolon.db)" $(PYBIN) $(CURDIR)/scripts/dev_seed_user.py $(if $(SEED_EMAIL),--email $(SEED_EMAIL))$(if $(SEED_PASSWORD), --password $(SEED_PASSWORD))$(if $(SEED_DISPLAY_NAME), --display-name $(SEED_DISPLAY_NAME))
+
 ## dev-clear-data: 清除**本地开发数据**（apps/server/data 下的 sqlite/workspaces/employees；保留 .env）
 ##   · 必须先确认：DATA_CONFIRM=yes（或交互输入 y）；DRY_RUN=1 只列出不删除（结尾 NO DATA HAS BEEN MODIFIED.）
 ##   · 前置 stop（防数据库锁）；若 EIDOLON_DATABASE_URL 指向仓库外 ⇒ 拒绝，避免误删外部库
