@@ -71,18 +71,26 @@ class CloudDocsProvisioner(ResourceProvisioner):
         parent = drive_repo.get_node_by_path(ctx.db, parent_path) if parent_path else None
         if parent is None and parent_path:
             parent = self._ensure_folder(ctx, parent_path, company_id=company_id)
-        node = drive_repo.create_node(
-            ctx.db,
-            company_id=company_id,
-            parent_id=parent.id if parent else None,
-            kind=DriveNodeKind.folder.value,
-            name=name,
-            path=path,
-            zone=DriveZone.knowledge.value,
-            owner_employee_id=owner_employee_id,
-        )
+        from sqlalchemy.exc import IntegrityError
+
+        try:
+            with ctx.db.begin_nested():
+                node = drive_repo.create_node(
+                    ctx.db,
+                    company_id=company_id,
+                    parent_id=parent.id if parent else None,
+                    kind=DriveNodeKind.folder.value,
+                    name=name,
+                    path=path,
+                    zone=DriveZone.knowledge.value,
+                    owner_employee_id=owner_employee_id,
+                )
+                ctx.db.flush()
+        except IntegrityError:
+            node = drive_repo.get_node_by_path(ctx.db, path)
+            if node is None:
+                raise
         (Path(settings.data_root) / path).mkdir(parents=True, exist_ok=True)
-        ctx.db.flush()
         return node
 
     def _set_collaborator(

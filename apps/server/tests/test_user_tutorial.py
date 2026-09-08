@@ -159,9 +159,10 @@ def test_optional_git_resource_failure_does_not_deadlock_the_tutorial(client, db
         client, founder, name="No-Gitea CEO", role="ceo", dept_slug="executive", package="ceo"
     )
     ceo, job = onboarded["employee"], onboarded["job"]
-    # 本用例的前提：git 资源失败 → 入职任务 partial → 员工停在 onboarding，没到 active
-    assert ceo["lifecycle_status"] == "onboarding"
-    assert job["status"] == "partial"
+    # gitea 未装 → git 步骤 skipped（不是 failed）：任务 done、员工直接 active，
+    # 教程照常推进到 cloud_docs —— 入职不再被可选资源堵死
+    assert ceo["lifecycle_status"] == "active"
+    assert job["status"] == "done"
     assert _step(client) == "cloud_docs", "git 缺失时教程必须照样推进"
 
 

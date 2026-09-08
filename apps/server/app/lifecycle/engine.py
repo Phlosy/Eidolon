@@ -17,7 +17,11 @@ from app.core.logging import get_logger
 from app.core.redaction import redact
 from app.events.bus import bus
 from app.lifecycle.access import AccessDiff, EffectiveEntitlement
-from app.lifecycle.provisioners.base import ProvisionContext, ProvisionerError
+from app.lifecycle.provisioners.base import (
+    ProvisionContext,
+    ProvisionerError,
+    SkippableStepError,
+)
 from app.lifecycle.provisioners.registry import ProvisionerRegistry, get_registry
 from app.models.base import utcnow
 from app.models.enums import (
@@ -350,13 +354,22 @@ class ProvisioningEngine:
                 company_id=employee.company_id,
                 actor_employee_id=employee.id,
             )
+        # flush 失败后 session 处于 DEACTIVE：此刻任何 ORM 属性访问（连 step.id）
+        # 都会触发刷新 SELECT 并抛 PendingRollback —— 所以 id 必须在执行前预取。
+        step_id, job_id, provider_key = step.id, job.id, step.provider_key
         try:
             await self._execute(db, job, step, employee, extras)
+        except SkippableStepError as exc:
+            # git:gitea 等未安装：跳过步骤而不是堵死整个 job（入职教程不被卡住）
+            self._skip_step(db, job, step, employee, str(exc))
+            return
         except ProvisionerError as exc:
             self._fail_step(db, job, step, employee, str(exc))
             return
         except Exception as exc:  # never let one resource 500 the whole job
-            logger.exception("provisioning step %s crashed", step.id)
+            logger.exception(
+                "provisioning step %s crashed (job %s, provider %s)", step_id, job_id, provider_key
+            )
             self._fail_step(db, job, step, employee, redact(str(exc)[:300]))
             return
         step.status = ProvisioningStepStatus.done.value
@@ -414,6 +427,9 @@ class ProvisioningEngine:
     def _fail_step(
         self, db: Session, job: ProvisioningJob, step, employee: Employee, error: str
     ) -> None:
+        # 会话恢复：flush 失败（如 UNIQUE 冲突）后 session 处于 PendingRollback，
+        # 必须先 rollback 才能继续写 —— 否则 failed 状态写不进去，step 永远 running。
+        db.rollback()
         step.status = ProvisioningStepStatus.failed.value
         step.error = error
         step.completed_at = utcnow()
@@ -436,6 +452,23 @@ class ProvisioningEngine:
             company_id=employee.company_id,
             actor_employee_id=employee.id,
         )
+
+    def _skip_step(
+        self, db: Session, job: ProvisioningJob, step, employee: Employee, reason: str
+    ) -> None:
+        db.rollback()
+        step.status = ProvisioningStepStatus.skipped.value
+        step.error = reason
+        step.completed_at = utcnow()
+        if step.action == "provision":
+            # 账户留痕：不是 active 也不是 failed，而是"本次未开通"（装上后可重跑）
+            account = lifecycle_repo.get_account_by_provider_key(
+                db, employee.id, step.provider_key
+            )
+            if account is not None and account.provisioning_state != "skipped":
+                account.provisioning_state = "skipped"
+        job.done_steps = self._count_finished(db, job.id)
+        db.commit()
 
     def _publish_step_event(
         self, db: Session, job: ProvisioningJob, step, employee: Employee

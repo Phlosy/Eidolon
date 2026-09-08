@@ -133,19 +133,31 @@ def _zone_root_path(db: Session, zone: str, company_id: int | None = None) -> st
 
 
 def ensure_zone_roots(db: Session, company_id: int | None = None) -> None:
-    """Idempotently create the four zone root folders (drive/{zone})."""
+    """Idempotently create the four zone root folders (drive/{zone}).
+
+    Savepoint 隔离并发创建：两个请求同时看到 None 各建一次会撞
+    drive_nodes.path 唯一约束（入职/补收敛重复触发过）；落败方回滚保存点后
+    以已存在者为准，外层事务不受影响。
+    """
+    from sqlalchemy.exc import IntegrityError
+
     for zone in ZONES:
         path = _zone_root_path(db, zone, company_id)
         if drive_repo.get_node_by_path(db, path) is None:
-            _create_node(
-                db,
-                path=path,
-                on_disk=Path(settings.data_root) / path,
-                parent_id=None,
-                kind=DriveNodeKind.folder.value,
-                name=zone,
-                zone=zone,
-            )
+            try:
+                with db.begin_nested():
+                    _create_node(
+                        db,
+                        path=path,
+                        on_disk=Path(settings.data_root) / path,
+                        parent_id=None,
+                        kind=DriveNodeKind.folder.value,
+                        name=zone,
+                        zone=zone,
+                    )
+            except IntegrityError:
+                if drive_repo.get_node_by_path(db, path) is None:
+                    raise
     db.flush()
 
 

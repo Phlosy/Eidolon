@@ -21,6 +21,11 @@ class ProvisionerError(RuntimeError):
     the API as a 500."""
 
 
+class SkippableStepError(ProvisionerError):
+    """A step that is not applicable right now (e.g. git:gitea not installed);
+    recorded on the step as `skipped`, never blocks the rest of the job."""
+
+
 @dataclass
 class ProvisionContext:
     db: Session

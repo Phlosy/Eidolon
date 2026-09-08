@@ -24,6 +24,7 @@ from app.lifecycle.provisioners.base import (
     ProvisionerError,
     ProvisionResult,
     ResourceProvisioner,
+    SkippableStepError,
 )
 from app.lifecycle.provisioners.common import (
     apply_asset_target,
@@ -80,9 +81,11 @@ class GiteaProvisioner(ResourceProvisioner):
     def _ensure_ready(self) -> str:
         status = self._builtin_status()
         if status != GitBuiltinStatus.running.value:
-            raise ProvisionerError(
+            # 未安装/未运行：跳过本资源步骤而不是堵死整个 job —— 入职/教程
+            # 可以被 workspace/docs 账号继续下去；装上 gitea 后对 job 重试即可。
+            raise SkippableStepError(
                 f"builtin gitea is not running (status={status}); "
-                "install/start it via POST /api/v1/git/builtin/install and retry"
+                "install/start it via POST /api/v1/git/builtin/install and retry the job"
             )
         token = settings.gitea_admin_token
         if not token:

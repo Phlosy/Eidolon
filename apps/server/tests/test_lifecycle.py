@@ -139,26 +139,31 @@ def test_onboard_slug_check_is_global_not_company_scoped(db):
         reset_request_identity(token)
 
 
-def test_onboard_partial_when_gitea_down(client, gitea_down):
+def test_onboard_done_with_gitea_skipped(client, gitea_down):
+    """gitea 未安装 → git 步骤 skipped（不是 failed），job 照常 done。
+
+    入职/教程不再被可选资源堵死；git 账户留下 provisioning_state=skipped 的
+    透明痕迹，装上 gitea 后可对 job 重跑或走职位层收敛重新开通。
+    """
     body = _onboard(client, _unique_slug("onb"))
     employee = body["employee"]
     job = body["job"]
-    assert employee["lifecycle_status"] == "onboarding"
+    assert employee["lifecycle_status"] == "active"  # 不再停在 onboarding
     assert employee["username"] == employee["slug"]
     assert job["kind"] == "onboarding"
-    assert job["status"] == "partial"
+    assert job["status"] == "done"
     by_action_resource = {(s["action"], s["resource_type"]): s for s in job["steps"]}
     assert by_action_resource[("provision", "workspace")]["status"] == "done"
     assert by_action_resource[("provision", "docs")]["status"] == "done"
     git_provision = by_action_resource[("provision", "git")]
-    assert git_provision["status"] == "failed"
+    assert git_provision["status"] == "skipped"
     assert "gitea" in git_provision["error"]
-    assert job["done_steps"] < job["total_steps"]
+    assert job["done_steps"] == job["total_steps"]
     accounts = client.get(f"/api/v1/employees/{employee['id']}/accounts").json()
-    status_by_type = {a["resource_type"]: a["status"] for a in accounts}
-    assert status_by_type["workspace"] == "active"
-    assert status_by_type["docs"] == "active"
-    assert status_by_type["git"] == "failed"
+    status_by_type = {a["resource_type"]: a["provisioning_state"] for a in accounts}
+    assert status_by_type["workspace"] == "done"
+    assert status_by_type["docs"] == "done"
+    # git 账户状态仍是 provisioning（未开通）；skipped 的痕迹在 job 步骤上可见
 
 
 def test_onboard_persists_provider_model_and_brain(client, db, gitea_down):
@@ -203,22 +208,36 @@ def test_onboard_persists_provider_model_and_brain(client, db, gitea_down):
     assert provider.owner_employee_id == employee_id
 
 
-def test_retry_reruns_only_failed_steps(client, gitea_down):
-    body = _onboard(client, _unique_slug("retry"))
-    job = body["job"]
-    done_attempts = {s["id"]: s["attempts"] for s in job["steps"] if s["status"] == "done"}
+def test_retry_reruns_only_failed_steps(client, gitea_down, monkeypatch):
+    """重试只回放 failed 步骤；done 步骤的 attempts 不动。用真实失败（docs 抛错）造 partial。"""
+    from app.lifecycle.provisioners.base import ProvisionerError
+    from app.lifecycle.provisioners.registry import get_registry
 
-    retried = client.post(f"/api/v1/provisioning-jobs/{job['id']}/retry").json()
-    assert retried["status"] == "partial"  # gitea still down
-    for step in retried["steps"]:
-        if step["id"] in done_attempts:
-            assert step["attempts"] == done_attempts[step["id"]]  # untouched
-        else:
-            assert step["attempts"] == 2  # failed steps re-ran
-    failed = [s for s in retried["steps"] if s["status"] == "failed"]
+    original = get_registry()._provisioners["docs:builtin"]
+
+    class _Flaky(original.__class__):
+        async def provision_employee(self, employee, entitlement, ctx):
+            raise ProvisionerError("docs flaky but retryable")
+
+    # 先带着坏 docs 入职 → job partial（workspace done、docs failed、git skipped）
+    monkeypatch.setitem(get_registry()._provisioners, "docs:builtin", _Flaky())
+    body = _onboard(client, _unique_slug("retry"))
+    assert body["job"]["status"] == "partial"
+    offline = body["job"]
+    failed = [s for s in offline["steps"] if s["status"] == "failed"]
     assert failed and all(s["error"] for s in failed)
     employee = client.get(f"/api/v1/employees/{body['employee']['id']}").json()
-    assert employee["lifecycle_status"] == "onboarding"  # unchanged while partial
+    assert employee["lifecycle_status"] == "onboarding"  # partial 时保持 onboarding
+
+    # 修复后重试：done 步骤不被重跑，failed → done/skipped 照常
+    monkeypatch.setitem(get_registry()._provisioners, "docs:builtin", original)
+    done_attempts = {s["id"]: s["attempts"] for s in offline["steps"] if s["status"] == "done"}
+    retried = client.post(f"/api/v1/provisioning-jobs/{body['job']['id']}/retry").json()
+    assert retried["status"] == "done"
+    for step in retried["steps"]:
+        if step["id"] in done_attempts:
+            assert step["attempts"] == done_attempts[step["id"]]  # done 步骤不被重跑
+    assert all(s["status"] in ("done", "skipped") for s in retried["steps"])
 
 
 def test_onboard_active_with_fake_gitea(client, fake_gitea):
@@ -242,14 +261,10 @@ def test_onboard_active_with_fake_gitea(client, fake_gitea):
     assert any(s["package_name"] == "Base Employee" for s in base["sources"])
 
 
-def test_retry_completes_onboarding_once_gitea_available(client, gitea_down, monkeypatch):
+def test_onboard_does_not_block_on_missing_gitea(client, gitea_down):
+    """入职不再依赖 git 健康：gitea 未装 → 直接 done/active；无需等安装再重试。"""
     body = _onboard(client, _unique_slug("late"))
-    assert body["job"]["status"] == "partial"
-    fake = FakeGiteaProvisioner()
-    monkeypatch.setitem(get_registry()._provisioners, "git:gitea", fake)
-
-    retried = client.post(f"/api/v1/provisioning-jobs/{body['job']['id']}/retry").json()
-    assert retried["status"] == "done"
+    assert body["job"]["status"] == "done"
     employee = client.get(f"/api/v1/employees/{body['employee']['id']}").json()
     assert employee["lifecycle_status"] == "active"
 
@@ -623,7 +638,7 @@ def test_compat_create_employee_routes_through_engine(client, gitea_down):
     )
     assert response.status_code == 201, response.text
     employee = response.json()
-    assert employee["lifecycle_status"] == "onboarding"  # gitea down → partial
+    assert employee["lifecycle_status"] == "active"  # gitea 未装 → skipped，不拦入职
     jobs = client.get(f"/api/v1/provisioning-jobs?employee_id={employee['id']}").json()
     assert len(jobs) == 1
     assert jobs[0]["kind"] == "onboarding"
