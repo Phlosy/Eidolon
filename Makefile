@@ -211,6 +211,13 @@ format: check-env
 build:
 	cd $(WEB_DIR) && pnpm build
 
+## dev-clear-data: 清除**本地开发数据**（apps/server/data 下的 sqlite/workspaces/employees；保留 .env）
+##   · 必须先确认：DATA_CONFIRM=yes（或交互输入 y）；DRY_RUN=1 只列出不删除（结尾 NO DATA HAS BEEN MODIFIED.）
+##   · 前置 stop（防数据库锁）；若 EIDOLON_DATABASE_URL 指向仓库外 ⇒ 拒绝，避免误删外部库
+.PHONY: dev-clear-data
+dev-clear-data: stop
+	@bash $(CURDIR)/scripts/dev_clear_data.sh --confirm="$(DATA_CONFIRM)" $(if $(filter 1,$(DRY_RUN)),--dry-run)
+
 ## clean: 清理构建产物与本地运行数据（保留 .env）
 .PHONY: clean
 clean: stop
