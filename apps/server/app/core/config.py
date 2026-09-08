@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     # 后台消费者跟测试抢同一份状态。
     evidence_pipeline_enabled: bool = True
 
+    # P11 —— 自主学习（LearningSession）。默认关：真实 Provider 会消耗额度，
+    # 需要用户显式开启（公司/员工可覆盖）。force_failure 仅供测试注入。
+    autonomous_learning_enabled: bool = False
+    learning_force_failure: bool = False
+
     # v0.7 — human user authentication. Sessions are opaque, hashed server-side,
     # and transported only in an HttpOnly cookie.
     auth_required: bool = True

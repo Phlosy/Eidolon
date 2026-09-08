@@ -15,6 +15,7 @@ from app.api.v1 import (
     employees,
     git,
     knowledge,
+    learning_api,
     lifecycle,
     messages,
     meta,
@@ -51,6 +52,7 @@ protected.include_router(providers.router)
 protected.include_router(git.router)
 protected.include_router(runtimes.router)
 protected.include_router(lifecycle.router)
+protected.include_router(learning_api.router)
 protected.include_router(organizations.router)
 protected.include_router(position_profiles.router)
 protected.include_router(position_fit.router)
