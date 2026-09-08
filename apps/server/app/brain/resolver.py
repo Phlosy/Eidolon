@@ -17,6 +17,7 @@ from typing import Any
 from app.brain.config import DEFAULT_CONFIG, BehaviorPolicyConfig, config_for
 from app.brain.policy import (
     DEFAULT_POLICY,
+    POLICY_VERSION,
     BehaviorPolicy,
     LearningPolicy,
     ReflectionPolicy,
@@ -188,3 +189,77 @@ def _revision(traits: BrainTraits, config: BehaviorPolicyConfig) -> int:
         default=str,
     )
     return int(hashlib.sha256(payload.encode("utf-8")).hexdigest()[:8], 16)
+
+
+def resolve_with_context(
+    brain: Any,
+    context: Any = None,
+    config: "BehaviorPolicyConfig" = DEFAULT_CONFIG,
+) -> BehaviorPolicy:
+    """P11：context 感知解析 = behavior-v1 原有解析 + v2 advisory sections。
+
+    context 缺省 = 上下文无关中性任务；确定性（同 traits+context+config ⇒ 同 policy）。
+    """
+    policy = resolve(brain, config)
+    from app.brain.trait_policies import BehaviorContext, apply_trait_policies
+
+    return apply_trait_policies(policy, BrainTraits.from_brain(brain), context or BehaviorContext())
+
+
+def explain_behavior(brain: Any, context: Any = None) -> dict:
+    """行为策略解释（/employees/{id}/behavior-policy 数据源）。"""
+    from app.brain.trait_policies import (
+        BehaviorContext,
+        behavior_styles,
+        reason_mapping,
+        working_style_summary,
+    )
+
+    traits = BrainTraits.from_brain(brain)
+    context = context or BehaviorContext()
+    policy = resolve_with_context(brain, context)
+    return {
+        "policy_version": POLICY_VERSION,
+        "behavior_policy_version": "v2",
+        "trait_snapshot": dict(traits.snapshot()),
+        "resolved": {
+            "planning": {
+                "planning_depth": policy.planning.planning_depth,
+                "alternative_solution_limit": policy.planning.alternative_solution_limit,
+            },
+            "verification": {
+                "verification_depth": policy.verification.verification_depth,
+                "self_review_passes": policy.verification.self_review_passes,
+                "checklist_preference": policy.verification.checklist_preference,
+            },
+            "collaboration": {
+                "peer_review_preference": policy.collaboration.peer_review_preference,
+                "help_request_threshold": policy.collaboration.help_request_threshold,
+                "knowledge_sharing_preference": policy.collaboration.knowledge_sharing_preference,
+            },
+            "autonomy": {
+                "confirmation_threshold": policy.autonomy.confirmation_threshold,
+                "autonomous_decision_budget": policy.autonomy.autonomous_decision_budget,
+            },
+            "risk": {
+                "experimental_solution_budget": policy.risk.experimental_solution_budget,
+                "mature_solution_preference": policy.risk.mature_solution_preference,
+            },
+            "communication": {
+                "communication_style": policy.communication.communication_style,
+                "explanation_depth": policy.communication.explanation_depth,
+                "mentoring_preference": policy.communication.mentoring_preference,
+            },
+            "adaptation": {
+                "new_tool_trial_budget": policy.adaptation.new_tool_trial_budget,
+                "fallback_switch_threshold": policy.adaptation.fallback_switch_threshold,
+            },
+            "creativity": {
+                "alternative_generation": policy.creativity.alternative_generation,
+                "solution_diversity": policy.creativity.solution_diversity,
+            },
+        },
+        "styles": behavior_styles(policy, traits),
+        "working_style": working_style_summary(traits, context),
+        "reasons": reason_mapping(traits, policy),
+    }

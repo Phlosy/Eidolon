@@ -18,6 +18,8 @@ from app.brain import TRAIT_REGISTRY, BrainTraits, resolve
 from app.brain.config import DEFAULT_CONFIG
 from app.brain.policy import POLICY_FIELDS
 from app.brain.registry import validate_specs
+from app.brain.resolver import resolve_with_context
+from app.brain.trait_policies import BehaviorContext
 from app.models.runtime import EmployeeBrain
 
 EIGHT_TRAITS = {
@@ -31,22 +33,53 @@ EIGHT_TRAITS = {
     "creativity",
 }
 
-#: 额度字段（除 trait_snapshot / profile_revision 这两个"本来就该随人格变"的元数据）
-QUOTA_FIELDS = sorted(POLICY_FIELDS - {"runtime.trait_snapshot", "runtime.profile_revision"})
+#: 核心额度字段（behavior-v1 真正改变 Agent 行为的路径）：7 个新维度不得改变这些；
+#: P11 新增的 advisory sections（planning/verification/…/creativity）除外。
+CORE_FIELDS = sorted(
+    path
+    for path in POLICY_FIELDS
+    if not path.startswith(
+        (
+            "planning.",
+            "verification.",
+            "collaboration.",
+            "autonomy.",
+            "risk.",
+            "communication.",
+            "adaptation.",
+            "creativity.",
+        )
+    )
+    and path
+    not in {
+        "runtime.trait_snapshot",
+        "runtime.profile_revision",
+        "learning.followup_topics_per_task",
+        "learning.followup_priority_score",
+    }
+)
 
 
 def _brain(traits: dict) -> EmployeeBrain:
     return EmployeeBrain(employee_id=1, curiosity=0.5, traits=traits)
 
 
-def _quotas(policy) -> dict[str, str]:
+def _quotas(policy, fields: set[str] | None = None) -> dict[str, str]:
     out: dict[str, str] = {}
-    for path in QUOTA_FIELDS:
+    fields = fields or set(CORE_FIELDS)
+    for path in sorted(fields):
         obj = policy
         for part in path.split("."):
             obj = getattr(obj, part)
         out[path] = str(obj)
     return out
+
+
+def _peek(policy, path: str):
+    obj = policy
+    for part in path.split("."):
+        obj = getattr(obj, part)
+    return obj
 
 
 def test_registry_holds_exactly_the_eight_first_version_dimensions():
@@ -66,14 +99,30 @@ def test_only_curiosity_affects_execution_in_this_phase():
         assert TRAIT_REGISTRY[key].affects == (), f"{key} 不应在本阶段影响任何策略字段"
 
 
-def test_varying_an_unwired_trait_changes_no_quota():
-    """把 warmth 从 0.1 拉到 0.9（甚至全部 7 维都拉满），额度必须逐字不变。"""
-    baseline = resolve(_brain({"curiosity": 0.5}), DEFAULT_CONFIG)
-    for key in EIGHT_TRAITS - {"curiosity"}:
-        for value in (0.0, 0.5, 1.0):
-            mutated = resolve(_brain({"curiosity": 0.5, key: value}), DEFAULT_CONFIG)
-            assert _quotas(mutated) == _quotas(baseline), f"{key}={value} 不该改额度"
-            assert mutated.retrieval == baseline.retrieval
+def test_new_dimensions_change_only_their_advisory_sections():
+    """P11：7 个新维度真正生效，但只改各自归属的 advisory section，
+    绝不改 behavior-v1 的核心额度（retrieval/reflection/learning）与 runtime 档位。"""
+    context = BehaviorContext()
+    core = resolve(_brain({"curiosity": 0.5}), DEFAULT_CONFIG)
+    assertions = [
+        ("warmth", "communication.communication_style"),
+        ("independence", "autonomy.confirmation_threshold"),
+        ("conscientiousness", "verification.self_review_passes"),
+        ("collaboration", "collaboration.peer_review_preference"),
+        ("risk_tolerance", "risk.experimental_solution_budget"),
+        ("adaptability", "adaptation.fallback_switch_threshold"),
+        ("creativity", "creativity.alternative_generation"),
+    ]
+    for key, field in assertions:
+        core_before = _quotas(resolve(_brain({"curiosity": 0.5}), DEFAULT_CONFIG))
+        low = resolve_with_context(_brain({"curiosity": 0.5, key: 0.1}), context)
+        high = resolve_with_context(_brain({"curiosity": 0.5, key: 0.9}), context)
+        # 核心额度逐字不变（7 维不改变真正影响 Agent 行为的 retrieval/reflection/learning）
+        assert _quotas(low) == core_before, f"{key} 改了核心额度"
+        assert _quotas(high) == core_before, f"{key} 改了核心额度"
+        assert low.retrieval == core.retrieval
+        # 但确实改变了它应影响的工作方式（v2 advisory）
+        assert _peek(low, field) != _peek(high, field), f"{key} 没有影响 {field}"
 
 
 def test_unwired_traits_still_round_trip_through_brain():
