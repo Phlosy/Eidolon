@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models.enums import DriveZone
 from app.repositories import drive as drive_repo
 from app.schemas.drive import (
+    CreateDocumentRequest,
     DriveCollaboratorOut,
     DriveFolderCreate,
     DriveNodeDetail,
@@ -34,6 +35,24 @@ def _get_node_or_404(db: Session, node_id: int):
 def get_tree(zone: str | None = Query(default=None), db: Session = Depends(get_db)):
     """Flat node list (optionally per zone); the frontend builds the tree."""
     return [DriveNodeOut.model_validate(n) for n in drive_repo.list_nodes(db, zone=zone)]
+
+
+@router.post("/documents", response_model=DriveNodeOut, status_code=201)
+def create_document(
+    payload: CreateDocumentRequest,
+    db: Session = Depends(get_db),
+):
+    """原生「新建文档」（Markdown）—— 上传导入只是补充，不是唯一途径。"""
+    node = drive_service.create_markdown_document(
+        db,
+        zone=payload.zone,
+        name=payload.name,
+        content=payload.content,
+        parent_id=payload.parent_id,
+        project_id=payload.project_id,
+        actor_employee_id=payload.employee_id,
+    )
+    return DriveNodeOut.model_validate(node)
 
 
 @router.post("/folders", response_model=DriveNodeOut, status_code=201)

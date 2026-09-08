@@ -59,6 +59,10 @@ def create_node(db: Session, **fields) -> DriveNode:
         elif fields.get("owner_employee_id") is not None:
             employee = db.get(Employee, fields["owner_employee_id"])
             fields["company_id"] = employee.company_id if employee else None
+        elif fields.get("parent_id") is not None:
+            parent = db.get(DriveNode, fields["parent_id"])
+            if parent is not None and parent.company_id is not None:
+                fields["company_id"] = parent.company_id
     # 带 path 的创建一律碰撞安全（所有 drive 目录的唯一切入点）。
     # SQLite：INSERT ... ON CONFLICT DO NOTHING + 回查 —— 无异常、不毒化
     # 会话、任意事务内可用；并发创建同一目录（入职/补收敛/教程轮询）由唯一

@@ -117,5 +117,12 @@
     "uploading": "Uploading…",
     "uploadHint": "Markdown, DOCX, or PDF, up to 20 MB",
     "uploadError": "The file could not be uploaded."
+  },
+  "newDocument": {
+    "button": "New document",
+    "namePlaceholder": "Document name",
+    "contentPlaceholder": "Markdown content (optional)",
+    "submit": "Create",
+    "hint": "Create a .md document here — or import an existing file via Upload; either way counts."
   }
 }

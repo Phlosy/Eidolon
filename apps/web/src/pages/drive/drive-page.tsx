@@ -6,6 +6,7 @@ import {
   BookOpen,
   Clock3,
   Cloud,
+  FilePlus2,
   FolderKanban,
   FolderPlus,
   LayoutGrid,
@@ -13,13 +14,15 @@ import {
   Search,
   Upload,
 } from "lucide-react";
-import { useDriveTree, useUploadDriveFile } from "../../hooks/useDrive";
+import { useCreateDriveDocument, useDriveTree, useUploadDriveFile } from "../../hooks/useDrive";
 import { useEmployees } from "../../hooks/useEmployees";
 import { DriveDocumentViewer } from "../../components/drive/drive-document-viewer";
 import { DriveFolderGrid } from "../../components/drive/drive-folder-grid";
 import { DriveNodeList } from "../../components/drive/drive-node-list";
 import { DriveSpaceSidebar, type DriveLocation } from "../../components/drive/drive-space-sidebar";
 import { NewFolderForm } from "../../components/drive/new-folder-form";
+import { Dialog } from "../../components/common/dialog";
+import { Button } from "../../components/common/button";
 import { DOC_TYPE_META } from "../../components/drive/constants";
 import { ErrorState, PageHeader } from "../../components/common/states";
 import { Skeleton } from "../../components/common/skeleton";
@@ -59,6 +62,7 @@ export function DrivePage() {
   const [sort, setSort] = useState<"name" | "updated">("updated");
   const [view, setView] = useState<"list" | "grid">("list");
   const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newDocOpen, setNewDocOpen] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const uploadMutation = useUploadDriveFile();
   const nodes = useMemo(() => treeQuery.data ?? [], [treeQuery.data]);
@@ -205,6 +209,15 @@ export function DrivePage() {
                 </label>
                 <button
                   type="button"
+                  data-tutorial-target="create-document"
+                  className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[var(--glow-primary)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => setNewDocOpen(true)}
+                >
+                  <FilePlus2 className="h-4 w-4" />
+                  {t("drive:newDocument.button")}
+                </button>
+                <button
+                  type="button"
                   className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-[var(--glow-primary)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => setNewFolderOpen((open) => !open)}
                 >
@@ -235,7 +248,6 @@ export function DrivePage() {
                 />
                 <button
                   type="button"
-                  data-tutorial-target="create-document"
                   disabled={uploadMutation.isPending}
                   className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background/65 px-4 text-sm font-semibold text-foreground transition hover:border-border-active hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-60"
                   title={t("drive:workspace.uploadHint")}
@@ -287,6 +299,14 @@ export function DrivePage() {
                   />
                 </div>
               ) : null}
+
+              <CreateDocumentDialog
+                open={newDocOpen}
+                zone={newFolderZone}
+                parent={newFolderParent}
+                onClose={() => setNewDocOpen(false)}
+                onCreate={openNode}
+              />
 
               <div className="mt-7 border-t border-border pt-6">
                 <div className="flex flex-wrap items-center gap-3">
@@ -413,5 +433,91 @@ export function DrivePage() {
         </section>
       )}
     </div>
+  );
+}
+
+interface CreateDocumentDialogProps {
+  open: boolean;
+  zone: DriveZone;
+  parent: DriveNode | null;
+  onClose: () => void;
+  onCreate: (node: DriveNode) => void;
+}
+
+/** 原生新建 Markdown 文档（教程 cloud_docs 步教的就是这个按钮）。 */
+function CreateDocumentDialog({
+  open,
+  zone,
+  parent,
+  onClose,
+  onCreate,
+}: CreateDocumentDialogProps) {
+  const { t } = useTranslation();
+  const create = useCreateDriveDocument();
+  const [name, setName] = useState("");
+  const [content, setContent] = useState("");
+
+  const submit = () => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    create.mutate(
+      {
+        zone,
+        name: trimmed,
+        content,
+        parent_id: parent?.id ?? null,
+        project_id: parent?.project_id ?? null,
+      },
+      {
+        onSuccess: (node) => {
+          setName("");
+          setContent("");
+          onClose();
+          onCreate(node);
+        },
+      },
+    );
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!value) onClose();
+      }}
+      title={t("drive:newDocument.button")}
+      description={t("drive:newDocument.hint")}
+    >
+      <div className="space-y-3">
+        <label className="block text-xs font-medium text-muted-foreground">
+          {t("drive:newDocument.namePlaceholder")}
+          <Input
+            autoFocus
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="mt-1.5"
+            placeholder={t("drive:newDocument.namePlaceholder")}
+          />
+        </label>
+        <label className="block text-xs font-medium text-muted-foreground">
+          {t("drive:newDocument.contentPlaceholder")}
+          <textarea
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            rows={6}
+            className="mt-1.5 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            placeholder={t("drive:newDocument.contentPlaceholder")}
+          />
+        </label>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>
+            {t("common:close")}
+          </Button>
+          <Button onClick={submit} disabled={create.isPending || !name.trim()}>
+            {t("drive:newDocument.submit")}
+          </Button>
+        </div>
+      </div>
+    </Dialog>
   );
 }

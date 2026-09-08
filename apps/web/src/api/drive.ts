@@ -72,3 +72,16 @@ export function updateDriveNode(id: number, body: UpdateDriveNodeInput): Promise
 export function createDriveFolder(body: CreateDriveFolderInput): Promise<DriveNode> {
   return post<DriveNode>("/drive/folders", body);
 }
+
+export interface CreateDocumentInput {
+  zone: DriveZone;
+  name: string;
+  content?: string;
+  parent_id?: number | null;
+  project_id?: number | null;
+}
+
+/** 原生新建 Markdown 文档（上传导入只是补充途径）。 */
+export function createDriveDocument(body: CreateDocumentInput): Promise<DriveNode> {
+  return post<DriveNode>("/drive/documents", body);
+}

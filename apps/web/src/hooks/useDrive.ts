@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  createDriveDocument,
   createDriveFolder,
   getDriveNode,
   getDriveNodeContent,
@@ -14,6 +15,7 @@ import type {
   UploadDriveFileInput,
   UpdateDriveNodeInput,
 } from "../types";
+import type { CreateDocumentInput } from "../api/drive";
 
 /** Flat node list (all zones when `zone` is omitted); build the tree client-side. */
 export function useDriveTree(zone?: DriveZone) {
@@ -70,5 +72,15 @@ export function useUploadDriveFile() {
   return useMutation({
     mutationFn: (input: UploadDriveFileInput) => uploadDriveFile(input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["drive"] }),
+  });
+}
+
+export function useCreateDriveDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateDocumentInput) => createDriveDocument(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["drive"] });
+    },
   });
 }

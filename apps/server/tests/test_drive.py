@@ -327,3 +327,56 @@ def test_legacy_artifacts_migrate_to_drive(client, db, default_company_id):
     artifacts = client.get(f"/api/v1/projects/{project.id}/artifacts").json()
     assert [a["title"] for a in artifacts] == ["Legacy PRD"]
     assert artifacts[0]["content"] == "legacy content"
+
+
+def test_create_document_endpoint_native_markdown(client):
+    """原生「新建文档」：教程 cloud_docs 步教的是创建而不是上传导入。"""
+    response = client.post(
+        "/api/v1/drive/documents",
+        json={"zone": "knowledge", "name": "公司第一份文档", "content": "# 手册"},
+    )
+    assert response.status_code == 201, response.text
+    node = response.json()
+    assert node["kind"] == "document"
+    assert node["doc_type"] == "markdown"
+    assert node["path"].startswith("drive/knowledge/")
+    detail = client.get(f"/api/v1/drive/nodes/{node['id']}").json()
+    assert detail["content"] == "# 手册"
+    assert detail["current_version"] == 1
+
+    # 上传仍可用（补充途径），但创建是独立的原生途径
+    upload = client.post(
+        "/api/v1/drive/files",
+        params={"zone": "knowledge", "name": "imported.md"},
+        content=b"# imported",
+        headers={"content-type": "text/markdown"},
+    )
+    assert upload.status_code == 201
+
+    # 空名称 400
+    bad = client.post("/api/v1/drive/documents", json={"zone": "knowledge", "name": "  "})
+    assert bad.status_code == 400
+
+
+def test_create_document_accounts_for_tutorial_document_fact(client, db, employees_by_slug):
+    """建立「公司第一份文档」后，教程 cloud_docs 步骤的真实状态即满足
+    （has_document = 公司存在 kind=document 节点）。"""
+
+    from app.models.organization import Company, Employee
+    from app.tutorials.requirements import Facts, evaluate
+
+    employee = db.get(Employee, employees_by_slug["alice"]["id"])
+    created = client.post(
+        "/api/v1/drive/documents",
+        json={
+            "zone": "knowledge",
+            "name": "手册",
+            "content": "hi",
+            "employee_id": employee.id,
+        },
+    ).json()
+    assert created["name"] == "手册"
+
+    facts = Facts.load(db, db.get(Company, employee.company_id), None)
+    assert facts.has_document is True
+    assert evaluate("COMPANY_DOCUMENT_CREATED", facts) is True

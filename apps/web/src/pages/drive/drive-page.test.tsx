@@ -70,6 +70,12 @@ vi.mock("../../hooks/useDrive", () => ({
   useUpdateDriveNode: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useCreateDriveFolder: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
   useUploadDriveFile: () => ({ mutate: vi.fn(), isPending: false, isError: false, error: null }),
+  useCreateDriveDocument: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
 }));
 
 vi.mock("../../hooks/useEmployees", () => ({

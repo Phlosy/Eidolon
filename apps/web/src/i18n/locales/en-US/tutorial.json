@@ -135,7 +135,7 @@
     },
     "cloud_docs": {
       "label": "Create the first company document",
-      "explanation": "Use Markdown for agent collaboration; use DOCX or PDF export for formal customer material."
+      "explanation": "Create the company’s first document in Drive: click “New document” and create it directly (Markdown content is optional). Importing via “Upload” is also supported, but this step only needs a new document — no import required."
     },
     "git_setup": {
       "label": "Connect Git",

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.enums import DriveZone
 from app.schemas.organization import ORMModel
@@ -51,3 +51,13 @@ class DriveFolderCreate(BaseModel):
     parent_id: int | None = None
     name: str
     project_id: int | None = None
+
+class CreateDocumentRequest(BaseModel):
+    """原生「新建文档」（Markdown）：教程教的是新建，上传导入只是补充途径。"""
+
+    zone: DriveZone = DriveZone.knowledge.value
+    name: str = Field(min_length=1, max_length=255)
+    content: str = Field(default="", max_length=100_000)
+    parent_id: int | None = None
+    project_id: int | None = None
+    employee_id: int | None = None

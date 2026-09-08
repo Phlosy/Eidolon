@@ -115,5 +115,12 @@
     "uploading": "上传中…",
     "uploadHint": "支持 Markdown、DOCX、PDF，最大 20 MB",
     "uploadError": "文件上传失败。"
+  },
+  "newDocument": {
+    "button": "新建文档",
+    "namePlaceholder": "文档名称",
+    "contentPlaceholder": "Markdown 内容（可选）",
+    "submit": "创建",
+    "hint": "新建一个 .md 文档（也可用「上传」导入现成文件，二者都算建立文档）"
   }
 }

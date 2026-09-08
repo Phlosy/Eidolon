@@ -135,7 +135,7 @@
     },
     "cloud_docs": {
       "label": "建立第一份公司文档",
-      "explanation": "用 Markdown 进行 Agent 协作；正式客户材料可以再用 DOCX 或导出 PDF。"
+      "explanation": "在 Drive 里新建公司第一份文档 —— 点「新建文档」直接创建（内容可写 Markdown，可选）；已有文件也可以走「上传」导入，但这一步只需要新建，不用真的导入。"
     },
     "git_setup": {
       "label": "连接 Git 系统",

@@ -313,6 +313,57 @@ def create_binary_document(
     return node
 
 
+def create_markdown_document(
+    db: Session,
+    *,
+    zone: str,
+    name: str,
+    content: str = "",
+    parent_id: int | None = None,
+    project_id: int | None = None,
+    actor_employee_id: int | None = None,
+) -> DriveNode:
+    """原生「新建文档」（Markdown）：磁盘文件 + DriveNode + v1 revision。
+
+    与上传同款提交/事件语义（教程 reconcile 下个 GET 即可看到文档）；
+    校验与父目录解析复用上传的同一套态度（zone 归属、父节点必须是有写权限的文件夹）。
+    """
+    ensure_zone_roots(db)
+    safe_name = Path(name.replace("\\", "/")).name.strip()
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="document name is required")
+
+    if parent_id is not None:
+        parent = drive_repo.get_node(db, parent_id)
+        if parent is None:
+            raise HTTPException(status_code=404, detail="parent folder not found")
+        if parent.kind != DriveNodeKind.folder.value:
+            raise HTTPException(status_code=400, detail="parent is not a folder")
+        if parent.zone != zone:
+            raise HTTPException(status_code=400, detail="parent belongs to a different zone")
+        check_write_permission(db, parent, actor_employee_id)
+    else:
+        parent = drive_repo.get_node_by_path(db, _zone_root_path(db, zone))
+        if parent is None:  # pragma: no cover - ensure_zone_roots guarantees it
+            raise HTTPException(status_code=404, detail="zone root not found")
+
+    node = create_document(
+        db,
+        parent=parent,
+        name=safe_name,
+        content=content,
+        doc_type="markdown",
+        project_id=project_id if project_id is not None else parent.project_id,
+        owner_employee_id=actor_employee_id,
+        message="Created document",
+        commit=False,
+    )
+    db.commit()
+    db.refresh(node)
+    publish_drive("created", node)
+    return node
+
+
 def create_uploaded_file(
     db: Session,
     *,
