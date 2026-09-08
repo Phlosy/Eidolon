@@ -45,13 +45,15 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        data-testid="dialog-panel"
         className={cn(
-          "w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-lg",
+          "flex max-h-[calc(100vh-2rem)] w-full max-w-md flex-col rounded-lg border border-border bg-card p-5 shadow-lg",
+          "supports-[height:100dvh]:max-h-[calc(100dvh-2rem)]",
           className,
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="mb-4 flex shrink-0 items-start justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold">{title}</h2>
             {description ? (
@@ -67,7 +69,14 @@ export function Dialog({
             <X className="h-4 w-4" />
           </Button>
         </div>
-        {children}
+        {/* 内容区滚动：小屏（如 14 寸 Mac）下自动检测出很多模型时，确认按钮
+            不会被顶出屏幕；头部与关闭按钮始终可见。 */}
+        <div
+          data-testid="dialog-body"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+        >
+          {children}
+        </div>
       </div>
     </div>,
     document.body,
