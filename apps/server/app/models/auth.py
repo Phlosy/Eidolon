@@ -16,6 +16,7 @@ class User(TimestampMixin, Base):
     __tablename__ = "users"
 
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    username: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     password_hash: Mapped[str] = mapped_column(Text)
     display_name: Mapped[str] = mapped_column(String(200), default="")
@@ -31,6 +32,7 @@ class PendingRegistration(TimestampMixin, Base):
     __tablename__ = "pending_registrations"
 
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    username: Mapped[str] = mapped_column(String(100), default="")
     password_hash: Mapped[str] = mapped_column(Text)
     display_name: Mapped[str] = mapped_column(String(200), default="")
     locale: Mapped[str] = mapped_column(String(20), default="zh-CN")

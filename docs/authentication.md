@@ -11,6 +11,18 @@ Eidolon treats a signed-in `User` as a human operator and an `Employee` as an AI
 
 `EIDOLON_EMAIL_DELIVERY_MODE=console` exposes the one-time verification token in the registration response for local development. Production uses the built-in `smtp` adapter; configure `EIDOLON_SMTP_HOST`, `EIDOLON_SMTP_FROM`, credentials/TLS as needed, and `EIDOLON_WEB_APP_URL` for the verification link.
 
+## Login identifier（username 或 email）
+
+登录同时支持 **username** 或 **email**（密码相同）：`POST /api/v1/auth/login` 载荷
+`identifier`（或兼容的 `email` / `username` 字段）三选一非空；identifier 含 `@` 按
+email 匹配，否则按 username（大小写不敏感）。未设 username 的账号不区分：
+- 注册可显式传 `username`（只允许小写字母数字 `_ -`），不传则自动从邮箱 local
+  part 派生（冲突时加 `-2`、`-3`… 后缀，保证唯一）。
+- 未知用户名与错误密码返回**相同 401**（探测无差别，Unknown ≠ Bad）。
+- v20 迁移为既有用户回填 username（email local part 清洗规则，冲突加后缀）。
+- `make dev-seed-user` 注入的账号 username=**user**、email=user@example.com、
+  密码 **user** —— 两种方式都能登录。
+
 ## Session and request security
 
 - Sessions expire and can be revoked individually or on all devices.

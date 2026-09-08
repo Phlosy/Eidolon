@@ -118,6 +118,12 @@ def record_audit_event(
     )
 
 
+def _derive_username(email: str) -> str:
+    """注册时未指定 username → 由邮箱 local part 清洗派生（小写字母数字_-）。"""
+    base = "".join(c if c.isalnum() or c in "-_" else "-" for c in email.split("@")[0].lower())
+    return base.strip("-") or "user"
+
+
 def register(
     db: Session, payload, request: Request, background: BackgroundTasks | None = None
 ) -> tuple[dict, int]:
@@ -137,6 +143,7 @@ def register(
         db.add(pending)
     pending.password_hash = _password_hasher.hash(payload.password)
     pending.display_name = payload.display_name.strip()
+    pending.username = (payload.username or "").strip().lower() or _derive_username(pending.email)
     pending.locale = payload.locale
     pending.timezone = payload.timezone
     pending.expires_at = expires_at
@@ -230,8 +237,14 @@ def verify_email(db: Session, token: str, request: Request, response: Response) 
     if db.scalar(select(User).where(User.email == pending.email)) is not None:
         raise HTTPException(status_code=409, detail="account already verified")
 
+    username = (pending.username or "").strip().lower() or _derive_username(pending.email)
+    username_base, counter = username, 2
+    while db.scalar(select(User).where(User.username == username)) is not None:
+        username = f"{username_base}-{counter}"
+        counter += 1
     user = User(
         email=pending.email,
+        username=username,
         email_verified=True,
         password_hash=pending.password_hash,
         display_name=pending.display_name,
@@ -285,11 +298,16 @@ def verify_email(db: Session, token: str, request: Request, response: Response) 
 def authenticate_password(
     db: Session, payload, request: Request, response: Response
 ) -> AuthStateOut:
-    email = str(payload.email).strip().lower()
-    enforce_rate_limit(f"login:{_client_ip(request)}:{email}", limit=8, window_seconds=300)
-    user = db.scalar(select(User).where(User.email == email))
+    identifier = str(payload.identifier or payload.email or payload.username or "").strip().lower()
+    enforce_rate_limit(
+        f"login:{_client_ip(request)}:{identifier}", limit=8, window_seconds=300
+    )
+    if "@" in identifier:
+        user = db.scalar(select(User).where(User.email == identifier))
+    else:
+        user = db.scalar(select(User).where(User.username == identifier))
     if user is None or not user.email_verified or user.status != "active":
-        raise HTTPException(status_code=401, detail="email or password is incorrect")
+        raise HTTPException(status_code=401, detail="invalid login credentials")
     try:
         _password_hasher.verify(user.password_hash, payload.password)
     except (VerifyMismatchError, InvalidHashError):

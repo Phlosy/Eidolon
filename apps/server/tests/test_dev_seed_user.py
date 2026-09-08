@@ -85,6 +85,11 @@ def test_seed_creates_user_with_argon2_hash_and_owner_membership(seeded_db):
     assert status == "active" and verified == 1
     assert PasswordHasher().verify(password_hash, "user"), "哈希必须能与密码 user 校验"
     assert rows["companies"] == ["test-co"]
+    from sqlalchemy import text
+
+    with engine.connect() as conn:
+        usernames = [r[0] for r in conn.execute(text("SELECT username FROM users"))]
+    assert usernames == ["user"], "seed 的用户名默认是 user（username/user 可登录）"
     assert rows["memberships"] == [(1, "OWNER", "test-co")]
     assert set(rows["departments"]) == {"executive", "product", "research", "engineering", "qa"}
 

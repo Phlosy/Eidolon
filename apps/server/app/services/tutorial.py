@@ -299,8 +299,14 @@ def _principal(db: Session):
         raise HTTPException(status_code=409, detail="no company seeded")
     user = db.scalar(select(User).where(User.email == "legacy@eidolon.local"))
     if user is None:
+        # username 唯一冲突防护：匿名化死账号可能还占着 "legacy"（与注册派生同规则）
+        username, counter = "legacy", 2
+        while db.scalar(select(User).where(User.username == username)) is not None:
+            username = f"legacy-{counter}"
+            counter += 1
         user = User(
             email="legacy@eidolon.local",
+            username=username,
             email_verified=True,
             password_hash="$argon2id$v=19$m=65536,t=3,p=4$legacy$legacy",
             display_name="Legacy Operator",

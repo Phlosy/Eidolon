@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 from app.schemas.organization import CompanyOut, ORMModel
 
@@ -46,6 +46,7 @@ class RegisterRequest(BaseModel):
         description=PASSWORD_REQUIREMENTS_DESCRIPTION,
     )
     display_name: str = Field(default="", max_length=200)
+    username: str | None = Field(default=None, max_length=100)
     locale: str = Field(default="zh-CN", max_length=20)
     timezone: str = Field(default="Asia/Shanghai", max_length=80)
 
@@ -53,6 +54,16 @@ class RegisterRequest(BaseModel):
     @classmethod
     def normalize_email(cls, value: EmailStr) -> str:
         return str(value).strip().lower()
+
+    @field_validator("username")
+    @classmethod
+    def normalize_username(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip().lower()
+        if not re.fullmatch(r"[a-z0-9_-]+", normalized):
+            raise ValueError("用户名只允许小写字母、数字、下划线、连字符")
+        return normalized
 
     @field_validator("password")
     @classmethod
@@ -72,8 +83,24 @@ class VerifyEmailRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    """用户名或邮箱 均可登录（password 不变）。
+
+    identifier 优先；email / username 供旧客户端与明确字段使用，三选一非空即可。
+    """
+
+    identifier: str | None = Field(default=None, max_length=320)
+    email: EmailStr | None = None
+    username: str | None = Field(default=None, max_length=100)
     password: str = Field(min_length=1, max_length=256)
+
+    @model_validator(mode="after")
+    def _require_identifier(self) -> "LoginRequest":
+        identifier = (self.identifier or self.email or self.username or "").strip()
+        if not identifier:
+            raise ValueError("必须提供 email 或 username")
+        if not self.identifier:
+            self.identifier = identifier
+        return self
 
 
 class ProfileUpdateRequest(BaseModel):
