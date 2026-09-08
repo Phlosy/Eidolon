@@ -219,6 +219,16 @@ build:
 dev-seed-user: migrate
 	@cd $(SERVER_DIR) && EIDOLON_DATABASE_URL="$(or $(EIDOLON_DATABASE_URL),sqlite:///./data/eidolon.db)" $(PYBIN) $(CURDIR)/scripts/dev_seed_user.py $(if $(SEED_EMAIL),--email $(SEED_EMAIL))$(if $(SEED_PASSWORD), --password $(SEED_PASSWORD))$(if $(SEED_DISPLAY_NAME), --display-name $(SEED_DISPLAY_NAME))
 
+## dev-restart-clean: **一条龙重置**：停服 → 清数据 → 建测试账号 → 重启
+##   · 破坏性操作，必须 DATA_CONFIRM=yes（等于先跑 dev-clear-data 再 dev-seed-user 再 run）
+##   · 不支持 DRY_RUN（要预览删除清单请单独 make dev-clear-data DRY_RUN=1）
+.PHONY: dev-restart-clean dev-restart-clean-guard
+dev-restart-clean: dev-restart-clean-guard stop dev-clear-data dev-seed-user run
+	@echo "OK：数据已清空，测试账号 user@example.com / user 可登录（make dev-seed-user SEED_EMAIL=... 可覆盖）"
+
+dev-restart-clean-guard:
+	@[ "$(DRY_RUN)" != "1" ] || { echo "ERROR: dev-restart-clean 不支持 DRY_RUN（要预览请 make dev-clear-data DRY_RUN=1）"; exit 2; }
+
 ## dev-clear-data: 清除**本地开发数据**（apps/server/data 下的 sqlite/workspaces/employees；保留 .env）
 ##   · 必须先确认：DATA_CONFIRM=yes（或交互输入 y）；DRY_RUN=1 只列出不删除（结尾 NO DATA HAS BEEN MODIFIED.）
 ##   · 前置 stop（防数据库锁）；若 EIDOLON_DATABASE_URL 指向仓库外 ⇒ 拒绝，避免误删外部库
