@@ -23,7 +23,12 @@ from app.core.database import SessionLocal
 from app.events.bus import bus
 from app.lifecycle import access
 from app.lifecycle.engine import ProvisioningEngine
-from app.models.enums import ProvisioningJobKind
+from app.models.enums import (
+    ProvisioningJobKind,
+    ProvisioningJobStatus,
+    ProvisioningStepStatus,
+)
+from app.models.lifecycle import ProvisioningJob
 from app.models.organization import Employee
 from app.models.position import PositionAssignment
 from app.repositories import lifecycle as lifecycle_repo
@@ -204,3 +209,50 @@ def sweep_on_startup() -> list[dict]:
     """启动补收敛（lifespan 里调用）。进程死在提交与处理之间时的恢复路径。"""
     with SessionLocal() as db:
         return converge_all(db)
+
+
+def sweep_stale_provisioning_jobs() -> list[dict]:
+    """启动补收敛：**中断的 provisioning job**。
+
+    进程死在 `engine.run` 中途 ⇒ step 永远 `running`、job 卡在 `running`，
+    教程/入职步骤无限轮询（前端无从得知该重试）。幂等 provisioner 保证重放安全：
+    把所有 `pending|running` 的 job 重置（stale running step → pending、
+    job running → pending），返回清单；调用方（lifespan）用 `engine.run` 重跑。
+    """
+    with SessionLocal() as db:
+        jobs = db.scalars(
+            select(ProvisioningJob).where(
+                ProvisioningJob.status.in_(
+                    (ProvisioningJobStatus.pending.value, ProvisioningJobStatus.running.value)
+                )
+            )
+        ).all()
+        healed = []
+        for job in jobs:
+            for step in lifecycle_repo.list_steps(db, job.id):
+                if step.status == ProvisioningStepStatus.running.value:
+                    step.status = ProvisioningStepStatus.pending.value
+                    step.error = None
+                    step.attempts = 0
+                    step.started_at = None
+                    step.completed_at = None
+            if job.status == ProvisioningJobStatus.running.value:
+                job.status = ProvisioningJobStatus.pending.value
+            db.commit()
+            healed.append({"job_id": job.id, "employee_id": job.employee_id, "kind": job.kind})
+        return healed
+
+
+async def rerun_stale_provisioning_jobs() -> int:
+    """lifespan 一次性调用：标记中断 job → 幂等重跑全部未完成步骤。"""
+    healed = sweep_stale_provisioning_jobs()
+    for ref in healed:
+        with SessionLocal() as db:
+            job = db.get(ProvisioningJob, ref["job_id"])
+            if job is None:
+                continue
+            try:
+                await engine.run(db, job)
+            except Exception:
+                logger.exception("provisioning job %s 启动重跑失败", job.id)
+    return len(healed)

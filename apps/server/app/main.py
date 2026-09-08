@@ -47,6 +47,11 @@ async def lifespan(app: FastAPI):
         if swept:
             logger.info("启动补收敛修正了 %d 人的职位层权限", len(swept))
         await workforce_access.consumer.start()
+    # provisioning 中断自愈：进程死在 engine.run 中途 ⇒ step 永远 running、教程卡死；
+    # 幂等重排（与职位层收敛同一类"进程重启兜底"，见 app/workforce/access.py）
+    healed_jobs = await workforce_access.rerun_stale_provisioning_jobs()
+    if healed_jobs:
+        logger.info("启动补收敛重跑了 %d 个中断的 provisioning job", healed_jobs)
     # P6：真实工作 → Evidence → Assessment 的事件消费者（settings 门控，测试默认关）
     from app.evidence import pipeline as evidence_pipeline
 

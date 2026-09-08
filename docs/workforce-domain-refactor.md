@@ -408,3 +408,18 @@ Employee ── lifecycle axis（不新增列）
 PositionSlot Occupancy = derived from active PRIMARY employment
 WorkforceStatus        = Lifecycle State + Assignment State + Transfer State（WorkforceStatusResolver）
 ```
+
+---
+
+## 附：Provisioning 中断自愈（启动补收敛）
+
+`engine.run` 是在 HTTP 请求内同步执行的：进程死在步骤中途 ⇒ 该 step 永远 `running`、
+job 卡 `running`，教程/入职步骤无限轮询。`app/workforce/access.py` 提供与职位层收敛
+同类的启动兜底：
+
+- `sweep_stale_provisioning_jobs()`：把 `pending|running` 的 job 重置（stale running
+  step → pending、job running → pending），幂等 provisioner 保证重放安全；
+- `rerun_stale_provisioning_jobs()`：lifespan 一次性调用，标记后重跑全部未完成步骤。
+
+`make restart` 即可自愈；重跑后仍未成功的资源（如本地无 Gitea 容器）会以
+`failed` 步骤 + `partial` job 呈现，可调 `/provisioning-jobs/{id}/retry`。
