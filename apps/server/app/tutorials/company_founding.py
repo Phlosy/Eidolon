@@ -69,6 +69,10 @@ COMPANY_FOUNDING_TUTORIAL = {
                     target_id="employee-runtime-tab",
                     placement="top",
                     interaction_mode="NON_BLOCKING",
+                    # 聚光灯交互契约：在聚光灯处操作过（点开标签页/绑定控件）即
+                    # 视为"已会这一步"，教学卡片不再要求重复下一步；点下一步但
+                    # 没操作 → 聚光灯转红提醒（前端 ack 门禁 + pulse）。
+                    metadata={"engage_to_advance": True},
                 ),
                 step(
                     "configure_ceo_provider",
@@ -92,6 +96,9 @@ COMPANY_FOUNDING_TUTORIAL = {
                                 "text_key": "hints.bindProvider",
                             },
                         ],
+                        # 用户点了聚光灯区域（绑定弹窗/绑定控件）后，教学卡片的
+                        # 下一步自动前进/跳过（操作覆盖教学），不需要重复点击。
+                        "engage_to_advance": True,
                     },
                 ),
                 step(
