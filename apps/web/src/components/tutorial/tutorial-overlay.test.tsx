@@ -401,6 +401,24 @@ describe("跨路由", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(screen.queryByText("other page")).toBeNull();
   });
+
+  it("弹窗开着时出现新步骤：关掉弹窗后也不再补跳（provider 填完被拽走的回归）", async () => {
+    // 复现：用户在弹窗里填 provider/密钥，期间教程步骤状态推进了；
+    // 旧逻辑"等弹窗关闭再补跳"，于是表单提交、弹窗一关就被拽到别的页面。
+    progressFor("hire_ceo");
+    const modal = document.createElement("div");
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    document.body.appendChild(modal);
+    renderAt("/");
+    await waitFor(() => expect(screen.getByText("home")).toBeTruthy());
+
+    modal.remove(); // 表单提交完成，弹窗关闭
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    expect(screen.queryByText("Hire")).toBeNull(); // 没有被拽去 /employees
+    expect(screen.getByText("home")).toBeTruthy();
+  });
 });
 
 describe("向导内部指引（ui_hints）", () => {

@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { TutorialPlacement } from "../../api/tutorial";
+import { choosePlacement } from "./collision";
 
 /**
  * 教练面板：贴在真实目标旁边的说明卡片。
@@ -59,17 +60,35 @@ export function CoachPanel({ anchor, placement, children, degraded }: CoachPanel
     const reference = { getBoundingClientRect: () => anchor };
     let cancelled = false;
     const place = async () => {
+      // 体积碰撞避让：先自己按"与保护区（聚光灯目标+弹窗）重叠最少"选方位，
+      // 再交给 floating-ui 做视口内微调（flip 改用空回退，防止它翻回遮挡侧）。
+      const viewW = document.documentElement.clientWidth;
+      const viewH = document.documentElement.clientHeight;
+      const protectedRects = [
+        anchor,
+        ...Array.from(
+          document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'),
+        ).map((el) => el.getBoundingClientRect()),
+      ];
+      const panelSize = { width: panel.offsetWidth || 380, height: panel.offsetHeight || 200 };
+      const picked = choosePlacement(
+        anchor,
+        panelSize,
+        { width: viewW, height: viewH },
+        protectedRects,
+        placement === "auto" ? "bottom" : placement,
+      );
       const {
         x: rawX,
         y: rawY,
         placement: appliedPlacement,
         middlewareData,
       } = await computePosition(reference, panel, {
-        placement: placement === "auto" ? "bottom" : placement,
+        placement: picked,
         strategy: "fixed",
         middleware: [
           offset(14),
-          flip({ padding: PADDING }),
+          flip({ padding: PADDING, fallbackPlacements: [] }),
           shift({ padding: PADDING }),
           ...(arrowRef.current ? [arrow({ element: arrowRef.current })] : []),
         ],

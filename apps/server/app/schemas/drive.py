@@ -52,6 +52,7 @@ class DriveFolderCreate(BaseModel):
     name: str
     project_id: int | None = None
 
+
 class CreateDocumentRequest(BaseModel):
     """原生「新建文档」（Markdown）：教程教的是新建，上传导入只是补充途径。"""
 

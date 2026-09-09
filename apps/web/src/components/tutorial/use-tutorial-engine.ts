@@ -254,7 +254,13 @@ export function useTutorialEngine(): TutorialEngine {
     if (mode !== "live" || !step || progress?.status !== "active") return;
     if (onRoute || stepDone || pendingParams.length) return;
     if (navigated.current.has(step.id)) return;
-    if (dialogOpen) return;
+    if (dialogOpen) {
+      // 弹窗开着时把这一步标记为"已给过自动跳转机会"：用户正在对话框里做事
+      // （例如填 provider/密钥），弹窗关闭后绝不能再补跳 —— 否则就会把人拽回
+      // 上一步的页面（实测：填完 provider 关掉对话框就被拉走）。
+      navigated.current.add(step.id);
+      return;
+    }
     navigated.current.add(step.id);
     navigate(resolvedRoute);
   }, [
