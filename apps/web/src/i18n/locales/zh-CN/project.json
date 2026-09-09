@@ -92,7 +92,17 @@
     "milestonesKicker": "交付路径",
     "workflowKicker": "任务工作流",
     "workflowDescription": "将现有工作流图转化为团队的实时执行地图。",
-    "tasksKicker": "执行队列"
+    "tasksKicker": "执行队列",
+    "tabLifecycle": "生命周期",
+    "tabPlan": "计划",
+    "tabTasks": "任务",
+    "tabFiles": "文件",
+    "nextAction": "下一步行动",
+    "pendingReview": "需要你的决定：{{title}}",
+    "enterReview": "进入评审室",
+    "currentPhase": "当前阶段：{{phase}}",
+    "completePhase": "完成阶段并准备下一步",
+    "waitingTeam": "等待团队完成当前阶段"
   },
   "timeline": {
     "companyTitle": "公司项目总甘特图",

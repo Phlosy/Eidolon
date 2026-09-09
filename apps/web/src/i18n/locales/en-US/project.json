@@ -92,7 +92,17 @@
     "milestonesKicker": "Delivery path",
     "workflowKicker": "Mission workflow",
     "workflowDescription": "The existing workflow graph reframed as the team's live execution map.",
-    "tasksKicker": "Execution queue"
+    "tasksKicker": "Execution queue",
+    "tabLifecycle": "Lifecycle",
+    "tabPlan": "Plan",
+    "tabTasks": "Tasks",
+    "tabFiles": "Files",
+    "nextAction": "Next action",
+    "pendingReview": "Your decision is needed: {{title}}",
+    "enterReview": "Enter review room",
+    "currentPhase": "Current phase: {{phase}}",
+    "completePhase": "Complete phase and prepare the next one",
+    "waitingTeam": "Waiting for the team to finish the current phase"
   },
   "timeline": {
     "companyTitle": "Company Portfolio Gantt",

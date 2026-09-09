@@ -22,6 +22,7 @@ import { useEmployees } from "../../hooks/useEmployees";
 import { useDecideReview, useReview } from "../../hooks/useProjects";
 import type { ReviewDecision } from "../../types";
 import { cn } from "../../utils/cn";
+import { Body, Caption, H1, H2, Overline } from "../../components/typography/text";
 
 const decisions: Array<{ value: ReviewDecision; tone: string }> = [
   { value: "approved", tone: "success" },
@@ -101,28 +102,26 @@ export function ReviewRoomPage() {
             <div className="max-w-3xl">
               <div className="flex items-center gap-2 text-warning">
                 <ShieldCheck className="h-4 w-4" />
-                <p className="type-kicker">{t("reviewRoom.kicker")}</p>
+                <Overline>{t("reviewRoom.kicker")}</Overline>
               </div>
-              <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] md:text-5xl">
-                {review.title}
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+              <H1 className="mt-3">{review.title}</H1>
+              <Body tone="muted" className="mt-3 max-w-2xl">
                 {t("reviewRoom.subtitle")}
-              </p>
+              </Body>
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
               <div className="rounded-xl border border-border bg-background/45 p-3">
                 <UserRound className="h-4 w-4 text-primary" />
-                <p className="mt-3 text-[10px] text-muted-foreground">
+                <Caption tone="muted" className="mt-3 block">
                   {t("reviewRoom.presenter")}
-                </p>
+                </Caption>
                 <p className="mt-1 font-medium">{presenter?.name ?? t("reviewRoom.unassigned")}</p>
               </div>
               <div className="rounded-xl border border-border bg-background/45 p-3">
                 <UsersRound className="h-4 w-4 text-primary" />
-                <p className="mt-3 text-[10px] text-muted-foreground">
+                <Caption tone="muted" className="mt-3 block">
                   {t("reviewRoom.participants")}
-                </p>
+                </Caption>
                 <p className="mt-1 font-medium">
                   {Array.isArray(
                     (review.participants as { reviewer_names?: string[] }).reviewer_names,
@@ -133,9 +132,9 @@ export function ReviewRoomPage() {
               </div>
               <div className="col-span-2 rounded-xl border border-warning/25 bg-warning/7 p-3 sm:col-span-1">
                 <MessageSquareText className="h-4 w-4 text-warning" />
-                <p className="mt-3 text-[10px] text-muted-foreground">
+                <Caption tone="muted" className="mt-3 block">
                   {t("reviewRoom.statusLabel")}
-                </p>
+                </Caption>
                 <p className="mt-1 font-medium">
                   {t(`reviewRoom.statuses.${review.status}`, {
                     defaultValue: review.status.replaceAll("_", " "),
@@ -219,8 +218,8 @@ export function ReviewRoomPage() {
         </div>
 
         <form onSubmit={submit} className="command-panel h-fit p-5 md:sticky md:top-5 md:p-6">
-          <p className="type-kicker text-warning">{t("reviewRoom.decisionKicker")}</p>
-          <h2 className="mt-2 text-xl font-semibold">{t("reviewRoom.decisionTitle")}</h2>
+          <Overline tone="warning">{t("reviewRoom.decisionKicker")}</Overline>
+          <H2 className="mt-2">{t("reviewRoom.decisionTitle")}</H2>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
             {t("reviewRoom.decisionHint")}
           </p>
@@ -243,13 +242,13 @@ export function ReviewRoomPage() {
               <label
                 key={item.value}
                 className={cn(
-                  "flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors",
+                  "flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-all",
                   decision === item.value
                     ? item.tone === "danger"
-                      ? "border-danger/40 bg-danger/8"
+                      ? "border-danger/45 bg-danger/10"
                       : item.tone === "warning"
-                        ? "border-warning/40 bg-warning/8"
-                        : "border-success/40 bg-success/8"
+                        ? "border-warning/45 bg-warning/10"
+                        : "border-success/45 bg-success/10"
                     : "border-border hover:bg-muted/40",
                 )}
               >
@@ -262,16 +261,28 @@ export function ReviewRoomPage() {
                     setDecision(item.value);
                     setError("");
                   }}
-                  className="mt-1"
+                  className="mt-1.5"
                 />
-                <span>
-                  <span className="block text-sm font-medium">
+                <span className="min-w-0 flex-1">
+                  <span className="block text-base font-semibold">
                     {t(`reviewRoom.decisions.${item.value}.label`)}
                   </span>
-                  <span className="mt-0.5 block text-[10px] leading-4 text-muted-foreground">
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">
                     {t(`reviewRoom.decisions.${item.value}.hint`)}
                   </span>
                 </span>
+                {decision === item.value ? (
+                  <CheckCircle2
+                    className={cn(
+                      "mt-0.5 h-4 w-4 shrink-0",
+                      item.tone === "danger"
+                        ? "text-danger"
+                        : item.tone === "warning"
+                          ? "text-warning"
+                          : "text-success",
+                    )}
+                  />
+                ) : null}
               </label>
             ))}
           </fieldset>
