@@ -7,16 +7,17 @@ import { useDashboardStats } from "../../hooks/useDashboardStats";
 import { CompanyHero } from "../../components/company/company-hero";
 import { WorkforceOverview } from "../../components/company/workforce-overview";
 import { ActiveProjectBoard } from "../../components/company/active-project-board";
-import {
-  AlertCenter,
-  AssetProduction,
-  CompanyPulse,
-  InfrastructureStatus,
-} from "../../components/company/operations-panels";
+import { SystemStatusDrawer } from "../../components/company/system-status-drawer";
 import { ErrorState } from "../../components/common/states";
 import { Skeleton } from "../../components/common/skeleton";
 import { CompanyFoundingState } from "../../components/company/company-founding-state";
 
+/**
+ * 首页 = 公司全景舞台。
+ *
+ * 结构：舞台横幅（公司/等级/下一步）→ 队伍 + 任务 → 折叠的系统状态。
+ * 一屏一个重心，明细按需展开。
+ */
 export function DashboardPage() {
   const companyQuery = useCompany();
   const employeesQuery = useEmployees();
@@ -54,7 +55,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-5">
       <CompanyHero company={companyQuery.data} stats={stats} runtimeHealth={runtimeHealth} />
-      <div className="grid gap-5 xl:grid-cols-[1.05fr_.95fr]">
+      <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
         <WorkforceOverview
           employees={employees}
           departments={companyQuery.data?.departments ?? []}
@@ -65,16 +66,7 @@ export function DashboardPage() {
           employees={employees}
         />
       </div>
-      <div className="grid gap-5 xl:grid-cols-[1.15fr_.85fr]">
-        <CompanyPulse />
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-          <InfrastructureStatus runtimes={runtimes} />
-          <AssetProduction nodes={driveQuery.data ?? []} />
-          <div className="sm:col-span-2 xl:col-span-1 2xl:col-span-2">
-            <AlertCenter employees={employees} runtimes={runtimes} />
-          </div>
-        </div>
-      </div>
+      <SystemStatusDrawer employees={employees} runtimes={runtimes} nodes={driveQuery.data ?? []} />
     </div>
   );
 }

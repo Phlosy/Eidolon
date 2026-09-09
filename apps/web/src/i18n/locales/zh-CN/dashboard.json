@@ -21,7 +21,9 @@
     "description": "由 AI 员工、任务、知识和执行基础设施组成的动态组织。",
     "companyExperience": "公司经验",
     "experienceSource": "累计 {{xp}} XP · 确定性派生指标",
-    "runtimeHealth": "运行时健康度"
+    "runtimeHealth": "运行时健康度",
+    "enterOffice": "进入办公室",
+    "newProject": "新建项目"
   },
   "workforce": {
     "kicker": "实时组织",
@@ -65,5 +67,14 @@
     "offline": "离线员工",
     "clear": "当前没有运营异常；离线员工仍会显示，以便安排调度。",
     "review": "存在需要处理的运营问题，请先打开对应工作台确认。"
+  },
+  "status": {
+    "kicker": "系统状态",
+    "title": "运行与资产",
+    "health": "健康度",
+    "alerts": "告警",
+    "assets": "资产",
+    "expand": "展开明细",
+    "collapse": "收起明细"
   }
 }

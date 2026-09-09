@@ -21,7 +21,9 @@
     "description": "A living organization of AI employees, missions, knowledge, and execution infrastructure.",
     "companyExperience": "Company experience",
     "experienceSource": "{{xp}} total XP · deterministic derived metric",
-    "runtimeHealth": "Runtime health"
+    "runtimeHealth": "Runtime health",
+    "enterOffice": "Enter the office",
+    "newProject": "New project"
   },
   "workforce": {
     "kicker": "Live workforce",
@@ -66,5 +68,14 @@
     "offline": "Employees offline",
     "clear": "No active operational incidents. Offline employees remain visible for scheduling context.",
     "review": "Operational issues need review. Open the related workspace before taking action."
+  },
+  "status": {
+    "kicker": "System status",
+    "title": "Runtime & assets",
+    "health": "Health",
+    "alerts": "Alerts",
+    "assets": "Assets",
+    "expand": "Show details",
+    "collapse": "Hide details"
   }
 }

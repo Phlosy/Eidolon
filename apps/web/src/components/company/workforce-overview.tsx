@@ -5,6 +5,12 @@ import type { Department, Employee } from "../../types";
 import { EmployeePresence } from "../employee/employee-presence";
 import { Panel, SectionHeader } from "../shared/panel";
 
+/**
+ * 员工名册 → 横排「队伍」条。
+ *
+ * 游戏里的队伍是横向一排头像；这里沿用同样的信息形态：一行扫完谁在岗、
+ * 谁在忙，点进去看详情。不再用纵向网格占掉半屏。
+ */
 export function WorkforceOverview({
   employees,
   departments,
@@ -16,7 +22,7 @@ export function WorkforceOverview({
   const departmentById = new Map(departments.map((department) => [department.id, department]));
   const ordered = [...employees]
     .sort((a, b) => Number(b.status !== "offline") - Number(a.status !== "offline"))
-    .slice(0, 6);
+    .slice(0, 8);
   return (
     <Panel className="p-5 md:p-6">
       <SectionHeader
@@ -34,13 +40,14 @@ export function WorkforceOverview({
           </Link>
         }
       />
-      <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+      <div className="scroll-area -mx-1 flex gap-2.5 overflow-x-auto px-1 pb-1">
         {ordered.map((employee) => (
-          <EmployeePresence
-            key={employee.id}
-            employee={employee}
-            department={departmentById.get(employee.department_id)}
-          />
+          <div key={employee.id} className="w-[218px] shrink-0">
+            <EmployeePresence
+              employee={employee}
+              department={departmentById.get(employee.department_id)}
+            />
+          </div>
         ))}
       </div>
     </Panel>
