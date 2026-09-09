@@ -1,7 +1,8 @@
 # Eidolon 交接文档（2026-09-09）
 
 > 覆盖范围：P5–P11 之后的「本地开发体验 / 入职与权限开通可靠性 / 教程交互」连续修复。
-> 状态基线：分支 `dev`，HEAD `e5e5690`，**工作树干净**，全量门禁绿（见 §5）。
+> 状态基线：分支 `dev`，HEAD `430601e`，**工作树干净**，全量门禁绿（见 §5）。
+> 续篇：当天下午完成「教程全流程实机走查」，见 §1.6。
 
 ---
 
@@ -43,7 +44,19 @@
 ### 1.4 教程交互（聚光灯）
 - **操作过即免点下一步**：点击聚光灯目标（含操作卡自己的「下一步/确定」）→ `engaged` → 指引自动前进；未操作却点教学卡「下一步」→ 纯函数 `shouldRemindStep` 拦下并让光环转红脉动提醒。`2f5b24a` + `e4afaa1`（`configure_ceo_runtime` / `configure_ceo_provider` 标记 `metadata.engage_to_advance`）
 - **弹窗关闭不再补跳**（本轮修复）：auto-nav effect 原在 `dialogOpen` 翻回 false 时补跳 —— 用户在弹窗里填 provider 密钥（密码管理器自动填入也会触发提交/关闭）后一关弹窗就被拽回上一步页面。现在弹窗开着即把该步骤标记为「已给过跳转机会」，关闭后绝不补跳。`e5e5690`
-- **体积碰撞避让**（本轮新增，回答"游戏碰撞"的诉求）：`components/tutorial/collision.ts::choosePlacement` 对 top/bottom/left/right 四个候选做 **AABB 重叠面积打分**，保护区 = 聚光灯目标 + 所有打开的 `aria-modal` 弹窗，取重叠最少者；`CoachPanel` 先自选方位，再交给 floating-ui 做视口内微调（`flip.fallbackPlacements` 清空，防止翻回遮挡侧）。6 例纯函数单测。
+- **体积碰撞避让**（本轮新增，回答"游戏碰撞"的诉求）：`components/tutorial/collision.ts::choosePlacement` 对 top/bottom/left/right 四个候选做 **AABB 重叠面积打分**，保护区 = 聚光灯目标 + 所有打开的 `aria-modal` 弹窗 + 页面用 `data-tutorial-protected` 声明的关键元素，取重叠最少者；`CoachPanel` 先自选方位，再交给 floating-ui 做视口内微调（`flip.fallbackPlacements` 清空，防止翻回遮挡侧）。6 例纯函数单测。
+
+### 1.6 教程全流程实机走查（Playwright，2026-09-09 下午）
+
+用 Python Playwright（conda 环境，chromium headless 1440x900）把核心教程 10 步 + 实战教程 7 步**全部实机走完**（两个教程状态均 completed），逐步截图 + 几何审计（卡片 vs 聚光灯目标/弹窗/保护区的重叠面积），产物在 `tmp/tutorial-audit/`（截图 + report.jsonl + 可重跑驱动 `tmp/tutorial_audit.py`，均不入库）。
+
+走查揪出并已修的四个真问题：
+1. **补跳竞态**（`1ea38c3`）：`e5e5690` 的 `dialogOpen` 瞬时值判断有赛道 —— 表单提交时弹窗先关、进度 refetch 后到，新步骤到达时 `dialogOpen` 已翻回 false，补跳照样发生（实测被拽到 /drive）。修复：MutationObserver 记录关窗时间戳，关窗后 **2s 宽限期**内的跳转请求一律标记"已给过机会"。三种场景（取消/提交/步骤已推进后开关弹窗）实测均不再补跳。
+2. **degraded 卡片居中压死弹窗**（`1ea38c3`）：`cloud_docs` 步打开「新建文档」弹窗时，兜底态卡片居中把弹窗整个盖住（145160px²）。修复：degraded/向导无锚点段落且有弹窗时，以弹窗为锚点贴侧边。
+3. **弹窗锚点过期**（`430601e`）：向导翻到没有 hint 锚点的子步骤时以弹窗为锚点，但 `dialogRect` 在 render 期捕获成冻结 DOMRect —— 弹窗内容长高（如点「新建独立配置」展开表单）后没有任何状态变化触发重渲染，卡片停在旧位置压住弹窗标题栏（84170px² → 修后 2048px² 边缘贴触）。修复：`CoachPanel` 新增 `getAnchor` 惰性锚点，每次摆放重新读矩形（autoUpdate `animationFrame` 逐帧跟随，setCoords 浅比较防抖动）。
+4. **`POST /drive/documents` 404**（`a5605bc`，后端）：启动期种子在无请求上下文时建 zone 根（`company_id=NULL`），带身份请求按 company 过滤看不到 → 「新建文档」404（测试环境 `AUTH_REQUIRED=false` 无 identity 过滤，所以门禁一直绿）。修复：`ensure_zone_roots` 显式传 company_id 并把无主根**收养**到当前公司名下；回归测试用 `RequestIdentity` 显式模拟带身份请求。
+
+另：`git_setup` 路由 `/settings` → `/settings/git`（`1ea38c3`）；`data-tutorial-protected` 从"文档里的补救手段"落成真实机制（`2e379d0`，此前代码并未收集该属性）。
 
 ### 1.5 Drive 与教程文案
 - 新增**原生新建文档** `POST /drive/documents`（Markdown，内容可选）+ Drive 页「新建文档」弹窗；`create_node` 增加 **parent 公司继承兜底**。`35be4bf`
@@ -86,7 +99,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 | 新建表格/演示/画板 | 菜单项置灰「即将支持」（无后端格式，未造假模板） | 有格式设计后再点亮 |
 | 6 个既有 WIP 未格式化文件 | `ruff format --check` 期望恰好这 6 个红：`employees.py`、`auth.py`、`providers.py`、`test_authentication.py`、`test_employee_providers.py`、`test_providers.py` | **不要**顺手格式化 |
 | P6.1 flaky | `test_updates.py::test_managed_update_success` 全量套跑偶发、单跑必过（历史记录在 `docs/evidence-pipeline.md`） | 未修；勿用 sleep/retry 掩盖 |
-| 教程后段未手工验证 | `team / projects / reviews / delivery` 步骤遮挡情况本轮未人工过一遍（碰撞避让已全局生效，但值得实机确认） | 见 §6 第一步 |
+| 教程后段遮挡 | ~~未人工过一遍~~ 已实机走查完毕（§1.6），17 步全部无功能性遮挡 | 剩余仅边缘贴触级重叠（<3000px²），不挡任何控件 |
 
 ---
 
@@ -100,12 +113,12 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   ```
 - 门禁（改动后必须全绿）：
   ```bash
-  pytest apps/server/tests -q        # 期望 602 passed / 6 deselected
+  pytest apps/server/tests -q        # 期望 603 passed / 6 deselected
   ruff check apps/server/app apps/server/tests
   ruff format --check apps/server/app apps/server/tests   # 只允许 6 个既有 WIP 红
   cd apps/server && alembic check    # No new upgrade operations detected
   cd apps/web && pnpm exec tsc --noEmit && pnpm exec eslint . && pnpm exec prettier --check .
-  cd apps/web && pnpm exec vitest run    # 期望 63 files / 258 passed
+  cd apps/web && pnpm exec vitest run    # 期望 63 files / 260 passed
   cd apps/web && pnpm build
   ```
 - 数据库：`apps/server/data/eidolon.db`；快速查 job：
@@ -118,7 +131,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 
 ## 6. 下一步建议（按优先级）
 
-1. **实机过一遍教程后段**（`hire_engineer` → `projects` → `reviews` → `delivery`），观察教学卡片是否遮挡主内容；碰撞避让已全局生效，若仍有遮挡，调整该步 `placement` 或给页面元素加 `data-tutorial-protected` 参与避让。
+1. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
 2. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
 3. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。
 4. P6.1 flaky 的根因排查（注入时钟 / 事件循环生命周期 fixture）。
@@ -128,6 +141,10 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 ## 7. 本轮提交索引（倒序）
 
 ```
+430601e fix(tutorial): 弹窗锚点改惰性读取 —— 弹窗内容长高后卡片不再压弹窗
+a5605bc fix(drive): zone 根目录 company_id 收养 —— 新建文档不再 404
+1ea38c3 fix(tutorial): 弹窗关闭宽限期防补跳 + degraded 卡片贴弹窗侧边 + git_setup 路由修复
+2e379d0 feat(tutorial): data-tutorial-protected 参与碰撞避让 —— 页面可声明关键内容区
 e5e5690 fix(tutorial): 弹窗关闭不再补跳 + 教学卡片体积碰撞避让
 22eec67 feat(web/drive): 飞书式新建/上传图标下拉 + 去掉顶部云文档大标题 + 教程卡片不再压按钮
 35be4bf feat(drive/tutorial): 原生「新建文档」+ 教程改为教创建（上传只是补充）
