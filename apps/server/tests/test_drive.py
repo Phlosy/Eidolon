@@ -358,6 +358,40 @@ def test_create_document_endpoint_native_markdown(client):
     assert bad.status_code == 400
 
 
+def test_create_document_adopts_null_company_zone_roots(db, default_company_id):
+    """启动期种子在无请求上下文时建 zone 根（company_id=NULL）；带身份的请求
+    按 company 过滤看不到这些根 →「新建文档」404 zone root not found（实机走查
+    实测复现，测试环境 AUTH_REQUIRED=false 所以平时暴露不出来）。
+    ensure_zone_roots 必须把无主根收养到当前公司名下。"""
+    from sqlalchemy import select
+
+    from app.core.request_context import (
+        RequestIdentity,
+        reset_request_identity,
+        set_request_identity,
+    )
+    from app.models import DriveNode
+
+    for zone in ("projects", "knowledge", "skills", "handbook"):
+        root = db.scalar(select(DriveNode).where(DriveNode.path == f"drive/{zone}"))
+        assert root is not None
+        root.company_id = None
+    db.commit()
+
+    identity = RequestIdentity(
+        user_id=1, company_id=default_company_id, membership_role="OWNER", session_id=1
+    )
+    token = set_request_identity(identity)
+    try:
+        node = drive_service.create_markdown_document(db, zone="knowledge", name="收养验证")
+    finally:
+        reset_request_identity(token)
+    assert node.name == "收养验证"
+    for zone in ("projects", "knowledge", "skills", "handbook"):
+        root = db.scalar(select(DriveNode).where(DriveNode.path == f"drive/{zone}"))
+        assert root.company_id == default_company_id, f"drive/{zone} 未被收养"
+
+
 def test_create_document_accounts_for_tutorial_document_fact(client, db, employees_by_slug):
     """建立「公司第一份文档」后，教程 cloud_docs 步骤的真实状态即满足
     （has_document = 公司存在 kind=document 节点）。"""

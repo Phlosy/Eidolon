@@ -143,10 +143,13 @@ def ensure_zone_roots(db: Session, company_id: int | None = None) -> None:
     并发安全由 drive_repo.create_node 统一兜底（savepoint + 回查已提交行 +
     短退避重试）—— 两个请求同时开同一目录不会撞 drive_nodes.path 唯一约束。
     """
+    identity = get_request_identity()
+    cid = company_id or (identity.company_id if identity else None)
     for zone in ZONES:
         path = _zone_root_path(db, zone, company_id)
-        if drive_repo.get_node_by_path(db, path) is None:
-            _create_node(
+        node = drive_repo.get_node_by_path(db, path)
+        if node is None:
+            node = _create_node(
                 db,
                 path=path,
                 on_disk=Path(settings.data_root) / path,
@@ -154,7 +157,14 @@ def ensure_zone_roots(db: Session, company_id: int | None = None) -> None:
                 kind=DriveNodeKind.folder.value,
                 name=zone,
                 zone=zone,
+                company_id=cid,
             )
+        # 启动期种子在没有请求上下文时建根目录，company_id 落为 NULL，而首个
+        # 公司的 zone 路径与它相同；之后请求按 company 过滤就看不到这条根，
+        # 「新建文档」会 404 zone root not found。根目录路径相同即同一家公司
+        # 的地盘，直接把无主行收养到当前公司名下。
+        if node is not None and node.company_id is None and cid is not None:
+            node.company_id = cid
     db.flush()
 
 
