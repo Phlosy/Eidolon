@@ -40,33 +40,33 @@ async def lifespan(app: FastAPI):
         get_secret_store().register_existing(db)  # arm log/event redaction
     bus.attach_loop()
     orchestrator.start()
-    # P4d：职位权限消费者（`employee.position_*` → Desired State → ProvisioningJob）。
-    # 先补一轮收敛再进循环：进程死在"提交任职"与"处理事件"之间时靠它兜住。
+    # E0：事件引擎是 lifespan 里唯一的事件消费入口（无处理器时空转无害）。
+    from app.events import engine as engine_module
+    from app.evidence import pipeline as evidence_pipeline
+
+    # P4d：职位权限处理器（`employee.position_*` → Desired State → ProvisioningJob）。
+    # 先补一轮收敛再注册：进程死在"提交任职"与"处理事件"之间时靠它兜住。
     if settings.position_access_sync:
         swept = workforce_access.sweep_on_startup()
         if swept:
             logger.info("启动补收敛修正了 %d 人的职位层权限", len(swept))
-        await workforce_access.consumer.start()
+        workforce_access.register(engine_module.engine)
     # provisioning 中断自愈：进程死在 engine.run 中途 ⇒ step 永远 running、教程卡死；
     # 幂等重排（与职位层收敛同一类"进程重启兜底"，见 app/workforce/access.py）
     healed_jobs = await workforce_access.rerun_stale_provisioning_jobs()
     if healed_jobs:
         logger.info("启动补收敛重跑了 %d 个中断的 provisioning job", healed_jobs)
-    # P6：真实工作 → Evidence → Assessment 的事件消费者（settings 门控，测试默认关）
-    from app.evidence import pipeline as evidence_pipeline
-
+    # P6：真实工作 → Evidence → Assessment 的事件处理器（settings 门控，测试默认关）
     if settings.evidence_pipeline_enabled:
-        await evidence_pipeline.consumer.start()
+        evidence_pipeline.register(engine_module.engine)
+    await engine_module.engine.start()
     manager = get_manager()
     await manager.start_healthcheck_loop()
     update_service = get_update_service()
     await update_service.start_update_loop()
     logger.info("eidolon server started (runtime_mode=%s)", settings.runtime_mode)
     yield
-    await workforce_access.consumer.stop()
-    from app.evidence import pipeline as evidence_pipeline
-
-    await evidence_pipeline.consumer.stop()
+    await engine_module.engine.stop()
     await orchestrator.stop()
     await manager.stop_healthcheck_loop()
     await update_service.stop_update_loop()

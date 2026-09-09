@@ -22,6 +22,8 @@ class EventBus:
     def __init__(self) -> None:
         self._subscribers: set[asyncio.Queue] = set()
         self._loop: asyncio.AbstractEventLoop | None = None
+        #: 订阅者队列满被丢弃的消息数（事件引擎 stats().queue_dropped 的数据源）。
+        self.dropped = 0
 
     def attach_loop(self, loop: asyncio.AbstractEventLoop | None = None) -> None:
         self._loop = loop or asyncio.get_running_loop()
@@ -73,12 +75,12 @@ class EventBus:
         for queue in list(self._subscribers):
             loop.call_soon_threadsafe(self._safe_put, queue, message)
 
-    @staticmethod
-    def _safe_put(queue: asyncio.Queue, message: dict) -> None:
+    def _safe_put(self, queue: asyncio.Queue, message: dict) -> None:
         try:
             queue.put_nowait(message)
         except asyncio.QueueFull:
-            logger.warning("dropping event for slow ws subscriber: %s", message.get("type"))
+            self.dropped += 1
+            logger.warning("dropping event for slow subscriber: %s", message.get("type"))
 
 
 bus = EventBus()

@@ -1,15 +1,14 @@
 """EvidencePipeline —— Domain Event → Collector → Normalize →（必要时）Assessment。
 
 - `handle_event(db, message)`：同步处理一条总线事件（测试直接调用，production 由
-  consumer 在 lifespan 内消费）。
-- `EventsConsumer`：与 PositionAccessConsumer 同款 asyncio consumer，gated by
-  settings.evidence_pipeline_enabled（conftest 关闭 → 测试不启动后台消费者）。
+  事件引擎驱动，见 `register()`）。
+- `register(engine)`：把处理器挂到 EventEngine，gated by
+  settings.evidence_pipeline_enabled（conftest 关闭 → 测试环境引擎不注册它）。
 - 事件丢失的兜底：`reconcile.reconcile_employee/project` 随时可重扫（幂等）。
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from sqlalchemy.orm import Session
@@ -89,45 +88,21 @@ def _project_end_assessments(db: Session, project_id: int) -> int:
     return run_project_end_assessments(db, project_id)
 
 
-class EventsConsumer:
-    """lifespan 内消费 bus 事件的异步消费者（settings 门控）。"""
+def _handle_message(message: dict) -> None:
+    """事件引擎入口：开独立 session → handle_event → 有产出才 commit。"""
+    from app.core.database import SessionLocal
 
-    def __init__(self) -> None:
-        self._queue: asyncio.Queue | None = None
-        self._task: asyncio.Task | None = None
-
-    async def start(self) -> None:
-        from app.core.database import SessionLocal
-        from app.events.bus import bus
-
-        self._queue = bus.subscribe()
-        self._task = asyncio.ensure_future(self._loop(SessionLocal))
-
-    async def stop(self) -> None:
-        from app.events.bus import bus
-
-        if self._task is not None:
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
-            self._task = None
-        if self._queue is not None:
-            bus.unsubscribe(self._queue)
-            self._queue = None
-
-    async def _loop(self, session_factory):
-        assert self._queue is not None
-        while True:
-            message = await self._queue.get()
-            try:
-                with session_factory() as db:
-                    stats = handle_event(db, message)
-                    if stats["collected"] or stats["assessments"]:
-                        db.commit()
-            except Exception:  # noqa: BLE001 - 单条事件失败不能打死消费者
-                logger.exception("证据事件处理失败：%s", message.get("type"))
+    with SessionLocal() as db:
+        stats = handle_event(db, message)
+        if stats["collected"] or stats["assessments"]:
+            db.commit()
 
 
-consumer = EventsConsumer()
+def register(event_engine) -> None:
+    """把证据处理器挂到事件引擎：按消息主体 id（task/review/usage/record）细粒度分区。"""
+    event_engine.register(
+        "evidence",
+        CONSUMED_EVENTS,
+        _handle_message,
+        key_of=lambda message: _payload_id(message.get("data") or {}),
+    )

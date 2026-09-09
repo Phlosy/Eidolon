@@ -24,7 +24,13 @@ _ensure_sqlite_dir(settings.database_url)
 
 engine = create_engine(
     settings.database_url,
-    connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
+    # timeout=15：SQLite busy timeout。E0 事件引擎分区并发后多个分区会同时抢写锁，
+    # 15s 的锁等待把瞬时 "database is locked" 先留给 SQLite 自己消化，引擎层重试兜底。
+    connect_args=(
+        {"check_same_thread": False, "timeout": 15}
+        if settings.database_url.startswith("sqlite")
+        else {}
+    ),
 )
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

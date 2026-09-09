@@ -287,9 +287,28 @@ problem（任务标题+结果）、observation、lesson、solution、confidence�
 - 晋升：`POST /knowledge/{id}/proposals {target_scope}` → status=proposed；`POST /knowledge/{id}/review {approve}` → scope 变更 + status=active。
 - 公司/部门知识不进 Agent 全量 context；`GET /knowledge?scope=&topic=` 即 MVP 的 retrieval 接口。
 
-## 7. 事件系统（events/bus.py）
+## 7. 事件系统（events/bus.py + events/engine.py）
 
-- 内存 `asyncio` 发布订阅；每条事件同时 INSERT events 表（activity feed 数据源）并广播到所有 WS 连接。
+- **publish 语义（bus.py，不变）**：内存 `asyncio` 发布订阅；每条事件先 INSERT events 表
+  （activity feed 数据源），再 `call_soon_threadsafe` 推到每个订阅者的 `asyncio.Queue`
+  （maxsize=1000，满了丢并计入 `bus.dropped`）。`publish` 同步、线程安全，请求线程与
+  事件循环两侧都能发。
+- **EventEngine（engine.py，E0）**：lifespan 里唯一的事件消费入口，订阅一条队列 + 一个
+  dispatch task；规则详见 docs/talent-ecosystem-plan.md §1。
+  - 处理器注册表：`register(name, event_types, handler, key_of=, max_attempts=3)`；
+    handler 签名 `handler(message)`，sync/async 皆可，自己开 DB session（写事务保持短）。
+  - 分区并发：`key_of(message)` 提取分区键，同 key 用 per-key 任务链严格保序，不同 key
+    并发；键为 None 走该 handler 的全局分区；前一个 tail 失败不断链。
+  - 重试与死信：handler 异常按 max_attempts 退避重试（0.5s → 2s，吃 SQLite 分区并发后的
+    瞬时写锁冲突；`core/database.py` 另有 `timeout=15` busy timeout 缓冲），最终失败记
+    死信（logger.exception + 计数），不阻塞其他分区。
+  - 可观测：`stats()` = registered_handlers / partitions_active / processed / retried /
+    dead_lettered / queue_dropped。
+  - 首批处理器（settings 门控保持现状）：`workforce/access.py` `register()`
+    （`employee.position_*` → 权限收敛 + 工单执行，按员工分区，gated by
+    `position_access_sync`）；`evidence/pipeline.py` `register()`（域事件 → 证据/考核，
+    按消息主体 id 细粒度分区，gated by `evidence_pipeline_enabled`）。
+  - WS `/ws/events` 广播是每客户端一条队列的 sink（按 company 过滤），不是处理器，不走引擎。
 - 事件类型（payload 为相关对象摘要）：
 
 ```text

@@ -13,14 +13,12 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
-from app.events.bus import bus
 from app.lifecycle import access
 from app.lifecycle.engine import ProvisioningEngine
 from app.models.enums import (
@@ -136,73 +134,58 @@ def converge_all(db: Session, *, reason: str = "startup_sweep") -> list[dict]:
     return results
 
 
-class PositionAccessConsumer:
-    """订阅事件总线，把职位事件翻译成权限收敛 + 工单执行。
+class PositionAccessFacade:
+    """`consumer.handle()` 兼容入口：测试直接 await 它；运行期由事件引擎驱动。
+
+    生命周期（订阅/并发/重试）已移交 `events/engine.py` 的 EventEngine，
+    这里只留业务处理函数本身。
+    """
+
+    async def handle(self, message: dict) -> dict | None:
+        return await handle(message)
+
+
+async def handle(message: dict) -> dict | None:
+    """处理一条总线消息；不是职位事件就什么也不做。
 
     刻意用**独立 Session**：事件携带的只是"发生了什么"，收敛要从库里重算"应该是什么"。
     顺着请求线程的 session 走，等于把收敛重新绑回那个事务。
     """
-
-    def __init__(self) -> None:
-        self._queue: asyncio.Queue | None = None
-        self._task: asyncio.Task | None = None
-
-    async def start(self) -> None:
-        if self._task is not None:
-            return
-        self._queue = bus.subscribe()
-        self._task = asyncio.create_task(self._loop())
-        logger.info("职位权限消费者已启动")
-
-    async def stop(self) -> None:
-        if self._task is not None:
-            self._task.cancel()
-            try:
-                await self._task
-            except asyncio.CancelledError:  # noqa: PERF203
-                pass
-            self._task = None
-        if self._queue is not None:
-            bus.unsubscribe(self._queue)
-            self._queue = None
-
-    async def _loop(self) -> None:
-        assert self._queue is not None
-        while True:
-            message = await self._queue.get()
-            try:
-                await self.handle(message)
-            except Exception:  # noqa: BLE001 - 一条坏事件不能打死消费者
-                logger.exception("职位事件处理失败：%s", message.get("type"))
-
-    async def handle(self, message: dict) -> dict | None:
-        """处理一条总线消息；不是职位事件就什么也不做。"""
-        if not isinstance(message, dict) or message.get("type") not in POSITION_EVENTS:
+    if not isinstance(message, dict) or message.get("type") not in POSITION_EVENTS:
+        return None
+    data = message.get("data") or {}
+    employee_id = data.get("employee_id") or data.get("id")
+    if not employee_id:
+        logger.warning("%s 事件缺少 employee_id，跳过：%s", message.get("type"), data)
+        return None
+    with SessionLocal() as db:
+        outcome = converge_employee_access(db, int(employee_id), reason=str(message.get("type")))
+        if outcome is None:
             return None
-        data = message.get("data") or {}
-        employee_id = data.get("employee_id") or data.get("id")
-        if not employee_id:
-            logger.warning("%s 事件缺少 employee_id，跳过：%s", message.get("type"), data)
-            return None
-        with SessionLocal() as db:
-            outcome = converge_employee_access(
-                db, int(employee_id), reason=str(message.get("type"))
-            )
-            if outcome is None:
-                return None
-            job = lifecycle_repo.get_job(db, int(outcome["job_id"]))
-            if job is None:  # pragma: no cover - 刚创建的 job 不该消失
-                return outcome
-            # 工单执行失败**不**回滚收敛结果：任职与授权集合已经落库，
-            # 失败只体现在 job.status=partial，由 retry / reconcile 收拾。
-            try:
-                await engine.run(db, job)
-            except Exception:  # noqa: BLE001
-                logger.exception("权限工单执行失败 job=%s", job.id)
+        job = lifecycle_repo.get_job(db, int(outcome["job_id"]))
+        if job is None:  # pragma: no cover - 刚创建的 job 不该消失
             return outcome
+        # 工单执行失败**不**回滚收敛结果：任职与授权集合已经落库，
+        # 失败只体现在 job.status=partial，由 retry / reconcile 收拾。
+        try:
+            await engine.run(db, job)
+        except Exception:  # noqa: BLE001
+            logger.exception("权限工单执行失败 job=%s", job.id)
+        return outcome
 
 
-consumer = PositionAccessConsumer()
+def _partition_key(message: dict) -> int | None:
+    data = message.get("data") or {}
+    employee_id = data.get("employee_id") or data.get("id")
+    return int(employee_id) if employee_id else None
+
+
+def register(event_engine) -> None:
+    """把职位事件处理器挂到事件引擎：按员工分区保序（收敛本身幂等，重放安全）。"""
+    event_engine.register("position-access", POSITION_EVENTS, handle, key_of=_partition_key)
+
+
+consumer = PositionAccessFacade()
 
 
 def sweep_on_startup() -> list[dict]:
