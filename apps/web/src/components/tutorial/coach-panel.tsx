@@ -25,6 +25,13 @@ const FALLBACK_CENTER_STYLE = {
 interface CoachPanelProps {
   /** 目标矩形；null 表示没有可依附的目标（引擎此时渲染兜底态） */
   anchor: DOMRect | null;
+  /**
+   * 惰性锚点：每次摆放时重新读取。弹窗锚点必须用这个 —— 弹窗内容会自己
+   * 长高/移位（如向导里展开"新服务商"表单），而弹窗内部控件此刻可能全是
+   * missing（snapshot 无变化 → overlay 不重渲染），render 期捕获的矩形会过期，
+   * 卡片就停在旧位置压住新弹窗（实测 provider 子步骤重叠 84170px²）。
+   */
+  getAnchor?: () => DOMRect | null;
   placement: TutorialPlacement;
   children: ReactNode;
   /** 兜底态用更醒目的描边，让用户知道"教程没瞎指，是找不到东西" */
@@ -36,7 +43,7 @@ function rectKey(rect: DOMRect | null): string {
   return `${Math.round(rect.left)},${Math.round(rect.top)},${Math.round(rect.width)}x${Math.round(rect.height)}`;
 }
 
-export function CoachPanel({ anchor, placement, children, degraded }: CoachPanelProps) {
+export function CoachPanel({ anchor, getAnchor, placement, children, degraded }: CoachPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const arrowRef = useRef<HTMLDivElement>(null);
   // 坐标只走 state → style prop。之前混用了"React 的 style prop"和
@@ -53,13 +60,24 @@ export function CoachPanel({ anchor, placement, children, degraded }: CoachPanel
 
   useLayoutEffect(() => {
     const panel = panelRef.current;
-    if (!panel || !anchor) {
+    if (!panel) {
       setCoords(null);
       return undefined;
     }
-    const reference = { getBoundingClientRect: () => anchor };
+    // 惰性锚点优先：每次摆放都读最新矩形；没有惰性读取才用冻结快照
+    const readAnchor = () => getAnchor?.() ?? anchor;
+    if (!readAnchor()) {
+      setCoords(null);
+      return undefined;
+    }
+    const reference = { getBoundingClientRect: () => readAnchor()! };
     let cancelled = false;
     const place = async () => {
+      const currentAnchor = readAnchor();
+      if (!currentAnchor) {
+        if (!cancelled) setCoords(null);
+        return;
+      }
       // 体积碰撞避让：先自己按"与保护区重叠最少"选方位，再交给 floating-ui
       // 做视口内微调（flip 改用空回退，防止它翻回遮挡侧）。
       // 保护区 = 聚光灯目标 + 打开的弹窗 + 页面上声明 data-tutorial-protected
@@ -67,7 +85,7 @@ export function CoachPanel({ anchor, placement, children, degraded }: CoachPanel
       const viewW = document.documentElement.clientWidth;
       const viewH = document.documentElement.clientHeight;
       const protectedRects = [
-        anchor,
+        currentAnchor,
         ...Array.from(
           document.querySelectorAll<HTMLElement>(
             '[role="dialog"][aria-modal="true"], [data-tutorial-protected]',
@@ -76,7 +94,7 @@ export function CoachPanel({ anchor, placement, children, degraded }: CoachPanel
       ];
       const panelSize = { width: panel.offsetWidth || 380, height: panel.offsetHeight || 200 };
       const picked = choosePlacement(
-        anchor,
+        currentAnchor,
         panelSize,
         { width: viewW, height: viewH },
         protectedRects,
@@ -87,7 +105,7 @@ export function CoachPanel({ anchor, placement, children, degraded }: CoachPanel
         y: rawY,
         placement: appliedPlacement,
         middlewareData,
-      } = await computePosition(reference, panel, {
+      } = await computePosition({ getBoundingClientRect: () => currentAnchor }, panel, {
         placement: picked,
         strategy: "fixed",
         middleware: [
@@ -108,23 +126,37 @@ export function CoachPanel({ anchor, placement, children, degraded }: CoachPanel
         size >= extent - PADDING * 2
           ? PADDING
           : Math.min(Math.max(PADDING, value), extent - size - PADDING);
-      setApplied(appliedPlacement);
-      setCoords({
+      const next = {
         x: clampAxis(rawX, rect.width, viewWidth),
         y: clampAxis(rawY, rect.height, viewHeight),
         arrowX: middlewareData.arrow?.x ?? undefined,
         arrowY: middlewareData.arrow?.y ?? undefined,
-      });
+      };
+      // animationFrame 重算下每帧都会走到这里：坐标没变就不 setState，
+      // 否则 60fps 的重复渲染会把输入框的击键帧拖慢。
+      setApplied((prev) => (prev === appliedPlacement ? prev : appliedPlacement));
+      setCoords((prev) =>
+        prev &&
+        prev.x === next.x &&
+        prev.y === next.y &&
+        prev.arrowX === next.arrowX &&
+        prev.arrowY === next.arrowY
+          ? prev
+          : next,
+      );
     };
     void place();
-    // autoUpdate 覆盖滚动 / resize / 目标自身变化，不需要我们轮询
-    const cleanup = autoUpdate(reference, panel, () => void place());
+    // autoUpdate 覆盖滚动 / resize / 目标自身变化，不需要我们轮询；
+    // 惰性锚点（弹窗）无法用 observer 感知，加 animationFrame 逐帧跟随
+    const cleanup = autoUpdate(reference, panel, () => void place(), {
+      animationFrame: Boolean(getAnchor),
+    });
     return () => {
       cancelled = true;
       cleanup();
     };
     // key 而不是 anchor：矩形对象每帧都是新的，用它会把这里变成死循环
-  }, [key, placement, anchor]);
+  }, [key, placement, anchor, getAnchor]);
 
   return createPortal(
     <div

@@ -10,7 +10,7 @@ import {
   SkipForward,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { cn } from "../../utils/cn";
@@ -86,6 +86,14 @@ export function TutorialOverlay() {
       window.removeEventListener("scroll", bump, true);
     };
   }, []);
+  // 弹窗锚点的惰性读取器：hook 必须在所有 early return 之前声明
+  const readDialogRect = useCallback(
+    () =>
+      document
+        .querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
+        ?.getBoundingClientRect() ?? null,
+    [],
+  );
   const { step } = engine;
   if (!step) return null;
 
@@ -123,25 +131,17 @@ export function TutorialOverlay() {
   const isInfo = step.kind === "INFORMATION";
   // 指引锚点当前可见才算"钉住"；向导翻页会卸载上一段 DOM，翻页间隙锚点可能缺失
   const hintAnchored = hinting && engine.snapshot.status === "visible";
-  // 向导走到没有锚点的段落（部门、汇报线等）：面板贴弹窗右侧，别退到屏幕正中挡操作
-  const dialogRect =
-    hinting && !hintAnchored
-      ? (document
-          .querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
-          ?.getBoundingClientRect() ?? null)
-      : null;
-  // degraded（目标被弹窗覆盖/找不到）且有弹窗时，同样贴弹窗侧边而不是居中 ——
-  // 居中会把弹窗完全压在卡片底下（实测：新建文档弹窗被教程卡片整个盖住）。
-  const degradedDialogRect =
-    degraded && !dialogRect
-      ? (document
-          .querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
-          ?.getBoundingClientRect() ?? null)
-      : null;
+  // 向导走到没有锚点的段落（部门、汇报线等）：面板贴弹窗右侧，别退到屏幕正中挡操作。
+  // degraded（目标被弹窗覆盖/找不到）且有弹窗时同理 —— 居中会把弹窗压在卡片底下。
+  // 弹窗锚点必须惰性读取（getAnchor）：弹窗内容会自己长高/移位（如向导里展开
+  // "新服务商"表单），而此刻向导内的指引锚点全是 missing、overlay 不会因此重渲染，
+  // render 期捕获的矩形会立刻过期（实测 provider 子步骤卡片压弹窗 84170px²）。
+  const wantsDialogAnchor = (hinting && !hintAnchored) || degraded;
+  const dialogRect = wantsDialogAnchor ? readDialogRect() : null;
   const anchor: DOMRect | null =
     !isInfo && !replay && engine.onRoute && engine.snapshot.status === "visible"
       ? engine.snapshot.rect
-      : (dialogRect ?? degradedDialogRect);
+      : dialogRect;
 
   const fallbackCopy = cannotRoute
     ? { title: "ui.routePendingTitle", body: "ui.routePendingBody" }
@@ -177,6 +177,7 @@ export function TutorialOverlay() {
           真被挡住时用户还能按暂停收成小药丸，但默认就不该挡。 */}
       <CoachPanel
         anchor={anchor}
+        getAnchor={dialogRect ? readDialogRect : undefined}
         placement={hinting ? "right" : step.placement}
         degraded={degraded}
       >

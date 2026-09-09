@@ -523,6 +523,59 @@ describe("向导内部指引（ui_hints）", () => {
     expect(document.querySelector('[data-tutorial-hint="true"]')).toBeNull();
   });
 
+  it("弹窗自己长高/移位时，贴弹窗的面板跟着重新摆放（锚点不过期）", async () => {
+    // 回归（实机走查发现）：向导 provider 子步骤展开"新服务商"表单，弹窗从 280px
+    // 长到 664px，但此刻所有指引锚点都是 missing、没有任何快照变化通知 overlay
+    // 重渲染 —— render 期捕获的弹窗矩形过期，面板停在旧位置压住弹窗（84170px²）。
+    // 修复后面板用惰性锚点逐帧跟随。
+    // jsdom 视口默认 0x0，clamp 会把一切钉到 PADDING —— 补一个真实视口尺寸。
+    Object.defineProperty(document.documentElement, "clientWidth", {
+      configurable: true,
+      value: 1440,
+    });
+    Object.defineProperty(document.documentElement, "clientHeight", {
+      configurable: true,
+      value: 900,
+    });
+    progressFor("hire_ceo");
+    let holder: HTMLDivElement | null = null;
+    render(
+      <MemoryRouter initialEntries={["/employees"]}>
+        <Routes>
+          <Route
+            path="/employees"
+            element={
+              <div>
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  data-rect="384,310,672,280"
+                  ref={(node) => {
+                    holder = node;
+                  }}
+                >
+                  <p>provider step without anchors</p>
+                </div>
+                <TutorialOverlay />
+              </div>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const coach = () => document.querySelector('[data-tutorial-overlay="coach"]') as HTMLElement;
+    // 初始：面板已贴到弹窗旁（具体像素位置，不是居中兜底）
+    await waitFor(() => {
+      expect(coach().style.left).not.toBe("");
+      expect(coach().style.left).not.toBe("50%");
+    });
+    const before = coach().style.left;
+
+    // 弹窗变宽（右缘外移）：没有任何 React 状态或快照事件通知 overlay
+    (holder as unknown as HTMLDivElement).dataset.rect = "384,310,750,280";
+    await waitFor(() => expect(coach().style.left).not.toBe(before));
+  });
+
   it("向导换段落（DOM 里换了可见的指引目标）时，光自动跟上", async () => {
     progressFor("hire_ceo");
     let holder: HTMLDivElement | null = null;
