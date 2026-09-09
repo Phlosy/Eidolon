@@ -9,6 +9,7 @@ import { NewProjectDialog } from "../../components/project/new-project-dialog";
 import { Button } from "../../components/common/button";
 import { EmptyState, ErrorState, PageHeader } from "../../components/common/states";
 import { Skeleton } from "../../components/common/skeleton";
+import { Caption, H2, Overline } from "../../components/typography/text";
 import { formatRelativeTime } from "../../utils/format";
 
 type ProjectsView = "timeline" | "cards";
@@ -18,7 +19,7 @@ export function ProjectsPage() {
   const portfolioQuery = useProjectPortfolio();
   const employees = useEmployees().data ?? [];
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [view, setView] = useState<ProjectsView>("timeline");
+  const [view, setView] = useState<ProjectsView>("cards");
   const projects = portfolioQuery.data ?? [];
   const active = projects.filter(
     (project) => !["completed", "cancelled", "rejected"].includes(project.status),
@@ -42,13 +43,11 @@ export function ProjectsPage() {
       <section className="command-panel relative overflow-hidden p-5 md:p-6">
         <div className="relative flex flex-wrap items-center justify-between gap-6">
           <div>
-            <p className="type-kicker text-primary">{t("project:command.boardKicker")}</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-              {t("project:timeline.companyTitle")}
-            </h2>
-            <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">
+            <Overline tone="primary">{t("project:command.boardKicker")}</Overline>
+            <H2 className="mt-2">{t("project:timeline.companyTitle")}</H2>
+            <Caption tone="muted" className="mt-2 block max-w-2xl">
               {t("project:timeline.companyDescription")}
-            </p>
+            </Caption>
             {portfolioQuery.dataUpdatedAt ? (
               <p
                 className="mt-3 inline-flex items-center gap-1.5 text-[10px] text-muted-foreground"
@@ -66,23 +65,19 @@ export function ProjectsPage() {
             <div className="min-w-28 rounded-2xl border border-success/20 bg-success/7 p-4">
               <Radio className="h-4 w-4 text-success status-pulse" />
               <p className="type-telemetry mt-4 text-2xl font-semibold">{active}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {t("project:command.activeMissions")}
-              </p>
+              <Caption tone="muted">{t("project:command.activeMissions")}</Caption>
             </div>
             <div className="min-w-28 rounded-2xl border border-border bg-background/45 p-4">
               <Target className="h-4 w-4 text-primary" />
               <p className="type-telemetry mt-4 text-2xl font-semibold">{completed}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {t("project:command.completedMissions")}
-              </p>
+              <Caption tone="muted">{t("project:command.completedMissions")}</Caption>
             </div>
           </div>
         </div>
       </section>
 
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold">{t("project:timeline.portfolioView")}</h2>
+        <H2>{t("project:timeline.portfolioView")}</H2>
         <div className="inline-flex rounded-xl border border-border bg-background/45 p-1">
           <Button
             variant={view === "timeline" ? "secondary" : "ghost"}

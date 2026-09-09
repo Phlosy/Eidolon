@@ -16,6 +16,7 @@ import { enumLabel } from "../../utils/labels";
 import { PROJECT_STATUS_VARIANT } from "../../utils/status";
 import { Badge } from "../common/badge";
 import { ProgressTrack } from "../game/progress-track";
+import { Caption } from "../typography/text";
 
 export function ProjectCommandCard({ project, owner }: { project: Project; owner?: Employee }) {
   const { t } = useTranslation();
@@ -45,9 +46,9 @@ export function ProjectCommandCard({ project, owner }: { project: Project; owner
           {t("project:command.mission", { id: project.id })}
         </p>
         <h2 className="mt-2 line-clamp-2 text-xl font-semibold tracking-tight">{project.name}</h2>
-        <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-muted-foreground">
+        <Caption tone="muted" className="mt-2 line-clamp-2 min-h-10 block">
           {project.goal ?? project.description ?? t("project:command.noBrief")}
-        </p>
+        </Caption>
         <div className="mt-5 flex items-center justify-between text-[10px] text-muted-foreground">
           <span>{t("project:command.missionProgress")}</span>
           <span className="type-telemetry text-sm font-semibold text-primary">
@@ -113,7 +114,9 @@ function Metric({
   return (
     <div className="min-w-0 rounded-xl border border-border bg-background/45 p-3">
       <Icon className="h-3.5 w-3.5 text-primary" />
-      <p className="mt-3 text-[9px] text-muted-foreground">{label}</p>
+      <Caption tone="muted" className="mt-3 block">
+        {label}
+      </Caption>
       <p className="mt-1 truncate text-xs font-medium" title={value}>
         {value}
       </p>
