@@ -16,6 +16,7 @@ import { Link } from "react-router-dom";
 import { cn } from "../../utils/cn";
 import { Button } from "../common/button";
 import { Dialog } from "../common/dialog";
+import { H4, TutorialText } from "../typography/text";
 import { CoachPanel } from "./coach-panel";
 import { TutorialSpotlight } from "./tutorial-spotlight";
 import { useTutorialEngine } from "./use-tutorial-engine";
@@ -34,9 +35,9 @@ function ProgressDots({ total, index, done }: { total: number; index: number; do
         <li
           key={position}
           className={cn(
-            "h-1.5 flex-1 rounded-full bg-muted",
+            "h-2 flex-1 rounded-full bg-muted transition-colors",
             position < index && "bg-success",
-            position === index && (done ? "bg-success" : "bg-primary"),
+            position === index && (done ? "bg-success" : "bg-primary ring-1 ring-primary/50"),
           )}
         />
       ))}
@@ -190,14 +191,15 @@ export function TutorialOverlay() {
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <span className="pulse-ring relative flex h-10 w-10 items-center justify-center rounded-full border-2 border-primary/35 bg-primary/12 text-primary">
               <GraduationCap className="h-4 w-4" />
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-success status-pulse" />
             </span>
             <div>
               <p className="type-kicker text-primary">
                 {replay ? t("ui.replay.badge") : t("ui.kicker")}
               </p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground">
+              <p className="type-caption mt-0.5 text-muted-foreground">
                 {t("ui.stepCounter", { current: engine.index + 1, total: engine.total })}
                 {step.stage
                   ? ` · ${t("ui.stageOf", { stage: t(`tutorials.stages.${step.stage}`) })}`
@@ -232,15 +234,15 @@ export function TutorialOverlay() {
         <div className="mt-4">
           <div className="flex items-center gap-2">
             {engine.stepDone ? (
-              <Check className="h-4 w-4 shrink-0 text-success" />
+              <Check className="h-4 w-4 shrink-0 text-success status-pulse" />
             ) : (
               <CircleDot className="h-4 w-4 shrink-0 text-primary" />
             )}
-            <h2 className="text-sm font-semibold">{t(`steps.${step.id}.label`)}</h2>
+            <H4>{t(`steps.${step.id}.label`)}</H4>
           </div>
-          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+          <TutorialText tone="muted" className="mt-2">
             {t(`steps.${step.id}.explanation`)}
-          </p>
+          </TutorialText>
           {step.has_why ? <WhySection stepId={step.id} /> : null}
         </div>
 

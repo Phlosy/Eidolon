@@ -166,8 +166,8 @@ export function CoachPanel({ anchor, getAnchor, placement, children, degraded }:
       data-tutorial-overlay="coach"
       data-degraded={degraded ? "true" : "false"}
       data-coach-placement={applied}
-      className={`pointer-events-none fixed z-[70] w-[380px] max-w-[92vw] rounded-2xl border bg-card/97 p-4 text-left shadow-2xl backdrop-blur transition-[left,top] duration-150 motion-reduce:transition-none ${
-        degraded ? "border-warning/45" : "border-primary/25"
+      className={`pointer-events-none fixed z-[70] w-[380px] max-w-[92vw] rounded-3xl border-2 bg-card/97 p-4 text-left shadow-[var(--shadow-floating)] backdrop-blur transition-[left,top] duration-150 motion-reduce:transition-none ${
+        degraded ? "border-warning/45" : "border-primary/30"
       }`}
       style={
         coords
@@ -180,7 +180,9 @@ export function CoachPanel({ anchor, getAnchor, placement, children, degraded }:
         ref={arrowRef}
         data-tutorial-arrow="true"
         style={{ left: coords?.arrowX, top: coords?.arrowY }}
-        className="absolute h-2 w-2 rotate-45 border border-primary/25 bg-card/97"
+        className={`absolute h-2.5 w-2.5 rotate-45 border-2 bg-card/97 ${
+          degraded ? "border-warning/45" : "border-primary/30"
+        }`}
       />
     </div>,
     document.body,
