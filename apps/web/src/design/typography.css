@@ -1,3 +1,21 @@
+/**
+ * 排版规范（Word 式层级）
+ *
+ * 目标：全站文字只通过 .type-* 类或 <Text variant> 组件取样式，
+ * 页面里不再散落 text-xs / text-[11px] 这类一次性字号。
+ *
+ * 字体：
+ * - 拉丁/数字：Inter Variable（UI 通用，屏幕可读性好）
+ * - 中日韩：Noto Sans SC Variable（跨平台、开源、字面均衡），
+ *   macOS 回退 PingFang SC，Windows 回退 Microsoft YaHei
+ * - 等宽/遥测：JetBrains Mono Variable（数字等宽，适合指标与代码）
+ *
+ * 中英混排细节：
+ * - CJK 正文行高比纯英文更高（1.7），避免汉字挤在一起
+ * - Noto Sans SC 开启 palt，标点按比例宽度排版，中英混排更整齐
+ * - 标题用 text-wrap: balance，正文用 pretty，减少孤字
+ */
+
 @theme {
   --font-sans:
     "Inter Variable", Inter, "Noto Sans SC Variable", "Noto Sans SC", "PingFang SC",
@@ -5,22 +23,146 @@
   --font-cjk: "Noto Sans SC Variable", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono:
     "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* 字阶：display → overline，覆盖全站所有文字层级 */
+  --text-display: clamp(2.5rem, 4vw, 4.5rem);
+  --text-h1: clamp(1.75rem, 2.4vw, 2.5rem);
+  --text-h2: 1.5rem;
+  --text-h3: 1.125rem;
+  --text-h4: 0.9375rem;
+  --text-body: 0.9375rem;
+  --text-body-sm: 0.8125rem;
+  --text-caption: 0.75rem;
+  --text-overline: 0.6875rem;
+  --text-table: 0.8125rem;
+  --text-tutorial: 0.875rem;
+  --text-code: 0.8125rem;
 }
+
+/* ---------------------------------------------------------------- 基础层级 */
+
 .type-display {
-  font-size: clamp(2rem, 3.4vw, 4.25rem);
-  font-weight: 650;
-  letter-spacing: -0.055em;
-  line-height: 0.96;
+  font-family: var(--font-sans);
+  font-size: var(--text-display);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  text-wrap: balance;
 }
+
+.type-h1 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h1);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.type-h2 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h2);
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.type-h3 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h3);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.type-h4 {
+  font-family: var(--font-sans);
+  font-size: var(--text-h4);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.type-body {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: 400;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+.type-body-sm {
+  font-family: var(--font-sans);
+  font-size: var(--text-body-sm);
+  font-weight: 400;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.type-caption {
+  font-family: var(--font-sans);
+  font-size: var(--text-caption);
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+/* 分组标签 / eyebrow：等宽 + 字距，承担“目录感” */
+.type-overline,
 .type-kicker {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: var(--text-overline);
   font-weight: 600;
   letter-spacing: 0.14em;
+  line-height: 1.3;
   text-transform: uppercase;
 }
+
+/* 表格：数字等宽，行高压紧，扫描性优先 */
+.type-table {
+  font-family: var(--font-sans);
+  font-size: var(--text-table);
+  font-weight: 400;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 教程 / 引导文案：比正文略小、行高更松，语气更像“旁白” */
+.type-tutorial {
+  font-family: var(--font-sans);
+  font-size: var(--text-tutorial);
+  font-weight: 400;
+  line-height: 1.75;
+  text-wrap: pretty;
+}
+
+.type-code {
+  font-family: var(--font-mono);
+  font-size: var(--text-code);
+  line-height: 1.6;
+  font-variant-ligatures: none;
+}
+
 .type-telemetry {
   font-family: var(--font-mono);
+  font-size: var(--text-table);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+/* ---------------------------------------------------------------- 语言 */
+
+/* 中文语境：开启 palt（标点比例宽度），中英混排更整齐 */
+[lang^="zh"] {
+  font-feature-settings:
+    "palt" 1,
+    "kern" 1;
+}
+
+/* 拉丁语境：Inter 的可变字重与斜体特性 */
+[lang^="en"] {
+  font-feature-settings:
+    "cv05" 1,
+    "ss03" 1,
+    "kern" 1;
 }

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import { useStartPractice, useTutorialLibrary } from "../../hooks/useTutorial";
 import { Button } from "../common/button";
+import { H4, TutorialText } from "../typography/text";
 import { PracticeDialog } from "./practice-dialog";
 
 /** 用户关掉交接卡片后不再打扰；开始实战后卡片本来就会因状态变化消失。 */
@@ -55,7 +56,7 @@ export function TutorialHandoff() {
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <GraduationCap className="h-4 w-4" />
             </span>
-            <p className="text-sm font-semibold">{t("handoff.title")}</p>
+            <H4>{t("handoff.title")}</H4>
           </div>
           <button
             type="button"
@@ -66,7 +67,9 @@ export function TutorialHandoff() {
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
-        <p className="mt-3 text-xs leading-5 text-muted-foreground">{t("handoff.body")}</p>
+        <TutorialText tone="muted" className="mt-3">
+          {t("handoff.body")}
+        </TutorialText>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button
             size="sm"
