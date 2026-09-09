@@ -60,14 +60,18 @@ export function CoachPanel({ anchor, placement, children, degraded }: CoachPanel
     const reference = { getBoundingClientRect: () => anchor };
     let cancelled = false;
     const place = async () => {
-      // 体积碰撞避让：先自己按"与保护区（聚光灯目标+弹窗）重叠最少"选方位，
-      // 再交给 floating-ui 做视口内微调（flip 改用空回退，防止它翻回遮挡侧）。
+      // 体积碰撞避让：先自己按"与保护区重叠最少"选方位，再交给 floating-ui
+      // 做视口内微调（flip 改用空回退，防止它翻回遮挡侧）。
+      // 保护区 = 聚光灯目标 + 打开的弹窗 + 页面上声明 data-tutorial-protected
+      // 的关键内容区（哪个元素不该被卡片盖住，由页面自己声明）。
       const viewW = document.documentElement.clientWidth;
       const viewH = document.documentElement.clientHeight;
       const protectedRects = [
         anchor,
         ...Array.from(
-          document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'),
+          document.querySelectorAll<HTMLElement>(
+            '[role="dialog"][aria-modal="true"], [data-tutorial-protected]',
+          ),
         ).map((el) => el.getBoundingClientRect()),
       ];
       const panelSize = { width: panel.offsetWidth || 380, height: panel.offsetHeight || 200 };
