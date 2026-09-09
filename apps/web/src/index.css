@@ -81,6 +81,26 @@ a[href],
     22px 22px;
 }
 
+/* 游戏化舞台：中央聚光 + 网格，让内容落在“台面”上而不是一片平底 */
+.game-stage {
+  background:
+    radial-gradient(
+      120% 70% at 50% -8%,
+      color-mix(in oklch, var(--primary) 9%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-position:
+    center,
+    center,
+    center;
+  background-size:
+    auto,
+    80px 80px,
+    80px 80px;
+}
+
 .auth-world-shell {
   isolation: isolate;
   color: #fff4da;

@@ -9,7 +9,8 @@ import { TutorialHandoff } from "../tutorial/tutorial-handoff";
 
 export function AppShell() {
   const { t } = useTranslation();
-  const [collapsed, setCollapsed] = useState(false);
+  // 默认收成图标轨道，把视觉重心让给中央舞台
+  const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   useEventStream();
   return (
@@ -30,8 +31,8 @@ export function AppShell() {
       />
       <div className="min-w-0 flex-1">
         <TopCommandBar onOpenNavigation={() => setMobileOpen(true)} />
-        <main className="app-grid min-h-[calc(100vh-72px)] min-w-0 p-4 pb-28 md:p-6 md:pb-8 xl:p-8">
-          <div className="mx-auto max-w-[1760px]">
+        <main className="game-stage min-h-[calc(100vh-56px)] min-w-0 p-4 pb-28 md:p-6 md:pb-8 xl:p-8">
+          <div className="mx-auto w-full max-w-[1480px]">
             <Outlet />
           </div>
         </main>
