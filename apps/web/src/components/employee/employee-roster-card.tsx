@@ -33,7 +33,7 @@ export function EmployeeRosterCard({
         <span className="flex min-w-0 items-center gap-3">
           <span
             className={cn(
-              "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-surface text-xs font-semibold",
+              "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-surface type-caption font-semibold",
               meta.auraClass,
             )}
           >
@@ -46,19 +46,19 @@ export function EmployeeRosterCard({
             />
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold">{employee.name}</span>
-            <span className="block truncate text-[10px] text-muted-foreground">
+            <span className="type-h4 block truncate">{employee.name}</span>
+            <span className="type-caption block truncate text-muted-foreground">
               {employee.title ?? enumLabel(t, "employee:role", employee.role)}
             </span>
           </span>
         </span>
-        <span className="hidden truncate text-xs text-muted-foreground md:block">
+        <span className="type-caption hidden truncate text-muted-foreground md:block">
           {department?.name ?? "—"}
         </span>
         <span className={cn("type-kicker hidden md:block", meta.textClass)}>
           {enumLabel(t, "employee:status", employee.status)}
         </span>
-        <span className="type-telemetry hidden text-xs md:block">LV {level}</span>
+        <span className="type-telemetry hidden md:block">LV {level}</span>
         <span className="hidden items-center justify-end gap-2 md:flex">
           <ProgressTrack value={workload} className="w-16" />
           <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" />
@@ -76,7 +76,7 @@ export function EmployeeRosterCard({
       <div className="relative flex items-start justify-between gap-4">
         <span
           className={cn(
-            "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-surface text-sm font-semibold",
+            "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border bg-surface type-h4",
             meta.auraClass,
             meta.pulse && "pulse-ring",
           )}
@@ -95,16 +95,16 @@ export function EmployeeRosterCard({
       <div className="relative mt-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold">{employee.name}</h2>
-            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            <h2 className="type-h4 truncate">{employee.name}</h2>
+            <p className="type-caption mt-0.5 truncate text-muted-foreground">
               {employee.title ?? enumLabel(t, "employee:role", employee.role)}
             </p>
           </div>
-          <span className="type-telemetry shrink-0 rounded-lg border border-primary/20 bg-primary/8 px-2 py-1 text-[10px] text-primary">
+          <span className="type-telemetry shrink-0 rounded-lg border border-primary/20 bg-primary/8 px-2 py-1 text-primary">
             LV {level}
           </span>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 text-[10px]">
+        <div className="type-caption mt-4 grid grid-cols-2 gap-2">
           <span className="flex items-center gap-2 rounded-xl border border-border bg-background/45 p-2.5 text-muted-foreground">
             <BriefcaseBusiness className="h-3.5 w-3.5 text-primary" />
             <span className="truncate">{department?.name ?? t("employee:roster.unassigned")}</span>
@@ -118,14 +118,14 @@ export function EmployeeRosterCard({
         </div>
         <div className="mt-4 rounded-xl border border-border bg-background/45 p-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <span className="type-caption flex items-center gap-1.5 text-muted-foreground">
               <Gauge className="h-3 w-3" />
               {t("employee:roster.workload")}
             </span>
-            <span className="type-telemetry text-[10px]">{workload}%</span>
+            <span className="type-telemetry">{workload}%</span>
           </div>
           <ProgressTrack value={workload} tone={workload > 85 ? "warning" : "primary"} />
-          <p className="mt-3 truncate font-mono text-[10px] text-muted-foreground">
+          <p className="type-code mt-3 truncate text-muted-foreground">
             {employee.current_task_id
               ? t("employee:roster.currentTask", { id: employee.current_task_id })
               : t("employee:roster.available")}
@@ -135,7 +135,7 @@ export function EmployeeRosterCard({
           <span className={cn("type-kicker", meta.textClass)}>
             {enumLabel(t, "employee:status", employee.status)}
           </span>
-          <span className="flex items-center gap-1 text-[10px] font-medium text-primary opacity-0 transition group-hover:opacity-100">
+          <span className="type-caption flex items-center gap-1 font-medium text-primary opacity-0 transition group-hover:opacity-100">
             {t("employee:roster.manage")}
             <ArrowUpRight className="h-3 w-3" />
           </span>

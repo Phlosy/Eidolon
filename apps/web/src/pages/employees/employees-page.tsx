@@ -71,7 +71,7 @@ export function EmployeesPage() {
         <div className="relative flex flex-wrap items-center gap-3">
           <div className="mr-auto">
             <p className="type-kicker text-primary">{t("employee:roster.commandRoster")}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="type-caption mt-1 text-muted-foreground">
               {t("employee:roster.summary", { active, total: employeesQuery.data?.length ?? 0 })}
             </p>
           </div>
@@ -82,14 +82,14 @@ export function EmployeesPage() {
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t("employee:roster.search")}
               aria-label={t("employee:roster.search")}
-              className="h-11 w-full rounded-xl border border-border bg-background/55 pl-9 pr-3 text-sm outline-none focus:border-border-active focus:ring-2 focus:ring-primary/15"
+              className="h-11 w-full rounded-xl border border-border bg-background/55 pl-9 pr-3 type-body-sm outline-none focus:border-border-active focus:ring-2 focus:ring-primary/15"
             />
           </label>
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value as EmployeeStatus | "all")}
             aria-label={t("employee:roster.filterStatus")}
-            className="h-11 rounded-xl border border-border bg-background/55 px-3 text-xs outline-none focus:border-border-active"
+            className="h-11 rounded-xl border border-border bg-background/55 px-3 type-caption outline-none focus:border-border-active"
           >
             <option value="all">{t("employee:roster.allStatuses")}</option>
             {(

@@ -9,8 +9,8 @@ import type { RuntimeImageInfo, RuntimeInstance } from "../../types";
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</dt>
-      <dd className={`mt-0.5 truncate text-sm ${mono ? "font-mono text-xs" : ""}`} title={value}>
+      <dt className="type-overline text-muted-foreground">{label}</dt>
+      <dd className={`type-body-sm mt-0.5 truncate ${mono ? "type-code" : ""}`} title={value}>
         {value}
       </dd>
     </div>
@@ -52,7 +52,7 @@ export function RuntimeCard({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="text-sm font-semibold">
+        <h3 className="type-h4">
           {t("runtime:card.title", { type: enumLabel(t, "runtime:type", instance.runtime_type) })}
         </h3>
         <RuntimeStatusBadge status={instance.status} />

@@ -42,7 +42,7 @@ export function RuntimePage() {
                 ? t("runtime:controlCenter.operational")
                 : t("runtime:controlCenter.standby")}
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="type-body-sm mt-2 text-muted-foreground">
               {t("runtime:controlCenter.summary", { running, total: runtimes.length })}
             </p>
           </div>
@@ -59,7 +59,7 @@ export function RuntimePage() {
               >
                 <MetricIcon className="h-4 w-4 text-primary" />
                 <p className="type-telemetry mt-5 text-2xl font-semibold">{String(value)}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">{String(label)}</p>
+                <p className="type-caption mt-1 text-muted-foreground">{String(label)}</p>
               </div>
             );
           })}
@@ -107,7 +107,7 @@ export function RuntimePage() {
                         <p className="truncate font-semibold">
                           {employee?.name ?? `#${runtime.employee_id}`}
                         </p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
+                        <p className="type-caption mt-0.5 text-muted-foreground">
                           {enumLabel(t, "runtime:type", runtime.runtime_type)} ·{" "}
                           {runtime.provider_name ?? "—"}
                         </p>
@@ -115,7 +115,7 @@ export function RuntimePage() {
                     </div>
                     <RuntimeStatusBadge status={runtime.status} />
                   </div>
-                  <dl className="relative mt-6 grid grid-cols-2 gap-4 text-xs">
+                  <dl className="type-caption relative mt-6 grid grid-cols-2 gap-4">
                     <div>
                       <dt className="text-muted-foreground">{t("runtime:card.version")}</dt>
                       <dd className="type-telemetry mt-1">
@@ -140,7 +140,7 @@ export function RuntimePage() {
                   {employee ? (
                     <Link
                       to={`/employees/${employee.id}`}
-                      className="relative mt-5 inline-flex items-center gap-2 text-xs font-medium text-primary hover:underline"
+                      className="type-caption relative mt-5 inline-flex items-center gap-2 font-medium text-primary hover:underline"
                     >
                       {t("runtime:controlCenter.openWorkbench")}
                       <ExternalLink className="h-3 w-3" />
