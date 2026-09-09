@@ -128,7 +128,9 @@ COMPANY_FOUNDING_TUTORIAL = {
                     "git_setup",
                     kind=OPTIONAL,
                     requirement="GIT_CONFIGURED",
-                    route="/settings",
+                    # 目标只存在于 Git 设置分节；/settings 会 302 到 /settings/profile，
+                    # 索引页精确匹配永远失败、目标永远找不到（实机走查确认）。
+                    route="/settings/git",
                     target_id="git-connection-create",
                     placement="top",
                     interaction_mode="NON_BLOCKING",

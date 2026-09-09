@@ -130,10 +130,18 @@ export function TutorialOverlay() {
           .querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
           ?.getBoundingClientRect() ?? null)
       : null;
+  // degraded（目标被弹窗覆盖/找不到）且有弹窗时，同样贴弹窗侧边而不是居中 ——
+  // 居中会把弹窗完全压在卡片底下（实测：新建文档弹窗被教程卡片整个盖住）。
+  const degradedDialogRect =
+    degraded && !dialogRect
+      ? (document
+          .querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
+          ?.getBoundingClientRect() ?? null)
+      : null;
   const anchor: DOMRect | null =
     !isInfo && !replay && engine.onRoute && engine.snapshot.status === "visible"
       ? engine.snapshot.rect
-      : dialogRect;
+      : (dialogRect ?? degradedDialogRect);
 
   const fallbackCopy = cannotRoute
     ? { title: "ui.routePendingTitle", body: "ui.routePendingBody" }

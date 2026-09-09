@@ -134,8 +134,8 @@ function rectStub() {
   });
 }
 
-function renderAt(path: string) {
-  return render(
+function page(path: string) {
+  return (
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route
@@ -194,8 +194,12 @@ function renderAt(path: string) {
         />
         <Route path="*" element={<div>other page</div>} />
       </Routes>
-    </MemoryRouter>,
+    </MemoryRouter>
   );
+}
+
+function renderAt(path: string) {
+  return render(page(path));
 }
 
 function spotlight(): HTMLElement | null {
@@ -414,6 +418,29 @@ describe("跨路由", () => {
     await waitFor(() => expect(screen.getByText("home")).toBeTruthy());
 
     modal.remove(); // 表单提交完成，弹窗关闭
+    await new Promise((resolve) => setTimeout(resolve, 40));
+
+    expect(screen.queryByText("Hire")).toBeNull(); // 没有被拽去 /employees
+    expect(screen.getByText("home")).toBeTruthy();
+  });
+
+  it("弹窗先关、新步骤随后才到（提交表单的实战时序）：宽限期内也不补跳", async () => {
+    // 实机回归：provider 表单提交 → 弹窗立即关闭 → 进度 refetch 在关窗之后才
+    // 到达引擎。只看 dialogOpen 瞬时值时新步骤到达即补跳（被拽到 /drive）。
+    progressFor("company_setup");
+    const view = renderAt("/");
+    await waitFor(() => expect(screen.getByText("home")).toBeTruthy());
+
+    const modal = document.createElement("div");
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    document.body.appendChild(modal);
+    await new Promise((resolve) => setTimeout(resolve, 20)); // 让 observer 记录"开过"
+    modal.remove(); // 提交成功，弹窗先关
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    progressFor("hire_ceo"); // 进度 refetch 随后才落地
+    view.rerender(page("/"));
     await new Promise((resolve) => setTimeout(resolve, 40));
 
     expect(screen.queryByText("Hire")).toBeNull(); // 没有被拽去 /employees

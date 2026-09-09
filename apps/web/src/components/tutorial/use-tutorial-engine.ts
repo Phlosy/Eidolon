@@ -35,6 +35,15 @@ import { moveReplay, stopReplay, useReplaySession } from "./tutorial-replay";
 const EXCLUDED_ROUTES: RegExp[] = [/^\/office$/, /\/reviews\//];
 const VISIBLE_STATUSES = new Set(["active", "paused"]);
 
+/**
+ * 弹窗"刚关上"的导航宽限。表单提交（如创建 provider）的时序是：
+ * 弹窗先关 → react-query 失效 → 进度 refetch → 新步骤才到达引擎。
+ * 只看 dialogOpen 的瞬时值，新步骤到达时弹窗已关、补跳照样发生
+ * （实机回归复现：提交 provider 后被拽到 /drive）。关窗后这段毫秒数内
+ * 到达的跳转请求一律按"弹窗相关"处理：标记已给过机会，绝不补跳。
+ */
+const DIALOG_NAV_GRACE_MS = 2000;
+
 /** 向导内部指引：只决定"光打在向导的哪个控件上"，不决定完成。 */
 export interface TutorialUiHint {
   targetId: string;
@@ -189,13 +198,20 @@ export function useTutorialEngine(): TutorialEngine {
   // 惰性同步读取：如果 useState(false) + effect 里再设，首帧的自动导航 effect
   // 会赶在弹窗状态生效之前把用户从弹窗里拽走（实测过）。
   const [dialogOpen, setDialogOpen] = useState(modalOpen);
+  const dialogClosedAt = useRef(0);
   const [manualHint, setManualHint] = useState<number | null>(null);
   const [engagedStep, setEngagedStep] = useState<string | null>(null);
   const [remindStep, setRemindStep] = useState<string | null>(null);
   const lastVisibleHint = useRef(0);
   useEffect(() => {
     // 之后靠 MutationObserver 跟进弹窗开关，不轮询
-    const observer = new MutationObserver(() => setDialogOpen(modalOpen()));
+    let wasOpen = modalOpen();
+    const observer = new MutationObserver(() => {
+      const open = modalOpen();
+      if (wasOpen && !open) dialogClosedAt.current = Date.now();
+      wasOpen = open;
+      setDialogOpen(open);
+    });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true });
     setDialogOpen(modalOpen());
     return () => observer.disconnect();
@@ -254,10 +270,11 @@ export function useTutorialEngine(): TutorialEngine {
     if (mode !== "live" || !step || progress?.status !== "active") return;
     if (onRoute || stepDone || pendingParams.length) return;
     if (navigated.current.has(step.id)) return;
-    if (dialogOpen) {
-      // 弹窗开着时把这一步标记为"已给过自动跳转机会"：用户正在对话框里做事
-      // （例如填 provider/密钥），弹窗关闭后绝不能再补跳 —— 否则就会把人拽回
-      // 上一步的页面（实测：填完 provider 关掉对话框就被拉走）。
+    if (dialogOpen || Date.now() - dialogClosedAt.current < DIALOG_NAV_GRACE_MS) {
+      // 弹窗开着（或刚关上：提交触发的进度 refetch 此刻才落地）时把这一步标记为
+      // "已给过自动跳转机会"：用户正在对话框里做事（例如填 provider/密钥），
+      // 弹窗关闭后绝不能再补跳 —— 否则就会把人拽回上一步的页面
+      // （实测：填完 provider 关掉对话框就被拉走）。
       navigated.current.add(step.id);
       return;
     }
