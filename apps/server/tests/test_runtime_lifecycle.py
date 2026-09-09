@@ -5,7 +5,7 @@ create → start → crash-detect → restart → destroy, all without a real da
 
 import pytest
 
-from app.models.enums import DeploymentMode, RuntimeInstanceStatus
+from app.models.enums import DeploymentMode, ProviderType, RuntimeInstanceStatus, RuntimeType
 from app.models.organization import Employee
 from app.repositories import organization as org_repo
 from app.repositories import runtimes as runtime_repo
@@ -13,6 +13,10 @@ from app.runtimes.manager.docker_manager import (
     DockerRuntimeInstanceManager,
     RuntimeManagerError,
 )
+from app.schemas.provider import EmployeeProviderCreate
+from app.schemas.runtime import EmployeeRuntimeCreate
+from app.services import runtimes as runtime_service
+from app.services.providers import provider_service
 
 
 @pytest.fixture()
@@ -137,6 +141,72 @@ async def test_mock_instance_lifecycle(db, manager, docker_employee):
     assert instance.container_id is None
     logs = await manager.get_logs(instance)
     assert logs and "mock" in logs[0]
+
+
+async def test_change_runtime_type_from_mock_to_docker_keeps_data(
+    db, manager, fake_docker, docker_employee
+):
+    """Mock 入职后必须能换成真实运行时：拆旧开新，数据目录（身份/记忆）保留。"""
+    mock = await manager.create_instance(
+        db, docker_employee, runtime_type="mock", deployment_mode="mock"
+    )
+    data_path = mock.data_path
+    provider = provider_service.create_for_employee(
+        db,
+        docker_employee.id,
+        EmployeeProviderCreate(
+            name="switch-provider",
+            provider_type=ProviderType.custom,
+            base_url="https://api.example.com/v1",
+            api_key="sk-switch-test-key-123456",
+            model="gpt-4o-mini",
+        ),
+    )
+
+    switched = await runtime_service.change_employee_runtime(
+        db,
+        docker_employee,
+        EmployeeRuntimeCreate(
+            runtime_type=RuntimeType.hermes,
+            deployment_mode="docker",
+            provider_id=provider.id,
+            model="gpt-4o-mini",
+        ),
+        manager,
+    )
+
+    assert switched.runtime_type == RuntimeType.hermes.value
+    assert switched.deployment_mode == DeploymentMode.docker.value
+    assert switched.data_path == data_path, "数据目录必须保留"
+    raw = runtime_repo.get_instance_for_employee(db, docker_employee.id)
+    assert raw is not None and raw.container_id in fake_docker.containers
+    db.refresh(docker_employee)
+    assert docker_employee.runtime_type == RuntimeType.hermes.value
+
+
+async def test_change_runtime_type_back_to_mock_removes_container(
+    db, manager, fake_docker, docker_employee
+):
+    original = await manager.create_instance(
+        db, docker_employee, runtime_type="hermes", deployment_mode="docker"
+    )
+    container_id = original.container_id
+    data_path = original.data_path
+
+    switched = await runtime_service.change_employee_runtime(
+        db,
+        docker_employee,
+        EmployeeRuntimeCreate(runtime_type=RuntimeType.mock, deployment_mode="mock"),
+        manager,
+    )
+
+    assert switched.runtime_type == RuntimeType.mock.value
+    assert switched.data_path == data_path
+    raw = runtime_repo.get_instance_for_employee(db, docker_employee.id)
+    assert raw is not None and raw.container_id is None
+    assert container_id not in fake_docker.containers
+    db.refresh(docker_employee)
+    assert docker_employee.runtime_type == RuntimeType.mock.value
 
 
 async def test_logs_are_redacted(db, manager, fake_docker, docker_employee):

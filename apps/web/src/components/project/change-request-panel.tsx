@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { GitPullRequestArrow, Plus, X } from "lucide-react";
 import type { ProjectLifecycle } from "../../types";
 import { useCreateChangeRequest } from "../../hooks/useProjects";
@@ -7,6 +8,7 @@ import { Input, Textarea } from "../common/input";
 import { Badge } from "../common/badge";
 
 export function ChangeRequestPanel({ lifecycle }: { lifecycle: ProjectLifecycle }) {
+  const { t } = useTranslation("project");
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [reason, setReason] = useState("");
@@ -40,15 +42,13 @@ export function ChangeRequestPanel({ lifecycle }: { lifecycle: ProjectLifecycle 
         <div>
           <div className="flex items-center gap-2">
             <GitPullRequestArrow className="h-4 w-4 text-primary" />
-            <h2 className="text-base font-semibold">Change Management</h2>
+            <h2 className="text-base font-semibold">{t("changeRequest.title")}</h2>
           </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Baseline 通过后不允许直接覆盖；重大修改从 ChangeRequest 开始。
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">{t("changeRequest.hint")}</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setOpen((value) => !value)}>
           {open ? <X className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-          {open ? "取消" : "Create Change Request"}
+          {open ? t("changeRequest.cancel") : t("changeRequest.create")}
         </Button>
       </div>
       {open ? (
@@ -58,11 +58,11 @@ export function ChangeRequestPanel({ lifecycle }: { lifecycle: ProjectLifecycle 
         >
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="space-y-1.5">
-              <span className="text-xs font-medium">Change title *</span>
+              <span className="text-xs font-medium">{t("changeRequest.formTitle")} *</span>
               <Input value={title} onChange={(event) => setTitle(event.target.value)} required />
             </label>
             <label className="space-y-1.5 sm:col-span-2">
-              <span className="text-xs font-medium">Reason *</span>
+              <span className="text-xs font-medium">{t("changeRequest.reason")} *</span>
               <Textarea
                 value={reason}
                 onChange={(event) => setReason(event.target.value)}
@@ -71,7 +71,7 @@ export function ChangeRequestPanel({ lifecycle }: { lifecycle: ProjectLifecycle 
             </label>
           </div>
           <fieldset className="mt-4">
-            <legend className="text-xs font-medium">Affected Requirements</legend>
+            <legend className="text-xs font-medium">{t("changeRequest.affected")}</legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {lifecycle.requirements.map((requirement) => (
                 <label
@@ -96,12 +96,14 @@ export function ChangeRequestPanel({ lifecycle }: { lifecycle: ProjectLifecycle 
           </fieldset>
           {create.isError ? (
             <p role="alert" className="mt-3 text-xs text-danger">
-              {create.error instanceof Error ? create.error.message : "创建失败"}
+              {create.error instanceof Error
+                ? create.error.message
+                : t("changeRequest.createError")}
             </p>
           ) : null}
           <div className="mt-4 flex justify-end">
             <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? "正在创建…" : "开始影响分析"}
+              {create.isPending ? t("changeRequest.creating") : t("changeRequest.analyze")}
             </Button>
           </div>
         </form>
@@ -118,12 +120,16 @@ export function ChangeRequestPanel({ lifecycle }: { lifecycle: ProjectLifecycle 
                 <p className="truncate text-sm font-medium">{change.title}</p>
                 <p className="mt-0.5 text-[10px] text-muted-foreground">{change.reason}</p>
               </div>
-              <Badge variant="muted">{change.status.replaceAll("_", " ")}</Badge>
+              <Badge variant="muted">
+                {t(`changeRequest.statuses.${change.status}`, {
+                  defaultValue: change.status.replaceAll("_", " "),
+                })}
+              </Badge>
             </article>
           ))
         ) : (
           <p className="rounded-xl border border-dashed border-border px-4 py-5 text-center text-xs text-muted-foreground">
-            当前没有 ChangeRequest。
+            {t("changeRequest.empty")}
           </p>
         )}
       </div>

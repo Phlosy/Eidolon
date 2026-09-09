@@ -69,7 +69,7 @@ export function TalentRosterPage() {
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search…"
+            placeholder={t("employee:roster.searchPlaceholder")}
             className="h-9 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm"
           />
         </label>

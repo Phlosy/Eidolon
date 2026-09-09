@@ -51,6 +51,8 @@ describe("canAdvanceHire", () => {
 
   it("requires a provider and model only when provider configuration is selected", () => {
     expect(canAdvanceHire("provider", READY)).toBe(true);
+    // 真实运行时不能“稍后配置”：没有 provider+model 容器起不来
+    expect(canAdvanceHire("provider", { ...READY, runtimeType: "hermes" })).toBe(false);
     expect(
       canAdvanceHire("provider", { ...READY, providerMode: "existing", providerId: null }),
     ).toBe(false);

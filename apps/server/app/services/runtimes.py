@@ -206,6 +206,41 @@ async def change_runtime_provider(
     return instance_out(db, instance)
 
 
+async def change_employee_runtime(
+    db: Session,
+    employee: Employee,
+    payload: EmployeeRuntimeCreate,
+    manager: DockerRuntimeInstanceManager | None = None,
+) -> RuntimeInstanceOut:
+    """切换员工的运行时类型（同类型时最多顺手换 provider/model）。
+
+    换类型 = 拆掉旧实例再按新类型开一个；工作区/记忆/技能所在的数据目录在
+    destroy 时保留，所以身份不会丢。Mock 入职后想换成 Hermes/OpenClaw
+    只能走这条路径 —— 没有它，Mock 就是一个不可逆的选择。
+    """
+    manager = manager or get_manager()
+    instance = runtime_repo.get_instance_for_employee(db, employee.id)
+    if instance is None:
+        raise HTTPException(status_code=404, detail="employee has no runtime instance")
+
+    same_type = instance.runtime_type == payload.runtime_type.value
+    same_mode = instance.deployment_mode == payload.deployment_mode
+    if same_type and same_mode:
+        if payload.provider_id is not None and payload.model:
+            return await change_runtime_provider(
+                db,
+                employee,
+                EmployeeRuntimeProviderPatch(provider_id=payload.provider_id, model=payload.model),
+                manager,
+            )
+        return instance_out(db, instance)
+
+    await manager.destroy_instance(db, instance)
+    gateway.drop_instance(employee.id)
+    # 旧实例已删除并提交；create 路径会重新校验 provider/docker 并开出新实例
+    return await create_employee_runtime(db, employee, payload, manager)
+
+
 async def delete_employee_runtime(
     db: Session, employee: Employee, manager: DockerRuntimeInstanceManager | None = None
 ) -> None:

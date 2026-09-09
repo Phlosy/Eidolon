@@ -443,6 +443,8 @@ def classic_snake_template() -> TutorialTemplateOut:
             "code": "SNAKE",
             "priority": "high",
             "customer": "Eidolon Tutorial",
+            "description": "一个可直接运行的经典 Web 贪吃蛇小游戏。",
+            "goal": "用最小范围跑通 Eidolon 从需求到交付的完整项目生命周期。",
             "background": "用于验证 Eidolon AI Software Studio 完整软件项目生命周期。",
             "objectives": ["交付一个可快速运行、可验收的经典 Web 贪吃蛇小游戏"],
             "requirements": [
@@ -467,6 +469,13 @@ def classic_snake_template() -> TutorialTemplateOut:
                 "User Manual",
                 "Deployment Manual",
                 "Review Presentations",
+            ],
+            "milestones": [
+                {"name": "需求基线确认"},
+                {"name": "设计基线确认"},
+                {"name": "开发完成"},
+                {"name": "测试通过"},
+                {"name": "交付验收"},
             ],
             "review_configuration": {
                 "requirements_review": True,

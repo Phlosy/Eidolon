@@ -24,6 +24,7 @@ from app.lifecycle.naming import naming
 from app.lifecycle.provisioners.base import Drift, ProvisionContext
 from app.lifecycle.provisioners.registry import get_registry
 from app.models.enums import (
+    DeploymentMode,
     EmployeeStatus,
     LifecycleStatus,
     PackageSource,
@@ -31,6 +32,7 @@ from app.models.enums import (
     ProvisioningJobKind,
     ResourceAccountStatus,
     ResourceType,
+    RuntimeType,
 )
 from app.models.lifecycle import AccessPackage, ProvisioningJob
 from app.models.organization import Department, Employee
@@ -40,6 +42,11 @@ from app.repositories import organization as org_repo
 from app.repositories import position as position_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
+from app.runtimes.manager.docker_manager import (
+    DockerRuntimeInstanceManager,
+    RuntimeManagerError,
+    get_manager,
+)
 from app.schemas.lifecycle import (
     AccessPackageCreate,
     OffboardRequest,
@@ -220,7 +227,11 @@ def _guard_lifecycle(employee: Employee, allowed: tuple[str, ...], action: str) 
 # --------------------------------------------------------------------- onboard
 
 
-async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, ProvisioningJob]:
+async def onboard(
+    db: Session,
+    payload: OnboardRequest,
+    runtime_manager: DockerRuntimeInstanceManager | None = None,
+) -> tuple[Employee, ProvisioningJob]:
     company = org_repo.get_default_company(db)
     if company is None:
         raise HTTPException(status_code=409, detail="no company seeded")
@@ -237,6 +248,20 @@ async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, Provi
         raise HTTPException(
             status_code=422,
             detail="provider_name and model are required for a new provider",
+        )
+    # 真实运行时靠 provider+model 启动容器：没有就当场拒绝，
+    # 不能先塞一个 Mock 实例把用户选中的 Hermes/OpenClaw 悄悄换掉。
+    if (
+        payload.runtime_type != RuntimeType.mock
+        and payload.provider_id is None
+        and payload.provider_type is None
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "real runtimes require a provider and model; "
+                "configure a provider or choose the mock runtime"
+            ),
         )
     slug = naming.username(payload.slug or payload.name)
     # 唯一性按全局口径判：slug / username / workspace_path / memory_namespace 都是全局唯一列，
@@ -308,7 +333,6 @@ async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, Provi
         lifecycle_repo.create_employee_package(
             db, employee_id=employee.id, package_id=package.id, source=source
         )
-    seed.ensure_employee_runtime_state(db)
     brain = runtime_repo.ensure_brain(db, employee.id)
     brain.personality = payload.personality
     brain.goals = payload.goals
@@ -322,6 +346,7 @@ async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, Provi
     project_brain(db, employee, brain)
 
     binding = None
+    primary_provider = None
     # 条目化模型：payload.model 是默认启动模型，payload.models 是完整条目列表；
     # 两者合并去重，默认模型不在列表里时补进去
     entries = list(payload.models)
@@ -331,6 +356,7 @@ async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, Provi
     if payload.provider_id is not None:
         provider = provider_repo.get_provider_visible(db, payload.provider_id, employee.id)
         assert provider is not None
+        primary_provider = provider
         provider_repo.clear_primary_flags(db, employee.id)
         for position, entry in enumerate(entries):
             created = provider_repo.create_binding(
@@ -363,11 +389,31 @@ async def onboard(db: Session, payload: OnboardRequest) -> tuple[Employee, Provi
             ),
         )
         binding = provider_repo.get_primary_binding(db, employee.id)
+        if binding is not None:
+            primary_provider = provider_repo.get_provider(db, binding.provider_id)
 
+    # 按招聘向导选择的类型真的把运行时实例开出来（v0.2 的全局 mock 兜底
+    # 会让 employee.runtime_type=hermes 的员工拿到 mock 实例 —— 实机数据
+    # ada/tom/qa 全是这种错位）。Mock 也要显式建，保证每个人都有实例。
+    manager = runtime_manager or get_manager()
+    deployment_mode = (
+        DeploymentMode.mock.value
+        if payload.runtime_type == RuntimeType.mock
+        else DeploymentMode.docker.value
+    )
+    try:
+        instance = await manager.create_instance(
+            db,
+            employee,
+            runtime_type=payload.runtime_type.value,
+            deployment_mode=deployment_mode,
+            provider=primary_provider,
+            model=primary_model,
+        )
+    except RuntimeManagerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     if binding is not None:
-        instance = runtime_repo.get_instance_for_employee(db, employee.id)
-        if instance is not None:
-            instance.model_binding_id = binding.id
+        instance.model_binding_id = binding.id
     db.commit()
     db.refresh(employee)
 

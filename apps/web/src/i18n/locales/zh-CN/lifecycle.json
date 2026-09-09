@@ -42,7 +42,9 @@
     "noManager": "（无上级）",
     "managerHint": "可选，之后可随时调整。",
     "runtimeHint": "选择驱动该员工的运行时类型。",
+    "runtimeDockerUnavailable": "Docker 不可用，暂时无法创建",
     "providerHint": "为这位员工绑定独立模型。可复用公司级 Provider、创建员工私有 Provider，或稍后配置。",
+    "providerRequired": "真实运行时需要服务商和模型才能启动，不能选“稍后配置”。",
     "providerModes": {
       "existing": "已有 Provider",
       "new": "新建独立配置",

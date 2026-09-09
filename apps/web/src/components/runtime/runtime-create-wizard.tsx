@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCreateEmployeeRuntime } from "../../hooks/useRuntimes";
+import { useChangeEmployeeRuntime, useCreateEmployeeRuntime } from "../../hooks/useRuntimes";
 import { useCreateEmployeeProvider } from "../../hooks/useProviders";
 import { Button } from "../common/button";
 import { Dialog } from "../common/dialog";
@@ -41,23 +41,42 @@ interface RuntimeCreateWizardProps {
   employeeId: number;
   runtimeTypes: RuntimeTypeInfo[];
   providers: Provider[];
+  /** create（默认）：无实例时新建；change：已有实例时切换类型。 */
+  mode?: "create" | "change";
+  /** change 模式的初始值（当前实例的运行时/模型）。 */
+  initial?: Partial<WizardState> | null;
 }
 
-/** Multi-step dialog that creates a runtime instance for an employee. */
+/** Multi-step dialog that creates or switches a runtime instance for an employee. */
 export function RuntimeCreateWizard({
   open,
   onOpenChange,
   employeeId,
   runtimeTypes,
   providers,
+  mode = "create",
+  initial,
 }: RuntimeCreateWizardProps) {
   const { t } = useTranslation();
   const [stepIndex, setStepIndex] = useState(0);
   const [state, setState] = useState<WizardState>(INITIAL_WIZARD_STATE);
   const [creatingProvider, setCreatingProvider] = useState(false);
   const createRuntime = useCreateEmployeeRuntime(employeeId);
+  const changeRuntime = useChangeEmployeeRuntime(employeeId);
+  const mutation = mode === "change" ? changeRuntime : createRuntime;
 
-  const step = WIZARD_STEPS[stepIndex];
+  // Mock 不连接模型服务：provider/model/deployment 三步直接不出现，
+  // 否则用户会被一个永远没有选项的下拉框卡在“下一步”前面。
+  const steps = useMemo(
+    () =>
+      state.runtimeType === "mock"
+        ? WIZARD_STEPS.filter(
+            (item) => item !== "deployment" && item !== "provider" && item !== "model",
+          )
+        : [...WIZARD_STEPS],
+    [state.runtimeType],
+  );
+  const step = steps[Math.min(stepIndex, steps.length - 1)];
   const selectedType = useMemo(
     () => runtimeTypes.find((t) => t.type === state.runtimeType) ?? null,
     [runtimeTypes, state.runtimeType],
@@ -67,35 +86,55 @@ export function RuntimeCreateWizard({
     (!selectedType.docker_available || !selectedType.deployment_modes.includes("docker"));
   const advanceable = canAdvance(step, state, runtimeTypes);
 
+  // 每次打开重置一次；change 模式带入当前实例。
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (open && !wasOpen.current) {
+      setStepIndex(0);
+      setCreatingProvider(false);
+      createRuntime.reset();
+      changeRuntime.reset();
+      setState(
+        mode === "change" && initial
+          ? { ...INITIAL_WIZARD_STATE, ...initial }
+          : INITIAL_WIZARD_STATE,
+      );
+    }
+    wasOpen.current = open;
+  }, [open, mode, initial, createRuntime, changeRuntime]);
+
   const close = () => {
     onOpenChange(false);
     setStepIndex(0);
     setState(INITIAL_WIZARD_STATE);
     setCreatingProvider(false);
     createRuntime.reset();
+    changeRuntime.reset();
   };
 
   const submit = () => {
-    if (state.providerId == null || state.runtimeType == null) return;
+    if (state.runtimeType == null) return;
+    const isMock = state.runtimeType === "mock";
+    if (!isMock && (state.providerId == null || !state.model.trim())) return;
     const input: CreateEmployeeRuntimeInput = {
       runtime_type: state.runtimeType,
-      deployment_mode: "docker",
-      provider_id: state.providerId,
-      model: state.model.trim(),
+      deployment_mode: isMock ? "mock" : "docker",
+      ...(state.providerId != null ? { provider_id: state.providerId } : {}),
+      ...(state.model.trim() ? { model: state.model.trim() } : {}),
       cpu_limit: state.cpuLimit,
       memory_limit_mb: state.memoryLimitMb,
     };
-    createRuntime.mutate(input, { onSuccess: close });
+    mutation.mutate(input, { onSuccess: close });
   };
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => (next ? onOpenChange(true) : close())}
-      title={t("runtime:wizard.title")}
+      title={mode === "change" ? t("runtime:wizard.changeTitle") : t("runtime:wizard.title")}
       description={t("runtime:wizard.stepOf", {
         current: stepIndex + 1,
-        total: WIZARD_STEPS.length,
+        total: steps.length,
         step: t(`runtime:${STEP_TITLE_KEY[step]}`),
       })}
       className="max-w-lg"
@@ -200,7 +239,7 @@ export function RuntimeCreateWizard({
           />
           <SummaryRow
             label={t("runtime:wizard.summary.deployment")}
-            value={state.deploymentMode}
+            value={state.runtimeType === "mock" ? "mock" : state.deploymentMode}
             mono
           />
           <SummaryRow
@@ -221,15 +260,15 @@ export function RuntimeCreateWizard({
         </dl>
       ) : null}
 
-      {createRuntime.isError ? (
-        <p className="mt-3 text-xs text-red-600 dark:text-red-400">{createRuntime.error.message}</p>
+      {mutation.isError ? (
+        <p className="mt-3 text-xs text-red-600 dark:text-red-400">{mutation.error.message}</p>
       ) : null}
 
       <div className="mt-5 flex justify-between">
         <Button
           variant="outline"
           size="sm"
-          disabled={stepIndex === 0 || createRuntime.isPending}
+          disabled={stepIndex === 0 || mutation.isPending}
           onClick={() => setStepIndex((i) => Math.max(0, i - 1))}
         >
           {t("common:back")}
@@ -237,11 +276,15 @@ export function RuntimeCreateWizard({
         {step === "confirm" ? (
           <Button
             size="sm"
-            disabled={createRuntime.isPending}
+            disabled={mutation.isPending}
             onClick={submit}
             data-testid="wizard-create"
           >
-            {createRuntime.isPending ? t("runtime:wizard.creating") : t("runtime:wizard.create")}
+            {mutation.isPending
+              ? t("runtime:wizard.creating")
+              : mode === "change"
+                ? t("runtime:wizard.change")
+                : t("runtime:wizard.create")}
           </Button>
         ) : (
           <Button

@@ -67,8 +67,9 @@ export function CompanySidebar({
   ];
   return (
     <aside
+      data-tutorial-protected="true"
       className={cn(
-        "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-surface/96 shadow-2xl backdrop-blur-xl transition-[width,transform] duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:shadow-none",
+        "fixed inset-y-0 left-0 z-50 flex flex-col border-r border-border bg-surface/96 shadow-[var(--shadow-floating)] backdrop-blur-xl transition-[width,transform] duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 lg:shadow-none",
         collapsed ? "w-20" : "w-[272px]",
         mobileOpen ? "translate-x-0" : "-translate-x-full",
       )}
@@ -113,7 +114,7 @@ export function CompanySidebar({
         {sections.map((section) => (
           <section key={section.key}>
             {!collapsed ? (
-              <p className="mb-1.5 px-3 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+              <p className="mb-2 px-3 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/65">
                 {t(`nav:sections.${section.key}`)}
               </p>
             ) : (
@@ -132,7 +133,7 @@ export function CompanySidebar({
                       "group relative flex min-h-11 items-center rounded-xl text-sm transition-colors",
                       collapsed ? "justify-center px-2" : "gap-3 px-3",
                       isActive
-                        ? "bg-primary/10 font-medium text-foreground"
+                        ? "bg-primary/10 font-medium text-foreground ring-1 ring-primary/15"
                         : "text-muted-foreground hover:bg-surface-interactive hover:text-foreground",
                     )
                   }
@@ -155,7 +156,7 @@ export function CompanySidebar({
                         <span className="min-w-0 flex-1 truncate">{t(`nav:${key}`)}</span>
                       ) : null}
                       {!collapsed && badge != null && badge > 0 ? (
-                        <span className="type-telemetry rounded-md border border-border bg-background/70 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                        <span className="type-telemetry rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                           {badge}
                         </span>
                       ) : null}
@@ -187,7 +188,7 @@ export function CompanySidebar({
         <button
           type="button"
           onClick={onCollapse}
-          className="hidden h-10 w-full items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground lg:flex"
+          className="hidden h-10 w-full items-center justify-center rounded-xl border border-border text-muted-foreground hover:bg-muted hover:text-foreground lg:flex"
           aria-label={t("nav:toggleSidebar")}
         >
           <ChevronLeft className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")} />

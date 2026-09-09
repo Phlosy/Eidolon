@@ -36,6 +36,7 @@ from app.models.organization import Company, Employee
 from app.models.project import Project
 from app.models.provider import ModelBinding, Provider
 from app.models.runtime import RuntimeInstance
+from app.providers.base import PRESETS_BY_TYPE
 from app.repositories import git as git_repo
 from app.repositories import project as project_repo
 from app.repositories import project_delivery as delivery_repo
@@ -53,6 +54,24 @@ RUNTIME_BROKEN = {
 # 评审通过（含"有条件通过"，与交付流程口径一致）
 PASSED_REVIEWS = {ReviewDecision.approved.value, ReviewDecision.conditionally_approved.value}
 ACCOUNT_ACTIVE = "active"
+
+
+def provider_usable(provider: Provider) -> bool:
+    """“有效 Provider” = 启用 + 真能跑。
+
+    有密钥的算；本地服务（Ollama）和自建 OpenAI 兼容服务本来就不需要密钥，
+    只要有接入地址也算 —— 否则一个完全合法的配置会被教程判成未完成、
+    而 UI 连密钥输入框都不给，用户就死锁在“接上模型服务”这一步。
+    没密钥、又没有接入地址的自定义服务不算：跑起来必然失败。
+    """
+    if not provider.enabled:
+        return False
+    if provider.credential_ref:
+        return True
+    preset = PRESETS_BY_TYPE.get(provider.provider_type)
+    if preset is None or preset.requires_api_key:
+        return False
+    return bool(provider.base_url or preset.default_base_url)
 
 
 def _best_accounts(rows: list[ResourceAccount]) -> dict[int, dict[str, ResourceAccount]]:
@@ -120,9 +139,10 @@ class Facts:
             if provider_ids:
                 for provider in db.scalars(select(Provider).where(Provider.id.in_(provider_ids))):
                     facts.providers[provider.id] = provider
-                    # "有效 Provider Binding" = 绑定存在 + Provider 启用 + 真的存了密钥。
-                    # 没有密钥的 Provider 不能算完成：员工一跑就会失败，教程却显示通关。
-                    if provider.enabled and provider.credential_ref:
+                    # “有效 Provider Binding” = 绑定存在 + Provider 启用 + 真能跑。
+                    # 没有密钥的云端 Provider 不能算完成；但 Ollama 这类本地服务
+                    # 本来就不需要密钥，不能因此把它判成未配置（否则教程死锁）。
+                    if provider_usable(provider):
                         facts.usable_providers.add(provider.id)
             facts.accounts = _best_accounts(
                 list(

@@ -75,7 +75,7 @@ def step(
         "order": order,
         "title_key": title_key or f"steps.{step_id}.label",
         "description_key": description_key or f"steps.{step_id}.explanation",
-        # "为什么重要" 是可选的：渐进式披露，别每步都弹一大段
+        # "为什么这一步重要" 是可选的：渐进式披露，别每步都弹一大段
         "why_key": why_key or f"steps.{step_id}.why",
         "has_why": why_key is not None,
         "metadata": metadata or {},

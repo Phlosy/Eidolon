@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
 import { canAdvance, INITIAL_WIZARD_STATE, type WizardState } from "./wizard-steps";
 import { RuntimeCreateWizard } from "./runtime-create-wizard";
@@ -29,6 +30,15 @@ function makeRuntimeType(overrides: Partial<RuntimeTypeInfo> = {}): RuntimeTypeI
     supported_providers: ["openai", "anthropic"],
     ...overrides,
   };
+}
+
+function makeMockType(): RuntimeTypeInfo {
+  return makeRuntimeType({
+    type: "mock",
+    docker_available: false,
+    deployment_modes: ["mock"],
+    supported_providers: [],
+  });
 }
 
 function makeProvider(): Provider {
@@ -81,9 +91,18 @@ describe("canAdvance", () => {
     expect(canAdvance("resources", { ...READY, memoryLimitMb: 64 }, types)).toBe(false);
     expect(canAdvance("resources", READY, types)).toBe(true);
   });
+
+  it("Mock 不需要 provider 和 model", () => {
+    const mockState: WizardState = { ...INITIAL_WIZARD_STATE, runtimeType: "mock" };
+    expect(canAdvance("provider", mockState, [makeMockType()])).toBe(true);
+    expect(canAdvance("model", mockState, [makeMockType()])).toBe(true);
+  });
 });
 
-function renderWizard(runtimeTypes: RuntimeTypeInfo[]) {
+function renderWizard(
+  runtimeTypes: RuntimeTypeInfo[],
+  props: Partial<ComponentProps<typeof RuntimeCreateWizard>> = {},
+) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
@@ -93,6 +112,7 @@ function renderWizard(runtimeTypes: RuntimeTypeInfo[]) {
         employeeId={1}
         runtimeTypes={runtimeTypes}
         providers={[makeProvider()]}
+        {...props}
       />
     </QueryClientProvider>,
   );
@@ -140,5 +160,24 @@ describe("RuntimeCreateWizard navigation", () => {
     fireEvent.click(screen.getByTestId("wizard-next"));
     expect(screen.getByTestId("docker-unavailable")).toBeInTheDocument();
     expect(screen.getByTestId("wizard-next")).toBeDisabled();
+  });
+
+  it("Mock 跳过 deployment/provider/model，直接到确认", () => {
+    renderWizard([makeMockType()]);
+    const next = () => screen.getByTestId("wizard-next");
+    fireEvent.click(screen.getByRole("button", { name: /Mock/ }));
+    fireEvent.click(next()); // resources
+    expect(screen.queryByTestId("provider-selector")).not.toBeInTheDocument();
+    fireEvent.click(next()); // confirm
+    expect(screen.getByTestId("wizard-create")).toHaveTextContent("Create runtime");
+  });
+
+  it("change 模式在 Mock 下两步就能确认，按钮是 Apply change", () => {
+    renderWizard([makeMockType()], { mode: "change" });
+    expect(screen.getByText("Change runtime")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Mock/ }));
+    fireEvent.click(screen.getByTestId("wizard-next")); // resources
+    fireEvent.click(screen.getByTestId("wizard-next")); // confirm
+    expect(screen.getByTestId("wizard-create")).toHaveTextContent("Apply change");
   });
 });

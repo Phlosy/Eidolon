@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   flattenSteps,
@@ -121,8 +122,11 @@ export interface TutorialEngine {
   exitReplay: () => void;
 }
 
-/** API 错误的 detail 才是人能看懂的那句，别把 Error 对象直接渲染出来。 */
-function describeError(error: unknown): string | null {
+/** 业务门禁拒绝：后端唯一一条需要单独文案的 detail（其余一律走通用兜底）。 */
+const DENIED_DETAIL = "complete the real business action first";
+
+/** 取出 API 错误的 detail/message —— 只用于分类，原文不渲染到界面上。 */
+function errorDetail(error: unknown): string | null {
   if (!error) return null;
   const detail = (error as { detail?: unknown }).detail;
   if (typeof detail === "string" && detail) return detail;
@@ -143,6 +147,7 @@ function liveStepFor(
 }
 
 export function useTutorialEngine(): TutorialEngine {
+  const { t } = useTranslation("tutorial");
   const location = useLocation();
   const navigate = useNavigate();
   const { data: coreProgress } = useTutorial();
@@ -293,7 +298,11 @@ export function useTutorialEngine(): TutorialEngine {
   ]);
 
   const clearError = () => setDismissedError(null);
-  const rawError = describeError(completeStep.error) ?? describeError(skipStep.error);
+  // 后端 detail 只用来分类，界面文案必须说用户语言（英文内部错误不外泄）
+  const detail = errorDetail(completeStep.error) ?? errorDetail(skipStep.error);
+  const rawError = detail
+    ? t(detail === DENIED_DETAIL ? "ui.errorDenied" : "ui.errorGeneric")
+    : null;
 
   return {
     mode,

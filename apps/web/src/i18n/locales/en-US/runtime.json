@@ -66,6 +66,7 @@
     "restart": "Restart",
     "viewLogs": "View logs",
     "changeProvider": "Change provider",
+    "changeRuntime": "Change runtime",
     "checkUpdate": "Check update",
     "checking": "Checking…",
     "resourcesValue": "{{cpu}} cores · {{memory}} MB"
@@ -81,16 +82,20 @@
     "noInstanceTitle": "No runtime instance",
     "noInstanceHint": "Create one to give this employee a live environment.",
     "createRuntime": "Create runtime",
+    "mismatch": "This employee is registered for {{preferred}}, but the current instance is {{current}}.",
+    "mismatchAction": "Align to {{preferred}}",
     "capabilitiesHeading": "Capabilities — {{type}}"
   },
   "changeProvider": {
     "title": "Change provider",
     "description": "Select a new provider and model for this runtime.",
+    "noSupportedProviders": "The current runtime (Mock) does not connect to a model service, so there is nothing to select here. Use “Create provider” on the left, or change the runtime first.",
     "apply": "Apply",
     "applying": "Applying…"
   },
   "wizard": {
     "title": "Create runtime",
+    "changeTitle": "Change runtime",
     "stepOf": "Step {{current}} of {{total}} — {{step}}",
     "steps": {
       "type": "Runtime type",
@@ -115,6 +120,7 @@
     "cpuValue": "{{count}} cores",
     "memoryValue": "{{count}} MB",
     "create": "Create runtime",
+    "change": "Apply change",
     "creating": "Creating…",
     "providerNamePlaceholder": "Provider name",
     "apiKeyPlaceholder": "API key",

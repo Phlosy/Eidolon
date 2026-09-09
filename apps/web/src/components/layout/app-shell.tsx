@@ -5,6 +5,7 @@ import { CompanySidebar } from "./company-sidebar";
 import { TopCommandBar } from "./top-command-bar";
 import { useEventStream } from "../../hooks/useEventStream";
 import { TutorialOverlay } from "../tutorial/tutorial-overlay";
+import { TutorialHandoff } from "../tutorial/tutorial-handoff";
 
 export function AppShell() {
   const { t } = useTranslation();
@@ -35,6 +36,7 @@ export function AppShell() {
           </div>
         </main>
         <TutorialOverlay />
+        <TutorialHandoff />
         <div id="global-overlay-layer" />
       </div>
     </div>

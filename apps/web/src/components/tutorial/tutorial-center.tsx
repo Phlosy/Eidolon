@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowUpRight,
-  BookOpen,
-  CircleHelp,
-  Play,
-  RotateCcw,
-  ShieldAlert,
-  SkipForward,
-} from "lucide-react";
+import { ArrowUpRight, BookOpen, CircleHelp, Play, RotateCcw, SkipForward } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -21,9 +13,9 @@ import {
   TUTORIAL_QUERY_KEY,
   useSkipPractice,
   useStartPractice,
-  usePracticePreview,
   useTutorialLibrary,
 } from "../../hooks/useTutorial";
+import { PracticeDialog } from "./practice-dialog";
 import { startReplay } from "./tutorial-replay";
 import { Button } from "../common/button";
 import { Dialog } from "../common/dialog";
@@ -99,7 +91,9 @@ function TutorialCard({
           progress.status === "skipped" || progress.status === "not_started" ? (
             <Button size="sm" onClick={onStartPractice}>
               <Play className="h-3.5 w-3.5" />
-              {t("library.resumePractice")}
+              {t(
+                progress.status === "skipped" ? "library.resumePractice" : "library.startPractice",
+              )}
             </Button>
           ) : null
         ) : progress.status === "active" || progress.status === "paused" ? (
@@ -131,98 +125,6 @@ function TutorialCard({
   );
 }
 
-function PracticeDialog({
-  open,
-  onOpenChange,
-  onStart,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onStart: () => void;
-}) {
-  const { t } = useTranslation("tutorial");
-  const preview = usePracticePreview(open);
-  const data = preview.data;
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={onOpenChange}
-      title={t("practice.dialogTitle")}
-      description={t("practice.dialogBody")}
-    >
-      <div className="space-y-4">
-        <p className="rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-[11px] text-primary">
-          {t("practice.accelerated")}
-        </p>
-        {data && data.team.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t("practice.noEmployees")}</p>
-        ) : null}
-        {data ? (
-          <>
-            <table className="w-full text-[11px]">
-              <caption className="mb-1 text-left text-[10px] text-muted-foreground">
-                {t("practice.team")}
-              </caption>
-              <thead className="text-muted-foreground">
-                <tr>
-                  <th className="py-1 text-left font-normal">{t("practice.runtime")}</th>
-                  <th className="py-1 text-left font-normal">{t("practice.provider")}</th>
-                  <th className="py-1 text-left font-normal">{t("practice.model")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.team.map((member) => (
-                  <tr key={member.employee_id} data-tutorial-team-row={member.employee_id}>
-                    <td className="py-1 font-mono">
-                      {member.name} · {member.runtime ?? "—"}
-                    </td>
-                    <td className="py-1 font-mono">{member.provider ?? "—"}</td>
-                    <td className="py-1 font-mono">{member.model ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p
-              data-tutorial-cost={data.uses_llm ? "real" : "mock"}
-              className={`flex items-start gap-2 rounded-xl border px-3 py-2 text-[11px] ${
-                data.uses_llm
-                  ? "border-danger/40 bg-danger/5 text-danger"
-                  : "border-success/35 bg-success/5 text-success"
-              }`}
-            >
-              {data.uses_llm ? <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : null}
-              <span>{data.uses_llm ? t("practice.usesLlm") : t("practice.mockOnly")}</span>
-            </p>
-            {data.uses_llm ? (
-              <div className="text-[10px] leading-5 text-muted-foreground">
-                <p>{t("practice.mockOption")}</p>
-                <p>{t("practice.mockOptionHint")}</p>
-              </div>
-            ) : null}
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground">…</p>
-        )}
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            {t("practice.notNow")}
-          </Button>
-          <Button
-            onClick={() => {
-              onOpenChange(false);
-              onStart();
-            }}
-            disabled={!data}
-            data-tutorial-action="start-practice"
-          >
-            {t("practice.start")}
-          </Button>
-        </div>
-      </div>
-    </Dialog>
-  );
-}
-
 export function TutorialCenter() {
   const { t } = useTranslation("tutorial");
   const queryClient = useQueryClient();
@@ -230,6 +132,7 @@ export function TutorialCenter() {
   const skipPractice = useSkipPractice();
   const startPractice = useStartPractice();
   const [practiceOpen, setPracticeOpen] = useState(false);
+  const [skipConfirmOpen, setSkipConfirmOpen] = useState(false);
   const items = library.data?.tutorials ?? [];
   const core = items.find((item) => item.definition.id === CORE_TUTORIAL);
   // "继续教程"要落到当前步骤真正的页面上：route 可能带 {占位符}，用 context 解析
@@ -265,7 +168,7 @@ export function TutorialCenter() {
             continueTo={progress.tutorial_id === CORE_TUTORIAL ? coreContinueTo : "/projects"}
             onReplay={() => startReplay(definition)}
             onStartPractice={() => setPracticeOpen(true)}
-            onSkipPractice={() => skipPractice.mutate(undefined, { onSuccess: refresh })}
+            onSkipPractice={() => setSkipConfirmOpen(true)}
           />
         ))}
       </div>
@@ -288,6 +191,28 @@ export function TutorialCenter() {
         onOpenChange={setPracticeOpen}
         onStart={() => startPractice.mutate(undefined, { onSuccess: refresh })}
       />
+
+      <Dialog
+        open={skipConfirmOpen}
+        onOpenChange={setSkipConfirmOpen}
+        title={t("library.skipConfirmTitle")}
+        description={t("library.skipConfirmBody")}
+      >
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setSkipConfirmOpen(false)}>
+            {t("common:cancel")}
+          </Button>
+          <Button
+            data-tutorial-action="confirm-skip-practice"
+            onClick={() => {
+              setSkipConfirmOpen(false);
+              skipPractice.mutate(undefined, { onSuccess: refresh });
+            }}
+          >
+            {t("library.skipConfirmAction")}
+          </Button>
+        </div>
+      </Dialog>
     </section>
   );
 }

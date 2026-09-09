@@ -32,29 +32,50 @@ Assets          0
 
 ## 3. 步骤与完成判定
 
-| Step | 指导动作 | 真实完成条件 |
-|---|---|---|
-| company_setup | 了解空公司 | Company 存在 |
-| hire_ceo | 使用 Onboarding Wizard | active/onboarding CEO 存在 |
-| configure_ceo | 查看 Runtime/Provider/Workspace/Git/Docs | CEO 完成引导检查项 |
-| hire_engineer | 入职首名工程师 | active/onboarding Engineer 存在 |
-| hire_qa | 建议 QA，可稍后 | QA 存在或用户记录 deferred |
-| create_project | Structured Intake | context.project_id 指向真实项目 |
-| requirements_review | 进入 Review Room | Requirements Review 已批准 |
-| design_review | 进入 Review Room | Design Review 已批准 |
-| delivery | 验收与交付 | Project completed 且 DeliveryPackage 存在 |
+用户看到的所有文案（标题、说明、为什么、提示）只存在于
+`apps/web/src/i18n/locales/{zh-CN,en-US}/tutorial.json`，后端步骤声明只写 key。
+改文案改 i18n，不要把文案抄回本文档或 Python 定义。
+
+核心教程（company-founding，10 步）：
+
+| 步骤 id                     | 用户看到的标题            | 真实完成条件                                      |
+| --------------------------- | ------------------------- | ------------------------------------------------- |
+| company_setup               | 你的公司，现在是空的      | Company 存在                                      |
+| hire_ceo                    | 招募你的第一位 CEO        | 存在 ACTIVE 的 CEO                                |
+| configure_ceo_runtime       | 给 CEO 配好运行时         | CEO 已绑定运行时                                  |
+| configure_ceo_provider      | 给 CEO 接上模型服务       | CEO 有带密钥的 Provider 绑定                      |
+| configure_company_resources | 开好工作区和权限          | CEO 的 Workspace、文档空间与权限包已 Provisioning |
+| cloud_docs                  | 写下第一份公司文档        | 公司文档节点存在                                  |
+| git_setup                   | 接上代码仓库（可跳过）    | Git 连接已配置                                    |
+| hire_engineer               | 招募第一位工程师          | 存在 ACTIVE 的工程师                              |
+| configure_engineer          | 确认工程师能接活          | 工程师 ACTIVE + Runtime + Provider + Workspace    |
+| hire_qa                     | 要不要再招个 QA（可跳过） | 存在 ACTIVE 的 QA                                 |
+
+项目实战（first-project-practice，7 步，可整体跳过）：
+
+| 步骤 id             | 用户看到的标题           | 真实完成条件                              |
+| ------------------- | ------------------------ | ----------------------------------------- |
+| create_project      | 发出第一个项目           | context.project_id 指向真实项目           |
+| requirements_review | 确认需求：要做的是这些吗 | Requirements Review 已批准                |
+| design_review       | 看看他们打算怎么做       | Design Review 已批准                      |
+| development         | 看看工程师干得怎么样     | 开发阶段完成                              |
+| testing             | 自测，再按验收标准走一遍 | 内部测试与验收测试完成                    |
+| acceptance_review   | 最后一关，由你拍板       | Acceptance Review 已批准                  |
+| delivery            | 打包交付                 | Project completed 且 DeliveryPackage 存在 |
 
 后端根据真实业务对象调和（reconcile）步骤，不能相信前端自行上报“完成”。只有教学性查看检查项可由用户确认。
 
 ## 4. CEO / Engineer 入职
 
-教程复用现有 Employee Onboarding Wizard，并可注入推荐默认值：
+教程复用现有招聘向导，并可注入推荐默认值：
 
 - CEO：Management/Executive、无 manager、Base Employee + CEO package。
 - Engineer：Engineering、manager=CEO、Base Employee + Engineer package。
 - QA（可选）：QA、manager=CEO、Base Employee + QA package。
 
 向导仍调用真实 Runtime、Provider、Model、Brain、Access Package 和 Provisioning Preview API。Provisioning 失败时教程停在当前步骤并引导重试，不伪造成功。
+
+入职时选择的运行时类型会真的创建对应实例：Mock 建 Mock 实例，Hermes/OpenClaw 建容器实例（必须先配置 Provider + Model，向导不允许“稍后配置”）。运行时页对“登记类型 ≠ 实例类型”的历史数据给出对齐入口。
 
 ## 5. Role Coverage
 
@@ -73,6 +94,7 @@ Assets          0
 - 桌面：右侧窄引导面板 + 页面目标高亮；不遮挡主任务。
 - 移动：底部 sheet，始终有关闭、返回与继续。
 - 展示步骤、原因、完成条件和一个主行动。
+- 核心教程通关后显示一张可关闭的交接卡片，引导用户去项目实战；实战不自动开始，必须先过成本确认弹窗。
 - 所有步骤可深链；评审导航到独立 Review Room。
 - Skip 需确认并说明“不会创建或删除任何数据”。
 

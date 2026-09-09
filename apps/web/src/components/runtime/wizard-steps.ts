@@ -46,9 +46,10 @@ export function canAdvance(
         selected.docker_available
       );
     case "provider":
-      return state.providerId != null;
+      // Mock 运行时不连接模型服务：没有 provider 也应该能建出来
+      return state.runtimeType === "mock" || state.providerId != null;
     case "model":
-      return state.model.trim().length > 0;
+      return state.runtimeType === "mock" || state.model.trim().length > 0;
     case "resources":
       return state.cpuLimit > 0 && state.memoryLimitMb >= 128;
     case "confirm":

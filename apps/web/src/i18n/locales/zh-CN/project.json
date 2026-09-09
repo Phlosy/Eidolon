@@ -123,5 +123,228 @@
     "gantt": "甘特图",
     "cards": "项目卡片",
     "empty": "暂无可展示的项目计划"
+  },
+  "intake": {
+    "title": "结构化立项",
+    "description": "用正式立项信息创建项目、生命周期、评审计划与项目章程。",
+    "draftSaved": "草稿自动保存",
+    "stepsLabel": "立项步骤",
+    "stepKicker": "第 {{number}} 步",
+    "reloadTemplate": "重新载入示例数据",
+    "templateNotice": "已按 Classic Snake 示例预填全部内容，你只需要逐项审阅，需要时再修改。",
+    "errorTitle": "请完成以下信息",
+    "perLine": "每行一项",
+    "addRequirement": "添加需求",
+    "removeRequirement": "删除需求",
+    "closeConfirm": "项目草稿已自动保存。确定关闭向导吗？",
+    "steps": {
+      "basic": "基本信息",
+      "purpose": "背景与目标",
+      "requirements": "结构化需求",
+      "delivery": "技术与交付",
+      "reviews": "评审与参与者",
+      "confirm": "确认立项"
+    },
+    "fields": {
+      "name": "项目名称",
+      "code": "项目编号",
+      "priority": "优先级",
+      "customer": "客户",
+      "owner": "项目负责人",
+      "ownerPlaceholder": "选择负责人",
+      "deadline": "截止日期",
+      "background": "项目背景",
+      "backgroundPlaceholder": "为什么要做这个项目？客户当前面临什么问题？",
+      "objectives": "项目目标",
+      "objectivesHint": "交付一个可快速运行的 Web 应用",
+      "requirementTitle": "需求标题",
+      "requirementPriority": "优先级",
+      "requirementDescription": "需求描述",
+      "acceptanceCriteria": "验收标准",
+      "technicalRequirements": "技术要求",
+      "technicalRequirementsHint": "React\n响应时间 < 200ms",
+      "constraints": "约束",
+      "constraintsHint": "必须离线部署\n禁止云服务依赖",
+      "deliverables": "交付物",
+      "deliverablesHint": "Source Code\nProduction Build\nUser Manual",
+      "milestones": "里程碑",
+      "milestonesHint": "需求基线\n设计基线\n最终交付",
+      "customerContact": "客户联系人",
+      "presenter": "默认主讲人",
+      "presenterPlaceholder": "跟随项目负责人"
+    },
+    "priority": {
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "critical": "紧急"
+    },
+    "requirementPriority": {
+      "must": "必须",
+      "should": "应该",
+      "could": "可选"
+    },
+    "reviews": {
+      "mandatory": "必须通过的评审",
+      "additional": "附加评审",
+      "requirements": "需求评审",
+      "design": "系统设计评审",
+      "acceptance": "验收评审",
+      "additionalLabels": {
+        "architecture_review": "架构评审",
+        "prototype_review": "原型评审",
+        "code_review": "代码评审",
+        "internal_test_review": "内部测试评审",
+        "security_review": "安全评审",
+        "release_review": "发布评审"
+      }
+    },
+    "summary": {
+      "requirements": "需求",
+      "deliverables": "交付物",
+      "reviewGates": "评审关卡",
+      "charter": "项目章程预览",
+      "internal": "内部",
+      "note": "提交后会创建正式项目、11 个生命周期阶段、三个不可关闭的人工评审门，并生成项目章程与正式文档。"
+    },
+    "actions": {
+      "previous": "上一步",
+      "next": "下一步",
+      "later": "稍后继续",
+      "create": "创建正式项目",
+      "creating": "正在建立项目…"
+    },
+    "errors": {
+      "name": "请输入项目名称",
+      "code": "请输入项目编号",
+      "owner": "请选择项目负责人",
+      "background": "请说明项目背景",
+      "objectives": "至少添加一个目标",
+      "requirements": "至少添加一条结构化需求",
+      "requirementTitle": "请输入需求标题",
+      "acceptance": "请输入可验证的验收标准",
+      "deliverables": "至少添加一个交付物"
+    }
+  },
+  "lifecycleBoard": {
+    "kicker": "项目生命周期",
+    "completed": "已完成",
+    "changesRequestedHint": "评审已要求修改。请更新对应文档版本后再次提交。",
+    "defaultHint": "阶段、任务、评审和基线分别管理；关键门禁需要你的正式决定。",
+    "phaseProgress": "{{done}}/{{total}} 阶段",
+    "completing": "正在生成阶段产出…",
+    "completePhase": "完成阶段并准备下一步",
+    "actionRequired": "需要你的决定",
+    "actionRequiredHint": "正式材料已冻结，请进入评审室给出客户决定。",
+    "enterReview": "进入评审",
+    "nextGate": "下一道门",
+    "projectCompleted": "项目已完成并归档",
+    "waitingTeam": "等待团队完成当前阶段",
+    "roleCoverageWarning": "角色覆盖提醒",
+    "userGate": "人工评审门",
+    "phasesLabel": "项目阶段",
+    "phaseWorkspace": "阶段工作区",
+    "tasks": "任务",
+    "noTasks": "当前阶段暂无独立任务。",
+    "employees": "参与员工",
+    "unassigned": "未分配",
+    "documents": "文档",
+    "noDocuments": "阶段产出尚未生成。",
+    "reviewChanges": "评审与变更",
+    "openReview": "打开 {{title}}",
+    "changeRecords": "{{count}} 条变更记录",
+    "documentsCount": "{{count}} 份文档",
+    "baselinesCount": "{{count}} 个基线",
+    "changesCount": "{{count}} 项变更",
+    "phaseStatus": {
+      "pending": "未开始",
+      "in_progress": "进行中",
+      "waiting_review": "等待评审",
+      "changes_requested": "已要求修改",
+      "completed": "已完成",
+      "blocked": "已阻塞"
+    }
+  },
+  "reviewRoom": {
+    "back": "返回项目指挥中心",
+    "kicker": "正式评审室",
+    "subtitle": "正式材料已按版本冻结。请核对文档与汇报材料，并给出会进入项目历史的客户决策。",
+    "presenter": "主讲人",
+    "participants": "参与者",
+    "statusLabel": "状态",
+    "unassigned": "未分配",
+    "reviewPackage": "评审材料",
+    "materialsPreparing": "材料正在准备中",
+    "openMaterial": "打开材料",
+    "downloadOriginal": "下载原文件",
+    "agenda": "议程",
+    "agendaContext": "01 · 背景与范围",
+    "agendaFindings": "02 · 关键发现",
+    "agendaIssues": "03 · 待决问题",
+    "agendaDecision": "04 · 客户决策",
+    "decisionKicker": "客户决策",
+    "decisionTitle": "记录评审结论",
+    "decisionHint": "决定将创建 Baseline、触发返工，或阻塞当前 Gate。",
+    "submitError": "提交失败，请重试。",
+    "decisionLabel": "评审决定",
+    "comments": "评审意见",
+    "commentsPlaceholder": "说明确认意见、条件或需要修改的内容…",
+    "actionItems": "行动项",
+    "actionItemsPlaceholder": "每行一个行动项",
+    "submitting": "正在记录正式决定…",
+    "reviewCompleted": "评审已完成",
+    "submitReject": "提交拒绝",
+    "submit": "提交正式决定",
+    "errors": {
+      "changesNeedReason": "选择「要求修改」或「拒绝」时必须填写明确原因。",
+      "conditionalNeedItem": "条件批准必须填写条件或行动项。"
+    },
+    "statuses": {
+      "waiting_for_customer": "等待客户决定",
+      "completed": "已完成",
+      "pending": "待开始"
+    },
+    "decisions": {
+      "approved": {
+        "label": "批准",
+        "hint": "批准并创建正式 Baseline"
+      },
+      "conditionally_approved": {
+        "label": "有条件批准",
+        "hint": "批准，但保留必须跟进的行动项"
+      },
+      "changes_requested": {
+        "label": "要求修改",
+        "hint": "退回产出阶段并生成新文档版本"
+      },
+      "rejected": {
+        "label": "拒绝",
+        "hint": "阻塞当前 Gate"
+      }
+    }
+  },
+  "changeRequest": {
+    "title": "变更管理",
+    "hint": "Baseline 通过后不允许直接覆盖；重大修改从 ChangeRequest 开始。",
+    "cancel": "取消",
+    "create": "发起变更",
+    "formTitle": "变更标题",
+    "reason": "变更原因",
+    "affected": "受影响的需求",
+    "createError": "创建失败",
+    "creating": "正在创建…",
+    "analyze": "开始影响分析",
+    "empty": "当前没有变更请求。",
+    "statuses": {
+      "draft": "草稿",
+      "impact_analysis": "影响分析",
+      "waiting_approval": "等待批准",
+      "approved": "已批准",
+      "implementing": "实施中",
+      "regression_test": "回归测试",
+      "closed": "已关闭",
+      "rejected": "已拒绝",
+      "cancelled": "已取消"
+    }
   }
 }

@@ -26,6 +26,7 @@ interface RuntimeCardProps {
   onRestart: () => void;
   onViewLogs: () => void;
   onChangeProvider: () => void;
+  onChangeRuntime: () => void;
   onCheckUpdate: () => void;
 }
 
@@ -39,6 +40,7 @@ export function RuntimeCard({
   onRestart,
   onViewLogs,
   onChangeProvider,
+  onChangeRuntime,
   onCheckUpdate,
 }: RuntimeCardProps) {
   const { t } = useTranslation();
@@ -97,6 +99,9 @@ export function RuntimeCard({
         </Button>
         <Button variant="outline" size="sm" disabled={busy} onClick={onChangeProvider}>
           {t("runtime:card.changeProvider")}
+        </Button>
+        <Button variant="outline" size="sm" disabled={busy} onClick={onChangeRuntime}>
+          {t("runtime:card.changeRuntime")}
         </Button>
         <Button variant="outline" size="sm" disabled={checkingUpdates} onClick={onCheckUpdate}>
           {checkingUpdates ? t("runtime:card.checking") : t("runtime:card.checkUpdate")}

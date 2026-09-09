@@ -7,7 +7,7 @@ import type { PracticePreview, TutorialLibrary } from "../../api/tutorial";
  * 教程库 / 实战入口。
  *
  * 这里要守住两件事：
- * 1. 开始 Classic Snake 之前，用户一定先看到"谁会用哪个模型、会不会烧 token"；
+ * 1. 开始 Classic Snake 之前，用户一定先看到“谁会用哪个模型、会不会产生模型费用”；
  * 2. 跳过实战只调 /practice/skip —— 不建项目、不派任务。
  */
 
@@ -142,10 +142,12 @@ describe("TutorialCenter", () => {
         ?.querySelector("[data-tutorial-card-status]")
         ?.getAttribute("data-tutorial-card-status"),
     ).toBe("skipped");
-    expect(practice?.textContent).toContain("no project data was created");
+    expect(practice?.textContent).toContain("no project was created");
+    // 已跳过用“重新开始”，未开始用“开始”——两种状态不能共用一句
+    expect(screen.getByText("Restart practice")).toBeTruthy();
   });
 
-  it("开始实战前先给真实成本预览：runtime / provider / model + token 警告", async () => {
+  it("开始实战前先给真实成本预览：运行时 / 服务商 / 模型 + 费用警告", async () => {
     state.libraryStatus = "not_started";
     state.preview = {
       tutorial_id: "first-project-practice",
@@ -171,13 +173,13 @@ describe("TutorialCenter", () => {
         <TutorialCenter />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByText("Restart practice"));
-    expect(screen.getByText(/Estimated mode: Tutorial Accelerated/i)).toBeTruthy();
+    fireEvent.click(screen.getByText("Start practice"));
+    expect(screen.getByText(/Accelerated mode/i)).toBeTruthy();
     await waitFor(() => expect(screen.getByText("Anthropic")).toBeTruthy());
     expect(screen.getByText("claude-test")).toBeTruthy();
-    expect(screen.getByText(/consumes tokens/i)).toBeTruthy();
+    expect(screen.getByText(/incurs model fees/i)).toBeTruthy();
     expect(document.querySelector('[data-tutorial-cost="real"]')).not.toBeNull();
-    expect(screen.getByText(/zero cost/i)).toBeTruthy();
+    expect(screen.getByText(/without spending anything/i)).toBeTruthy();
   });
 
   it("全是 Mock Runtime 时不虚报成本，也仍然要先确认才开始", async () => {
@@ -206,16 +208,16 @@ describe("TutorialCenter", () => {
         <TutorialCenter />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByText("Restart practice"));
-    await waitFor(() => expect(screen.getByText(/no model cost/i)).toBeTruthy());
+    fireEvent.click(screen.getByText("Start practice"));
+    await waitFor(() => expect(screen.getByText(/no model fees/i)).toBeTruthy());
     expect(document.querySelector('[data-tutorial-cost="mock"]')).not.toBeNull();
 
-    fireEvent.click(screen.getByText("Start practice").closest("button")!);
+    fireEvent.click(screen.getByText("Start the project").closest("button")!);
     expect(state.startPractice).toHaveBeenCalled();
     expect(state.invalidate).toHaveBeenCalled();
   });
 
-  it("跳过实战只打 /practice/skip 这一个请求", () => {
+  it("跳过实战先确认，确认后只打 /practice/skip 这一个请求", () => {
     state.libraryStatus = "not_started";
     render(
       <MemoryRouter>
@@ -223,6 +225,9 @@ describe("TutorialCenter", () => {
       </MemoryRouter>,
     );
     fireEvent.click(screen.getByText("Skip practice for now"));
+    // 确认之前不发请求：跳过必须是用户明确同意的零成本动作
+    expect(state.skipPractice).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Skip anyway"));
     expect(state.skipPractice).toHaveBeenCalledTimes(1);
     expect(state.startPractice).not.toHaveBeenCalled();
   });

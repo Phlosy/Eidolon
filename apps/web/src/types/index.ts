@@ -802,9 +802,10 @@ export interface RuntimeImageInfo {
 
 export interface CreateEmployeeRuntimeInput {
   runtime_type: RuntimeType;
-  deployment_mode: "docker";
-  provider_id: number;
-  model: string;
+  deployment_mode: "docker" | "mock";
+  /** Mock 运行时不需要 provider/model；docker 运行时必填（后端会校验）。 */
+  provider_id?: number;
+  model?: string;
   cpu_limit?: number;
   memory_limit_mb?: number;
 }

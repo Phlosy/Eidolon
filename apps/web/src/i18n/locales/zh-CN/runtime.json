@@ -66,6 +66,7 @@
     "restart": "重启",
     "viewLogs": "查看日志",
     "changeProvider": "更换服务商",
+    "changeRuntime": "更换运行时",
     "checkUpdate": "检查更新",
     "checking": "检查中…",
     "resourcesValue": "{{cpu}} 核 · {{memory}} MB"
@@ -81,16 +82,20 @@
     "noInstanceTitle": "无运行时实例",
     "noInstanceHint": "创建一个运行时，为该员工提供在线环境。",
     "createRuntime": "创建运行时",
+    "mismatch": "这位员工登记的是 {{preferred}}，当前实例却是 {{current}}。",
+    "mismatchAction": "对齐为 {{preferred}}",
     "capabilitiesHeading": "能力 —— {{type}}"
   },
   "changeProvider": {
     "title": "更换服务商",
     "description": "为该运行时选择新的服务商与模型。",
+    "noSupportedProviders": "当前运行时（Mock）不连接模型服务，这里没有可选的服务商。点左下角“新建服务商”可以直接建一个账号，或者先更换运行时。",
     "apply": "应用",
     "applying": "应用中…"
   },
   "wizard": {
     "title": "创建运行时",
+    "changeTitle": "更换运行时",
     "stepOf": "第 {{current}} 步，共 {{total}} 步 —— {{step}}",
     "steps": {
       "type": "运行时类型",
@@ -115,6 +120,7 @@
     "cpuValue": "{{count}} 核",
     "memoryValue": "{{count}} MB",
     "create": "创建运行时",
+    "change": "应用更改",
     "creating": "创建中…",
     "providerNamePlaceholder": "服务商名称",
     "apiKeyPlaceholder": "API 密钥",

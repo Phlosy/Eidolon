@@ -84,7 +84,8 @@ export function canAdvanceHire(step: HireWizardStep, state: HireWizardState): bo
     case "runtime":
       return state.runtimeType != null;
     case "provider":
-      if (state.providerMode === "none") return true;
+      // 真实运行时没有 provider+model 就起不了容器：不允许“稍后配置”
+      if (state.providerMode === "none") return state.runtimeType === "mock";
       if (state.providerMode === "existing") {
         return state.providerId != null && state.model.trim().length > 0;
       }

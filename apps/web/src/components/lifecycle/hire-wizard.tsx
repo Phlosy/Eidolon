@@ -373,22 +373,34 @@ export function HireWizard({
         <div className="space-y-2" data-tutorial-target="wizard-runtime">
           <p className="text-xs text-muted-foreground">{t("lifecycle:wizard.runtimeHint")}</p>
           {(runtimeTypes.length > 0 ? runtimeTypes : [{ type: "mock" as RuntimeType }]).map(
-            (typeInfo) => (
-              <button
-                key={typeInfo.type}
-                type="button"
-                aria-pressed={state.runtimeType === typeInfo.type}
-                onClick={() => patch({ runtimeType: typeInfo.type })}
-                className={cn(
-                  "w-full rounded-md border border-border px-3 py-2 text-left text-sm transition-colors",
-                  state.runtimeType === typeInfo.type
-                    ? "border-foreground/40 bg-muted"
-                    : "hover:bg-muted/50",
-                )}
-              >
-                <span className="font-medium">{enumLabel(t, "runtime:type", typeInfo.type)}</span>
-              </button>
-            ),
+            (typeInfo) => {
+              const dockerBlocked =
+                typeInfo.type !== "mock" &&
+                "docker_available" in typeInfo &&
+                !typeInfo.docker_available;
+              return (
+                <button
+                  key={typeInfo.type}
+                  type="button"
+                  disabled={dockerBlocked}
+                  aria-pressed={state.runtimeType === typeInfo.type}
+                  onClick={() => patch({ runtimeType: typeInfo.type })}
+                  className={cn(
+                    "w-full rounded-md border border-border px-3 py-2 text-left text-sm transition-colors disabled:opacity-50",
+                    state.runtimeType === typeInfo.type
+                      ? "border-foreground/40 bg-muted"
+                      : "hover:bg-muted/50",
+                  )}
+                >
+                  <span className="font-medium">{enumLabel(t, "runtime:type", typeInfo.type)}</span>
+                  {dockerBlocked ? (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {t("lifecycle:wizard.runtimeDockerUnavailable")}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            },
           )}
         </div>
       ) : null}
@@ -398,23 +410,32 @@ export function HireWizard({
           <p className="text-xs leading-relaxed text-muted-foreground">
             {t("lifecycle:wizard.providerHint")}
           </p>
+          {state.runtimeType !== "mock" ? (
+            <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+              {t("lifecycle:wizard.providerRequired")}
+            </p>
+          ) : null}
           <div className="grid grid-cols-3 gap-2">
-            {(["existing", "new", "none"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                aria-pressed={state.providerMode === mode}
-                onClick={() => patch({ providerMode: mode })}
-                className={cn(
-                  "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
-                  state.providerMode === mode
-                    ? "border-foreground/40 bg-muted text-foreground"
-                    : "border-border text-muted-foreground hover:bg-muted/50",
-                )}
-              >
-                {t(`lifecycle:wizard.providerModes.${mode}`)}
-              </button>
-            ))}
+            {(["existing", "new", "none"] as const).map((mode) => {
+              const blocked = mode === "none" && state.runtimeType !== "mock";
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  disabled={blocked}
+                  aria-pressed={state.providerMode === mode}
+                  onClick={() => patch({ providerMode: mode })}
+                  className={cn(
+                    "rounded-md border px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+                    state.providerMode === mode
+                      ? "border-foreground/40 bg-muted text-foreground"
+                      : "border-border text-muted-foreground hover:bg-muted/50",
+                  )}
+                >
+                  {t(`lifecycle:wizard.providerModes.${mode}`)}
+                </button>
+              );
+            })}
           </div>
 
           {state.providerMode === "existing" ? (

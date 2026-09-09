@@ -74,6 +74,7 @@ const state = vi.hoisted(() => ({
   resume: vi.fn(),
   practice: null as null | { definition: TutorialDefinition; progress: TutorialProgress },
   skipPractice: vi.fn(),
+  completeError: null as unknown,
 }));
 
 function progressFor(currentStep: string, overrides: Partial<TutorialProgress> = {}) {
@@ -101,7 +102,11 @@ vi.mock("../../hooks/useTutorial", () => ({
   TUTORIAL_QUERY_KEY: ["tutorial"],
   useTutorial: () => ({ data: state.progress }),
   useTutorialDefinition: () => ({ data: (state.definition ?? DEFINITION) as TutorialDefinition }),
-  useCompleteTutorialStep: () => ({ mutate: state.complete, isPending: false, error: null }),
+  useCompleteTutorialStep: () => ({
+    mutate: state.complete,
+    isPending: false,
+    error: state.completeError,
+  }),
   useSkipTutorialStep: () => ({ mutate: state.skip, isPending: false, error: null }),
   usePauseTutorial: () => ({ mutate: state.pause, isPending: false }),
   useResumeTutorial: () => ({ mutate: state.resume, isPending: false }),
@@ -216,6 +221,7 @@ beforeEach(() => {
   state.pause.mockClear();
   state.resume.mockClear();
   state.skipPractice.mockClear();
+  state.completeError = null;
 });
 
 afterEach(() => {
@@ -224,9 +230,11 @@ afterEach(() => {
 });
 
 describe("信息步骤与动作步骤的区别", () => {
-  it("INFORMATION 有『知道了』，点击后才推进", () => {
+  it("INFORMATION 有『知道了』，点击后才推进，并显示所处阶段", () => {
     progressFor("company_setup");
     renderAt("/");
+    // 步骤计数旁显示阶段名（tutorials.stages.*）
+    expect(screen.getByText(/Step 1 of 3 · Start/)).toBeTruthy();
     const button = screen.getByText("Got it");
     fireEvent.click(button);
     expect(state.complete).toHaveBeenCalledWith("company_setup");
@@ -236,9 +244,9 @@ describe("信息步骤与动作步骤的区别", () => {
     progressFor("hire_ceo");
     renderAt("/employees");
     expect(screen.queryByText("Got it")).toBeNull();
-    expect(screen.queryByText("Skip step")).toBeNull();
-    // 面板只解释"完成即自动前进"，不给任何可以冒充完成的按钮
-    expect(screen.getByText(/no Next button needed/i)).toBeTruthy();
+    expect(screen.queryByText("Later")).toBeNull();
+    // 面板只解释“完成即自动前进”，不给任何可以冒充完成的按钮
+    expect(screen.getByText(/moves on by itself/i)).toBeTruthy();
     expect(state.complete).not.toHaveBeenCalled();
   });
 
@@ -333,7 +341,7 @@ describe("兜底：目标找不到时不瞎指", () => {
     dialog.setAttribute("aria-modal", "true");
     document.body.appendChild(dialog);
     renderAt("/settings");
-    expect(screen.getByText("Open this step")).toBeTruthy();
+    expect(screen.getByText("Go to this step")).toBeTruthy();
     expect(spotlight()).toBeNull();
     // 仍然没有被自动带到 /employees
     expect(screen.queryByText("Hire")).toBeNull();
@@ -348,9 +356,9 @@ describe("兜底：目标找不到时不瞎指", () => {
     await waitFor(() =>
       expect(document.querySelector('[data-tutorial-fallback="true"]')).not.toBeNull(),
     );
-    expect(screen.getByText(/Could not find the element/i)).toBeTruthy();
-    expect(screen.getByText("Open the page manually")).toBeTruthy();
-    expect(screen.getByText("Relocate")).toBeTruthy();
+    expect(screen.getByText(/Could not find the control/i)).toBeTruthy();
+    expect(screen.getByText("Open it myself")).toBeTruthy();
+    expect(screen.getByText("Look again")).toBeTruthy();
     expect(spotlight()).toBeNull();
   });
 
@@ -376,7 +384,7 @@ describe("兜底：目标找不到时不瞎指", () => {
       ],
     };
     renderAt("/");
-    expect(screen.getByText("A real object is still missing")).toBeTruthy();
+    expect(screen.getByText("This step is not ready yet")).toBeTruthy();
     expect(spotlight()).toBeNull();
   });
 });
@@ -504,7 +512,7 @@ describe("向导内部指引（ui_hints）", () => {
       </MemoryRouter>,
     );
     // 初始：锚定 identity，有指引卡
-    await waitFor(() => expect(screen.getByText(/Confirm identity first/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Start with identity/i)).toBeTruthy());
 
     // 翻到没有锚点的段落（真实向导的"部门/汇报线"等步骤没有 wizard-* 目标）
     const dialog = holder as unknown as HTMLDivElement;
@@ -519,7 +527,7 @@ describe("向导内部指引（ui_hints）", () => {
       expect(coach().style.transform ?? "").not.toContain("translate(-50%");
     });
     // 失效的指引条目不再展示（目标已卸载，文字文不对题）
-    await waitFor(() => expect(screen.queryByText(/Confirm identity first/i)).toBeNull());
+    await waitFor(() => expect(screen.queryByText(/Start with identity/i)).toBeNull());
     expect(document.querySelector('[data-tutorial-hint="true"]')).toBeNull();
   });
 
@@ -605,7 +613,7 @@ describe("向导内部指引（ui_hints）", () => {
         </Routes>
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByText(/Confirm identity first/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Start with identity/i)).toBeTruthy());
 
     // 模拟向导翻到确认那一步：DOM 里换成了另一个指引目标
     const dialog = holder as unknown as HTMLDivElement;
@@ -614,7 +622,7 @@ describe("向导内部指引（ui_hints）", () => {
     tutorialTargets.refresh();
 
     // 换段落之后光应当自动跟到第 2 条指引，不需要任何人手翻
-    await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Submit to hire/i)).toBeTruthy());
     await waitFor(() =>
       expect(
         (document.querySelector('[data-tutorial-halo="true"]') as HTMLElement).style.left,
@@ -644,8 +652,8 @@ describe("向导内部指引（ui_hints）", () => {
         </Routes>
       </MemoryRouter>,
     );
-    await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
-    expect(screen.queryByText(/Confirm identity first/i)).toBeNull();
+    await waitFor(() => expect(screen.getByText(/Submit to hire/i)).toBeTruthy());
+    expect(screen.queryByText(/Start with identity/i)).toBeNull();
     const halo = document.querySelector('[data-tutorial-halo="true"]') as HTMLElement;
     expect(halo.style.left).toBe("412px");
   });
@@ -676,15 +684,15 @@ describe("向导内部指引（ui_hints）", () => {
     );
     // 两段指引目标同时可见时，光停在"用户已经走到的最远处"= 最后一条
     const halo = () => document.querySelector('[data-tutorial-halo="true"]') as HTMLElement;
-    await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Submit to hire/i)).toBeTruthy());
     expect(halo().style.left).toBe("412px");
 
     // 手动翻页仍然有效：可以退回前一条，再翻回来
     fireEvent.click(screen.getByText("Back"));
-    await waitFor(() => expect(screen.getByText(/Confirm identity first/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Start with identity/i)).toBeTruthy());
     expect(halo().style.left).toBe("112px");
     fireEvent.click(screen.getByText("Next"));
-    await waitFor(() => expect(screen.getByText(/Review and hire/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText(/Submit to hire/i)).toBeTruthy());
     expect(halo().style.left).toBe("412px");
 
     // 指引态不能拦点击：向导自己的"下一步"必须还能按（实测被遮罩锁死过）
@@ -733,7 +741,7 @@ describe("暂停与回放", () => {
     renderAt("/employees");
     expect(document.querySelector('[data-tutorial-overlay="paused"]')).not.toBeNull();
     expect(spotlight()).toBeNull();
-    fireEvent.click(screen.getByText("Resume tutorial"));
+    fireEvent.click(screen.getByText("Resume tour"));
     expect(state.resume).toHaveBeenCalled();
   });
 
@@ -743,7 +751,7 @@ describe("暂停与回放", () => {
     renderAt("/");
     expect(screen.getByText("Replay")).toBeTruthy();
     fireEvent.click(screen.getByText("Next"));
-    expect(screen.getByText(/Replay walks the explanations only/i)).toBeTruthy();
+    expect(screen.getByText(/Replay only walks/i)).toBeTruthy();
     expect(state.complete).not.toHaveBeenCalled();
     expect(state.skip).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Exit replay" }));
@@ -798,10 +806,12 @@ describe("实战教程（practice）也能驱动聚光灯", () => {
 
   it("核心不在展示态时，界面显示的是实战那一步", async () => {
     renderAt("/projects");
-    await waitFor(() => expect(screen.getByText(/Create the Classic Snake project/i)).toBeTruthy());
-    // 退出入口在实战语境下就是"暂时跳过"，走 /practice/skip（零副作用）
+    await waitFor(() => expect(screen.getByText(/Kick off the first project/i)).toBeTruthy());
+    // 退出入口在实战语境下就是“暂时跳过”：先确认，确认后走 /practice/skip（零副作用）
     const exit = screen.getByRole("button", { name: "Skip practice for now" });
     fireEvent.click(exit);
+    expect(state.skipPractice).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Skip anyway"));
     await waitFor(() => expect(state.skipPractice).toHaveBeenCalledTimes(1));
     expect(state.pause).not.toHaveBeenCalled();
   });
@@ -813,5 +823,27 @@ describe("实战教程（practice）也能驱动聚光灯", () => {
     const coach = document.querySelector('[data-tutorial-overlay="coach"]') as HTMLElement;
     expect(coach).toHaveTextContent(/Hire your first CEO/i);
     expect(state.skipPractice).not.toHaveBeenCalled();
+  });
+});
+
+describe("错误提示只说用户语言", () => {
+  it("业务门禁拒绝时用本地化文案，不把后端英文 detail 抛给用户", async () => {
+    state.completeError = { detail: "complete the real business action first" };
+    progressFor("hire_ceo");
+    renderAt("/employees");
+    await waitFor(() =>
+      expect(
+        screen.getByText("This step is not done yet — complete the highlighted action first."),
+      ).toBeTruthy(),
+    );
+    expect(screen.queryByText(/complete the real business action first/)).toBeNull();
+  });
+
+  it("其他错误一律走通用文案，不暴露内部报错原文", async () => {
+    state.completeError = { detail: "tutorial is not active" };
+    progressFor("hire_ceo");
+    renderAt("/employees");
+    await waitFor(() => expect(screen.getByText("That did not work. Try again.")).toBeTruthy());
+    expect(screen.queryByText(/tutorial is not active/)).toBeNull();
   });
 });

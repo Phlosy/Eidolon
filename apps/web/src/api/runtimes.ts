@@ -59,6 +59,14 @@ export function createEmployeeRuntime(
   return post<RuntimeInstance>(`/employees/${employeeId}/runtime`, body);
 }
 
+/** 切换运行时类型（Mock ↔ Hermes/OpenClaw）；数据目录保留，身份/记忆不丢。 */
+export function changeEmployeeRuntime(
+  employeeId: number,
+  body: CreateEmployeeRuntimeInput,
+): Promise<RuntimeInstance> {
+  return patch<RuntimeInstance>(`/employees/${employeeId}/runtime`, body);
+}
+
 export function updateEmployeeRuntimeProvider(
   employeeId: number,
   body: UpdateRuntimeProviderInput,

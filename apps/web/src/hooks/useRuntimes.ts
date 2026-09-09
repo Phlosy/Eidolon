@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  changeEmployeeRuntime,
   checkRuntimeImageUpdates,
   createEmployeeRuntime,
   deleteEmployeeRuntime,
@@ -75,6 +76,14 @@ export function useCreateEmployeeRuntime(employeeId: number) {
   const invalidate = useInvalidateRuntime(employeeId);
   return useMutation({
     mutationFn: (body: CreateEmployeeRuntimeInput) => createEmployeeRuntime(employeeId, body),
+    onSuccess: invalidate,
+  });
+}
+
+export function useChangeEmployeeRuntime(employeeId: number) {
+  const invalidate = useInvalidateRuntime(employeeId);
+  return useMutation({
+    mutationFn: (body: CreateEmployeeRuntimeInput) => changeEmployeeRuntime(employeeId, body),
     onSuccess: invalidate,
   });
 }

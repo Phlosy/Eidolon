@@ -170,6 +170,7 @@
   },
   "roster": {
     "rosterTitle": "Talent roster",
+    "searchPlaceholder": "Search talent…",
     "rosterDesc": "Company talent in one unified view",
     "card": "Cards",
     "table": "Table",

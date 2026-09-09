@@ -223,9 +223,7 @@ def add_employee_binding(
     return provider_service.add_binding(db, employee_id, payload)
 
 
-@router.post(
-    "/{employee_id}/bindings/{binding_id}/primary", response_model=list[ModelBindingOut]
-)
+@router.post("/{employee_id}/bindings/{binding_id}/primary", response_model=list[ModelBindingOut])
 def set_primary_binding(
     employee_id: int, binding_id: int, db: Session = Depends(get_db)
 ) -> list[ModelBindingOut]:
@@ -267,6 +265,17 @@ async def create_employee_runtime(
 ) -> RuntimeInstanceOut:
     employee = _get_employee_or_404(db, employee_id)
     return await runtime_service.create_employee_runtime(db, employee, payload)
+
+
+@router.patch("/{employee_id}/runtime", response_model=RuntimeInstanceOut)
+async def change_employee_runtime(
+    employee_id: int,
+    payload: EmployeeRuntimeCreate,
+    db: Session = Depends(get_db),
+) -> RuntimeInstanceOut:
+    """切换运行时类型（Mock ↔ Hermes/OpenClaw）或同类型下换 provider/model。"""
+    employee = _get_employee_or_404(db, employee_id)
+    return await runtime_service.change_employee_runtime(db, employee, payload)
 
 
 @router.patch("/{employee_id}/runtime/provider", response_model=RuntimeInstanceOut)

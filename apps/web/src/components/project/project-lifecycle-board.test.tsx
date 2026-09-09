@@ -83,7 +83,7 @@ const lifecycle = {
 describe("ProjectLifecycleBoard", () => {
   it("makes the pending human gate the primary project action", () => {
     render(<ProjectLifecycleBoard lifecycle={lifecycle} />, { wrapper: MemoryRouter });
-    expect(screen.getByText("ACTION REQUIRED")).toBeInTheDocument();
+    expect(screen.getByText("Action required")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /进入评审|Enter review/i })).toHaveAttribute(
       "href",
       "/projects/9/reviews/21",

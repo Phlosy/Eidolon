@@ -18,12 +18,16 @@ from app.lifecycle.provisioners.base import (
     Drift,
 )
 from app.lifecycle.provisioners.registry import get_registry
+from app.models.enums import DeploymentMode, EmployeeRole, ProviderType, RuntimeType
 from app.models.lifecycle import AuditLog
 from app.models.organization import Company, Department, Employee
 from app.repositories import lifecycle as lifecycle_repo
 from app.repositories import organization as org_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
+from app.runtimes.manager.docker_manager import DockerRuntimeInstanceManager
+from app.schemas.lifecycle import OnboardRequest
+from app.services import lifecycle as lifecycle_service
 
 
 def _departments(client) -> dict:
@@ -205,6 +209,57 @@ def test_onboard_persists_provider_model_and_brain(client, db, gitea_down):
     provider = provider_repo.get_provider(db, binding.provider_id)
     assert provider is not None
     assert provider.owner_employee_id == employee_id
+
+
+def test_onboard_real_runtime_requires_provider(client):
+    """选真实运行时就必须给 provider：不能先拿 Mock 顶包再骗用户说配好了。"""
+    response = client.post(
+        "/api/v1/employees/onboard",
+        json={
+            "name": "Hermes No Provider",
+            "slug": _unique_slug("hermes-noprovider"),
+            "title": "Engineer",
+            "role": "engineer",
+            "department_id": _departments(client)["engineering"],
+            "runtime_type": "hermes",
+        },
+    )
+    assert response.status_code == 422
+    assert "provider" in response.json()["detail"]
+
+
+async def test_onboard_creates_runtime_matching_chosen_type(client, db, fake_docker, gitea_down):
+    """入职时选的运行时必须真的开出来（回归：ada/tom/qa 曾是 hermes 偏好 + mock 实例）。"""
+    company = db.scalar(select(Company))
+    assert company is not None
+    department = org_repo.get_department_by_slug(db, company.id, "engineering")
+    assert department is not None
+    manager = DockerRuntimeInstanceManager(docker=fake_docker)
+    employee, _job = await lifecycle_service.onboard(
+        db,
+        OnboardRequest(
+            name="Hermes Hire",
+            slug=_unique_slug("hermes-hire"),
+            title="Engineer",
+            role=EmployeeRole.engineer,
+            department_id=department.id,
+            runtime_type=RuntimeType.hermes,
+            provider_type=ProviderType.custom,
+            provider_name="Hermes Provider",
+            provider_base_url="https://api.example.com/v1",
+            provider_api_key="sk-hermes-test-key-123456",
+            model="gpt-4o-mini",
+        ),
+        runtime_manager=manager,
+    )
+    instance = runtime_repo.get_instance_for_employee(db, employee.id)
+    assert instance is not None
+    assert instance.runtime_type == RuntimeType.hermes.value
+    assert instance.deployment_mode == DeploymentMode.docker.value
+    assert employee.runtime_type == RuntimeType.hermes.value
+    binding = provider_repo.get_primary_binding(db, employee.id)
+    assert binding is not None
+    assert instance.model_binding_id == binding.id
 
 
 def test_retry_reruns_only_failed_steps(client, gitea_down, monkeypatch):

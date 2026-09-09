@@ -170,6 +170,7 @@
   },
   "roster": {
     "rosterTitle": "人才名册",
+    "searchPlaceholder": "搜索人才…",
     "rosterDesc": "公司已招募的人才 · 统一人才视图",
     "card": "卡片视图",
     "table": "表格视图",

@@ -9,7 +9,7 @@ import { choosePlacement } from "./collision";
  * 教练面板：贴在真实目标旁边的说明卡片。
  *
  * 为什么不自己算 top/left：目标可能贴边、可能被 Tab 裁切、面板本身还要放
- * "为什么重要"的展开内容。Floating UI 的 flip/shift 会把它拉回可视区，
+ * "为什么这一步重要"的展开内容。Floating UI 的 flip/shift 会把它拉回可视区，
  * 而 autoUpdate 负责滚动与 resize 期间持续跟随 —— 这正是 §"窗口大小改变后
  * 遮罩位置仍然正确"要求的行为。
  */

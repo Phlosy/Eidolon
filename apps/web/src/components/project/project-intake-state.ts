@@ -60,31 +60,35 @@ export function normalizeRequirements(requirements: RequirementInput[]): Require
 }
 
 export function validateIntakeStep(step: IntakeStep, intake: CreateProjectInput): IntakeErrors {
+  // 返回的是 i18n key 的后缀（如 "name" → project:intake.errors.name），
+  // 纯函数不持有语言状态；组件负责翻译。
   const errors: IntakeErrors = {};
   if (step === "basic" || step === "confirm") {
-    if (!intake.name.trim()) errors.name = "请输入项目名称";
-    if (!intake.code?.trim()) errors.code = "请输入项目编号";
-    if (!intake.owner_id) errors.owner_id = "请选择项目负责人";
+    if (!intake.name.trim()) errors.name = "name";
+    if (!intake.code?.trim()) errors.code = "code";
+    if (!intake.owner_id) errors.owner_id = "owner";
   }
   if (step === "purpose" || step === "confirm") {
-    if (!intake.background?.trim()) errors.background = "请说明项目背景";
-    if (!intake.objectives?.some((item) => item.trim())) errors.objectives = "至少添加一个目标";
+    if (!intake.background?.trim()) errors.background = "background";
+    if (!intake.objectives?.some((item) => item.trim())) errors.objectives = "objectives";
   }
   if (step === "requirements" || step === "confirm") {
     const requirements = intake.requirements ?? [];
     if (!requirements.some((requirement) => requirement.title.trim())) {
-      errors.requirements = "至少添加一条结构化需求";
+      errors.requirements = "requirements";
     }
     requirements.forEach((requirement, index) => {
-      if (!requirement.title.trim()) errors[`requirement-${index}-title`] = "请输入需求标题";
+      if (!requirement.title.trim()) {
+        errors[`requirement-${index}-title`] = "requirementTitle";
+      }
       if (!requirement.acceptance_criteria.trim()) {
-        errors[`requirement-${index}-acceptance`] = "请输入可验证的验收标准";
+        errors[`requirement-${index}-acceptance`] = "acceptance";
       }
     });
   }
   if (step === "delivery" || step === "confirm") {
     if (!intake.deliverables?.some((item) => item.trim())) {
-      errors.deliverables = "至少添加一个交付物";
+      errors.deliverables = "deliverables";
     }
   }
   return errors;

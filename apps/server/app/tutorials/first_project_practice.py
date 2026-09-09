@@ -35,6 +35,33 @@ FIRST_PROJECT_PRACTICE = {
                     target_id="create-project",
                     placement="left",
                     interaction_mode="TARGET_ONLY",
+                    # 立项向导内部的逐步指引：每一步只渲染当前那一段 DOM，
+                    # 所以“最后一个可见的指引目标”正好就是用户当前所在的步骤。
+                    metadata={
+                        "ui_hints": [
+                            {"target_id": "intake-step-basic", "text_key": "hints.intakeBasic"},
+                            {
+                                "target_id": "intake-step-purpose",
+                                "text_key": "hints.intakePurpose",
+                            },
+                            {
+                                "target_id": "intake-step-requirements",
+                                "text_key": "hints.intakeRequirements",
+                            },
+                            {
+                                "target_id": "intake-step-delivery",
+                                "text_key": "hints.intakeDelivery",
+                            },
+                            {
+                                "target_id": "intake-step-reviews",
+                                "text_key": "hints.intakeReviews",
+                            },
+                            {
+                                "target_id": "intake-step-confirm",
+                                "text_key": "hints.intakeConfirm",
+                            },
+                        ]
+                    },
                 ),
             ],
         },
@@ -53,6 +80,7 @@ FIRST_PROJECT_PRACTICE = {
                 ),
                 step(
                     "design_review",
+                    why_key="steps.design_review.why",
                     requirement="DESIGN_APPROVED",
                     route="/projects/{project_id}",
                     target_id="review-design",

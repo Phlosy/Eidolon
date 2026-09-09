@@ -38,6 +38,9 @@ def _hire(
     dept_slug: str,
     package: str,
     provider: bool = True,
+    provider_type: str = "custom",
+    provider_base_url: str = "https://api.example.com/v1",
+    provider_api_key: str | None = "sk-test-key-enough-length",
 ) -> dict:
     """走真实 Hire Employee Wizard 背后的端点，返回 onboard 响应。"""
     departments = {item["slug"]: item["id"] for item in founder["company"]["departments"]}
@@ -54,11 +57,12 @@ def _hire(
     if provider:
         body |= {
             "provider_name": f"{role}-provider",
-            "provider_type": "custom",
-            "provider_base_url": "https://api.example.com/v1",
-            "provider_api_key": "sk-test-key-enough-length",
+            "provider_type": provider_type,
+            "provider_base_url": provider_base_url,
             "model": "test-model",
         }
+        if provider_api_key:
+            body["provider_api_key"] = provider_api_key
     response = client.post("/api/v1/employees/onboard", json=body)
     assert response.status_code == 201, response.text
     return response.json()
@@ -270,6 +274,50 @@ def test_engineer_without_provider_leaves_the_tutorial_open(client, fake_gitea):
     assert step in {"configure_engineer", "hire_engineer"}
     assert client.get("/api/v1/tutorial").json()["status"] == "active"
     assert client.get("/api/v1/tutorial").json()["completed_steps"].count("configure_engineer") == 0
+
+
+def test_keyless_local_provider_does_not_deadlock_the_tutorial(client, fake_gitea):
+    """Ollama 这类本地服务本来就不需要密钥：教程不能因此把它判成没配置。
+
+    UI 对不需要 key 的服务连输入框都不给（keyMode=none）；若门禁硬要 credential_ref，
+    用户会在“接上模型服务”这一步永久卡住。
+    """
+    founder = _new_founder(client, "tutorial-ollama@example.com")
+    client.post("/api/v1/tutorial/start")
+    client.post("/api/v1/tutorial/steps/company_setup/complete")
+    _hire(
+        client,
+        founder,
+        name="Ollama CEO",
+        role="ceo",
+        dept_slug="executive",
+        package="ceo",
+        provider_type="ollama",
+        provider_base_url="http://localhost:11434",
+        provider_api_key=None,
+    )
+    # runtime + provider 都算配置完成 → 直接进入公司文档这一步
+    assert _step(client) == "cloud_docs"
+
+
+def test_custom_provider_without_base_url_stays_incomplete(client, fake_gitea):
+    """没密钥又没有接入地址的自定义服务确实跑不起来，不能算配置完成。"""
+    founder = _new_founder(client, "tutorial-nobaseurl@example.com")
+    client.post("/api/v1/tutorial/start")
+    client.post("/api/v1/tutorial/steps/company_setup/complete")
+    _hire(
+        client,
+        founder,
+        name="No-URL CEO",
+        role="ceo",
+        dept_slug="executive",
+        package="ceo",
+        provider_type="custom",
+        provider_base_url="",
+        provider_api_key=None,
+    )
+    assert _step(client) == "configure_ceo_provider"
+    assert client.get("/api/v1/tutorial").json()["status"] == "active"
 
 
 # ---------------------------------------------------------------- 实战教程

@@ -123,5 +123,228 @@
     "gantt": "Gantt",
     "cards": "Cards",
     "empty": "No project plans to display"
+  },
+  "intake": {
+    "title": "Structured project intake",
+    "description": "Create the project, lifecycle, review plan and project charter from a formal intake.",
+    "draftSaved": "Draft saved automatically",
+    "stepsLabel": "Intake steps",
+    "stepKicker": "Step {{number}}",
+    "reloadTemplate": "Reload sample data",
+    "templateNotice": "Everything is pre-filled from the Classic Snake sample. Review each step and change what you need.",
+    "errorTitle": "Please complete the following",
+    "perLine": "One item per line",
+    "addRequirement": "Add requirement",
+    "removeRequirement": "Remove requirement",
+    "closeConfirm": "The draft is saved automatically. Close the wizard?",
+    "steps": {
+      "basic": "Basic info",
+      "purpose": "Background & objectives",
+      "requirements": "Structured requirements",
+      "delivery": "Technical & delivery",
+      "reviews": "Reviews & participants",
+      "confirm": "Confirm"
+    },
+    "fields": {
+      "name": "Project name",
+      "code": "Project code",
+      "priority": "Priority",
+      "customer": "Customer",
+      "owner": "Project owner",
+      "ownerPlaceholder": "Select an owner",
+      "deadline": "Deadline",
+      "background": "Project background",
+      "backgroundPlaceholder": "Why build this? What problem does the customer face?",
+      "objectives": "Project objectives",
+      "objectivesHint": "Ship a web app that runs in minutes",
+      "requirementTitle": "Title",
+      "requirementPriority": "Priority",
+      "requirementDescription": "Description",
+      "acceptanceCriteria": "Acceptance criteria",
+      "technicalRequirements": "Technical requirements",
+      "technicalRequirementsHint": "React\nResponse time < 200ms",
+      "constraints": "Constraints",
+      "constraintsHint": "Must run offline\nNo cloud dependencies",
+      "deliverables": "Deliverables",
+      "deliverablesHint": "Source Code\nProduction Build\nUser Manual",
+      "milestones": "Milestones",
+      "milestonesHint": "Requirements baseline\nDesign baseline\nFinal delivery",
+      "customerContact": "Customer contact",
+      "presenter": "Default presenter",
+      "presenterPlaceholder": "Follow the project owner"
+    },
+    "priority": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "requirementPriority": {
+      "must": "Must",
+      "should": "Should",
+      "could": "Could"
+    },
+    "reviews": {
+      "mandatory": "Mandatory reviews",
+      "additional": "Additional reviews",
+      "requirements": "Requirements review",
+      "design": "System design review",
+      "acceptance": "Acceptance review",
+      "additionalLabels": {
+        "architecture_review": "Architecture review",
+        "prototype_review": "Prototype review",
+        "code_review": "Code review",
+        "internal_test_review": "Internal test review",
+        "security_review": "Security review",
+        "release_review": "Release review"
+      }
+    },
+    "summary": {
+      "requirements": "Requirements",
+      "deliverables": "Deliverables",
+      "reviewGates": "Review gates",
+      "charter": "Project charter preview",
+      "internal": "Internal",
+      "note": "Submitting creates the real project, 11 lifecycle phases, three non-skippable human review gates, and generates the project charter and formal documents."
+    },
+    "actions": {
+      "previous": "Back",
+      "next": "Next",
+      "later": "Continue later",
+      "create": "Create project",
+      "creating": "Creating project…"
+    },
+    "errors": {
+      "name": "Enter a project name",
+      "code": "Enter a project code",
+      "owner": "Select a project owner",
+      "background": "Describe the project background",
+      "objectives": "Add at least one objective",
+      "requirements": "Add at least one structured requirement",
+      "requirementTitle": "Enter a requirement title",
+      "acceptance": "Enter verifiable acceptance criteria",
+      "deliverables": "Add at least one deliverable"
+    }
+  },
+  "lifecycleBoard": {
+    "kicker": "Project lifecycle",
+    "completed": "Completed",
+    "changesRequestedHint": "Changes were requested. Update the document version and resubmit.",
+    "defaultHint": "Phases, tasks, reviews and baselines are managed separately; key gates need your formal decision.",
+    "phaseProgress": "{{done}}/{{total}} phases",
+    "completing": "Generating phase output…",
+    "completePhase": "Complete phase and prepare the next one",
+    "actionRequired": "Action required",
+    "actionRequiredHint": "The formal materials are frozen. Enter the review room to give the customer decision.",
+    "enterReview": "Enter review",
+    "nextGate": "Next gate",
+    "projectCompleted": "Project completed and archived",
+    "waitingTeam": "Waiting for the team to finish the current phase",
+    "roleCoverageWarning": "Role coverage warning",
+    "userGate": "User gate",
+    "phasesLabel": "Project phases",
+    "phaseWorkspace": "Phase workspace",
+    "tasks": "Tasks",
+    "noTasks": "No standalone tasks in this phase.",
+    "employees": "Employees",
+    "unassigned": "Unassigned",
+    "documents": "Documents",
+    "noDocuments": "Phase output has not been generated yet.",
+    "reviewChanges": "Review & changes",
+    "openReview": "Open {{title}}",
+    "changeRecords": "{{count}} change records",
+    "documentsCount": "{{count}} documents",
+    "baselinesCount": "{{count}} baselines",
+    "changesCount": "{{count}} changes",
+    "phaseStatus": {
+      "pending": "Pending",
+      "in_progress": "In progress",
+      "waiting_review": "Waiting for review",
+      "changes_requested": "Changes requested",
+      "completed": "Completed",
+      "blocked": "Blocked"
+    }
+  },
+  "reviewRoom": {
+    "back": "Back to project command center",
+    "kicker": "Formal review room",
+    "subtitle": "The formal materials are frozen per version. Check the documents and presentation, then give the customer decision that enters project history.",
+    "presenter": "Presenter",
+    "participants": "Participants",
+    "statusLabel": "Status",
+    "unassigned": "Unassigned",
+    "reviewPackage": "Review package",
+    "materialsPreparing": "Materials are being prepared",
+    "openMaterial": "Open material",
+    "downloadOriginal": "Download original",
+    "agenda": "Agenda",
+    "agendaContext": "01 · Context & scope",
+    "agendaFindings": "02 · Key findings",
+    "agendaIssues": "03 · Open issues",
+    "agendaDecision": "04 · Customer decision",
+    "decisionKicker": "Customer decision",
+    "decisionTitle": "Record the review decision",
+    "decisionHint": "The decision creates a baseline, triggers rework, or blocks the current gate.",
+    "submitError": "Submission failed. Try again.",
+    "decisionLabel": "Decision",
+    "comments": "Review comments",
+    "commentsPlaceholder": "Explain your confirmation, conditions or what needs to change…",
+    "actionItems": "Action items",
+    "actionItemsPlaceholder": "One action item per line",
+    "submitting": "Recording the formal decision…",
+    "reviewCompleted": "Review completed",
+    "submitReject": "Submit rejection",
+    "submit": "Submit decision",
+    "errors": {
+      "changesNeedReason": "Request Changes and Reject require a clear reason.",
+      "conditionalNeedItem": "Conditional approval requires a condition or action item."
+    },
+    "statuses": {
+      "waiting_for_customer": "Waiting for customer",
+      "completed": "Completed",
+      "pending": "Pending"
+    },
+    "decisions": {
+      "approved": {
+        "label": "Approve",
+        "hint": "Approve and create the formal baseline"
+      },
+      "conditionally_approved": {
+        "label": "Approve with conditions",
+        "hint": "Approve, but keep the action items that must be followed up"
+      },
+      "changes_requested": {
+        "label": "Request changes",
+        "hint": "Send back to production and generate a new document version"
+      },
+      "rejected": {
+        "label": "Reject",
+        "hint": "Block the current gate"
+      }
+    }
+  },
+  "changeRequest": {
+    "title": "Change management",
+    "hint": "A passed baseline cannot be overwritten directly; major changes start with a change request.",
+    "cancel": "Cancel",
+    "create": "Create change request",
+    "formTitle": "Change title",
+    "reason": "Reason",
+    "affected": "Affected requirements",
+    "createError": "Failed to create",
+    "creating": "Creating…",
+    "analyze": "Start impact analysis",
+    "empty": "No change requests yet.",
+    "statuses": {
+      "draft": "Draft",
+      "impact_analysis": "Impact analysis",
+      "waiting_approval": "Waiting for approval",
+      "approved": "Approved",
+      "implementing": "Implementing",
+      "regression_test": "Regression testing",
+      "closed": "Closed",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    }
   }
 }

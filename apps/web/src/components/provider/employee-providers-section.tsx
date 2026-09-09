@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Pencil, Plus, Star, X } from "lucide-react";
 import {
@@ -28,7 +28,14 @@ import type { ModelBinding, ModelEntry, Provider } from "../../types";
  * list with a scope badge but are owned elsewhere. The API key field is
  * write-only; only the masked credential is ever rendered.
  */
-export function EmployeeProvidersSection({ employeeId }: { employeeId: number }) {
+export function EmployeeProvidersSection({
+  employeeId,
+  createSignal = 0,
+}: {
+  employeeId: number;
+  /** 外部（如“更换服务商”弹窗）请求打开新建表单时递增。 */
+  createSignal?: number;
+}) {
   const { t } = useTranslation();
   const providersQuery = useEmployeeProviders(employeeId);
   const bindingsQuery = useEmployeeBindings(employeeId);
@@ -107,6 +114,10 @@ export function EmployeeProvidersSection({ employeeId }: { employeeId: number })
   };
 
   const [addOpen, setAddOpen] = useState(false);
+  // 外部信号：运行时卡片的“更换服务商”弹窗里点“新建服务商”时把表单拉出来
+  useEffect(() => {
+    if (createSignal > 0) setAddOpen(true);
+  }, [createSignal]);
   const [formError, setFormError] = useState("");
   const [form, setForm] = useState<ProviderPresetValue>({
     name: "",

@@ -92,7 +92,10 @@ COMPANY_FOUNDING_TUTORIAL = {
                                 "text_key": "hints.openRuntimeTab",
                             },
                             {
-                                "target_id": "employee-provider-bind",
+                                # 必须指向“新建服务商”按钮：运行时卡片上的
+                                # “更换服务商”按 supported_providers 过滤，Mock 的列表是空的，
+                                # 指过去就是让用户对着一片空白死锁（实机走查确认）。
+                                "target_id": "employee-provider-create",
                                 "text_key": "hints.bindProvider",
                             },
                         ],
@@ -165,6 +168,20 @@ COMPANY_FOUNDING_TUTORIAL = {
                     target_id="employee-runtime-tab",
                     placement="top",
                     interaction_mode="NON_BLOCKING",
+                    # 工程师默认也是“稍后配置 Provider”入职的：这一步聚光到运行时标签页，
+                    # 再指一下“新建服务商”，否则用户只能自己在页面里找入口。
+                    metadata={
+                        "ui_hints": [
+                            {
+                                "target_id": "employee-runtime-tab",
+                                "text_key": "hints.openRuntimeTab",
+                            },
+                            {
+                                "target_id": "employee-provider-create",
+                                "text_key": "hints.bindProvider",
+                            },
+                        ]
+                    },
                 ),
                 step(
                     "hire_qa",

@@ -42,7 +42,9 @@
     "noManager": "(No manager)",
     "managerHint": "Optional — you can change this later.",
     "runtimeHint": "Pick the runtime type that powers this employee.",
+    "runtimeDockerUnavailable": "Docker unavailable — cannot create",
     "providerHint": "Bind an independent model to this employee. Reuse a company provider, create a private provider, or configure it later.",
+    "providerRequired": "A real runtime needs a provider and model to start — “configure later” is not available.",
     "providerModes": {
       "existing": "Existing provider",
       "new": "New private setup",

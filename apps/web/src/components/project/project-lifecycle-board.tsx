@@ -8,6 +8,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import type { Employee, ProjectLifecycle, ProjectPhase, Task } from "../../types";
 import { cn } from "../../utils/cn";
@@ -67,6 +68,7 @@ export function ProjectLifecycleBoard({
   tasks = [],
   employees = [],
 }: ProjectLifecycleBoardProps) {
+  const { t } = useTranslation("project");
   const activePhase = lifecycle.phases.find((phase) =>
     ["in_progress", "changes_requested", "waiting_review"].includes(phase.status),
   );
@@ -92,20 +94,23 @@ export function ProjectLifecycleBoard({
         <section className="rounded-2xl border border-border bg-background/40 p-4 md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="type-kicker text-primary">PROJECT LIFECYCLE</p>
+              <p className="type-kicker text-primary">{t("lifecycleBoard.kicker")}</p>
               <h2 className="mt-2 text-xl font-semibold">
-                {activePhase ? phaseLabel[activePhase.phase_type] : "已完成"}
+                {activePhase ? phaseLabel[activePhase.phase_type] : t("lifecycleBoard.completed")}
               </h2>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
                 {activePhase?.status === "changes_requested"
-                  ? "评审已要求修改。请更新对应文档版本后再次提交。"
-                  : "阶段、任务、评审和基线分别管理；关键门禁需要你的正式决定。"}
+                  ? t("lifecycleBoard.changesRequestedHint")
+                  : t("lifecycleBoard.defaultHint")}
               </p>
             </div>
             <div className="text-right">
               <p className="type-telemetry text-2xl font-semibold">{progress}%</p>
               <p className="text-[10px] text-muted-foreground">
-                {completed}/{lifecycle.phases.length} phases
+                {t("lifecycleBoard.phaseProgress", {
+                  done: completed,
+                  total: lifecycle.phases.length,
+                })}
               </p>
             </div>
           </div>
@@ -118,7 +123,7 @@ export function ProjectLifecycleBoard({
           {activePhase && !activePhase.gate_required && onCompletePhase ? (
             <div className="mt-4 flex justify-end">
               <Button onClick={() => onCompletePhase(activePhase)} disabled={completing}>
-                {completing ? "正在生成阶段产出…" : "完成阶段并准备下一步"}
+                {completing ? t("lifecycleBoard.completing") : t("lifecycleBoard.completePhase")}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
@@ -129,29 +134,29 @@ export function ProjectLifecycleBoard({
           <section className="rounded-2xl border border-warning/35 bg-warning/8 p-4 md:p-5">
             <div className="flex items-center gap-2 text-warning">
               <ShieldCheck className="h-4 w-4" />
-              <p className="type-kicker">ACTION REQUIRED</p>
+              <p className="type-kicker">{t("lifecycleBoard.actionRequired")}</p>
             </div>
             <h3 className="mt-3 text-lg font-semibold">{lifecycle.pending_user_action.title}</h3>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              正式材料已冻结，请进入评审室给出客户决定。
+              {t("lifecycleBoard.actionRequiredHint")}
             </p>
             <Link
               className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground shadow-[var(--glow-primary)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               to={`/projects/${lifecycle.project.id}/reviews/${lifecycle.pending_user_action.review_id}`}
             >
-              进入评审
+              {t("lifecycleBoard.enterReview")}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </section>
         ) : (
           <section className="rounded-2xl border border-border bg-background/40 p-4 md:p-5">
-            <p className="type-kicker text-muted-foreground">NEXT GATE</p>
+            <p className="type-kicker text-muted-foreground">{t("lifecycleBoard.nextGate")}</p>
             <h3 className="mt-3 text-base font-semibold">
               {lifecycle.project.status === "completed"
-                ? "项目已完成并归档"
+                ? t("lifecycleBoard.projectCompleted")
                 : activePhase?.gate_required
                   ? phaseLabel[activePhase.phase_type]
-                  : "等待团队完成当前阶段"}
+                  : t("lifecycleBoard.waitingTeam")}
             </h3>
           </section>
         )}
@@ -161,13 +166,16 @@ export function ProjectLifecycleBoard({
         <div className="flex items-start gap-3 rounded-xl border border-warning/25 bg-warning/6 px-4 py-3 text-xs">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
           <div>
-            <p className="font-medium">Role Coverage Warning</p>
+            <p className="font-medium">{t("lifecycleBoard.roleCoverageWarning")}</p>
             <p className="mt-1 text-muted-foreground">{lifecycle.role_coverage_warning}</p>
           </div>
         </div>
       ) : null}
 
-      <ol className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4" aria-label="项目阶段">
+      <ol
+        className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
+        aria-label={t("lifecycleBoard.phasesLabel")}
+      >
         {lifecycle.phases.map((phase) => (
           <li
             key={phase.id}
@@ -194,13 +202,17 @@ export function ProjectLifecycleBoard({
                 <span className="type-telemetry text-[9px]">
                   {String(phase.order + 1).padStart(2, "0")}
                 </span>
-                {phase.gate_required ? <Badge variant="warning">USER GATE</Badge> : null}
+                {phase.gate_required ? (
+                  <Badge variant="warning">{t("lifecycleBoard.userGate")}</Badge>
+                ) : null}
               </div>
               <p className="mt-3 text-sm font-medium text-foreground">
                 {phaseLabel[phase.phase_type] ?? phase.name}
               </p>
               <p className="mt-1 text-[10px] uppercase tracking-[0.14em]">
-                {phase.status.replaceAll("_", " ")}
+                {t(`lifecycleBoard.phaseStatus.${phase.status}`, {
+                  defaultValue: phase.status.replaceAll("_", " "),
+                })}
               </p>
             </button>
           </li>
@@ -211,20 +223,24 @@ export function ProjectLifecycleBoard({
         <section className="rounded-2xl border border-border bg-background/30 p-4 md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="type-kicker text-primary">PHASE WORKSPACE</p>
+              <p className="type-kicker text-primary">{t("lifecycleBoard.phaseWorkspace")}</p>
               <h3 className="mt-2 text-lg font-semibold">
                 {phaseLabel[selectedPhase.phase_type] ?? selectedPhase.name}
               </h3>
             </div>
             <Badge variant={selectedPhase.gate_required ? "warning" : "muted"}>
               {selectedPhase.gate_required
-                ? "USER GATE"
-                : selectedPhase.status.replaceAll("_", " ")}
+                ? t("lifecycleBoard.userGate")
+                : t(`lifecycleBoard.phaseStatus.${selectedPhase.status}`, {
+                    defaultValue: selectedPhase.status.replaceAll("_", " "),
+                  })}
             </Badge>
           </div>
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Tasks</p>
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                {t("lifecycleBoard.tasks")}
+              </p>
               {selectedTasks.length ? (
                 <ul className="mt-2 space-y-1 text-xs">
                   {selectedTasks.map((task) => (
@@ -232,21 +248,21 @@ export function ProjectLifecycleBoard({
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-xs text-muted-foreground">当前阶段暂无独立任务。</p>
+                <p className="mt-2 text-xs text-muted-foreground">{t("lifecycleBoard.noTasks")}</p>
               )}
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                Employees
+                {t("lifecycleBoard.employees")}
               </p>
               <p className="mt-2 text-xs">
                 {employees.find((employee) => employee.id === selectedPhase.owner_employee_id)
-                  ?.name ?? "Unassigned"}
+                  ?.name ?? t("lifecycleBoard.unassigned")}
               </p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                Documents
+                {t("lifecycleBoard.documents")}
               </p>
               {selectedDocuments.length ? (
                 <ul className="mt-2 space-y-1 text-xs">
@@ -257,24 +273,28 @@ export function ProjectLifecycleBoard({
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-xs text-muted-foreground">阶段产出尚未生成。</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t("lifecycleBoard.noDocuments")}
+                </p>
               )}
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                Review & Changes
+                {t("lifecycleBoard.reviewChanges")}
               </p>
               {selectedReview ? (
                 <Link
                   className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline"
                   to={`/projects/${lifecycle.project.id}/reviews/${selectedReview.id}`}
                 >
-                  打开 {selectedReview.title}
+                  {t("lifecycleBoard.openReview", { title: selectedReview.title })}
                   <ArrowRight className="h-3 w-3" />
                 </Link>
               ) : (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  {lifecycle.change_requests.length} open/history change records
+                  {t("lifecycleBoard.changeRecords", {
+                    count: lifecycle.change_requests.length,
+                  })}
                 </p>
               )}
             </div>
@@ -286,7 +306,9 @@ export function ProjectLifecycleBoard({
         {Object.entries(lifecycle.coverage).map(([key, value]) => (
           <div key={key} className="rounded-xl border border-border bg-background/30 p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] capitalize text-muted-foreground">{key}</span>
+              <span className="text-[10px] capitalize text-muted-foreground">
+                {t(`lifecycleBoard.coverage.${key}`, { defaultValue: key })}
+              </span>
               <span className="type-telemetry text-xs">{value}%</span>
             </div>
             <div className="mt-2 h-1 overflow-hidden rounded-full bg-muted">
@@ -299,15 +321,15 @@ export function ProjectLifecycleBoard({
       <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <FileCheck2 className="h-3.5 w-3.5" />
-          {lifecycle.documents.length} documents
+          {t("lifecycleBoard.documentsCount", { count: lifecycle.documents.length })}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <ShieldCheck className="h-3.5 w-3.5" />
-          {lifecycle.baselines.length} baselines
+          {t("lifecycleBoard.baselinesCount", { count: lifecycle.baselines.length })}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <GitPullRequestArrow className="h-3.5 w-3.5" />
-          {lifecycle.change_requests.length} changes
+          {t("lifecycleBoard.changesCount", { count: lifecycle.change_requests.length })}
         </span>
       </div>
     </div>

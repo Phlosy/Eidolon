@@ -14,6 +14,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { cn } from "../../utils/cn";
+import { Button } from "../common/button";
+import { Dialog } from "../common/dialog";
 import { CoachPanel } from "./coach-panel";
 import { TutorialSpotlight } from "./tutorial-spotlight";
 import { useTutorialEngine } from "./use-tutorial-engine";
@@ -73,6 +75,8 @@ export function TutorialOverlay() {
   // 弹窗锚点（向导无锚点段落用）不经 Target Registry，弹窗开着时 resize/scroll
   // 自己催一次重渲染来重读弹窗位置
   const [, setDialogBump] = useState(0);
+  // 实战教程右上角的按钮实际动作是“跳过实战”（不是暂停），先让用户确认
+  const [skipConfirmOpen, setSkipConfirmOpen] = useState(false);
   useEffect(() => {
     const bump = () => {
       if (document.querySelector('[role="dialog"][aria-modal="true"]')) {
@@ -105,8 +109,11 @@ export function TutorialOverlay() {
         data-tutorial-overlay="paused"
         className="fixed bottom-4 right-4 z-[60] flex items-center gap-3 rounded-2xl border border-primary/25 bg-card/96 p-3 shadow-2xl backdrop-blur"
       >
-        <GraduationCap className="h-4 w-4 text-primary" />
-        <span className="text-xs">{t("ui.pausedTitle")}</span>
+        <GraduationCap className="h-4 w-4 shrink-0 text-primary" />
+        <div>
+          <p className="text-xs font-medium">{t("ui.pausedTitle")}</p>
+          <p className="text-[11px] text-muted-foreground">{t("ui.pausedBody")}</p>
+        </div>
         <button
           type="button"
           onClick={engine.togglePause}
@@ -192,16 +199,31 @@ export function TutorialOverlay() {
               </p>
               <p className="mt-0.5 text-[11px] text-muted-foreground">
                 {t("ui.stepCounter", { current: engine.index + 1, total: engine.total })}
+                {step.stage
+                  ? ` · ${t("ui.stageOf", { stage: t(`tutorials.stages.${step.stage}`) })}`
+                  : ""}
               </p>
             </div>
           </div>
           <button
             type="button"
             aria-label={replay ? t("ui.replay.exit") : t(engine.exitLabelKey)}
-            onClick={replay ? () => stopReplay() : engine.togglePause}
+            onClick={
+              replay
+                ? () => stopReplay()
+                : engine.isPractice
+                  ? () => setSkipConfirmOpen(true)
+                  : engine.togglePause
+            }
             className="flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
           >
-            {replay ? <X className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            {replay ? (
+              <X className="h-4 w-4" />
+            ) : engine.isPractice ? (
+              <SkipForward className="h-4 w-4" />
+            ) : (
+              <Pause className="h-4 w-4" />
+            )}
           </button>
         </div>
 
@@ -390,6 +412,27 @@ export function TutorialOverlay() {
           </Link>
         ) : null}
       </CoachPanel>
+      <Dialog
+        open={skipConfirmOpen}
+        onOpenChange={setSkipConfirmOpen}
+        title={t("library.skipConfirmTitle")}
+        description={t("library.skipConfirmBody")}
+      >
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={() => setSkipConfirmOpen(false)}>
+            {t("common:cancel")}
+          </Button>
+          <Button
+            data-tutorial-action="confirm-skip-practice"
+            onClick={() => {
+              setSkipConfirmOpen(false);
+              engine.togglePause();
+            }}
+          >
+            {t("library.skipConfirmAction")}
+          </Button>
+        </div>
+      </Dialog>
     </>
   );
 }
