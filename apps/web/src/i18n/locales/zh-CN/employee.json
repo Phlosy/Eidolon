@@ -122,7 +122,17 @@
     "statusRunning": "RUNNING",
     "statusCompleted": "COMPLETED",
     "statusFailed": "FAILED",
-    "budget": "预算"
+    "budget": "预算",
+    "recordsTitle": "学习记录",
+    "emptyTitle": "暂无学习记录",
+    "kind": {
+      "reflection": "反思",
+      "question": "待解问题",
+      "summary": "总结"
+    },
+    "lesson": "经验",
+    "solution": "解法",
+    "confidence": "置信度 {{value}}"
   },
   "performance": {
     "emptyTitle": "暂无绩效数据",

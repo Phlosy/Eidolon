@@ -56,7 +56,6 @@ type Tab =
   | "capabilities"
   | "positionFit"
   | "careerDev"
-  | "learning"
   | "performance"
   | "career";
 
@@ -86,7 +85,6 @@ const TABS: Tab[] = [
   "capabilities",
   "positionFit",
   "careerDev",
-  "learning",
   "performance",
   "career",
 ];
@@ -208,17 +206,22 @@ export function EmployeeDetailPage() {
           )
         ) : null}
         {tab === "learning" ? (
-          learningQuery.isLoading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : (
-            <LearningRecordsList records={learningQuery.data ?? []} />
-          )
+          <div className="space-y-6">
+            <LearningTab employeeId={employeeId} />
+            <section className="border-t border-border pt-5">
+              <h3 className="mb-3 text-sm font-semibold">{t("employee:learning.recordsTitle")}</h3>
+              {learningQuery.isLoading ? (
+                <Skeleton className="h-32 w-full" />
+              ) : (
+                <LearningRecordsList records={learningQuery.data ?? []} />
+              )}
+            </section>
+          </div>
         ) : null}
         {tab === "behavior" ? <BehaviorTab employeeId={employeeId} /> : null}
         {tab === "capabilities" ? <CapabilitiesTab employeeId={employeeId} /> : null}
         {tab === "positionFit" ? <CurrentPositionFitTab employeeId={employeeId} /> : null}
         {tab === "careerDev" ? <CareerDevelopmentTab employeeId={employeeId} /> : null}
-        {tab === "learning" ? <LearningTab employeeId={employeeId} /> : null}
         {tab === "performance" ? <PerformanceTab employeeId={employeeId} /> : null}
         {tab === "career" ? <CareerTab employeeId={employeeId} /> : null}
       </Panel>

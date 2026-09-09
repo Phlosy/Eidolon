@@ -122,7 +122,17 @@
     "statusRunning": "RUNNING",
     "statusCompleted": "COMPLETED",
     "statusFailed": "FAILED",
-    "budget": "Budget"
+    "budget": "Budget",
+    "recordsTitle": "Learning records",
+    "emptyTitle": "No learning records yet",
+    "kind": {
+      "reflection": "Reflection",
+      "question": "Open question",
+      "summary": "Summary"
+    },
+    "lesson": "Lesson",
+    "solution": "Solution",
+    "confidence": "Confidence {{value}}"
   },
   "performance": {
     "emptyTitle": "No performance data",
