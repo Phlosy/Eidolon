@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.scope import resolve_company_id
 from app.core.database import get_db
+from app.models.enums import CultivationState
 from app.schemas.cultivation import (
     AdvanceResultOut,
     CharacterCreateIn,
@@ -153,7 +154,7 @@ def advance_program(
     return AdvanceResultOut(
         program=_program_out(current),
         event=EducationEventOut.model_validate(event),
-        lifecycle=profile.lifecycle if profile else "cultivating",
+        lifecycle=profile.lifecycle if profile else CultivationState.cultivating.value,
     )
 
 

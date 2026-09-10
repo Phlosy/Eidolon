@@ -4,13 +4,14 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.models.enums import TalentOrigin
 from app.schemas.organization import ORMModel
 
 
 class CharacterCreateIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    # trained（玩家自训）/ blank（空白自由养成）；issued 属 T2 发行方，不开放
-    origin: str = "trained"
+    # trained（玩家自训）/ blank（空白自由养成）；issued 属 T2.4 发行方生成器，不开放
+    origin: str = TalentOrigin.trained.value
     # academic / vocational / self_taught；缺省 = 自由养成（不开 program）
     template: str | None = None
 

@@ -7,7 +7,12 @@ import type { EmployeeCapabilities, EmployeeCompetencyView, TraitView } from "..
  */
 
 export type CharacterOrigin = "trained" | "blank" | "issued";
-export type CharacterLifecycle = "cultivating" | "ready" | "listed" | "hired";
+/**
+ * 培养状态轴（T2 设计 §4）：只允许 `cultivating` / `ready`。
+ * `listed`/`hired` 曾是预留值，T2.0 起废弃 —— 市场态走 market listing、
+ * 任职态走 employments，不再写进 character_profiles.lifecycle。
+ */
+export type CharacterLifecycle = "cultivating" | "ready";
 export type CultivationTemplateId = "academic" | "vocational" | "self_taught";
 export type EducationEventKind =
   "course" | "exam" | "project" | "internship" | "competition" | "fortune";

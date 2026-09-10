@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.lifecycle.naming import naming
 from app.models.cultivation import CharacterProfile, EducationEvent, TrainingProgram
+from app.models.enums import CultivationState
 from app.models.person import Person
 from app.repositories import persons as person_repo
 
@@ -69,7 +70,7 @@ def create_character(
         identity_id=_new_identity_id(db),
         origin=origin,
         owner_company_id=owner_company_id,
-        lifecycle="cultivating",
+        lifecycle=CultivationState.cultivating.value,
     )
     db.add(profile)
     db.flush()

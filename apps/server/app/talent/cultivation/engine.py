@@ -29,7 +29,7 @@ from app.evidence import normalize
 from app.evidence.candidate import EvidenceCandidate
 from app.evidence.policy import EDUCATION_ENVIRONMENT, POLICY
 from app.models.cultivation import EducationEvent, TrainingProgram
-from app.models.enums import LearningSessionStatus
+from app.models.enums import CultivationState, LearningSessionStatus
 from app.models.learning import LearningSession
 from app.repositories import cultivation as cultivation_repo
 from app.services import competency as competency_service
@@ -314,7 +314,7 @@ def advance_program(db: Session, program_id: int) -> EducationEvent:
         program.status = "completed"
         profile = cultivation_repo.get_profile_by_person(db, program.person_id)
         if profile is not None:
-            profile.lifecycle = "ready"
+            profile.lifecycle = CultivationState.ready.value
     db.commit()
     return event
 
@@ -333,7 +333,7 @@ def run_free_session(
     profile = cultivation_repo.get_profile_by_person(db, person_id)
     if profile is None:
         raise CultivationError("character not found")
-    if profile.lifecycle == "ready":
+    if profile.lifecycle == CultivationState.ready.value:
         raise CultivationError("角色已养成（ready），自由会话仅面向培养期")
     active = [
         program

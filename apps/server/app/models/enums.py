@@ -610,3 +610,23 @@ class LearningMode(StrEnum):
 class KnowledgeFreshness(StrEnum):
     fresh = "fresh"
     stale = "stale"
+
+
+class CultivationState(StrEnum):
+    """培养状态轴（T2 设计 §4，唯一载体 = `character_profiles.lifecycle`）。
+
+    **只允许这两个值**：`listed` / `hired` 曾是预留值，T2.0 起废弃 ——
+    市场可发现性走 `market_listings`（T2.3），任职走 `employments`，
+    同一列不再被三个语义争用（守卫测试：tests/test_market_contract.py）。
+    """
+
+    cultivating = "cultivating"  # 培养中（含自由养成）
+    ready = "ready"  # 养成完成：模板走完全阶段（自动）/ 自由养成显式结业
+
+
+class TalentOrigin(StrEnum):
+    """角色来源（`character_profiles.origin`）：愿景 §2 的两类来源 + T1 的自由起点。"""
+
+    issued = "issued"  # 官方发行（T2.4 发行方生成器写入）
+    trained = "trained"  # 玩家自训（可挂模板）
+    blank = "blank"  # 空白起点，自由养成

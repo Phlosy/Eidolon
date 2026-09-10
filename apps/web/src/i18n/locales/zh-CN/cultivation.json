@@ -16,9 +16,7 @@
   },
   "lifecycle": {
     "cultivating": "培养中",
-    "ready": "养成完成",
-    "listed": "已挂牌",
-    "hired": "已入职"
+    "ready": "养成完成"
   },
   "template": {
     "label": "培养模板",

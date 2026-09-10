@@ -16,9 +16,7 @@
   },
   "lifecycle": {
     "cultivating": "Cultivating",
-    "ready": "Ready",
-    "listed": "Listed",
-    "hired": "Hired"
+    "ready": "Ready"
   },
   "template": {
     "label": "Template",

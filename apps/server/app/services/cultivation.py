@@ -9,13 +9,14 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.cultivation import CharacterProfile, TrainingProgram
+from app.models.enums import TalentOrigin
 from app.models.person import Person
 from app.repositories import cultivation as cultivation_repo
 from app.repositories import persons as person_repo
 from app.talent.cultivation import engine as engine_module
 
-#: T1.0 只开放玩家自训与空白养成；issued 是 T2 发行方生成器的事。
-_CREATABLE_ORIGINS = {"trained", "blank"}
+#: T1.0 只开放玩家自训与空白养成；issued 是 T2.4 发行方生成器的事（\u89c1 T2 \u8bbe\u8ba1 §7 D11）。
+_CREATABLE_ORIGINS = {TalentOrigin.trained.value, TalentOrigin.blank.value}
 _TEMPLATES = {"academic", "vocational", "self_taught"}
 
 
@@ -30,7 +31,7 @@ def create_character(
     if origin not in _CREATABLE_ORIGINS:
         raise HTTPException(
             status_code=422,
-            detail=f"origin must be one of {sorted(_CREATABLE_ORIGINS)} (issued 属 T2)",
+            detail=f"origin must be one of {sorted(_CREATABLE_ORIGINS)} (issued 属 T2.4 发行方)",
         )
     if template is not None and template not in _TEMPLATES:
         raise HTTPException(

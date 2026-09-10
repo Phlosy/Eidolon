@@ -22,6 +22,7 @@ from sqlalchemy import JSON, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, utcnow
+from app.models.enums import CultivationState
 
 
 class CharacterProfile(TimestampMixin, Base):
@@ -31,7 +32,9 @@ class CharacterProfile(TimestampMixin, Base):
       生成规则：`CH-` + 12 位 Crockford base32（repositories/cultivation.py）。
     - origin：issued（官方发行，T2）/ trained（玩家自训）/ blank（空白自由养成起点）。
     - owner_company_id nullable：培养/持有它的公司；NULL = 在市场（T2 用）。
-    - lifecycle：cultivating → ready（养成完成）；listed / hired 属 T2，枚举值预留。
+    - lifecycle：**培养状态轴**（T2 设计 §4）：cultivating → ready。
+      `listed`/`hired` 曾是预留值，T2.0 起废弃：市场可发现性走 `market_listings`（T2.3）、
+      任职走 `employments`；本列只允许 `CultivationState` 的两个值（守卫测试钉死）。
     """
 
     __tablename__ = "character_profiles"
@@ -40,7 +43,7 @@ class CharacterProfile(TimestampMixin, Base):
     identity_id: Mapped[str] = mapped_column(String(20), unique=True)
     origin: Mapped[str] = mapped_column(String(20))
     owner_company_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    lifecycle: Mapped[str] = mapped_column(String(20), default="cultivating")
+    lifecycle: Mapped[str] = mapped_column(String(20), default=CultivationState.cultivating.value)
 
 
 class TrainingProgram(TimestampMixin, Base):

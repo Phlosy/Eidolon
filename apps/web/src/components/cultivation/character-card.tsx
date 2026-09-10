@@ -5,11 +5,9 @@ import { Badge } from "../common/badge";
 import { enumLabel } from "../../utils/labels";
 import type { CultivationCharacter } from "../../api/cultivation";
 
-const LIFECYCLE_VARIANT: Record<string, "success" | "info" | "violet" | "muted"> = {
+const LIFECYCLE_VARIANT: Record<string, "success" | "info"> = {
   cultivating: "info",
   ready: "success",
-  listed: "violet",
-  hired: "muted",
 };
 
 /**

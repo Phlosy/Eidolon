@@ -12,7 +12,7 @@ import { CreateCharacterDialog } from "../../components/cultivation/create-chara
 /**
  * 角色培养列表：本公司持有的角色（trained / blank）。
  *
- * 发行方生成（issued）与挂牌交易（listed/hired）属 T2，这里只出现玩家自己培养的角色。
+ * 发行方生成（issued）与市场挂牌/招募属 T2（docs/t2-talent-market-design.md），这里只出现玩家自己培养的角色。
  */
 export function CultivationPage() {
   const { t } = useTranslation();
