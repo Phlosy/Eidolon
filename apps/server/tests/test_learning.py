@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import date
 
 import sqlalchemy as sa
+from factories import make_employee
 
 from app.core.config import settings
 from app.models.enums import LearningSessionStatus, LearningSourceType
@@ -30,15 +31,15 @@ def _fresh(db) -> tuple[int, int]:
     company = Company(name=f"LearnCo {_seq}", slug=f"learn-co-{_seq}", description="")
     db.add(company)
     db.flush()
-    employee = Employee(
+    employee = make_employee(
+        db,
         company_id=company.id,
-        name=f"Learn {_seq}",
         slug=f"learn-{_seq}",
+        name=f"Learn {_seq}",
         workspace_path=f"/tmp/learn-{_seq}-ws",
         memory_namespace=f"mem-learn-{_seq}",
         lifecycle_status="active",
     )
-    db.add(employee)
     db.commit()
     return int(company.id), int(employee.id)
 

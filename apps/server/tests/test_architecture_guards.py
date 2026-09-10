@@ -531,3 +531,38 @@ def test_grandfather_baselines_are_not_empty():
         "读取基线缩到接近 0：镜像列快没了，请连同本节的守卫一起清掉，不要留下永远为真的空断言"
     )
     assert ROLE_WRITE_BASELINE, "写入基线为空 —— 说明写入侧扫描已失效或该删除"
+
+
+# ---------------------------------------------------------------------------
+# PersonCore 兼容层（docs/person-core-migration.md §3 D2/D6）
+
+# 裸 `Employee(...)` 构造只准出现在「先建 person 再建 employee」双写收敛后的写入口。
+# 测试代码不在这张网里（它归 tests/factories.py::make_employee 管）。
+EMPLOYEE_CONSTRUCTION_ALLOWLIST = {
+    "repositories/organization.py",  # org_repo.create_employee 本体 —— onboard 的实际构造点
+    "services/seed.py",  # 演示 workforce 种子
+}
+
+
+def test_employee_bare_construction_is_confined_to_person_double_write_entries():
+    """PersonCore 兼容期：新雇员必须「先建 person 再建 employee」。
+
+    绕过双写的新构造点会在这里当场红掉。新代码请走
+    services/lifecycle.py:onboard / services/seed.py，测试请用 factories.make_employee。
+    """
+    offenders: list[str] = []
+    for relative, path in _python_files(ALL_APP_PACKAGES):
+        if relative in EMPLOYEE_CONSTRUCTION_ALLOWLIST:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            callee = node.func
+            name = callee.id if isinstance(callee, ast.Name) else getattr(callee, "attr", "")
+            if name == "Employee":
+                offenders.append(f"{relative}:{node.lineno}")
+    assert not offenders, (
+        "裸 Employee(...) 构造只允许在 person 双写入口出现"
+        f"（{sorted(EMPLOYEE_CONSTRUCTION_ALLOWLIST)}）：\n" + "\n".join(offenders)
+    )

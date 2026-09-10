@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from app.core.database import _alembic_config
 from app.models.enums import EmployeeStatus, LifecycleStatus, RuntimeType
 from app.models.lifecycle import AccessPackage
-from app.models.organization import Company, Department, Employee
+from app.models.organization import Company, Department
 from app.models.runtime import EmployeeBrain, RuntimeInstance
 
 V11 = "j5e8a1b4c730"
@@ -55,6 +55,7 @@ def _run(engine: Engine, action: str, revision: str) -> None:
 
 def _seed_legacy(engine: Engine) -> datetime:
     now = datetime.now(UTC)
+    now_sql = now.strftime("%Y-%m-%d %H:%M:%S.%f")
     with Session(engine) as session:
         company = Company(name="Eidolon Studio", slug="eidolon", description="", industry="")
         session.add(company)
@@ -72,28 +73,38 @@ def _seed_legacy(engine: Engine) -> datetime:
             # 即老代码建任职时根本没关联职位（真相在 employees.role 文本上）。
             ("frank", research, "engineer"),
         ):
-            employee = Employee(
-                company_id=company.id,
-                department_id=dept.id,
-                name=slug.title(),
-                slug=slug,
-                role=role,
-                title="t",
-                status=EmployeeStatus.idle.value,
-                lifecycle_status=LifecycleStatus.active.value,
-                username=slug,
-                runtime_type=RuntimeType.mock.value,
-                runtime_config={},
-                workspace_path=f"data/employees/{slug}",
-                memory_namespace=f"emp_{slug}",
+            # 历史 schema 播种必须 raw SQL：当前 Employee 模型已带 person_id（v21），
+            # 而这里模拟的是 v11 的库，ORM INSERT 会带上当时还不存在的列。
+            session.execute(
+                sa.text(
+                    "INSERT INTO employees (company_id, department_id, name, slug, role, title,"
+                    " avatar, status, lifecycle_status, username, runtime_type, runtime_config,"
+                    " workspace_path, memory_namespace, created_at, updated_at) VALUES"
+                    " (:company_id, :department_id, :name, :slug, :role, 't', '', :status,"
+                    " :lifecycle_status, :username, :runtime_type, '{}', :workspace_path,"
+                    " :memory_namespace, :now, :now)"
+                ),
+                {
+                    "company_id": company.id,
+                    "department_id": dept.id,
+                    "name": slug.title(),
+                    "slug": slug,
+                    "role": role,
+                    "status": EmployeeStatus.idle.value,
+                    "lifecycle_status": LifecycleStatus.active.value,
+                    "username": slug,
+                    "runtime_type": RuntimeType.mock.value,
+                    "workspace_path": f"data/employees/{slug}",
+                    "memory_namespace": f"emp_{slug}",
+                    "now": now_sql,
+                },
             )
-            session.add(employee)
         session.flush()
 
-        charlie = session.scalar(sa.select(Employee).where(Employee.slug == "charlie"))
+        charlie_id = session.scalar(sa.text("SELECT id FROM employees WHERE slug = 'charlie'"))
         session.add(
             EmployeeBrain(
-                employee_id=charlie.id,
+                employee_id=charlie_id,
                 personality="克制、爱查文档",
                 goals="[]",
                 interests="[]",
@@ -104,7 +115,7 @@ def _seed_legacy(engine: Engine) -> datetime:
         )
         session.add(
             RuntimeInstance(
-                employee_id=charlie.id,
+                employee_id=charlie_id,
                 runtime_type=RuntimeType.mock.value,
                 deployment_mode="mock",
                 status="running",
@@ -118,7 +129,10 @@ def _seed_legacy(engine: Engine) -> datetime:
         ids = {
             "company": company.id,
             "departments": {d.slug: d.id for d in session.scalars(sa.select(Department))},
-            "employees": {e.slug: e.id for e in session.scalars(sa.select(Employee))},
+            "employees": {
+                slug: emp_id
+                for slug, emp_id in session.execute(sa.text("SELECT slug, id FROM employees"))
+            },
         }
     dept_by_slug = ids["departments"]
     emp_by_slug = ids["employees"]

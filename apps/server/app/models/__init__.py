@@ -57,6 +57,7 @@ from app.models.lifecycle import (
     ResourceProvider,
 )
 from app.models.organization import Company, Department, Employee
+from app.models.person import Person
 from app.models.position import (
     PositionAssignment,
     PositionDefinition,
@@ -151,6 +152,7 @@ __all__ = [
     "EmailVerificationToken",
     "PasskeyCredential",
     "PendingRegistration",
+    "Person",
     "User",
     "UserAuditEvent",
     "UserSession",

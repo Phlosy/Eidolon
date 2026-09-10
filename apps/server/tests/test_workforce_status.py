@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from factories import make_employee
 from sqlalchemy.orm import Session
 
 from app.models.enums import AssignmentType, EmployeeRole, LifecycleStatus, WorkforceStatus
@@ -175,11 +176,12 @@ def roster(db: Session, default_company_id: int) -> dict:
 
     people = {}
     for slug in ("assigned-a", "assigned-b", "free-a", "free-b", "free-c"):
-        person = Employee(
+        person = make_employee(
+            db,
             company_id=default_company_id,
-            department_id=department.id,
-            name=slug,
             slug=f"p4a-{slug}",
+            name=slug,
+            department_id=department.id,
             role="engineer",
             title=slug,
             avatar="",
@@ -191,7 +193,6 @@ def roster(db: Session, default_company_id: int) -> dict:
             workspace_path=f"data/employees/p4a-{slug}",
             memory_namespace=f"emp_p4a-{slug}",
         )
-        db.add(person)
         people[slug] = person
     db.flush()
     for slug, slot in (("assigned-a", slots[0]), ("assigned-b", slots[1])):

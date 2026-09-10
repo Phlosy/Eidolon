@@ -16,6 +16,7 @@ from app.models.enums import (
 )
 from app.models.organization import Company, Department, Employee
 from app.repositories import organization as org_repo
+from app.repositories import persons as person_repo
 from app.repositories import runtimes as runtime_repo
 from app.services import drive as drive_service
 
@@ -118,8 +119,14 @@ def seed_default_company(db: Session) -> Company:
         for name, slug, role, dept_slug, title in EMPLOYEES:
             workspace_path = f"{settings.workspace_root}/{slug}"
             Path(workspace_path).mkdir(parents=True, exist_ok=True)
+            # PersonCore 双写（R1.0，docs/person-core-migration.md D2）：先建 person
+            # 再建 employee。persons.slug 是唯一权威，employees.slug/username 是同源镜像
+            # （username 与 onboard 口径一致 = slug，不再依赖 seed_lifecycle 的事后回填）。
+            person = person_repo.create_person(db, slug=slug, name=name, avatar="", username=slug)
             employee = Employee(
+                person_id=person.id,
                 company_id=company.id,
+                username=slug,
                 department_id=departments[dept_slug].id,
                 name=name,
                 slug=slug,

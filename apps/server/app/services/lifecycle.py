@@ -39,6 +39,7 @@ from app.models.organization import Department, Employee
 from app.models.position import PositionSlot
 from app.repositories import lifecycle as lifecycle_repo
 from app.repositories import organization as org_repo
+from app.repositories import persons as person_repo
 from app.repositories import position as position_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
@@ -269,8 +270,13 @@ async def onboard(
     if org_repo.slug_taken_anywhere(db, slug):
         raise HTTPException(status_code=409, detail=f"employee slug already exists: {slug}")
 
+    # PersonCore 双写（R1.0，docs/person-core-migration.md D2）：先建 person 再建 employee。
+    # persons.slug 从此是唯一权威，employees.slug/username 是同源镜像（兼容期保留，
+    # 读口径不变）；两边由同一个 slug 变量落库，不可能分叉。
+    person = person_repo.create_person(db, slug=slug, name=payload.name, avatar="", username=slug)
     employee = org_repo.create_employee(
         db,
+        person_id=person.id,
         company_id=company.id,
         department_id=department.id,
         name=payload.name,

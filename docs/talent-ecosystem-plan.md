@@ -54,7 +54,7 @@ bus.publish（现状：同步、线程安全、先落库）
 | --- | --- | --- | --- | --- |
 | **E0** | 事件引擎 ✅ 已完成（commit `feat(events): E0 事件引擎`，hash 见 git log） | 分区并发调度器 + 处理器注册表 + 既有三消费者迁移 | 无 | 概念架构 §2.3 |
 | **K1** | 知识库桥 ✅ 已完成（commit hash 见 git log） | 检索 scope 分层（private→+dept+company）+ 晋升物化到 drive/handbook + 公司级知识浏览 UI | 无（可与 E0 并行） | 愿景 §5 |
-| **R1** | PersonCore 拆分 | Employee = PersonCore + 所属关系；候选人 = 无所属关系的 PersonCore | E0（事件迁移面） | 概念架构 §2.1 |
+| **R1** | PersonCore 拆分（进行中：R1.0 兼容层 ✅，R1.1-1.5 待做，方案 docs/person-core-migration.md） | Employee = PersonCore + 所属关系；候选人 = 无所属关系的 PersonCore | E0（事件迁移面） | 概念架构 §2.1 |
 | **K2** | 检索增强 | SQLite FTS5 全文 + freshness 降置信接入 | K1 | 愿景 §5 |
 | **T1** | 培养子系统 | Character 实体 + 培养会话（三模板 + 际遇事件）+ 教育证据分级 | R1 + K1 | 愿景 §3/§4 |
 | **T2** | 人才市场（本地） | 发行投放 + Fit 筛选招募 + 履历浏览 + 入职转化 | T1 | 愿景 §2/§6 |
@@ -86,6 +86,8 @@ bus.publish（现状：同步、线程安全、先落库）
   教程 cloud_docs 之后新增可选步骤引导看知识库（评估后再定，不强行加）。
 
 ### R1 · PersonCore 拆分（前置重构）
+
+> 详细迁移方案（字段归属裁定、兼容期设计、批次拆解）：docs/person-core-migration.md
 
 - **范围**：`employees` 拆出 PersonCore 语义（身份/人格/知识/技能/能力外键归 person），
   所属公司变为关系行；迁移 alembic + 全仓引用点梳理。这是全计划**风险最高**的一步，

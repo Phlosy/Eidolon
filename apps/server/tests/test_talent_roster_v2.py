@@ -15,9 +15,10 @@ from __future__ import annotations
 import threading
 
 import sqlalchemy as sa
+from factories import make_employee
 
 from app.models.competency import EmployeeCompetency
-from app.models.organization import Company, Employee
+from app.models.organization import Company
 from app.services import talent_roster as roster_service
 
 _seq = 0
@@ -26,15 +27,15 @@ _seq = 0
 def _hire(db, company_id: int, *, name: str = "") -> int:
     global _seq
     _seq += 1
-    employee = Employee(
+    employee = make_employee(
+        db,
         company_id=company_id,
-        name=name or f"Roster {_seq}",
         slug=f"roster-{_seq}",
+        name=name or f"Roster {_seq}",
         workspace_path=f"/tmp/r-{_seq}-ws",
         memory_namespace=f"mem-r-{_seq}",
         lifecycle_status="active",
     )
-    db.add(employee)
     db.commit()
     return int(employee.id)
 
