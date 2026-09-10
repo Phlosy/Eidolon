@@ -630,3 +630,11 @@ class TalentOrigin(StrEnum):
     issued = "issued"  # 官方发行（T2.4 发行方生成器写入）
     trained = "trained"  # 玩家自训（可挂模板）
     blank = "blank"  # 空白起点，自由养成
+
+
+class EmploymentState(StrEnum):
+    """任职轴（T2 设计 §4.1，**派生不落库**）：由 `employments` 是否存在
+    `effective_to IS NULL` 的 primary 行推出（不新增同义状态列）。"""
+
+    unemployed = "unemployed"
+    employed = "employed"

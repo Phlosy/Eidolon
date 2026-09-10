@@ -22,12 +22,26 @@ from app.talent.market.contracts import (
     MarketSearchQuery,
     MarketState,
 )
+from app.talent.market.eligibility import (
+    EligibilityDecision,
+    EligibilityReason,
+    PersonAxes,
+    can_list,
+    can_recruit,
+    person_axes,
+)
 
 __all__ = [
+    "EligibilityDecision",
+    "EligibilityReason",
     "MarketAdapter",
     "MarketListingStatus",
     "MarketListingView",
     "MarketParticipantKind",
     "MarketSearchQuery",
     "MarketState",
+    "PersonAxes",
+    "can_list",
+    "can_recruit",
+    "person_axes",
 ]

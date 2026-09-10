@@ -8,8 +8,9 @@ T1.0 只有角色 CRUD：建角色（trained/blank；可选 template 顺带开 p
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.events.bus import bus
 from app.models.cultivation import CharacterProfile, TrainingProgram
-from app.models.enums import TalentOrigin
+from app.models.enums import CultivationState, TalentOrigin
 from app.models.person import Person
 from app.repositories import cultivation as cultivation_repo
 from app.repositories import persons as person_repo
@@ -113,3 +114,44 @@ def run_free_session(
         )
     except engine_module.CultivationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+def complete_cultivation(db: Session, profile_id: int, owner_company_id: int) -> CharacterProfile:
+    """自由养成显式结业（T2.2，设计 §7 D1）→ `lifecycle=ready`。
+
+    规则（不可动摇）：
+    - **只有培养态可结业**：模板线在末阶段自动置 ready，这里只处理"还没 ready"的角色；
+    - **幂等**：已 ready 直接返回，不重复发事件、不改写任何东西；
+    - **不设阈值**：能力一般、证据不足、全部 unrated 的人同样可以结业 ——
+      市场价值由买方读履历判断（设计 D1）；本函数不得出现 score/confidence 判断；
+    - 有进行中的模板实例 → 409（模板线走完会自动结业，避免把半成品手动盖章成 ready）。
+    """
+    profile = _owned_profile(db, profile_id, owner_company_id)
+    if profile.lifecycle == CultivationState.ready.value:
+        return profile  # 幂等：第二次调用无副作用
+
+    programs = cultivation_repo.list_programs(db, profile.person_id)
+    active = [program for program in programs if program.status == "active"]
+    if active:
+        raise HTTPException(
+            status_code=409,
+            detail="模板培养进行中：走完全部阶段会自动结业（自由养成才需要显式结业）",
+        )
+
+    profile.lifecycle = CultivationState.ready.value
+    db.commit()
+    db.refresh(profile)
+
+    template = programs[-1].template if programs else ""
+    bus.publish(
+        "cultivation.completed",
+        {
+            "person_id": profile.person_id,
+            "profile_id": profile.id,
+            "identity_id": profile.identity_id,
+            "template": template,
+            "reason": "template" if template else "free",
+        },
+        company_id=profile.owner_company_id,
+    )
+    return profile

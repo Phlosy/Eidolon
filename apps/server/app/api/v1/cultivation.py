@@ -158,6 +158,23 @@ def advance_program(
     )
 
 
+@router.post("/characters/{profile_id}/complete", response_model=CharacterOut)
+def complete_cultivation(
+    profile_id: int,
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> CharacterOut:
+    """自由养成显式结业（T2.2，设计 §7 D1）：→ `ready`，发 `cultivation.completed`。
+
+    幂等：已 ready 再调一次仍 200、无副作用。模板培养进行中 → 409（走完自动结业）。
+    结业**不看任何能力分**（无阈值）：证据不足、全部 unrated 的人同样可以成为人才。
+    """
+    from app.repositories import persons as person_repo
+
+    profile = cultivation_service.complete_cultivation(db, profile_id, company_id)
+    return _character_out(person_repo.get_person(db, profile.person_id), profile)
+
+
 @router.post(
     "/characters/{profile_id}/sessions", response_model=FreeSessionResultOut, status_code=201
 )

@@ -134,6 +134,11 @@ export function createCultivationCharacter(
   return post<CultivationCharacter>("/cultivation/characters", body);
 }
 
+/** T2.2 自由养成显式结业：→ lifecycle=ready（幂等；模板进行中后端 409）。 */
+export function completeCultivation(profileId: number): Promise<CultivationCharacter> {
+  return post<CultivationCharacter>(`/cultivation/characters/${profileId}/complete`);
+}
+
 export function advanceCultivationProgram(programId: number): Promise<AdvanceResult> {
   return post<AdvanceResult>(`/cultivation/programs/${programId}/advance`);
 }

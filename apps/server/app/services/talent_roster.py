@@ -159,14 +159,31 @@ def _batch_derived(db: Session, people: list[Employee]):
             clause = or_(clause, employee_column.in_(fallback_ids))
         return clause
 
-    runtimes = {
-        runtime.employee_id: runtime
-        for runtime in db.scalars(
-            select(RuntimeInstance).where(
-                _owner_clause(RuntimeInstance.person_id, RuntimeInstance.employee_id)
-            )
+    employee_by_person = {person_id: emp_id for emp_id, person_id in person_ids.items()}
+
+    def _row_owner_id(row) -> int | None:
+        """行属主 → 本批 employee_id：**person 口径优先**，对不上再回落镜像列。
+
+        兼容层假设"这些行都双写着两列"—— 但培养角色（T1）与招募后的角色（T2.6）
+        的 person-only 行 `employee_id IS NULL`：直接拿 `row.employee_id` 会得到
+        None（曾让 /talent-roster 在招募后 500）。所以先按 person 还原成员工，
+        还原不到再试镜像列；两者都对不上就跳过该行（不属于本批）。
+        """
+        person_id = getattr(row, "person_id", None)
+        if person_id is not None and person_id in employee_by_person:
+            return employee_by_person[person_id]
+        employee_id = getattr(row, "employee_id", None)
+        return int(employee_id) if employee_id in derived else None
+
+    runtimes = {}
+    for runtime in db.scalars(
+        select(RuntimeInstance).where(
+            _owner_clause(RuntimeInstance.person_id, RuntimeInstance.employee_id)
         )
-    }
+    ):
+        owner_id = _row_owner_id(runtime)
+        if owner_id is not None:
+            runtimes[owner_id] = runtime
     bindings = list(
         db.scalars(
             select(ModelBinding).where(
@@ -184,7 +201,10 @@ def _batch_derived(db: Session, people: list[Employee]):
         d.runtime_type = runtime.runtime_type
         d.runtime_status = runtime.status
     for binding in bindings:
-        d = derived[binding.employee_id]
+        owner_id = _row_owner_id(binding)
+        if owner_id is None:
+            continue
+        d = derived[owner_id]
         provider = providers.get(binding.provider_id) if binding.provider_id else None
         d.provider_id = binding.provider_id
         d.provider_name = provider.name if provider else None
@@ -192,9 +212,11 @@ def _batch_derived(db: Session, people: list[Employee]):
 
     # R1.1：brain 读口径切 person_id（与上方运行时/绑定同一次批量解析 + 回落集）
     brain_owner = _owner_clause(EmployeeBrain.person_id, EmployeeBrain.employee_id)
-    brains = {
-        brain.employee_id: brain for brain in db.scalars(select(EmployeeBrain).where(brain_owner))
-    }
+    brains: dict[int, object] = {}
+    for brain in db.scalars(select(EmployeeBrain).where(brain_owner)):
+        owner_id = _row_owner_id(brain)
+        if owner_id is not None:
+            brains[owner_id] = brain
     for employee_id, brain in brains.items():
         traits = BrainTraits.from_brain(brain)
         values = {code: float(traits[code]) for code in list(traits)}
@@ -214,7 +236,10 @@ def _batch_derived(db: Session, people: list[Employee]):
         definition = definitions.get(row.competency_definition_id)
         if definition is None:
             continue
-        derived[row.employee_id].competency_scores[definition.code] = {
+        owner_id = _row_owner_id(row)
+        if owner_id is None:
+            continue
+        derived[owner_id].competency_scores[definition.code] = {
             "score": row.score,
             "confidence": row.confidence,
             "status": row.status,

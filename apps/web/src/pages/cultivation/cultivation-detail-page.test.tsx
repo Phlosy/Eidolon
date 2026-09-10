@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CultivationDetailPage } from "./cultivation-detail-page";
@@ -7,6 +7,7 @@ import type { CultivationCharacterDetail } from "../../api/cultivation";
 const STATE = vi.hoisted(() => ({
   detail: null as CultivationCharacterDetail | null,
   advance: vi.fn(),
+  complete: vi.fn(),
 }));
 
 vi.mock("../../hooks/useCultivation", () => ({
@@ -25,6 +26,12 @@ vi.mock("../../hooks/useCultivation", () => ({
   }),
   useFreeSession: () => ({
     mutate: vi.fn(),
+    isPending: false,
+    isError: false,
+    error: null,
+  }),
+  useCompleteCultivation: () => ({
+    mutate: STATE.complete,
     isPending: false,
     isError: false,
     error: null,
@@ -77,6 +84,7 @@ describe("CultivationDetailPage", () => {
   beforeEach(() => {
     STATE.detail = makeDetail();
     STATE.advance.mockReset();
+    STATE.complete.mockReset();
   });
 
   it("shows identity, lifecycle and the record timeline", () => {
@@ -102,6 +110,21 @@ describe("CultivationDetailPage", () => {
     renderDetail();
     expect(screen.getByTestId("free-session-form")).toBeInTheDocument();
     expect(screen.getByText(/No training program/)).toBeInTheDocument();
+  });
+
+  it("offers finalize only while the character is still cultivating", () => {
+    STATE.detail = makeDetail({ origin: "blank" });
+    renderDetail();
+    const finalize = screen.getByTestId("complete-cultivation-button");
+    expect(finalize).toHaveTextContent("Finalize");
+    fireEvent.click(finalize);
+    expect(STATE.complete).toHaveBeenCalledWith(5);
+  });
+
+  it("has no finalize entry once the character is ready", () => {
+    STATE.detail = makeDetail({ lifecycle: "ready" });
+    renderDetail();
+    expect(screen.queryByTestId("complete-cultivation")).not.toBeInTheDocument();
   });
 
   it("hides both write entries once the character is ready", () => {

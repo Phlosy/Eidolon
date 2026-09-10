@@ -7,6 +7,7 @@ import { ErrorState } from "../../components/common/states";
 import { Skeleton } from "../../components/common/skeleton";
 import { ProgramPanel } from "../../components/cultivation/program-panel";
 import { FreeSessionForm } from "../../components/cultivation/free-session-form";
+import { CompleteCultivation } from "../../components/cultivation/complete-cultivation";
 import { EducationTimeline } from "../../components/cultivation/education-timeline";
 import { CharacterProfile } from "../../components/cultivation/character-profile";
 import { enumLabel } from "../../utils/labels";
@@ -85,6 +86,7 @@ export function CultivationDetailPage() {
           )}
 
           {canRunFreeSession ? <FreeSessionForm characterId={character.id} /> : null}
+          {canRunFreeSession ? <CompleteCultivation characterId={character.id} /> : null}
 
           <EducationTimeline events={character.events} />
         </div>

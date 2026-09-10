@@ -365,9 +365,8 @@ cd apps/web && npm run build
 | --- | --- | --- | --- |
 | T2.0 Domain Contract Freeze | **DONE**（2026-09-10） | `9465947` | 设计 + 执行基线落盘；枚举/契约代码 + 守卫测试；**无迁移**；pytest 690 / web 303 |
 | T2.1 Person Read Model / API | **DONE**（2026-09-10） | `f4165d4` | `app/talent/person/` + `/api/v1/persons/*`；对拍/404/null 语义全锁；**无迁移**；pytest 701 / web 312 |
-| T2.2 Cultivation Completion & Eligibility | **NEXT** | — | 入口：设计 §7 D1/D6 + plan §4.3 |
-| T2.2 Cultivation Completion & Eligibility | PLANNED | — | 设计 §7 D1/D6 |
-| T2.3 Market Core & MarketAdapter | PLANNED | — | `[migration v29]`，设计 §6/§8 |
+| T2.2 Cultivation Completion & Eligibility | **DONE**（2026-09-10） | `见 Progress Log` | 自由养成显式结业 + `cultivation.completed` + 三轴资格判定集中一处；附带修复 roster person-only 行缺陷（I13）；**无迁移**；pytest 712 / web 314 |
+| T2.3 Market Core & MarketAdapter | **NEXT** | — | `[migration v29]`；入口：设计 §6/§8 + plan §4.4 |
 | T2.4 Issuer & Market Supply | PLANNED | — | 设计 §7 D11 |
 | T2.5 Person-scoped Fit | PLANNED | — | 本文件 §4.6 |
 | T2.6 Recruitment | PLANNED | — | 本文件 §4.7，I1–I5 |
@@ -381,6 +380,10 @@ cd apps/web && npm run build
     枚举 `CultivationState` / `TalentOrigin` 入 `app/models/enums.py`，培养域 magic string 替换为枚举（行为不变）。
   - 门禁：pytest **690 passed** / 6 deselected（+7 契约测试）；ruff check 全绿、改动文件 format 干净（5 个既有 WIP 红不变）；
     alembic check 无漂移；web 303 passed / tsc / eslint / prettier / build 全绿（仅类型收窄与 i18n 清理）。
+  - 迁移：**无**（T2.0 不需要 schema 变化）；alembic head 仍为 `a3b5c7d9e1f4`（v28）。
+  - 守卫已做“反例注入”验证：向 `app/` 注入 `lifecycle = "listed"` 与向市场模块注入 `price` 均能使对应守卫转红，
+    撤回后全绿（守卫不是声明式装饰）。
+  - 风险：R5（培养期知识检索可见性）仍为 T2.6/T2.8 需实测的最大不确定点；R2（市场投影越权）在 T2.3 用白名单测试兜住。
 
 - **2026-09-10 · T2.1 DONE**：commit **`f4165d4`**（`feat(person): T2.1 Person read model + person APIs`，28 files / +1511）。
   - 交付：`app/talent/person/{__init__,access,read_model}.py`、`app/api/v1/persons.py`、`app/schemas/person.py`；
@@ -396,7 +399,23 @@ cd apps/web && npm run build
   - 迁移：**无**（T2.1 不落新表；知识摘要与证据均为读）。
   - 风险：`/persons/*` 当前以 person 持有所属公司为主口径；招募后（T2.6）原持有方与新雇主都可读 ——
     这是设计 §5/§6 的有意行为，但需在 T2.6 测试中用对拍固定下来。
-  - 迁移：**无**（T2.0 不需要 schema 变化）；alembic head 仍为 `a3b5c7d9e1f4`（v28）。
-  - 守卫已做“反例注入”验证：向 `app/` 注入 `lifecycle = "listed"` 与向市场模块注入 `price` 均能使对应守卫转红，
-    撤回后全绿（守卫不是声明式装饰）。
-  - 风险：R5（培养期知识检索可见性）仍为 T2.6/T2.8 需实测的最大不确定点；R2（市场投影越权）在 T2.3 用白名单测试兜住。
+
+- **2026-09-10 · T2.2 DONE**：commit 哈希见紧随的 `docs(t2): T2.2 进度落盘` 提交（避免自引用哈希）。
+  - 交付：`app/talent/market/eligibility.py`（三轴读面 + `can_list`/`can_recruit` 纯矩阵与 DB 包装，唯一判定处）、
+    `EmploymentState` 入 `app/models/enums.py`、
+    `services/cultivation.complete_cultivation` + `POST /cultivation/characters/{id}/complete`（幂等；模板进行中 409）、
+    事件 `cultivation.completed`（payload: person/profile/identity/template/reason + company 快照）；
+    前端 `components/cultivation/complete-cultivation.tsx` + 详情页入口 + i18n 中英。
+  - **发现并修复跨阶段缺陷**：`services/talent_roster.py` 的批量属主解析假设“行都双写两列”，
+    遇到 **person-only 行（`employee_id IS NULL`）+ 同 person 的 employee 行** 时 `derived[None]` → KeyError，
+    `/talent-roster` 直接 500 —— 这正是 T2.6 招募后必然出现的形态。修复：新增 `_row_owner_id()`
+    按 person 口径还原员工（对不上再回落镜像列），runtimes/bindings/brains/competency 四处统一使用；
+    回归测试进 `tests/test_roster_api.py`。已登记为不变量 **I13**（设计 §10）。
+  - 测试：后端 +11（`tests/test_market_eligibility.py` 10：纯矩阵 / DB 三轴 / 零证据结业 / 幂等 / 模板 409 /
+    跨公司 404 / 事件 / D1 无阈值守卫；roster 回归 1）；前端 +2（结业入口出现与消失 + 点击传参）。
+  - 门禁：pytest **712 passed** / 6 deselected；ruff check 全绿、format 仅 5 个既有 WIP 红；
+    alembic check 无漂移（head 仍 `a3b5c7d9e1f4` / v28）；web 314 passed + tsc/eslint/prettier/build 全绿。
+  - 迁移：**无**（三轴均为派生或既有列）。
+  - 实机：空白角色 complete 200/ready → 重复 complete 200（幂等）→ `/persons/{id}` ready；
+    模板角色 complete → 409；dev 库三轴抽查（person 3/5 `ready+unemployed+unlisted ⇒ can_list=ok`、
+    person 4 `cultivating ⇒ not_ready`）与 `cultivation.completed`（reason=free）均正确；`/talent-roster` 200。

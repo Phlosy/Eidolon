@@ -444,3 +444,40 @@ def test_seed_bootstraps_an_establishment_for_every_builtin_department(
     db.commit()
     assert db.scalar(sa.text("SELECT COUNT(*) FROM position_slots")) == slots_after_first
     assert db.scalar(sa.text("SELECT COUNT(*) FROM employments")) == assignments_after_first
+
+
+def test_roster_survives_person_only_rows_after_recruitment_like_state(
+    client: TestClient, db: Session, default_company_id: int
+):
+    """T2.2/T2.6 保护：person-only 行（employee_id IS NULL）不得打挂名册。
+
+    培养角色（T1）的人格/能力行是 person-only；招募（T2.6）会给同一个 person 建
+    employee 行 —— 此时名册的批量属主解析会同时看到「person_id 命中、employee_id 为
+    NULL」的行。老实现直接 `derived[row.employee_id]` → KeyError(None) → /talent-roster 500。
+    这里用同样的形态钉住：person-only brain + 后续 employee 行，名册仍返回且能读到 traits。
+    """
+    from factories import make_employee, make_person
+
+    from app.models.runtime import EmployeeBrain
+
+    person = make_person(db, slug="t22-roster-person-only")
+    db.add(
+        EmployeeBrain(
+            employee_id=None,
+            person_id=int(person.id),
+            personality="person-only 人格（培养期生成）",
+        )
+    )
+    db.commit()
+
+    employee = make_employee(
+        db, company_id=default_company_id, slug="t22-roster-emp", person=person
+    )
+    db.commit()
+
+    # person-only 人格的默认 traits 全部 ≤0.65，traits_summary 为空是正常的；
+    # 关键断言是「不 500」且该员工行仍在（属主还原没把它吞掉）。
+    response = client.get("/api/v1/talent-roster")
+    assert response.status_code == 200, response.text
+    entry = next(row for row in response.json() if row["employee_id"] == int(employee.id))
+    assert "traits_summary" in entry

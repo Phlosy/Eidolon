@@ -74,6 +74,13 @@
     "submit": "Start session",
     "submitting": "Studying…"
   },
+  "complete": {
+    "title": "Finalize cultivation",
+    "hint": "Finalizing marks the character as ready and eligible for the talent market. Template training skips this step — it completes automatically after the final stage.",
+    "button": "Finalize",
+    "pending": "Finalizing…",
+    "irreversible": "Finalizing never checks capability scores or evidence volume — what they learned is your call; whether it is worth it is the recruiter's, read from the record."
+  },
   "kind": {
     "course": "Course",
     "exam": "Exam",

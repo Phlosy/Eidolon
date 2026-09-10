@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   advanceCultivationProgram,
+  completeCultivation,
   createCultivationCharacter,
   createFreeSession,
   getCultivationCharacter,
@@ -44,6 +45,14 @@ export function useFreeSession(characterId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: FreeSessionInput) => createFreeSession(characterId, body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cultivation"] }),
+  });
+}
+
+export function useCompleteCultivation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (profileId: number) => completeCultivation(profileId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cultivation"] }),
   });
 }

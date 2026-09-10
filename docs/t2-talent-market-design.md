@@ -294,6 +294,7 @@ Protocol 由远端实现，**不修改**本契约。
 | **I10** | M1 经济实体不是 T2 的依赖（代码守卫） | T2.0 guard |
 | **I11** | `character_profiles.lifecycle` 只含 `cultivating`/`ready` | T2.0 enum + T2.2 |
 | **I12** | 能力分只能由聚合器写（含市场/发行路径） | 既有 app 级守卫（`test_competency_guards.py`） |
+| **I13** | **person-only 行与 employee 行可并存**（培养期产生的 `employee_id IS NULL` 行 + 招募后的 employee 行）：所有 person 口径读面必须能处理这类行，不得假设“双写两列必有一 employee” | T2.2 回归（`test_roster_api.py`）＋ T2.6 复查 |
 
 ## 11. 与 M1 / M2 的边界
 
