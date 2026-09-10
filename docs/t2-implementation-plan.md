@@ -364,7 +364,7 @@ cd apps/web && npm run build
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
 | T2.0 Domain Contract Freeze | **DONE**（2026-09-10） | `9465947` | 设计 + 执行基线落盘；枚举/契约代码 + 守卫测试；**无迁移**；pytest 690 / web 303 |
-| T2.1 Person Read Model / API | **DONE**（2026-09-10） | `见 Progress Log` | `app/talent/person/` + `/api/v1/persons/*`；对拍/404/null 语义全锁；**无迁移**；pytest 701 / web 312 |
+| T2.1 Person Read Model / API | **DONE**（2026-09-10） | `f4165d4` | `app/talent/person/` + `/api/v1/persons/*`；对拍/404/null 语义全锁；**无迁移**；pytest 701 / web 312 |
 | T2.2 Cultivation Completion & Eligibility | **NEXT** | — | 入口：设计 §7 D1/D6 + plan §4.3 |
 | T2.2 Cultivation Completion & Eligibility | PLANNED | — | 设计 §7 D1/D6 |
 | T2.3 Market Core & MarketAdapter | PLANNED | — | `[migration v29]`，设计 §6/§8 |
@@ -382,7 +382,7 @@ cd apps/web && npm run build
   - 门禁：pytest **690 passed** / 6 deselected（+7 契约测试）；ruff check 全绿、改动文件 format 干净（5 个既有 WIP 红不变）；
     alembic check 无漂移；web 303 passed / tsc / eslint / prettier / build 全绿（仅类型收窄与 i18n 清理）。
 
-- **2026-09-10 · T2.1 DONE**：commit 哈希见紧随的 `docs(t2): T2.1 进度落盘` 提交（避免自引用哈希）。
+- **2026-09-10 · T2.1 DONE**：commit **`f4165d4`**（`feat(person): T2.1 Person read model + person APIs`，28 files / +1511）。
   - 交付：`app/talent/person/{__init__,access,read_model}.py`、`app/api/v1/persons.py`、`app/schemas/person.py`；
     新增 person 读出口复用（`competency_service.evidence_payload`/`person_evidence_rows`、
     `knowledge_summary_by_person`、`list_education_events(newest_first/limit/offset)`）；
