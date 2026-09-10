@@ -1,6 +1,6 @@
 # PersonCore 拆分迁移方案（R1）
 
-> 状态：待实施。上游依据：docs/concept-architecture.md §2.1、docs/talent-ecosystem-plan.md §3 R1。
+> 状态：**R1.0–R1.5 已全部落地**（迁移 v21–v25，2026-09-10）。上游依据：docs/concept-architecture.md §2.1、docs/talent-ecosystem-plan.md §3 R1。
 > 本文是 R1 的详细迁移方案，回答三个问题：拆什么、怎么拆不炸、分几步验收。
 
 ## 1. 为什么拆
@@ -141,23 +141,28 @@ persons 表本身保持最小（身份字段 + 时间戳），宁可后续迁移
 
 ## 4. 阶段拆解与验收
 
-### R1.0 · persons 表 + 兼容层（本方案的第一批实施）
+### R1.0 · persons 表 + 兼容层（本方案的第一批实施）—— ✅ 已完成（v21）
 
 - 迁移 v21：`persons` 表（id/slug unique/name/avatar/username/status/created_at/updated_at）+ `employees.person_id` nullable 列 + 回填 + 部分唯一索引；
 - models 新增 `Person`；`Employee` 加 `person_id` 列与 `person` relationship；
 - onboard/seed 双写改造 + 测试工厂 + 架构守卫；
 - **验收**：622 测试全绿、alembic check 无漂移、`make dev-restart-clean` 后入职→任务→学习全流程实机走通（复用 tmp/tutorial_audit.py）；所有 employee 行 person_id 非空。
+- **落地备注**：persons 表实装未含 `status` 列（按 D4.1 最小列集原则从简，需要时后续迁移加列）；实机验收走的等价路径（迁移回填校验 + 重启 + 真实入职 API + 清理），未跑 dev-restart-clean 全量重置。
 
-### R1.1-R1.4 · 四批次读口径切换（D4 表格）
+### R1.1-R1.4 · 四批次读口径切换（D4 表格）—— ✅ 全部完成（v22–v25）
 
 每批次：迁移（加列+回填+索引）→ 双写 → 切读 → 门禁全绿 → 提交。
 **验收（每批次相同）**：全量 pytest 绿；该域 API 响应与切换前逐字段一致（对拍测试或既有等价性测试覆盖）；ruff/alembic 干净。
 
-### R1.5 · 收尾
+落地对照：批次 1 人格与学习（v22）、批次 2 知识 owner（v23，`owner_person_id`）、
+批次 3 能力度量（v24）、批次 4 资源与署名（v25，镜像命名 `<前缀>_employee_id`
+↔ `<前缀>_person_id`；`artifacts.author_id` → `author_person_id`）。
+
+### R1.5 · 收尾 —— ✅ 已完成
 
 - 文档同步：concept-architecture.md §2.1 的拆分声明标记落地、architecture.md 实体章节更新、handover 基线数字更新；
-- 技术债登记：遗留 employee_id 列清单 + 最终删除条件（等 T2 稳定后评估）；
-- **R1.3 遗留观察**：`evidence/normalize.py::upsert_evidence` 在 `db.add` 后不 flush，而 SessionLocal `autoflush=False`——pipeline 的 `project.completed` 同事务内「先 upsert 后 assess」可能漏读最后一条 pending 证据。既有行为非本拆分引入，R1.5 单独排查确认；
+- 技术债登记：遗留镜像列清单见 §7；最终删除条件：等 T2 稳定后评估；
+- **R1.3 遗留观察（已排查，确认是 bug 并已修复）**：`evidence/normalize.py::upsert_evidence` 曾在 `db.add` 后不 flush，SessionLocal `autoflush=False` 导致同事务内「先 upsert 后聚合」漏读最后一条 pending 证据（实机实测复现：聚合 outputs 为空）。修复：add 后补 `db.flush()`；回归测试 `tests/test_evidence_pipeline.py::test_upsert_then_assess_in_same_transaction_sees_the_new_evidence`；
 - **验收**：`SELECT count(*) FROM employees WHERE person_id IS NULL` 为 0；person 侧四批次表 `person_id` 非空率 100%；全门禁绿。
 
 ## 5. 风险与对策
@@ -175,3 +180,41 @@ persons 表本身保持最小（身份字段 + 时间戳），宁可后续迁移
 - 候选人的 UI/市场流通（T2）；培养模板（T1）；embedding/向量检索（K3）；
 - employments 表改名、role 列清理（ADR 明确不做）；
 - employees 表 person 相关旧列的最终删除（遗留镜像，T2 稳定后另议）。
+
+## 7. 遗留镜像列清单（R1.5 技术债登记）
+
+读口径已全部切到 person 侧，以下 deprecated 镜像列由双写维持、随表留存不删
+（SQLite 删列要重建表，不值得）。**最终删除条件：T2 人才市场稳定后评估**
+（届时候选人/跨公司流动真正依赖 person 口径，镜像列无人再读后逐批拆除，
+拆除时同步清掉 persons.py 的回落分支与架构守卫白名单）。
+
+| 表 | 镜像列（deprecated） | 权威列 | 批次 / 迁移 |
+| --- | --- | --- | --- |
+| employees | slug / name / avatar / username | persons.* | R1.0 / v21 |
+| employee_brains | employee_id | person_id | R1.1 / v22 |
+| memory_entries | employee_id | person_id | R1.1 / v22 |
+| skills | employee_id | person_id | R1.1 / v22 |
+| learning_records | employee_id | person_id | R1.1 / v22 |
+| learning_sessions | employee_id | person_id（company_id 是公司快照，非镜像） | R1.1 / v22 |
+| skill_usages | employee_id | person_id | R1.1 / v22 |
+| learning_priorities | employee_id | person_id | R1.1 / v22 |
+| knowledge_items | owner_employee_id | owner_person_id | R1.2 / v23 |
+| employee_competencies | employee_id | person_id | R1.3 / v24 |
+| competency_evidence | employee_id | person_id | R1.3 / v24 |
+| assessment_runs | employee_id | person_id（company_id 是公司快照，非镜像） | R1.3 / v24 |
+| runtime_instances | employee_id | person_id | R1.4 / v25 |
+| providers | owner_employee_id | owner_person_id | R1.4 / v25 |
+| model_bindings | employee_id | person_id | R1.4 / v25 |
+| drive_nodes | owner_employee_id | owner_person_id | R1.4 / v25 |
+| drive_revisions | author_employee_id | author_person_id | R1.4 / v25 |
+| artifacts | author_id | author_person_id | R1.4 / v25 |
+| messages | sender_id / recipient_id | sender_person_id / recipient_person_id | R1.4 / v25 |
+| document_artifacts | author_employee_id | author_person_id | R1.4 / v25 |
+| review_meetings | presenter_employee_id | presenter_person_id | R1.4 / v25 |
+| events | actor_employee_id | actor_person_id | R1.4 / v25 |
+
+明确**不是**镜像、永远留在 employee 口径的列（方案 §2.2 下半区裁定，勿误清）：
+drive_collaborators.employee_id、project_phases.owner_employee_id、
+resource_assets.owner_employee_id、employments.*、tasks.assignee_id、
+projects/milestones.owner_id、work_sessions.employee_id、career_events /
+development_plans.employee_id、audit_logs 等（成员身份/工作分派/审计语义）。

@@ -116,6 +116,10 @@ def upsert_evidence(db: Session, candidate: EvidenceCandidate) -> tuple[Competen
         metadata_json=candidate.metadata,
     )
     db.add(row)
+    # 必须 flush：SessionLocal autoflush=False，新行不 flush 对同事务后续的 SELECT
+    # 不可见 —— project.completed 链路「先 upsert 后聚合」会漏掉这条证据
+    # （回归测试 test_upsert_then_assess_in_same_transaction_sees_the_new_evidence）。
+    db.flush()
     return row, True
 
 

@@ -110,6 +110,7 @@ apps/server/
 
 ```text
 Company 1─n Department 1─n Employee
+Person 1─0..1 Employee        # R1（v21+）：人是聚合根，员工 = 人 + 公司成员身份
 Company 1─n Project 1─n Milestone 1─n Task 1─n WorkSession
 Task n─n Task (task_dependencies: 前置任务，用于 React Flow 边)
 Project 1─n Artifact ; Task 0─n Artifact
@@ -118,11 +119,18 @@ Department 1─n KnowledgeItem(department) ; Company 1─n KnowledgeItem(company
 Company 1─n Event ; Project/Task 0─n Message
 ```
 
+> PersonCore 拆分（R1.0–R1.4，迁移 v21–v25）：`persons` 承载人的身份与命名
+> （slug 全局唯一权威）；上表中人侧各域（记忆/知识/技能/学习/能力/运行时/
+> 署名/事件主体）的读口径已切到 `person_id`，原 `employee_id` 系列列保留为
+> deprecated 镜像（双写维持，兼容期不删）。细则与遗留镜像列清单见
+> docs/person-core-migration.md。
+
 ### 3.2 表结构（字段级，全部整数主键 `id` + `created_at` + `updated_at`）
 
 - **companies**: name, slug(unique), description, industry, settings(JSON)
 - **departments**: company_id(FK), name, slug, description
-- **employees**: company_id, department_id, name, slug(unique), role, title, avatar, status, runtime_type, runtime_config(JSON), workspace_path, memory_namespace(unique), current_task_id(NULL FK→tasks)
+- **persons**: slug(unique), name, avatar(NULL), username(NULL) —— 人的聚合根（R1，v21+）
+- **employees**: company_id, department_id, person_id(NULL→persons), name, slug(unique), role, title, avatar, status, runtime_type, runtime_config(JSON), workspace_path, memory_namespace(unique), current_task_id(NULL FK→tasks)
 - **projects**: company_id, name, description, status, goal, owner_id(NULL FK→employees，即 PM), source_order_text（原始需求）
 - **milestones**: project_id, name, description, status, order
 - **tasks**: project_id, milestone_id(NULL), title, description, kind, status, priority(int), assignee_id(NULL FK→employees), acceptance_criteria, sequence(int)

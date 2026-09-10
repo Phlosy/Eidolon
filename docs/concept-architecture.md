@@ -28,15 +28,20 @@
 | 人 | `employees`（+ 未来的 `Character`） | **人格（traits）、知识、技能、能力的挂载点** |
 
 关键抽象决策（人才生态的地基）：**"人"必须先于"任职"存在**。
-现状已经把任职拆出去了（`PositionAssignment` 是当前职位唯一真相，`employees.role`
-只是镜像），但"人"和"公司成员"仍焊死在 `employees.company_id` 上。引入人才培养
-子系统时，要完成的最后一步拆分是：
+任职早已拆出去（`PositionAssignment` 是当前职位唯一真相，`employees.role`
+只是镜像）；"人"与"公司成员"的拆分也已落地：
 
 ```
 PersonCore（身份/人格/知识/技能/能力 —— 随人走，与任何公司无关）
    + EmploymentRelationship（所属公司/任职 —— 可建立、可转移、可解除）
    = 产品里的"员工"；培养期的"候选人" = 只有 PersonCore 的人
 ```
+
+> **落地状态（R1.0–R1.4，迁移 v21–v25，详见 docs/person-core-migration.md）**：
+> `persons` 表是「人」的聚合根（slug 全局唯一为权威；`employees.slug` 为同源镜像）；
+> 人格/记忆/知识/技能/学习/能力/资源/署名各域已按 `person_id` 切读，
+> 旧 `employee_id` 列保留为 deprecated 兼容镜像（双写维持，不删）。
+> 候选人 = 没有任何 active 任职/employee 行的 Person —— 其 UI 与市场流通属 T2。
 
 这一拆，候选人（pre-hire）、在册员工、被交易的角色就是同一实体的三种状态，
 人才培养和交易市场都变成"给 PersonCore 换关系/加资产"，而不是新造平行实体。

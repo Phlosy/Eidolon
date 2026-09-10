@@ -328,3 +328,37 @@ def test_review_decision_is_evidence_for_the_presenter(db, default_company_id):
     assert candidates, "评审通过应为 presenter 产生 review 证据"
     assert candidates[0].signal == 84
     assert candidates[0].source_type == "review"
+
+
+def test_upsert_then_assess_in_same_transaction_sees_the_new_evidence(db, default_company_id):
+    """回归：upsert_evidence 的新行必须在**同事务**内对后续聚合查询可见。
+
+    SessionLocal autoflush=False：add 后不 flush ⇒ 紧跟的 SELECT 看不到 pending 行。
+    project.completed 链路（pipeline.handle_event → reconcile → run_assessment）
+    正是同事务内「先 upsert 证据、后聚合考核」—— 漏 flush 会让最后一次考核
+    漏掉最后一条证据（R1.3 实机验证时实测复现：outputs={}）。
+    """
+    from app.evidence.candidate import EvidenceCandidate
+    from app.services import competency as competency_service
+
+    employee_id = _hire(db, default_company_id)
+    task_id = _task(db, employee_id)
+    candidate = EvidenceCandidate(
+        employee_id=employee_id,
+        source_type="task",
+        source_id=task_id,
+        source_ref="task://same-txn",
+        observation="同事务可见性回归",
+        competency_definition_id=_def(db, "execution"),
+        signal=85,
+        strength=0.9,
+        reliability=0.9,
+        occurred_at=datetime.now(UTC),
+        metadata={},
+    )
+    row, created = normalize.upsert_evidence(db, candidate)
+    assert created is True
+    # 不 commit、不手动 flush —— 复刻 pipeline 的同事务时序
+    run = competency_service.assess_employee_competencies(db, employee_id, commit=False)
+    assert run.evidence_ids == [row.id], "同事务聚合必须看到刚 upsert 的证据行"
+    assert run.outputs, "有证据就必须有聚合输出"
