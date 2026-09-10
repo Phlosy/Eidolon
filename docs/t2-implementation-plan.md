@@ -366,7 +366,7 @@ cd apps/web && npm run build
 | T2.0 Domain Contract Freeze | **DONE**（2026-09-10） | `9465947` | 设计 + 执行基线落盘；枚举/契约代码 + 守卫测试；**无迁移**；pytest 690 / web 303 |
 | T2.1 Person Read Model / API | **DONE**（2026-09-10） | `f4165d4` | `app/talent/person/` + `/api/v1/persons/*`；对拍/404/null 语义全锁；**无迁移**；pytest 701 / web 312 |
 | T2.2 Cultivation Completion & Eligibility | **DONE**（2026-09-10） | `6a79102` | 自由养成显式结业 + `cultivation.completed` + 三轴资格判定集中一处；附带修复 roster person-only 行缺陷（I13）；**无迁移**；pytest 712 / web 314 |
-| T2.3 Market Core & MarketAdapter | **DONE**（2026-09-10） | `见 Progress Log` | 迁移 v29（两张表 + 部分唯一索引）+ LocalMarketAdapter + MarketService + 公开投影读面；pytest 723 |
+| T2.3 Market Core & MarketAdapter | **DONE**（2026-09-10） | `18e1bcb` | 迁移 v29（两张表 + 部分唯一索引）+ LocalMarketAdapter + MarketService + 公开投影读面；pytest 723 |
 | T2.4 Issuer & Market Supply | **NEXT** | — | 入口：设计 §7 D11 + plan §4.5 |
 | T2.5 Person-scoped Fit | PLANNED | — | 本文件 §4.6 |
 | T2.6 Recruitment | PLANNED | — | 本文件 §4.7，I1–I5 |
@@ -420,7 +420,7 @@ cd apps/web && npm run build
     模板角色 complete → 409；dev 库三轴抽查（person 3/5 `ready+unemployed+unlisted ⇒ can_list=ok`、
     person 4 `cultivating ⇒ not_ready`）与 `cultivation.completed`（reason=free）均正确；`/talent-roster` 200。
 
-- **2026-09-10 · T2.3 DONE**：commit 哈希见紧随的 `docs(t2): T2.3 进度落盘` 提交（避免自引用哈希）。
+- **2026-09-10 · T2.3 DONE**：commit **`18e1bcb`**（`feat(market): local market core — listings + adapter + public read model (T2.3)`，19 files / +1602）。
   - 迁移 **v29**（`b4c6d8e0f2a3`，down_revision `a3b5c7d9e1f4`）：`market_participants`
     （部分唯一 `uq_market_participant_company(kind, company_id) WHERE company_id IS NOT NULL`）+
     `market_listings`（部分唯一 `uq_market_listing_active_person(person_id) WHERE status='active'`）；
