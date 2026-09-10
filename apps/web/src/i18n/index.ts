@@ -19,6 +19,7 @@ import authZh from "./locales/zh-CN/auth.json";
 import tutorialZh from "./locales/zh-CN/tutorial.json";
 import positionZh from "./locales/zh-CN/position.json";
 import knowledgeZh from "./locales/zh-CN/knowledge.json";
+import cultivationZh from "./locales/zh-CN/cultivation.json";
 
 import commonEn from "./locales/en-US/common.json";
 import navEn from "./locales/en-US/nav.json";
@@ -37,6 +38,7 @@ import authEn from "./locales/en-US/auth.json";
 import tutorialEn from "./locales/en-US/tutorial.json";
 import positionEn from "./locales/en-US/position.json";
 import knowledgeEn from "./locales/en-US/knowledge.json";
+import cultivationEn from "./locales/en-US/cultivation.json";
 
 /**
  * Supported UI languages. Adding a language = create `locales/<code>/` with
@@ -70,6 +72,7 @@ export const NAMESPACES = [
   "tutorial",
   "position",
   "knowledge",
+  "cultivation",
 ] as const;
 
 const resources = {
@@ -91,6 +94,7 @@ const resources = {
     tutorial: tutorialZh,
     position: positionZh,
     knowledge: knowledgeZh,
+    cultivation: cultivationZh,
   },
   "en-US": {
     common: commonEn,
@@ -110,6 +114,7 @@ const resources = {
     tutorial: tutorialEn,
     position: positionEn,
     knowledge: knowledgeEn,
+    cultivation: cultivationEn,
   },
 };
 

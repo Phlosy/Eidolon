@@ -29,6 +29,16 @@ const TalentRosterPage = lazy(() =>
     default: module.TalentRosterPage,
   })),
 );
+const CultivationPage = lazy(() =>
+  import("../pages/cultivation/cultivation-page").then((module) => ({
+    default: module.CultivationPage,
+  })),
+);
+const CultivationDetailPage = lazy(() =>
+  import("../pages/cultivation/cultivation-detail-page").then((module) => ({
+    default: module.CultivationDetailPage,
+  })),
+);
 const PositionsPage = lazy(() =>
   import("../pages/positions/positions-page").then((module) => ({
     default: module.PositionsPage,
@@ -139,6 +149,8 @@ export const router = createBrowserRouter([
           { path: "/employees", element: route(<EmployeesPage />) },
           { path: "/employees/:id", element: route(<EmployeeDetailPage />) },
           { path: "/talent-roster", element: route(<TalentRosterPage />) },
+          { path: "/cultivation", element: route(<CultivationPage />) },
+          { path: "/cultivation/:id", element: route(<CultivationDetailPage />) },
           { path: "/positions", element: route(<PositionsPage />) },
           { path: "/positions/:id", element: route(<PositionDetailPage />) },
           { path: "/projects", element: route(<ProjectsPage />) },

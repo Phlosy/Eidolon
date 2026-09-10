@@ -56,7 +56,7 @@ bus.publish（现状：同步、线程安全、先落库）
 | **K1** | 知识库桥 ✅ 已完成（commit hash 见 git log） | 检索 scope 分层（private→+dept+company）+ 晋升物化到 drive/handbook + 公司级知识浏览 UI | 无（可与 E0 并行） | 愿景 §5 |
 | **R1** | PersonCore 拆分 ✅ 已完成（R1.0-R1.5，迁移 v21-v25，方案 docs/person-core-migration.md） | Employee = PersonCore + 所属关系；候选人 = 无所属关系的 PersonCore | E0（事件迁移面） | 概念架构 §2.1 |
 | **K2** | 检索增强 ✅ 已完成（commit hash 见 git log） | SQLite FTS5 全文 + freshness 降置信接入 | K1 | 愿景 §5 |
-| **T1** | 培养子系统 | Character 实体 + 培养会话（三模板 + 际遇事件）+ 教育证据分级 | R1 + K1 | 愿景 §3/§4 |
+| **T1** | 培养子系统 ✅ 已完成（T1.0-T1.3，迁移 v27-v28，方案 docs/cultivation-system-design.md） | Character 实体 + 培养会话（三模板 + 际遇事件）+ 教育证据分级 + 培养 UI | R1 + K1 | 愿景 §3/§4 |
 | **T2** | 人才市场（本地） | 发行投放 + Fit 筛选招募 + 履历浏览 + 入职转化 | T1 | 愿景 §2/§6 |
 | **M1** | 货币与合同交易 | Wallet/Ledger 复式流水 + 挂牌/报价/escrow 结算 + 所有权转移 | T2 | 愿景 §6 |
 | K3 | 语义检索（可选） | embedding 可插拔层（sqlite-vec + provider 绑定 + 混合检索） | K2 + 真实 provider | 愿景 §5 |

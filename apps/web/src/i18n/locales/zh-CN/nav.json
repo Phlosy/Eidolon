@@ -55,5 +55,6 @@
     "deleteSentDev": "开发模式：注销确认链接已打印到后端控制台日志（eidolon.email）。"
   },
   "positions": "职位标准",
-  "talentRoster": "人才名册"
+  "talentRoster": "人才名册",
+  "cultivation": "角色培养"
 }

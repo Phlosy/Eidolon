@@ -1,0 +1,136 @@
+{
+  "title": "角色培养",
+  "description": "从空白开始培养角色：选模板走既定路径，或完全自由养成。学什么、怎么学，由你决定。",
+  "newCharacter": "新建角色",
+  "summary": "{{count}} 个角色",
+  "openDetail": "查看档案",
+  "emptyTitle": "还没有培养中的角色",
+  "emptyHint": "新建一个角色，选择模板培养或自由养成。",
+  "origin": {
+    "label": "来源",
+    "trained": "玩家自训",
+    "trainedHint": "亲手培养的作品，可挂模板走既定路径。",
+    "blank": "空白养成",
+    "blankHint": "完全空白的起点，逐次决定学什么。",
+    "issued": "官方发行"
+  },
+  "lifecycle": {
+    "cultivating": "培养中",
+    "ready": "养成完成",
+    "listed": "已挂牌",
+    "hired": "已入职"
+  },
+  "template": {
+    "label": "培养模板",
+    "none": "自由养成",
+    "noneDescription": "不用模板，逐次指定学习主题、途径与强度。上限更高，下限也更低——培养水平本身就是你的技术。",
+    "academic": "学院派",
+    "academicDescription": "小学到大学一路升学：基础学科广而扎实，考试证据多、可靠性高。短板倾向：工程实战经验少。",
+    "vocational": "职业派",
+    "vocationalDescription": "义务教育后直奔专业实训：工程技能牢靠、项目证据出现早。短板倾向：知识面窄、理论深度不足。",
+    "self_taught": "自学派",
+    "self_taughtDescription": "非规范自学路径：知识宽而散，某些领域钻得很深，某些是想当然——高风险高潜力。短板倾向：能力证据少、置信度低。"
+  },
+  "create": {
+    "dialogTitle": "新建角色",
+    "dialogDescription": "角色一旦创建即获得终身唯一的身份 ID，履历不可篡改。",
+    "nameLabel": "姓名",
+    "namePlaceholder": "给角色起个名字",
+    "originLabel": "来源",
+    "templateLabel": "培养模板",
+    "submit": "创建角色"
+  },
+  "detail": {
+    "back": "返回列表",
+    "identity": "身份 ID",
+    "createdAt": "创建于 {{value}}",
+    "programsTitle": "培养实例",
+    "noProgram": "没有培养实例——这个角色走的是自由养成。",
+    "stage": "第 {{current}}/{{total}} 阶段",
+    "stageDone": "全部阶段完成",
+    "stageName": "当前阶段：{{name}}",
+    "resources": "学习会话 {{sessions}} · 知识条目 {{knowledge}}",
+    "advance": "推进一阶段",
+    "advancing": "推进中…",
+    "advanceHint": "推进会按当前阶段采样主题、产出知识与教育证据，并写入履历。",
+    "programStatus": {
+      "active": "进行中",
+      "completed": "已完成"
+    }
+  },
+  "freeSession": {
+    "title": "自由养成会话",
+    "description": "逐次指定主题、途径与强度，产出与模板培养走同一条链路。",
+    "topicLabel": "学习主题",
+    "topicPlaceholder": "例如：分布式系统入门",
+    "topicRequired": "请先填写学习主题",
+    "modeLabel": "学习途径",
+    "mode": {
+      "web_research": "网络调研",
+      "document_study": "文档研读",
+      "knowledge_review": "知识复盘"
+    },
+    "kindLabel": "活动形式",
+    "intensityLabel": "强度（{{value}}）",
+    "intensityHint": "强度即写入证据的 signal：越高越像投入充足的一次学习，也越容易被后续评估采信。",
+    "submit": "开始学习",
+    "submitting": "学习中…"
+  },
+  "kind": {
+    "course": "课程",
+    "exam": "考试",
+    "project": "项目",
+    "internship": "实习",
+    "competition": "竞赛",
+    "fortune": "际遇"
+  },
+  "stage": {
+    "primary": "小学",
+    "junior": "初中",
+    "senior": "高中",
+    "university": "大学",
+    "compulsory": "九年义务教育",
+    "vocational_training": "专业实训",
+    "self_study": "非规范自学"
+  },
+  "timeline": {
+    "title": "履历时间线",
+    "empty": "还没有履历事件——推进一个阶段或发起一次自由养成会话。",
+    "knowledgeProduced": "产出知识 {{count}} 条",
+    "durationWeeks": "历时 {{count}} 周",
+    "topics": "覆盖主题",
+    "assessed": "已完成阶段评估",
+    "signalBoost": "证据强度 +{{value}}",
+    "signalDrop": "证据强度 {{value}}",
+    "signal": "证据强度 {{value}}",
+    "extraTopics": "额外主题",
+    "traitShift": "人格偏移"
+  },
+  "traits": {
+    "curiosity": "好奇心",
+    "conscientiousness": "尽责性",
+    "adaptability": "适应力",
+    "creativity": "创造力",
+    "risk_tolerance": "风险偏好",
+    "collaboration": "协作性",
+    "warmth": "亲和力",
+    "independence": "独立性"
+  },
+  "profile": {
+    "title": "成品档案",
+    "readyHint": "养成完成。履历即证据链：每条能力都由下面的履历事件背书。",
+    "growingHint": "仍在培养中。模板只提供倾向，际遇会带来个体差异。",
+    "statEvents": "履历事件",
+    "statSessions": "学习会话",
+    "statKnowledge": "知识条目",
+    "traitsTitle": "人格倾向",
+    "traitsHint": "模板倾向 + 际遇偏移共同塑形；只描述工作方式，不构成能力加成。",
+    "competenciesTitle": "能力画像",
+    "competenciesHint": "全部由履历证据聚合而来，没有直接写分入口。",
+    "professionalTitle": "专业能力",
+    "professionalEmpty": "还没有专业能力证据——专业维度只在有证据时出现。",
+    "unrated": "未评估",
+    "confidence": "置信度 {{value}}",
+    "evidenceCount": "证据 {{count}} 条"
+  }
+}

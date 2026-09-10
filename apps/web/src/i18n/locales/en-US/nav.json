@@ -55,5 +55,6 @@
     "deleteSentDev": "Development mode: the deletion confirmation link is printed to the backend console log (eidolon.email)."
   },
   "positions": "Positions",
-  "talentRoster": "Talent roster"
+  "talentRoster": "Talent roster",
+  "cultivation": "Cultivation"
 }
