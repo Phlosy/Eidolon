@@ -161,26 +161,8 @@ def employee_competency_evidence(
             ).limit(limit)
         )
     )
-    definitions = competency_repo.definitions_by_id(
-        db, [row.competency_definition_id for row in rows]
-    )
-    out = []
-    for row in rows:
-        definition = definitions.get(row.competency_definition_id)
-        out.append(
-            {
-                "id": row.id,
-                "employee_id": row.employee_id,
-                "competency_definition_id": row.competency_definition_id,
-                "competency_code": definition.code if definition else "",
-                "competency_name": definition.name if definition else "",
-                "source_kind": row.source_kind,
-                "source_id": row.source_id,
-                "source_ref": row.source_ref,
-                "assessment_run_id": row.assessment_run_id,
-                "signal": row.signal,
-                "quality": row.quality,
-                "occurred_at": row.occurred_at,
-            }
-        )
-    return out
+    # T2.1：mapping 与人员证据读面共用一份（competency_service.evidence_payload）
+    return [
+        {"employee_id": row.employee_id, **item}
+        for row, item in zip(rows, competency_service.evidence_payload(db, rows), strict=True)
+    ]

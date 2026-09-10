@@ -104,31 +104,12 @@
     "extraTopics": "额外主题",
     "traitShift": "人格偏移"
   },
-  "traits": {
-    "curiosity": "好奇心",
-    "conscientiousness": "尽责性",
-    "adaptability": "适应力",
-    "creativity": "创造力",
-    "risk_tolerance": "风险偏好",
-    "collaboration": "协作性",
-    "warmth": "亲和力",
-    "independence": "独立性"
-  },
   "profile": {
     "title": "成品档案",
     "readyHint": "养成完成。履历即证据链：每条能力都由下面的履历事件背书。",
     "growingHint": "仍在培养中。模板只提供倾向，际遇会带来个体差异。",
     "statEvents": "履历事件",
     "statSessions": "学习会话",
-    "statKnowledge": "知识条目",
-    "traitsTitle": "人格倾向",
-    "traitsHint": "模板倾向 + 际遇偏移共同塑形；只描述工作方式，不构成能力加成。",
-    "competenciesTitle": "能力画像",
-    "competenciesHint": "全部由履历证据聚合而来，没有直接写分入口。",
-    "professionalTitle": "专业能力",
-    "professionalEmpty": "还没有专业能力证据——专业维度只在有证据时出现。",
-    "unrated": "未评估",
-    "confidence": "置信度 {{value}}",
-    "evidenceCount": "证据 {{count}} 条"
+    "statKnowledge": "知识条目"
   }
 }

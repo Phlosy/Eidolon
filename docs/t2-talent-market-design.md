@@ -267,6 +267,17 @@ Protocol 由远端实现，**不修改**本契约。
 - 载体：`app/talent/person/`（T2.1 建包）+ `PersonReadService`，读路径可复用 T1.3 已有的
   `services/traits.py::person_traits_out`、`services/competency.py::person_capabilities_out`。
 
+**T2.1 落地形态**（已实现）：
+
+- `app/talent/person/read_model.py`（= 文档里的 `PersonReadService`，模块级读函数）：
+  `person_profile` / `timeline_out` / `evidence_out` / `identity_out`；
+- `app/talent/person/access.py`：**自有 person 判定** —— `character_profiles.owner_company_id == 请求公司`
+  （培养期持有）**或** 该 person 在本公司有 employee 行（在职）；否则 404（不泄露存在性）。
+  市场（跨公司公开投影）**不**走这里（T2.3）；
+- API：`GET /persons/{id}`（identity/traits/competencies/knowledge 恒在，`include=timeline,evidence`
+  才附带大集合）+ `GET /persons/{id}/timeline|evidence`（分页，避免 chatty）；
+- 知识摘要形状 `{total, by_scope, top_topics}` **同时供 T2.3 市场投影复用**，永远不含正文。
+
 ## 10. 不变量清单（可测试）
 
 | # | 不变量 | 测试落点 |

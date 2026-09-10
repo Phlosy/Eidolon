@@ -559,3 +559,93 @@ def _competency_payload(definition, domain, row) -> dict:
         "trend_direction": trend_direction_of(trend),
         "last_assessed_at": last_assessed_at,
     }
+
+
+# ---- T2.1：person 口径证据读面（Person Read Model 复用；员工入口保持原样） ----
+
+
+def evidence_payload(db: Session, rows: list) -> list[dict]:
+    """证据行 → 读面 payload（**唯一一份**构造，员工/人员两个入口共用）。
+
+    刻意不含属主字段：调用方按自己的资源补 `employee_id` 或 `person_id`
+    （两者语义不同，混进共享构造会造出"两个属主"的错觉）。
+    """
+    from app.repositories import competency as competency_repo
+
+    definitions = competency_repo.definitions_by_id(
+        db, [row.competency_definition_id for row in rows]
+    )
+    out: list[dict] = []
+    for row in rows:
+        definition = definitions.get(row.competency_definition_id)
+        out.append(
+            {
+                "id": row.id,
+                "competency_definition_id": row.competency_definition_id,
+                "competency_code": definition.code if definition else "",
+                "competency_name": definition.name if definition else "",
+                "source_kind": row.source_kind,
+                "source_id": row.source_id,
+                "source_ref": row.source_ref,
+                "assessment_run_id": row.assessment_run_id,
+                "signal": row.signal,
+                "quality": row.quality,
+                "occurred_at": row.occurred_at,
+            }
+        )
+    return out
+
+
+def person_evidence_rows(
+    db: Session,
+    person_id: int,
+    *,
+    limit: int = 100,
+    offset: int = 0,
+    source_type: str | None = None,
+    competency: str | None = None,
+) -> list:
+    """person 口径证据（倒序）：角色没有 employee 行，走不了员工入口的换算。
+
+    `competency` 支持全局目录 code 或数字 id（与员工读面同一解析语义）。
+    """
+    query = select(CompetencyEvidence).where(CompetencyEvidence.person_id == person_id)
+    if source_type:
+        query = query.where(CompetencyEvidence.source_kind == source_type)
+    if competency:
+        definition_id = resolve_definition_id(db, competency)
+        query = query.where(CompetencyEvidence.competency_definition_id == definition_id)
+    return list(
+        db.scalars(
+            query.order_by(CompetencyEvidence.occurred_at.desc(), CompetencyEvidence.id.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+    )
+
+
+def resolve_definition_id(db: Session, competency: str) -> int:
+    """能力 code（全局目录）或数字 id → definition id；找不到 → 404。
+
+    员工/人员证据读面共用，避免各自实现一套解析（口径漂移的经典来源）。
+    """
+    from fastapi import HTTPException
+
+    from app.models.competency import CompetencyDefinition, CompetencyDomain
+
+    if competency.isdigit():
+        definition = db.get(CompetencyDefinition, int(competency))
+        if definition is None:
+            raise HTTPException(status_code=404, detail="competency not found")
+        return int(definition.id)
+    definition = db.scalar(
+        select(CompetencyDefinition)
+        .join(CompetencyDomain, CompetencyDomain.id == CompetencyDefinition.domain_id)
+        .where(
+            CompetencyDefinition.code == competency,
+            CompetencyDomain.company_id.is_(None),
+        )
+    )
+    if definition is None:
+        raise HTTPException(status_code=404, detail="competency not found")
+    return int(definition.id)

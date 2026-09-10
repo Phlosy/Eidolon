@@ -154,14 +154,28 @@ def create_education_event(db: Session, *, person_id: int, **fields) -> Educatio
     return event
 
 
-def list_education_events(db: Session, person_id: int) -> list[EducationEvent]:
-    return list(
-        db.scalars(
-            select(EducationEvent)
-            .where(EducationEvent.person_id == person_id)
-            .order_by(EducationEvent.occurred_at, EducationEvent.id)
-        )
+def list_education_events(
+    db: Session,
+    person_id: int,
+    *,
+    newest_first: bool = False,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[EducationEvent]:
+    order = (
+        (EducationEvent.occurred_at.desc(), EducationEvent.id.desc())
+        if newest_first
+        else (EducationEvent.occurred_at, EducationEvent.id)
     )
+    stmt = (
+        select(EducationEvent)
+        .where(EducationEvent.person_id == person_id)
+        .order_by(*order)
+        .offset(offset)
+    )
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list(db.scalars(stmt))
 
 
 def find_orphan_person_only_rows(db: Session) -> list[dict]:

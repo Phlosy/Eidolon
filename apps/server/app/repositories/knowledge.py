@@ -201,6 +201,35 @@ def fts_match_ids(db: Session, tokens: set[str]) -> set[int] | None:
 # ---- skills ----
 
 
+def knowledge_summary_by_person(db: Session, person_id: int) -> dict:
+    """按 person 汇总知识（T2.1 人员读面）：只给**统计与主题**，不给正文。
+
+    口径：`owner_person_id == person_id`（R1.2 权威列）；scope 含 private 与已晋升到
+    department/company 的条目（晋升不改属主，只改 scope）。返回
+    `{"total", "by_scope", "top_topics"}` —— 市场投影（T2.3）复用同一形状，
+    因此这里**永远不返回 content/title**（避免把私有正文带到跨公司读面）。
+    """
+    rows = db.execute(
+        select(KnowledgeItem.scope, KnowledgeItem.topic, func.count())
+        .where(KnowledgeItem.owner_person_id == person_id)
+        .group_by(KnowledgeItem.scope, KnowledgeItem.topic)
+    ).all()
+    by_scope: dict[str, int] = {}
+    topic_counts: dict[str, int] = {}
+    total = 0
+    for scope, topic, count in rows:
+        count = int(count)
+        total += count
+        by_scope[str(scope)] = by_scope.get(str(scope), 0) + count
+        if topic:
+            topic_counts[str(topic)] = topic_counts.get(str(topic), 0) + count
+    top_topics = [
+        {"topic": topic, "count": count}
+        for topic, count in sorted(topic_counts.items(), key=lambda item: (-item[1], item[0]))[:8]
+    ]
+    return {"total": total, "by_scope": by_scope, "top_topics": top_topics}
+
+
 def list_skills(db: Session, employee_id: int) -> list[Skill]:
     return list(
         db.scalars(

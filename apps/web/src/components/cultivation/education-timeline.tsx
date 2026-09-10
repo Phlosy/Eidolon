@@ -13,7 +13,7 @@ const KIND_VARIANT: Record<string, "default" | "info" | "violet" | "warning" | "
 };
 
 function traitLabel(t: ReturnType<typeof useTranslation>["t"], code: string): string {
-  const key = `cultivation:traits.${code}`;
+  const key = `person:traits.${code}`;
   const translated = t(key);
   return translated === key ? code : translated;
 }

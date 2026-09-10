@@ -50,6 +50,15 @@ def get_employee_by_slug(db: Session, slug: str) -> Employee | None:
     return db.scalars(stmt).first()
 
 
+def get_employee_by_person(db: Session, person_id: int) -> Employee | None:
+    """按 person 取任职行（T2.1 人员读面的「属主」判定用）。
+
+    刻意不过滤请求公司：调用方（person access policy）需要同时判断
+    “该 person 有无 employee 行”与“属于哪家公司”，过滤放策略层更清晰。
+    """
+    return db.scalars(select(Employee).where(Employee.person_id == person_id)).first()
+
+
 def slug_taken_anywhere(db: Session, slug: str) -> bool:
     """`slug` 是否已被**任何公司**占用（唯一性判断专用）。
 

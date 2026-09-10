@@ -1,0 +1,38 @@
+{
+  "traits": {
+    "curiosity": "Curiosity",
+    "conscientiousness": "Conscientiousness",
+    "adaptability": "Adaptability",
+    "creativity": "Creativity",
+    "risk_tolerance": "Risk appetite",
+    "collaboration": "Collaboration",
+    "warmth": "Warmth",
+    "independence": "Independence"
+  },
+  "identity": {
+    "title": "Identity",
+    "identityId": "Identity ID",
+    "noIdentityId": "No identity ID yet (no cultivation profile)",
+    "origin": "Origin",
+    "cultivationState": "Cultivation state",
+    "createdAt": "created {{value}}"
+  },
+  "traitsTitle": "Personality tendencies",
+  "traitsHint": "Template tendencies plus fortune shifts. Describes how they work — never a capability bonus.",
+  "competenciesTitle": "Capability profile",
+  "competenciesHint": "Aggregated from record evidence only; there is no direct score write.",
+  "unrated": "Not assessed",
+  "confidence": "confidence {{value}}",
+  "evidenceCount": "{{count}} evidence",
+  "professionalTitle": "Professional competencies",
+  "professionalEmpty": "No professional evidence yet — professional dimensions appear only once evidence exists.",
+  "knowledgeTitle": "Knowledge summary",
+  "knowledgeTotal": "{{count}} items",
+  "knowledgeEmpty": "No knowledge yet — learning and cultivation accumulate here.",
+  "knowledgeScope": {
+    "private": "Private",
+    "department": "Department",
+    "company": "Company"
+  },
+  "topicsTitle": "Topics covered"
+}

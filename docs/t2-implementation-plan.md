@@ -364,7 +364,8 @@ cd apps/web && npm run build
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
 | T2.0 Domain Contract Freeze | **DONE**（2026-09-10） | `9465947` | 设计 + 执行基线落盘；枚举/契约代码 + 守卫测试；**无迁移**；pytest 690 / web 303 |
-| T2.1 Person Read Model / API | **NEXT** | — | 入口：设计 §9 + 本文件 §4.2 |
+| T2.1 Person Read Model / API | **DONE**（2026-09-10） | `见 Progress Log` | `app/talent/person/` + `/api/v1/persons/*`；对拍/404/null 语义全锁；**无迁移**；pytest 701 / web 312 |
+| T2.2 Cultivation Completion & Eligibility | **NEXT** | — | 入口：设计 §7 D1/D6 + plan §4.3 |
 | T2.2 Cultivation Completion & Eligibility | PLANNED | — | 设计 §7 D1/D6 |
 | T2.3 Market Core & MarketAdapter | PLANNED | — | `[migration v29]`，设计 §6/§8 |
 | T2.4 Issuer & Market Supply | PLANNED | — | 设计 §7 D11 |
@@ -380,6 +381,21 @@ cd apps/web && npm run build
     枚举 `CultivationState` / `TalentOrigin` 入 `app/models/enums.py`，培养域 magic string 替换为枚举（行为不变）。
   - 门禁：pytest **690 passed** / 6 deselected（+7 契约测试）；ruff check 全绿、改动文件 format 干净（5 个既有 WIP 红不变）；
     alembic check 无漂移；web 303 passed / tsc / eslint / prettier / build 全绿（仅类型收窄与 i18n 清理）。
+
+- **2026-09-10 · T2.1 DONE**：commit 哈希见紧随的 `docs(t2): T2.1 进度落盘` 提交（避免自引用哈希）。
+  - 交付：`app/talent/person/{__init__,access,read_model}.py`、`app/api/v1/persons.py`、`app/schemas/person.py`；
+    新增 person 读出口复用（`competency_service.evidence_payload`/`person_evidence_rows`、
+    `knowledge_summary_by_person`、`list_education_events(newest_first/limit/offset)`）；
+    员工证据端点改为共用同一份 payload 构造（响应逐字段不变，既有测试保护）。
+  - 前端：`api/persons.ts` + `hooks/usePersons.ts` + `components/person/{traits-list,competency-list,person-profile}.tsx`；
+    T1.3 `character-profile` 改为复用共享列表组件，人格词表统一到 `person:traits.*`（`cultivation:traits.*` 已移除）。
+  - 测试：后端 +11（`tests/test_person_read_model.py`，含两条读面只读守卫，已做反例注入验证）；
+    前端 +9（person-profile 5 + persons API 4）。
+  - 门禁：pytest **701 passed** / 6 deselected；ruff check 全绿、format 仅 5 个既有 WIP 红；
+    alembic check 无漂移（head 仍 `a3b5c7d9e1f4` / v28）；web 312 passed + tsc/eslint/prettier/build 全绿。
+  - 迁移：**无**（T2.1 不落新表；知识摘要与证据均为读）。
+  - 风险：`/persons/*` 当前以 person 持有所属公司为主口径；招募后（T2.6）原持有方与新雇主都可读 ——
+    这是设计 §5/§6 的有意行为，但需在 T2.6 测试中用对拍固定下来。
   - 迁移：**无**（T2.0 不需要 schema 变化）；alembic head 仍为 `a3b5c7d9e1f4`（v28）。
   - 守卫已做“反例注入”验证：向 `app/` 注入 `lifecycle = "listed"` 与向市场模块注入 `price` 均能使对应守卫转红，
     撤回后全绿（守卫不是声明式装饰）。

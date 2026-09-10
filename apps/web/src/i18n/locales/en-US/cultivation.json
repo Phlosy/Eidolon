@@ -104,31 +104,12 @@
     "extraTopics": "Extra topics",
     "traitShift": "Trait shift"
   },
-  "traits": {
-    "curiosity": "Curiosity",
-    "conscientiousness": "Conscientiousness",
-    "adaptability": "Adaptability",
-    "creativity": "Creativity",
-    "risk_tolerance": "Risk appetite",
-    "collaboration": "Collaboration",
-    "warmth": "Warmth",
-    "independence": "Independence"
-  },
   "profile": {
     "title": "Profile",
     "readyHint": "Fully grown. The record is the evidence chain: every competency below is backed by the events in the timeline.",
     "growingHint": "Still cultivating. Templates only set tendencies; fortune events create individual variation.",
     "statEvents": "Record events",
     "statSessions": "Sessions",
-    "statKnowledge": "Knowledge",
-    "traitsTitle": "Personality tendencies",
-    "traitsHint": "Template tendencies plus fortune shifts. Describes how they work — never a capability bonus.",
-    "competenciesTitle": "Capability profile",
-    "competenciesHint": "Aggregated from record evidence only; there is no direct score write.",
-    "professionalTitle": "Professional competencies",
-    "professionalEmpty": "No professional evidence yet — professional dimensions appear only once evidence exists.",
-    "unrated": "Not assessed",
-    "confidence": "confidence {{value}}",
-    "evidenceCount": "{{count}} evidence"
+    "statKnowledge": "Knowledge"
   }
 }
