@@ -2,6 +2,7 @@ import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Bot,
+  BookOpen,
   Building2,
   ChevronLeft,
   CircleGauge,
@@ -61,7 +62,13 @@ export function CompanySidebar({
       key: "work",
       items: [{ to: "/projects", key: "projects", icon: FolderKanban, badge: activeProjects }],
     },
-    { key: "assets", items: [{ to: "/drive", key: "cloudDocs", icon: Cloud }] },
+    {
+      key: "assets",
+      items: [
+        { to: "/drive", key: "cloudDocs", icon: Cloud },
+        { to: "/knowledge", key: "knowledge", icon: BookOpen },
+      ],
+    },
     { key: "infrastructure", items: [{ to: "/runtime", key: "runtime", icon: Bot }] },
     // 设置统一收进右上角账号菜单（个人 + 系统），主导航不再放"系统设置"
   ];

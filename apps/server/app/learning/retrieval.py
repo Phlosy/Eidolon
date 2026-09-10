@@ -1,15 +1,30 @@
-"""Learning retrieval (v0.2): inject an employee's own prior learning into TaskContext.
+"""Learning retrieval: inject relevant knowledge + skills into TaskContext.
 
-At dispatch time, the orchestrator retrieves the assignee's *private* knowledge
-items whose topic/title keywords overlap the task title+description (top 5)
-plus the names of their validated skills. The MockAdapter weaves these into
-its simulated output ("using prior knowledge: <topic>") so the learning loop
-is observable end-to-end.
+At dispatch time, the orchestrator retrieves knowledge items whose topic/title
+keywords overlap the task title+description (top N) plus the assignee's
+validated skills. The MockAdapter weaves these into its simulated output
+("using prior knowledge: <topic>") so the learning loop is observable
+end-to-end.
+
+K1（docs/talent-ecosystem-plan.md §3 / vision §5）检索 scope 分层：不再只查
+员工的 *private* 知识，而是同时检索 private + department + company 三层。
+scope 越高代表越权威/越共识，排序权重越高；命中排序为：
+
+1. 主键：token 重叠度降序（相关性强者优先）；
+2. 次键：scope 权重降序（company > department > private，见 ``_SCOPE_WEIGHT``）；
+3. 同分保持 repo 的新到旧顺序（稳定排序）。
+
+公司隔离在仓库层强制（概念架构 §4.8）：本函数跑在任务执行路径上，通常没有
+request identity，因此显式把**执行员工的公司**传给 repo 做过滤——别家公司的
+department/company 知识结构上进不来，私有知识仍只查 owner 本人。
 
 v1 (docs/employee-brain-behavior-policy.md §7 接缝 2-3 / §9): 额度、相邻主题占比、是否连
 候选技能一起交给 agent、上下文条目上限 —— 全部来自 `BehaviorPolicy.retrieval`，本模块**不读
 任何人格字段**。默认策略（knowledge_limit=5、novel_topic_ratio=0、include_candidate_skills
-=False）下的结果与改造前逐字一致。
+=False）下配额语义不变：只有 private 命中时结果与 K1 之前逐字一致。
+
+TODO(K2): `KnowledgeItem.freshness_status == stale` 的条目应降权/排后（检索
+降置信），属于 K2「freshness 降置信接入」范围，此处刻意不接。
 """
 
 import re
@@ -20,11 +35,19 @@ from sqlalchemy.orm import Session
 
 from app.brain import DEFAULT_POLICY
 from app.models.enums import KnowledgeScope, KnowledgeStatus, SkillValidationStatus
+from app.models.organization import Employee
 from app.repositories import knowledge as knowledge_repo
 
 # 文档锚点：DEFAULT_POLICY.retrieval.knowledge_limit 必须等于它（§6 等价性由测试断言）。
 TOP_KNOWLEDGE = 5
 _MIN_TOKEN_LEN = 3
+
+# K1：scope 越高越权威（vision §5），作为命中排序的次键。
+_SCOPE_WEIGHT = {
+    KnowledgeScope.company.value: 2,
+    KnowledgeScope.department.value: 1,
+    KnowledgeScope.private.value: 0,
+}
 
 
 def _tokens(text: str) -> set[str]:
@@ -66,18 +89,30 @@ def retrieve_for_task(
     description: str = "",
     policy: Any = DEFAULT_POLICY,
 ) -> RetrievalResult:
-    """Assemble private knowledge + skill refs according to the employee's BehaviorPolicy."""
+    """Assemble scoped knowledge + skill refs according to the employee's BehaviorPolicy."""
     retrieval = policy.retrieval
     limit = max(0, int(retrieval.knowledge_limit))
     task_tokens = _tokens(f"{title} {description}")
 
-    items = knowledge_repo.list_knowledge_items(
-        db, scope=KnowledgeScope.private.value, employee_id=employee_id
+    # K1：三层 scope 都查；任务执行路径没有 request identity，公司边界用
+    # 执行员工自己的 company_id 显式下推到 repo（跨公司泄露在 SQL 层就不可能）。
+    # 员工不存在 → 公司不可判定 → 共享 scope 一律不查，只回落到私有知识。
+    employee = db.get(Employee, employee_id)
+    company_id = employee.company_id if employee is not None else None
+    items: list = []
+    items += knowledge_repo.list_knowledge_items(
+        db, scope=KnowledgeScope.private.value, employee_id=employee_id, company_id=company_id
     )
+    if company_id is not None:
+        for shared_scope in (KnowledgeScope.department.value, KnowledgeScope.company.value):
+            items += knowledge_repo.list_knowledge_items(
+                db, scope=shared_scope, company_id=company_id
+            )
+
     matched: list[str] = []
     adjacent: list[str] = []
     if task_tokens:
-        hits: list[tuple[int, str]] = []
+        hits: list[tuple[int, int, str]] = []
         near: list[str] = []
         for item in items:
             if item.status != KnowledgeStatus.active.value:
@@ -85,12 +120,12 @@ def retrieve_for_task(
             topic = item.topic or item.title
             overlap = len(task_tokens & _tokens(f"{item.topic} {item.title}"))
             if overlap:
-                hits.append((overlap, topic))
+                hits.append((overlap, _SCOPE_WEIGHT.get(item.scope, 0), topic))
             else:
                 near.append(topic)
-        # 直接命中按重叠度降序，相邻项保持 repo 的新到旧顺序
-        hits.sort(key=lambda pair: -pair[0])
-        matched = list(dict.fromkeys(topic for _, topic in hits))
+        # 主键重叠度降序、次键 scope 权重降序；同分保持 repo 的新到旧顺序（稳定排序）
+        hits.sort(key=lambda hit: (-hit[0], -hit[1]))
+        matched = list(dict.fromkeys(topic for _, _, topic in hits))
         adjacent = list(dict.fromkeys(near))
 
     novel_quota = min(len(adjacent), int(limit * retrieval.novel_topic_ratio))

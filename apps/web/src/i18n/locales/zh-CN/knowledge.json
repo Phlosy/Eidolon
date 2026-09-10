@@ -1,0 +1,41 @@
+{
+  "title": "公司知识库",
+  "description": "组织沉淀的知识资产：按层级浏览，评审晋升提案。",
+  "scopeAll": "全部",
+  "scope": {
+    "private": "个人",
+    "department": "部门",
+    "company": "公司"
+  },
+  "status": {
+    "active": "已生效",
+    "proposed": "待评审",
+    "rejected": "已驳回"
+  },
+  "topicFilter": "按主题过滤…",
+  "summary": "共 {{count}} 条",
+  "sections": {
+    "company": "公司级知识",
+    "department": "部门级知识"
+  },
+  "item": {
+    "confidence": "置信度 {{value}}",
+    "owner": "贡献者",
+    "department": "部门",
+    "updatedAt": "更新于 {{value}}"
+  },
+  "propose": {
+    "button": "发起晋升",
+    "dialogTitle": "晋升知识条目",
+    "dialogDescription": "将「{{title}}」晋升到更高层级，评审通过后生效。",
+    "targetLabel": "目标层级",
+    "submit": "提交提案"
+  },
+  "review": {
+    "pending": "待评审：晋升到{{scope}}",
+    "approve": "通过",
+    "reject": "驳回"
+  },
+  "emptyTitle": "暂无知识条目",
+  "emptyHint": "员工在学习与工作中沉淀的知识会出现在这里。"
+}

@@ -3,6 +3,11 @@
 Hard invariant (docs/architecture.md §3.4.1): memory_entries and scope=private
 knowledge_items are only readable through the owner's own queries — every
 function here filters by employee_id; there is intentionally no cross-employee read.
+
+Tenant boundary (概念架构 §4.8): company isolation is enforced here, not in
+callers. HTTP 上下文用 request identity 的公司；非请求上下文（任务执行路径等
+`get_request_identity()` 为 None 的场景）必须由调用方显式传 ``company_id``，
+否则共享 scope（department/company）的查询不做公司过滤。
 """
 
 from sqlalchemy import func, or_, select
@@ -48,17 +53,20 @@ def list_knowledge_items(
     scope: str | None = None,
     topic: str | None = None,
     employee_id: int | None = None,
+    company_id: int | None = None,
 ) -> list[KnowledgeItem]:
     stmt = select(KnowledgeItem).order_by(KnowledgeItem.id.desc())
     identity = get_request_identity()
-    if identity is not None:
+    # 请求内以 identity 为准；非请求上下文（identity None）回落到显式 company_id。
+    effective_company_id = identity.company_id if identity is not None else company_id
+    if effective_company_id is not None:
         stmt = (
             stmt.outerjoin(Employee, KnowledgeItem.owner_employee_id == Employee.id)
             .outerjoin(Department, KnowledgeItem.department_id == Department.id)
             .where(
                 or_(
-                    Employee.company_id == identity.company_id,
-                    Department.company_id == identity.company_id,
+                    Employee.company_id == effective_company_id,
+                    Department.company_id == effective_company_id,
                 )
             )
         )

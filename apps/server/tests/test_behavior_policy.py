@@ -72,7 +72,11 @@ def test_default_policy_carries_pre_v1_constants():
 
 
 def test_default_policy_retrieval_matches_legacy_implementation(db, employees_by_slug):
-    """与 HEAD 版本的检索实现做差分对拍：结果列表必须完全相同（含顺序）。"""
+    """与 pre-K1 版本的检索实现做差分对拍：只有私有知识命中时结果完全相同（含顺序）。
+
+    K1 起生产路径还会查 department/company scope；本测试只造 private 条目且
+    topic 带唯一 marker，共享 scope 的条目不可能命中这些 token，所以对拍仍成立。
+    """
     from app.models.enums import KnowledgeScope, KnowledgeStatus
 
     alice = employees_by_slug["alice"]
@@ -92,7 +96,7 @@ def test_default_policy_retrieval_matches_legacy_implementation(db, employees_by
     db.commit()
     title = " ".join(topics[:3])
 
-    # 旧实现（retrieval.py @ HEAD）逐行搬来作对照
+    # pre-K1 实现（retrieval.py @ K1 之前）逐行搬来作对照：只查 private scope
     task_tokens = retrieval._tokens(title)
     expected: list[str] = []
     if task_tokens:

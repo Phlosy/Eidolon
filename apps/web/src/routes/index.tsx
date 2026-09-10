@@ -55,6 +55,11 @@ const ReviewRoomPage = lazy(() =>
 const DrivePage = lazy(() =>
   import("../pages/drive/drive-page").then((module) => ({ default: module.DrivePage })),
 );
+const KnowledgePage = lazy(() =>
+  import("../pages/knowledge/knowledge-page").then((module) => ({
+    default: module.KnowledgePage,
+  })),
+);
 const RuntimePage = lazy(() =>
   import("../pages/runtime/runtime-page").then((module) => ({ default: module.RuntimePage })),
 );
@@ -140,6 +145,7 @@ export const router = createBrowserRouter([
           { path: "/projects/:id", element: route(<ProjectDetailPage />) },
           { path: "/projects/:id/reviews/:reviewId", element: route(<ReviewRoomPage />) },
           { path: "/drive", element: route(<DrivePage />) },
+          { path: "/knowledge", element: route(<KnowledgePage />) },
           { path: "/runtime", element: route(<RuntimePage />) },
           { path: "/artifacts", element: <Navigate to="/drive" replace /> },
           { path: "/artifacts/:id", element: <Navigate to="/drive" replace /> },

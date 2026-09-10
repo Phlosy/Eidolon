@@ -1,0 +1,41 @@
+{
+  "title": "Company Knowledge",
+  "description": "Knowledge accumulated by the organization: browse by scope and review promotion proposals.",
+  "scopeAll": "All",
+  "scope": {
+    "private": "Private",
+    "department": "Department",
+    "company": "Company"
+  },
+  "status": {
+    "active": "Active",
+    "proposed": "Pending review",
+    "rejected": "Rejected"
+  },
+  "topicFilter": "Filter by topic…",
+  "summary": "{{count}} items",
+  "sections": {
+    "company": "Company knowledge",
+    "department": "Department knowledge"
+  },
+  "item": {
+    "confidence": "Confidence {{value}}",
+    "owner": "Contributor",
+    "department": "Department",
+    "updatedAt": "Updated {{value}}"
+  },
+  "propose": {
+    "button": "Propose promotion",
+    "dialogTitle": "Promote knowledge item",
+    "dialogDescription": "Promote \"{{title}}\" to a wider scope. It takes effect once the review passes.",
+    "targetLabel": "Target scope",
+    "submit": "Submit proposal"
+  },
+  "review": {
+    "pending": "Pending review: promote to {{scope}}",
+    "approve": "Approve",
+    "reject": "Reject"
+  },
+  "emptyTitle": "No knowledge items yet",
+  "emptyHint": "Knowledge accumulated by employees through learning and work will show up here."
+}

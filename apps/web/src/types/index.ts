@@ -254,6 +254,8 @@ export interface KnowledgeItem {
   status: KnowledgeStatus;
   confidence: number | null;
   sources: string[];
+  /** 晋升提案的目标 scope；仅 status === "proposed" 时有值。 */
+  proposed_scope: KnowledgeScope | null;
   created_at: string;
   updated_at: string;
 }
