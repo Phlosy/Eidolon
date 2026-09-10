@@ -17,8 +17,11 @@ from app.models.enums import (
 class MemoryEntry(TimestampMixin, Base):
     __tablename__ = "memory_entries"
 
-    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     kind: Mapped[str] = mapped_column(String(50), default="note")  # note | observation | summary
     content: Mapped[str] = mapped_column(Text, default="")
@@ -29,7 +32,8 @@ class KnowledgeItem(TimestampMixin, Base):
     __tablename__ = "knowledge_items"
 
     scope: Mapped[str] = mapped_column(String(50), default=KnowledgeScope.private.value)
-    # deprecated（R1.2）：属主读口径已切到 owner_person_id；列保留作兼容镜像，随表留存不删。
+    # deprecated（R1.2）：属主读口径已切到 owner_person_id；列保留作兼容镜像，
+    # 随表留存不删（本就 nullable）。
     owner_employee_id: Mapped[int | None] = mapped_column(
         ForeignKey("employees.id"), nullable=True, index=True
     )
@@ -53,8 +57,11 @@ class KnowledgeItem(TimestampMixin, Base):
 class Skill(TimestampMixin, Base):
     __tablename__ = "skills"
 
-    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
@@ -77,8 +84,11 @@ class Skill(TimestampMixin, Base):
 class LearningRecord(TimestampMixin, Base):
     __tablename__ = "learning_records"
 
-    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
     task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
@@ -104,8 +114,11 @@ class SkillUsage(TimestampMixin, Base):
     __tablename__ = "skill_usages"
     __table_args__ = (UniqueConstraint("task_id", "skill_id", name="uq_skill_usage"),)
 
-    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id"), index=True)
     task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True, index=True)
@@ -142,8 +155,11 @@ class LearningPriority(TimestampMixin, Base):
         ),
     )
 
-    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     topic: Mapped[str] = mapped_column(String(200))
     score: Mapped[int] = mapped_column(default=0)  # 0-100

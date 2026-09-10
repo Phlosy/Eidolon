@@ -111,8 +111,11 @@ class EmployeeCompetency(TimestampMixin, Base):
         ),
     )
 
-    # deprecated（R1.3）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    # deprecated（R1.3）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     competency_definition_id: Mapped[int] = mapped_column(
         ForeignKey("competency_definitions.id"), index=True
@@ -148,8 +151,11 @@ class CompetencyEvidence(TimestampMixin, Base):
         ),
     )
 
-    # deprecated（R1.3）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    # deprecated（R1.3）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     competency_definition_id: Mapped[int] = mapped_column(
         ForeignKey("competency_definitions.id"), index=True
@@ -189,9 +195,12 @@ class AssessmentRun(TimestampMixin, Base):
     __tablename__ = "assessment_runs"
 
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
-    # deprecated（R1.3）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
+    # deprecated（R1.3）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
     # company_id 是公司上下文快照，与人称切换无关，不动。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     #: P10 引入 profile/criteria 表后再接线（此时不加 FK，避免指向不存在的表）
     profile_id: Mapped[int | None] = mapped_column(Integer, nullable=True)

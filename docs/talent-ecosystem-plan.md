@@ -98,6 +98,8 @@ bus.publish（现状：同步、线程安全、先落库）
 
 ### T1 · 培养子系统
 
+> 详细实施方案（实体裁定、v27 前置、阶段拆解）：docs/cultivation-system-design.md
+
 - **范围**：`Character`（identity_id、origin、owner 可空）+ `TrainingProgram` +
   `EducationEvent`；三个首发模板（学院派/职业派/自学派，概率倾向 + 际遇事件扰动）；
   教育证据来源分级（课程 < 考试 < 项目/实习，可靠性递减序列进 `evidence/policy.py`）；

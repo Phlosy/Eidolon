@@ -31,6 +31,7 @@ from app.models.competency import (
     EmployeeCompetency,
     PositionCompetencyRequirement,
 )
+from app.models.cultivation import CharacterProfile, EducationEvent, TrainingProgram
 from app.models.drive import DriveCollaborator, DriveNode, DriveRevision
 from app.models.event import Event
 from app.models.git import GitConnection
@@ -101,6 +102,7 @@ __all__ = [
     "CareerEvent",
     "CareerPath",
     "CareerPathStep",
+    "CharacterProfile",
     "CompetencyExpectation",
     "Base",
     "Company",
@@ -111,6 +113,7 @@ __all__ = [
     "DriveCollaborator",
     "DriveNode",
     "DriveRevision",
+    "EducationEvent",
     "Employee",
     "EmployeeBrain",
     "EmployeeCompetency",
@@ -167,5 +170,6 @@ __all__ = [
     "ProjectRequirement",
     "ReviewMeeting",
     "ReviewPackage",
+    "TrainingProgram",
     "TutorialProgress",
 ]

@@ -6,6 +6,7 @@
 
 import ast
 import re
+import uuid
 from pathlib import Path
 
 import pytest
@@ -566,3 +567,52 @@ def test_employee_bare_construction_is_confined_to_person_double_write_entries()
         "裸 Employee(...) 构造只允许在 person 双写入口出现"
         f"（{sorted(EMPLOYEE_CONSTRUCTION_ALLOWLIST)}）：\n" + "\n".join(offenders)
     )
+
+
+# ---------------------------------------------------------------------------
+# T1.0 培养子系统（docs/cultivation-system-design.md §2 D1）
+
+
+def test_person_only_rows_must_belong_to_a_character(db):
+    """person-only 行（employee_id IS NULL）必须属于有 character_profile 的 person。
+
+    v27 放开 person 域各表 employee_id 的 NOT NULL 后，这条纪律防脏数据：
+    员工路径永远双写两列；培养路径（只写 person 列）必须先有角色档案。
+    校验实现只有一个（repositories/cultivation.py），这里用裸 SQL 造脏数据
+    证明它抓得住。
+    """
+    import sqlalchemy as sa
+    from factories import make_person
+
+    from app.repositories import cultivation as cultivation_repo
+
+    assert cultivation_repo.find_orphan_person_only_rows(db) == [], "干净库不该有孤儿行"
+
+    # 裸 SQL 造脏：person 没有角色档案，却有 person-only 的 brain 行
+    person = make_person(db, slug=f"orphan-{uuid.uuid4().hex[:8]}")
+    db.commit()
+    db.execute(
+        sa.text(
+            "INSERT INTO employee_brains (employee_id, person_id, personality, goals,"
+            " interests, learning_policy, memory_policy, curiosity, created_at, updated_at)"
+            " VALUES (NULL, :pid, '', '', '[]', '{}', '{}', 0.5,"
+            " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+        ),
+        {"pid": person.id},
+    )
+    db.commit()
+    orphans = cultivation_repo.find_orphan_person_only_rows(db)
+    assert [(o["table"], o["person_id"]) for o in orphans] == [("employee_brains", person.id)], (
+        "脏行必须被抓到"
+    )
+
+    # 补上角色档案 → 不再是孤儿（培养路径的合法形态）
+    from app.models.cultivation import CharacterProfile
+
+    db.add(
+        CharacterProfile(
+            person_id=person.id, identity_id=f"CH-ORPHAN{person.id:06d}", origin="blank"
+        )
+    )
+    db.commit()
+    assert cultivation_repo.find_orphan_person_only_rows(db) == []

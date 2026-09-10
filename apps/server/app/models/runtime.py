@@ -51,8 +51,11 @@ class EmployeeBrain(TimestampMixin, Base):
         ),
     )
 
-    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), unique=True, index=True)
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, unique=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     personality: Mapped[str] = mapped_column(Text, default="")
     goals: Mapped[str] = mapped_column(Text, default="")
@@ -77,8 +80,11 @@ class RuntimeInstance(TimestampMixin, Base):
         ),
     )
 
-    # deprecated（R1.4）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), unique=True, index=True)
+    # deprecated（R1.4）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, unique=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     runtime_type: Mapped[str] = mapped_column(String(50), default=RuntimeType.mock.value)
     deployment_mode: Mapped[str] = mapped_column(String(50), default=DeploymentMode.mock.value)

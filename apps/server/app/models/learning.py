@@ -27,9 +27,14 @@ from app.models.base import Base, TimestampMixin
 class LearningSession(TimestampMixin, Base):
     __tablename__ = "learning_sessions"
 
-    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
-    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
-    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    company_id: Mapped[int | None] = mapped_column(
+        ForeignKey("companies.id"), nullable=True, index=True
+    )
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删；
+    # v27 起 nullable（培养路径的 person-only 行此列为 NULL）。
+    employee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("employees.id"), nullable=True, index=True
+    )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     topic: Mapped[str] = mapped_column(String(500))
     reason: Mapped[str] = mapped_column(Text, default="")
