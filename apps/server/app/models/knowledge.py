@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -17,7 +17,9 @@ from app.models.enums import (
 class MemoryEntry(TimestampMixin, Base):
     __tablename__ = "memory_entries"
 
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     kind: Mapped[str] = mapped_column(String(50), default="note")  # note | observation | summary
     content: Mapped[str] = mapped_column(Text, default="")
     source_ref: Mapped[str] = mapped_column(String(500), default="")
@@ -49,7 +51,9 @@ class KnowledgeItem(TimestampMixin, Base):
 class Skill(TimestampMixin, Base):
     __tablename__ = "skills"
 
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
     version: Mapped[int] = mapped_column(default=1)
@@ -71,7 +75,9 @@ class Skill(TimestampMixin, Base):
 class LearningRecord(TimestampMixin, Base):
     __tablename__ = "learning_records"
 
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
     task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
     kind: Mapped[str] = mapped_column(String(50), default=LearningKind.reflection.value)
@@ -96,7 +102,9 @@ class SkillUsage(TimestampMixin, Base):
     __tablename__ = "skill_usages"
     __table_args__ = (UniqueConstraint("task_id", "skill_id", name="uq_skill_usage"),)
 
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id"), index=True)
     task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True, index=True)
     work_session_id: Mapped[int | None] = mapped_column(
@@ -118,9 +126,23 @@ class SkillUsage(TimestampMixin, Base):
 
 class LearningPriority(TimestampMixin, Base):
     __tablename__ = "learning_priorities"
-    __table_args__ = (UniqueConstraint("employee_id", "topic", name="uq_learning_priority"),)
+    __table_args__ = (
+        UniqueConstraint("employee_id", "topic", name="uq_learning_priority"),
+        # R1.1（docs/person-core-migration.md D4 批次 1）：uq(employee_id, topic) 在 person
+        # 口径上的镜像（服务层 get-or-create + 部分唯一索引惯例）。既有约束不动。
+        Index(
+            "uq_learning_priority_person",
+            "person_id",
+            "topic",
+            unique=True,
+            sqlite_where=text("person_id IS NOT NULL"),
+            postgresql_where=text("person_id IS NOT NULL"),
+        ),
+    )
 
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     topic: Mapped[str] = mapped_column(String(200))
     score: Mapped[int] = mapped_column(default=0)  # 0-100
     reason: Mapped[str] = mapped_column(Text, default="")

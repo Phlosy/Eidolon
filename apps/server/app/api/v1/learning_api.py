@@ -10,6 +10,8 @@ from app.api.scope import resolve_company_id
 from app.core.database import get_db
 from app.models.learning import LearningSession
 from app.models.organization import Company, Employee
+from app.repositories import persons as person_repo
+from app.repositories import runtimes as runtime_repo
 from app.schemas.learning import (
     CompanyLearningPolicyPatchIn,
     CompanyLearningUsageOut,
@@ -131,17 +133,9 @@ def patch_employee_learning_policy(
     company_id: int | None = Depends(resolve_company_id),
     db: Session = Depends(get_db),
 ) -> dict:
-    from app.models.runtime import EmployeeBrain
-
     employee = _employee_or_404(db, employee_id, company_id)
-    brain = db.scalar(
-        __import__("sqlalchemy")
-        .select(EmployeeBrain)
-        .where(EmployeeBrain.employee_id == employee_id)
-    )
-    if brain is None:
-        brain = EmployeeBrain(employee_id=employee_id)
-        db.add(brain)
+    # R1.1：ensure_brain 是 get-or-create 唯一入口（读口径 person_id + 双写 + traits 初始化）
+    brain = runtime_repo.ensure_brain(db, employee_id)
     override = dict(brain.learning_policy or {})
     if payload.enabled is not None:
         override["enabled"] = payload.enabled
@@ -184,7 +178,11 @@ def employee_learning_sessions(
     _employee_or_404(db, employee_id, company_id)
     sessions = list(
         db.query(LearningSession)
-        .filter(LearningSession.employee_id == employee_id)
+        .filter(
+            person_repo.read_criterion(
+                db, employee_id, LearningSession.person_id, LearningSession.employee_id
+            )
+        )
         .order_by(LearningSession.id.desc())
         .limit(50)
         .all()

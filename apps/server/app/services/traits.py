@@ -6,12 +6,11 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.brain.registry import TRAIT_REGISTRY
 from app.brain.traits import BrainTraits
-from app.models.runtime import EmployeeBrain
+from app.repositories import runtimes as runtime_repo
 
 
 def employee_traits_out(db: Session, employee_id: int) -> list[dict]:
@@ -20,7 +19,8 @@ def employee_traits_out(db: Session, employee_id: int) -> list[dict]:
     值一律来自 `BrainTraits`（缺失键 = 注册表默认）；`affects_execution` = 是否已接行为。
     只描述"倾向怎样工作"，不带任何能力加成/成功率语义（展示侧禁止换算）。
     """
-    brain = db.scalar(select(EmployeeBrain).where(EmployeeBrain.employee_id == employee_id))
+    # R1.1：brain 读口径已切 person_id（repo 入口解析，带旧口径回落）
+    brain = runtime_repo.get_brain(db, employee_id)
     traits = BrainTraits.from_brain(brain)
     out: list[dict] = []
     for spec in TRAIT_REGISTRY.values():

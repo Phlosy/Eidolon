@@ -12,7 +12,7 @@ runtime / 绑定+provider / brain / competencies / 最近事件），不逐人 S
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.brain.traits import BrainTraits
@@ -22,6 +22,7 @@ from app.models.organization import Department, Employee
 from app.models.provider import ModelBinding, Provider
 from app.models.runtime import EmployeeBrain, RuntimeInstance
 from app.repositories import organization as org_repo
+from app.repositories import persons as person_repo
 from app.repositories import position as position_repo
 from app.services import position_service
 from app.workforce.status import WorkforceStatusResolver
@@ -169,9 +170,15 @@ def _batch_derived(db: Session, people: list[Employee]):
         d.provider_name = provider.name if provider else None
         d.provider_model = binding.model or (provider.name if provider else None)
 
+    # R1.1：brain 读口径切 person_id（批量解析，一次换算）；解析不到的 employee
+    # 回落 employee_id 旧口径（方案 §5）。key 仍是 employee_id —— brain 行双写着两列。
+    person_ids = person_repo.resolve_person_ids(db, ids)
+    fallback_ids = [emp_id for emp_id in ids if emp_id not in person_ids]
+    brain_owner = EmployeeBrain.person_id.in_(person_ids.values())
+    if fallback_ids:
+        brain_owner = or_(brain_owner, EmployeeBrain.employee_id.in_(fallback_ids))
     brains = {
-        brain.employee_id: brain
-        for brain in db.scalars(select(EmployeeBrain).where(EmployeeBrain.employee_id.in_(ids)))
+        brain.employee_id: brain for brain in db.scalars(select(EmployeeBrain).where(brain_owner))
     }
     for employee_id, brain in brains.items():
         traits = BrainTraits.from_brain(brain)

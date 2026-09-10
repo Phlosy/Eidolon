@@ -38,6 +38,7 @@ from app.models.organization import Employee
 from app.models.position import PositionDefinition
 from app.models.project import Project, Task
 from app.models.project_delivery import ReviewMeeting
+from app.repositories import knowledge as knowledge_repo
 from app.repositories import position as position_repo
 from app.schemas.position import AssignmentIn
 from app.services import position_service
@@ -644,24 +645,18 @@ def create_learning_priority_for_item(db: Session, item: DevelopmentPlanItem) ->
         raise CareerError("plan not found")
     definition = db.get(CompetencyDefinition, item.competency_definition_id)
     topic = definition.name if definition else item.objective
-    existing = db.scalar(
-        select(LearningPriority).where(
-            LearningPriority.employee_id == plan.employee_id,
-            LearningPriority.topic == topic,
-        )
-    )
+    # R1.1：读（幂等判定）与写都走 knowledge repo —— 口径切换/双写封在那层
+    existing = knowledge_repo.get_priority_by_topic(db, plan.employee_id, topic)
     if existing is not None:
         return existing  # 幂等：重复点击不重复创建
-    record = LearningPriority(
+    return knowledge_repo.create_learning_priority(
+        db,
         employee_id=plan.employee_id,
         topic=topic,
         score=60,
         reason=item.objective,
         source="development_plan",
     )
-    db.add(record)
-    db.flush()
-    return record
 
 
 # ---------------------------------------------------------------------------

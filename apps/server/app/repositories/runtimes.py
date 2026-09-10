@@ -7,6 +7,7 @@ from app.brain.traits import BrainTraits
 from app.core.request_context import get_request_identity
 from app.models.organization import Employee
 from app.models.runtime import EmployeeBrain, RuntimeImage, RuntimeInstance
+from app.repositories import persons as person_repo
 
 # ---- runtime instances ----
 
@@ -98,16 +99,30 @@ def count_instances_using(db: Session, runtime_type: str) -> int:
 
 
 # ---- employee brains ----
+#
+# R1.1 切读（docs/person-core-migration.md D4 批次 1）：brain 跟人不跟成员身份，
+# 读口径 = person_id（入参仍是 employee_id，经 person_repo 单一入口换算+回落）。
 
 
 def get_brain(db: Session, employee_id: int) -> EmployeeBrain | None:
-    return db.scalars(select(EmployeeBrain).where(EmployeeBrain.employee_id == employee_id)).first()
+    return db.scalars(
+        select(EmployeeBrain).where(
+            person_repo.read_criterion(
+                db, employee_id, EmployeeBrain.person_id, EmployeeBrain.employee_id
+            )
+        )
+    ).first()
 
 
 def ensure_brain(db: Session, employee_id: int, **defaults) -> EmployeeBrain:
     brain = get_brain(db, employee_id)
     if brain is None:
-        brain = EmployeeBrain(employee_id=employee_id, **defaults)
+        # 双写：employee_id（deprecated 镜像）+ person_id（权威口径）
+        brain = EmployeeBrain(
+            employee_id=employee_id,
+            person_id=person_repo.write_person_id(db, employee_id),
+            **defaults,
+        )
         # 新 brain 创建时就拥有 traits（唯一权威）；legacy 镜像列继续存在以便回滚读旧值（§4.1）。
         brain.traits = BrainTraits.from_brain(brain).to_json()
         db.add(brain)

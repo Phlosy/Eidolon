@@ -2,12 +2,18 @@
 
 Hard invariant (docs/architecture.md §3.4.1): memory_entries and scope=private
 knowledge_items are only readable through the owner's own queries — every
-function here filters by employee_id; there is intentionally no cross-employee read.
+function here filters by owner; there is intentionally no cross-employee read.
 
 Tenant boundary (概念架构 §4.8): company isolation is enforced here, not in
 callers. HTTP 上下文用 request identity 的公司；非请求上下文（任务执行路径等
 `get_request_identity()` 为 None 的场景）必须由调用方显式传 ``company_id``，
 否则共享 scope（department/company）的查询不做公司过滤。
+
+R1.1 切读（docs/person-core-migration.md D4 批次 1）：memory / skills /
+skill_usages / learning_records / learning_priorities 的属主口径已从
+employee_id（deprecated 镜像列）切到 person_id；入参仍是 employee_id，
+经 app/repositories/persons.py 的单一入口换算（read_criterion / write_person_id），
+解析不到时回落旧口径 + warning。
 """
 
 from sqlalchemy import func, or_, select
@@ -24,22 +30,32 @@ from app.models.knowledge import (
     SkillUsage,
 )
 from app.models.organization import Department, Employee
+from app.repositories import persons as person_repo
 
-# ---- memory (strictly per-employee) ----
+# ---- memory (strictly per-owner) ----
 
 
 def list_memory_entries(db: Session, employee_id: int) -> list[MemoryEntry]:
     return list(
         db.scalars(
             select(MemoryEntry)
-            .where(MemoryEntry.employee_id == employee_id)
+            .where(
+                person_repo.read_criterion(
+                    db, employee_id, MemoryEntry.person_id, MemoryEntry.employee_id
+                )
+            )
             .order_by(MemoryEntry.id.desc())
         )
     )
 
 
 def create_memory_entry(db: Session, employee_id: int, **fields) -> MemoryEntry:
-    entry = MemoryEntry(employee_id=employee_id, **fields)
+    # 双写：employee_id（deprecated 镜像）+ person_id（权威口径）
+    entry = MemoryEntry(
+        employee_id=employee_id,
+        person_id=person_repo.write_person_id(db, employee_id),
+        **fields,
+    )
     db.add(entry)
     db.flush()
     return entry
@@ -109,17 +125,26 @@ def create_knowledge_item(db: Session, **fields) -> KnowledgeItem:
 
 def list_skills(db: Session, employee_id: int) -> list[Skill]:
     return list(
-        db.scalars(select(Skill).where(Skill.employee_id == employee_id).order_by(Skill.id))
+        db.scalars(
+            select(Skill)
+            .where(person_repo.read_criterion(db, employee_id, Skill.person_id, Skill.employee_id))
+            .order_by(Skill.id)
+        )
     )
 
 
 def get_skill_by_name(db: Session, employee_id: int, name: str) -> Skill | None:
     return db.scalars(
-        select(Skill).where(Skill.employee_id == employee_id, Skill.name == name)
+        select(Skill).where(
+            person_repo.read_criterion(db, employee_id, Skill.person_id, Skill.employee_id),
+            Skill.name == name,
+        )
     ).first()
 
 
 def create_skill(db: Session, **fields) -> Skill:
+    # 双写：fields 里的 employee_id 是 deprecated 镜像；person_id 由单一入口解析补齐
+    fields.setdefault("person_id", person_repo.write_person_id(db, fields["employee_id"]))
     skill = Skill(**fields)
     db.add(skill)
     db.flush()
@@ -136,6 +161,8 @@ def create_skill_usage(db: Session, **fields) -> SkillUsage | None:
         existing = get_skill_usage(db, task_id=task_id, skill_id=skill_id)
         if existing is not None:
             return existing
+    # 双写：employee_id（deprecated 镜像）+ person_id（权威口径）
+    fields.setdefault("person_id", person_repo.write_person_id(db, fields["employee_id"]))
     usage = SkillUsage(**fields)
     db.add(usage)
     db.flush()
@@ -162,7 +189,11 @@ def list_skill_usages(db: Session, employee_id: int) -> list[SkillUsage]:
     return list(
         db.scalars(
             select(SkillUsage)
-            .where(SkillUsage.employee_id == employee_id)
+            .where(
+                person_repo.read_criterion(
+                    db, employee_id, SkillUsage.person_id, SkillUsage.employee_id
+                )
+            )
             .order_by(SkillUsage.id.desc())
         )
     )
@@ -181,6 +212,9 @@ def skill_usage_benchmarks(db: Session, employee_id: int) -> dict[str, float | i
     * `useful_rate` —— 已评价里判为 useful 的比例；**pending 不入分母**（没评过 ≠ 没用了）
     分母为 0 时返回 None，而不是 0.0：没数据与数据为零是两回事。
     """
+    owner = person_repo.read_criterion(
+        db, employee_id, SkillUsage.person_id, SkillUsage.employee_id
+    )
     rows = db.execute(
         select(
             SkillUsage.selection_reason,
@@ -188,7 +222,7 @@ def skill_usage_benchmarks(db: Session, employee_id: int) -> dict[str, float | i
             SkillUsage.outcome,
             func.count(SkillUsage.id),
         )
-        .where(SkillUsage.employee_id == employee_id)
+        .where(owner)
         .group_by(SkillUsage.selection_reason, SkillUsage.success, SkillUsage.outcome)
     ).all()
     total = candidate = candidate_success = useful = not_useful = pending = 0
@@ -207,7 +241,7 @@ def skill_usage_benchmarks(db: Session, employee_id: int) -> dict[str, float | i
     rated = useful + not_useful
     skills = db.scalar(
         select(func.count(func.distinct(SkillUsage.skill_id))).where(
-            SkillUsage.employee_id == employee_id,
+            owner,
             SkillUsage.selection_reason == "policy_candidate",
         )
     )
@@ -227,12 +261,15 @@ def get_skill_usage_for_employee(db: Session, usage_id: int, employee_id: int) -
     """跨员工/跨公司都取不到：评价候选技能属于该技能所有者的管理动作。
 
     归属通过 skills 连接判定（SkillUsage 上没有 employee 直达的鉴权语义），
-    调用方传入的 employee 已经过公司作用域校验。
+    调用方传入的 employee 已经过公司作用域校验。R1.1：归属判定切到 Skill.person_id。
     """
     return db.scalars(
         select(SkillUsage)
         .join(Skill, SkillUsage.skill_id == Skill.id)
-        .where(SkillUsage.id == usage_id, Skill.employee_id == employee_id)
+        .where(
+            SkillUsage.id == usage_id,
+            person_repo.read_criterion(db, employee_id, Skill.person_id, Skill.employee_id),
+        )
     ).first()
 
 
@@ -243,13 +280,19 @@ def list_learning_records(db: Session, employee_id: int) -> list[LearningRecord]
     return list(
         db.scalars(
             select(LearningRecord)
-            .where(LearningRecord.employee_id == employee_id)
+            .where(
+                person_repo.read_criterion(
+                    db, employee_id, LearningRecord.person_id, LearningRecord.employee_id
+                )
+            )
             .order_by(LearningRecord.id.desc())
         )
     )
 
 
 def create_learning_record(db: Session, **fields) -> LearningRecord:
+    # 双写：employee_id（deprecated 镜像）+ person_id（权威口径）
+    fields.setdefault("person_id", person_repo.write_person_id(db, fields["employee_id"]))
     record = LearningRecord(**fields)
     db.add(record)
     db.flush()
@@ -258,7 +301,15 @@ def create_learning_record(db: Session, **fields) -> LearningRecord:
 
 def count_learning_records(db: Session, employee_id: int) -> int:
     return len(
-        list(db.scalars(select(LearningRecord.id).where(LearningRecord.employee_id == employee_id)))
+        list(
+            db.scalars(
+                select(LearningRecord.id).where(
+                    person_repo.read_criterion(
+                        db, employee_id, LearningRecord.person_id, LearningRecord.employee_id
+                    )
+                )
+            )
+        )
     )
 
 
@@ -266,7 +317,11 @@ def list_learning_priorities(db: Session, employee_id: int) -> list[LearningPrio
     return list(
         db.scalars(
             select(LearningPriority)
-            .where(LearningPriority.employee_id == employee_id)
+            .where(
+                person_repo.read_criterion(
+                    db, employee_id, LearningPriority.person_id, LearningPriority.employee_id
+                )
+            )
             .order_by(LearningPriority.score.desc())
         )
     )
@@ -275,12 +330,17 @@ def list_learning_priorities(db: Session, employee_id: int) -> list[LearningPrio
 def get_priority_by_topic(db: Session, employee_id: int, topic: str) -> LearningPriority | None:
     return db.scalars(
         select(LearningPriority).where(
-            LearningPriority.employee_id == employee_id, LearningPriority.topic == topic
+            person_repo.read_criterion(
+                db, employee_id, LearningPriority.person_id, LearningPriority.employee_id
+            ),
+            LearningPriority.topic == topic,
         )
     ).first()
 
 
 def create_learning_priority(db: Session, **fields) -> LearningPriority:
+    # 双写：employee_id（deprecated 镜像）+ person_id（权威口径）
+    fields.setdefault("person_id", person_repo.write_person_id(db, fields["employee_id"]))
     priority = LearningPriority(**fields)
     db.add(priority)
     db.flush()

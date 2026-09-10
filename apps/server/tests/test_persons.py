@@ -22,6 +22,7 @@ from app.repositories import organization as org_repo
 from app.repositories import persons as person_repo
 
 V20 = "s5a7c9e1f3b5"
+V21 = "t6a8c0e2f4b6"
 
 
 def _unique(prefix: str) -> str:
@@ -220,3 +221,204 @@ def test_v21_downgrade_removes_person_core(tmp_path):
         assert "persons" not in tables
         columns = {row[1] for row in conn.execute(sa.text("PRAGMA table_info(employees)"))}
         assert "person_id" not in columns
+
+
+# ===========================================================================
+# R1.1 批次 1：人格与学习域切读（docs/person-core-migration.md §3 D4）
+# ===========================================================================
+
+from app.repositories import knowledge as knowledge_repo  # noqa: E402
+from app.repositories import runtimes as runtime_repo  # noqa: E402
+from app.services import learning as learning_service  # noqa: E402
+
+
+def test_knowledge_repo_double_writes_employee_and_person(db, default_company_id):
+    """双写：5 张表的 create 路径同时落 employee_id（镜像）与 person_id（权威）。"""
+    employee = make_employee(db, company_id=default_company_id, slug=_unique("dw"))
+    db.commit()
+    person_id = employee.person_id
+
+    entry = knowledge_repo.create_memory_entry(db, employee.id, kind="note", content="x")
+    skill = knowledge_repo.create_skill(db, employee_id=employee.id, name="python")
+    usage = knowledge_repo.create_skill_usage(
+        db, employee_id=employee.id, skill_id=skill.id, task_id=None, selection_reason="manual"
+    )
+    record = knowledge_repo.create_learning_record(db, employee_id=employee.id, topic="t")
+    priority = knowledge_repo.create_learning_priority(
+        db, employee_id=employee.id, topic="t", score=70, source="failure"
+    )
+    for row in (entry, skill, usage, record, priority):
+        assert row.employee_id == employee.id, "deprecated 镜像列必须继续写"
+        assert row.person_id == person_id, "权威口径列必须双写"
+
+
+def test_brain_ensure_double_writes_and_get_reads_person(db, default_company_id):
+    employee = make_employee(db, company_id=default_company_id, slug=_unique("brain"))
+    db.commit()
+
+    brain = runtime_repo.ensure_brain(db, employee.id)
+    assert brain.employee_id == employee.id
+    assert brain.person_id == employee.person_id
+    assert runtime_repo.get_brain(db, employee.id).id == brain.id
+    # 一人重复 ensure 幂等（读走 person 口径仍找得到）
+    assert runtime_repo.ensure_brain(db, employee.id).id == brain.id
+
+
+def test_learning_session_create_double_writes_person(db, default_company_id):
+    employee = make_employee(
+        db, company_id=default_company_id, slug=_unique("ls"), lifecycle_status="active"
+    )
+    db.commit()
+    session = learning_service.create_session(db, employee.id, "topic-x", commit=False)
+    assert session.employee_id == employee.id
+    assert session.person_id == employee.person_id
+
+
+def test_reads_fall_back_to_employee_id_when_person_unresolvable(db, default_company_id, caplog):
+    """方案 §5 对策：resolve 不到 person_id ⇒ 回落 employee_id 旧口径 + warning。"""
+    legacy = Employee(  # 测试里裸构造一个无 person 的 legacy 员工（迁移前形态）
+        company_id=default_company_id,
+        name="Legacy",
+        slug=_unique("legacy"),
+        workspace_path=f"/tmp/{_unique('lg')}-ws",
+        memory_namespace=f"mem-{_unique('lg')}",
+    )
+    db.add(legacy)
+    db.commit()
+    assert legacy.person_id is None
+
+    with caplog.at_level("WARNING", logger="app.repositories.persons"):
+        knowledge_repo.create_memory_entry(db, legacy.id, kind="note", content="old")
+        entries = knowledge_repo.list_memory_entries(db, legacy.id)
+        skills = knowledge_repo.list_skills(db, legacy.id)
+        brain = runtime_repo.get_brain(db, legacy.id)
+    assert [e.content for e in entries] == ["old"], "回落旧口径必须读到 person_id 为 NULL 的行"
+    assert skills == [] and brain is None
+    assert caplog.messages, "回落必须留 warning 痕迹"
+
+
+def test_read_criterion_uses_person_column_when_resolved(db, default_company_id):
+    """切读语义钉死：行里 employee_id 镜像即使失真，person 口径照样读到（权威在 person_id）。"""
+    employee = make_employee(db, company_id=default_company_id, slug=_unique("auth"))
+    db.commit()
+    entry = knowledge_repo.create_memory_entry(
+        db, employee.id, kind="note", content="authoritative"
+    )
+    # 模拟镜像列失真（兼容期两列并存，权威是 person_id）
+    db.execute(
+        sa.text("UPDATE memory_entries SET employee_id = -1 WHERE id = :id"), {"id": entry.id}
+    )
+    db.commit()
+    assert [e.content for e in knowledge_repo.list_memory_entries(db, employee.id)] == [
+        "authoritative"
+    ]
+
+
+def test_v22_backfills_person_id_on_all_batch1_tables(tmp_path):
+    """v22 内联回填：7 张表 person_id 非空率 100%，部分唯一索引就位。"""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'batch1.db'}")
+    _upgrade(engine, V21)
+    with engine.begin() as conn:
+        conn.execute(
+            sa.text(
+                "INSERT INTO companies (name, slug, description, industry, settings, stage,"
+                " created_at, updated_at) VALUES ('Co', 'co', '', '', '{}', 'FOUNDING',"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO persons (slug, name, avatar, username, created_at, updated_at)"
+                " VALUES ('ada', 'Ada', '', 'ada', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO employees (company_id, name, slug, role, title, avatar, status,"
+                " lifecycle_status, username, runtime_type, runtime_config, workspace_path,"
+                " memory_namespace, person_id, created_at, updated_at) VALUES (1, 'Ada', 'ada',"
+                " 'engineer', '', '', 'idle', 'active', 'ada', 'mock', '{}', '/tmp/ada',"
+                " 'mem-ada', 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO employee_brains (employee_id, personality, goals, interests,"
+                " learning_policy, memory_policy, curiosity, created_at, updated_at) VALUES"
+                " (1, '', '', '[]', '{}', '{}', 0.5, '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO memory_entries (employee_id, kind, content, source_ref, created_at,"
+                " updated_at) VALUES (1, 'note', 'c', '', '2026-01-01 00:00:00',"
+                " '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO skills (employee_id, name, description, version, attempts,"
+                " success_count, avg_duration_sec, avg_cost, validation_status, created_at,"
+                " updated_at) VALUES (1, 'python', '', 1, 0, 0, 0.0, 0.0, 'candidate',"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO learning_records (employee_id, kind, topic, problem, observation,"
+                " lesson, solution, confidence, sources, created_at, updated_at) VALUES"
+                " (1, 'reflection', 't', '', '', '', '', 0.0, '[]', '2026-01-01 00:00:00',"
+                " '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO skill_usages (employee_id, skill_id, skill_validation_status,"
+                " selection_reason, policy_version, profile_revision, success, created_at,"
+                " updated_at) VALUES (1, 1, 'candidate', 'manual', '', 0, 0,"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO learning_priorities (employee_id, topic, score, reason, source,"
+                " created_at, updated_at) VALUES (1, 't', 70, '', 'failure',"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO learning_sessions (company_id, employee_id, topic, reason,"
+                " source_type, status, learning_mode, priority, budget_tokens, budget_cost,"
+                " budget_minutes, tokens_used, cost_used, runtime_type, provider_name,"
+                " model_name, error, summary, metadata_json, created_at, updated_at) VALUES"
+                " (1, 1, 't', '', 'manual', 'completed', 'web_research', 0, 0, 0.0, 0, 0, 0.0,"
+                " 'mock', '', '', '', '', '{}', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+
+    _upgrade(engine, "head")
+
+    tables = (
+        "employee_brains",
+        "memory_entries",
+        "skills",
+        "learning_records",
+        "learning_sessions",
+        "skill_usages",
+        "learning_priorities",
+    )
+    with engine.connect() as conn:
+        for table in tables:
+            total = conn.execute(sa.text(f"SELECT count(*) FROM {table}")).scalar_one()
+            null = conn.execute(
+                sa.text(f"SELECT count(*) FROM {table} WHERE person_id IS NULL")
+            ).scalar_one()
+            assert total == 1 and null == 0, f"{table} 回填遗漏"
+            assert conn.execute(sa.text(f"SELECT person_id FROM {table}")).scalar_one() == 1
+        for index_name in ("uq_employee_brains_person", "uq_learning_priority_person"):
+            index_sql = conn.execute(
+                sa.text("SELECT sql FROM sqlite_master WHERE type = 'index' AND name = :name"),
+                {"name": index_name},
+            ).scalar_one()
+            assert "WHERE" in index_sql.upper() and "person_id IS NOT NULL" in index_sql

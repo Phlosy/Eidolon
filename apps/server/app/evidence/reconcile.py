@@ -21,6 +21,7 @@ from app.evidence.collectors import (
 from app.models.knowledge import SkillUsage
 from app.models.project import Task
 from app.models.project_delivery import ReviewMeeting
+from app.repositories import persons as person_repo
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,10 @@ def reconcile_employee(db: Session, employee_id: int) -> dict[str, int]:
 
     usages = db.scalars(
         select(SkillUsage).where(
-            SkillUsage.employee_id == employee_id,
+            # R1.1：读口径切 person_id（repo 单一入口解析，带旧口径回落）
+            person_repo.read_criterion(
+                db, employee_id, SkillUsage.person_id, SkillUsage.employee_id
+            ),
             SkillUsage.outcome.isnot(None),
         )
     ).all()

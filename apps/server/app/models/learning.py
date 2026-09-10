@@ -28,7 +28,9 @@ class LearningSession(TimestampMixin, Base):
     __tablename__ = "learning_sessions"
 
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     topic: Mapped[str] = mapped_column(String(500))
     reason: Mapped[str] = mapped_column(Text, default="")
     source_type: Mapped[str] = mapped_column(String(40), default="manual")

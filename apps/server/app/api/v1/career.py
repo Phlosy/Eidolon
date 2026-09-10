@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.scope import resolve_company_id
@@ -38,10 +37,11 @@ def employee_behavior_policy(
     """P11：行为策略解释（Trait Snapshot + advisory 数值 + reasons；缺省中性上下文）。"""
     from app.brain.resolver import explain_behavior
     from app.brain.trait_policies import BehaviorContext
-    from app.models.runtime import EmployeeBrain
+    from app.repositories import runtimes as runtime_repo
 
     _employee_or_404(db, employee_id, company_id)
-    brain = db.scalar(select(EmployeeBrain).where(EmployeeBrain.employee_id == employee_id))
+    # R1.1：brain 读口径已切 person_id（repo 入口解析，带旧口径回落）
+    brain = runtime_repo.get_brain(db, employee_id)
     context = BehaviorContext(task_type=task_type or "general")
     return explain_behavior(brain, context)
 

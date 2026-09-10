@@ -29,7 +29,7 @@ from app.core.database import _alembic_config
 from app.models.enums import EmployeeStatus, LifecycleStatus, RuntimeType
 from app.models.lifecycle import AccessPackage
 from app.models.organization import Company, Department
-from app.models.runtime import EmployeeBrain, RuntimeInstance
+from app.models.runtime import RuntimeInstance
 
 V11 = "j5e8a1b4c730"
 EMPLOYMENT_COLUMNS_ADDED = (
@@ -102,17 +102,17 @@ def _seed_legacy(engine: Engine) -> datetime:
         session.flush()
 
         charlie_id = session.scalar(sa.text("SELECT id FROM employees WHERE slug = 'charlie'"))
-        session.add(
-            EmployeeBrain(
-                employee_id=charlie_id,
-                personality="克制、爱查文档",
-                goals="[]",
-                interests="[]",
-                learning_policy={"enabled": True},
-                memory_policy={},
-                curiosity=0.7,
-            )
+        # employee_brains 同样必须 raw SQL：v22 给模型加了 person_id，v11 的库里没有该列。
+        session.execute(
+            sa.text(
+                "INSERT INTO employee_brains (employee_id, personality, goals, interests,"
+                " learning_policy, memory_policy, curiosity, created_at, updated_at) VALUES"
+                " (:eid, '克制、爱查文档', '[]', '[]', '{\"enabled\": true}', '{}', 0.7,"
+                " :now, :now)"
+            ),
+            {"eid": charlie_id, "now": now_sql},
         )
+        session.flush()
         session.add(
             RuntimeInstance(
                 employee_id=charlie_id,

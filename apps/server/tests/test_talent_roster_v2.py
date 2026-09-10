@@ -135,13 +135,11 @@ def test_competency_filter_requires_both_score_and_confidence(client, db, defaul
 
 def test_trait_filter_is_independent_of_competency(client, db, default_company_id):
     from app.brain.traits import BrainTraits, write_traits_to_brain
-    from app.models.runtime import EmployeeBrain
+    from app.repositories import runtimes as runtime_repo
 
     employee_id = _hire(db, default_company_id)
-    brain = db.scalar(sa.select(EmployeeBrain).where(EmployeeBrain.employee_id == employee_id))
-    if brain is None:
-        brain = EmployeeBrain(employee_id=employee_id)
-        db.add(brain)
+    # brain 的唯一写入口（R1.1 双写：person_id 权威 + employee_id 镜像）
+    brain = runtime_repo.ensure_brain(db, employee_id)
     write_traits_to_brain(brain, BrainTraits.build({"curiosity": 0.9, "warmth": 0.3}))
     db.commit()
     hits = client.get(

@@ -29,12 +29,15 @@ from app.models.enums import (
     LearningSessionStatus,
     LearningSourceType,
 )
-from app.models.knowledge import KnowledgeItem, LearningPriority, LearningRecord, Skill
+from app.models.knowledge import KnowledgeItem, LearningPriority
 from app.models.learning import LearningSession
 from app.models.organization import Company, Employee
 from app.models.provider import ModelBinding
 from app.models.runtime import EmployeeBrain, RuntimeInstance
+from app.repositories import knowledge as knowledge_repo
 from app.repositories import organization as org_repo
+from app.repositories import persons as person_repo
+from app.repositories import runtimes as runtime_repo
 
 LEARNING_POLICY_VERSION = "v1"
 AUTONOMOUS_LEARNING_VERSION = "v1"
@@ -98,7 +101,8 @@ def company_learning_policy(db: Session, company: Company | None) -> CompanyLear
 def employee_learning_policy(db: Session, employee: Employee, company: Company | None) -> dict:
     """员工政策：默认继承公司；EmployeeBrain.learning_policy 可覆盖 enabled/预算/模式。"""
     base = company_learning_policy(db, company)
-    brain = db.scalar(select(EmployeeBrain).where(EmployeeBrain.employee_id == employee.id))
+    # R1.1：brain 读口径已切 person_id（repo 入口解析，带旧口径回落）
+    brain = runtime_repo.get_brain(db, employee.id)
     override = (brain.learning_policy or {}) if brain else {}
     result = {
         "inherit_company_policy": not bool(override),
@@ -220,7 +224,9 @@ def _active_duplicate(
             select(func.count())
             .select_from(LearningSession)
             .where(
-                LearningSession.employee_id == employee_id,
+                person_repo.read_criterion(
+                    db, employee_id, LearningSession.person_id, LearningSession.employee_id
+                ),
                 LearningSession.source_type == source_type,
                 LearningSession.source_id == source_id,
                 LearningSession.topic == topic,
@@ -240,7 +246,9 @@ def _active_duplicate(
 def _cooldown_ok(db: Session, employee_id: int, topic: str, policy: CompanyLearningPolicy) -> bool:
     recent = db.scalar(
         select(func.max(LearningSession.completed_at)).where(
-            LearningSession.employee_id == employee_id,
+            person_repo.read_criterion(
+                db, employee_id, LearningSession.person_id, LearningSession.employee_id
+            ),
             LearningSession.topic == topic,
             LearningSession.status == LearningSessionStatus.completed.value,
         )
@@ -279,6 +287,8 @@ def create_session(
     session = LearningSession(
         company_id=employee.company_id,
         employee_id=employee_id,
+        # 双写（R1.1）：person_id 经单一入口解析；company_id 是公司上下文快照，不跟人走
+        person_id=person_repo.write_person_id(db, employee_id),
         topic=topic,
         reason=reason,
         source_type=source_type,
@@ -393,22 +403,21 @@ def _produce_outputs(
                 )
             )
             outputs["knowledge"] += 1
-        db.add(
-            Skill(
-                employee_id=employee.id,
-                name=f"Candidate: {session.topic[:80]}",
-                description="学习产出的技能候选（未验证）",
-                validation_status="candidate",
-            )
+        # 双写（R1.1）：走 repo 入口，employee_id 镜像 + person_id 权威一起落
+        knowledge_repo.create_skill(
+            db,
+            employee_id=employee.id,
+            name=f"Candidate: {session.topic[:80]}",
+            description="学习产出的技能候选（未验证）",
+            validation_status="candidate",
         )
         outputs["skill_candidates"] += 1
-        db.add(
-            LearningRecord(
-                employee_id=employee.id,
-                kind="question",
-                topic=session.topic[:200],
-                observation=f"Open question from learning: {session.topic}",
-            )
+        knowledge_repo.create_learning_record(
+            db,
+            employee_id=employee.id,
+            kind="question",
+            topic=session.topic[:200],
+            observation=f"Open question from learning: {session.topic}",
         )
         outputs["questions"] += 1
     elif mode == LearningMode.knowledge_review.value:
@@ -480,7 +489,11 @@ def plan_candidates(
         )
 
     for priority in db.scalars(
-        select(LearningPriority).where(LearningPriority.employee_id == employee.id)
+        select(LearningPriority).where(
+            person_repo.read_criterion(
+                db, employee.id, LearningPriority.person_id, LearningPriority.employee_id
+            )
+        )
     ).all():
         buckets[3].append(
             {
@@ -492,15 +505,9 @@ def plan_candidates(
         )
 
     # 好奇/兴趣只贡献 Desire；没有具体兴趣也不为它开课（Learning Value=0 不占预算）
-    interests = (
-        brain.interests
-        if (
-            brain := db.scalar(
-                select(EmployeeBrain).where(EmployeeBrain.employee_id == employee.id)
-            )
-        )
-        else []
-    ) or []
+    # R1.1：brain 读口径已切 person_id（repo 入口解析，带旧口径回落）
+    brain = runtime_repo.get_brain(db, employee.id)
+    interests = (brain.interests if brain else []) or []
     if interests:
         buckets[5].extend(
             {
@@ -571,7 +578,9 @@ def _is_idle_and_valid(db: Session, employee: Employee, policy: CompanyLearningP
         select(func.count())
         .select_from(LearningSession)
         .where(
-            LearningSession.employee_id == employee.id,
+            person_repo.read_criterion(
+                db, employee.id, LearningSession.person_id, LearningSession.employee_id
+            ),
             LearningSession.status == LearningSessionStatus.running.value,
         )
     )

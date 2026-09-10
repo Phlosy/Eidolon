@@ -37,6 +37,7 @@ from app.models.competency import (
 )
 from app.models.knowledge import Skill
 from app.models.organization import Employee
+from app.repositories import persons as person_repo
 from app.schemas.assessment import (
     AssessmentProfileDetailOut,
     AssessmentProfileOut,
@@ -448,7 +449,8 @@ def competency_explanation(
     skills = list(
         db.scalars(
             select(Skill).where(
-                Skill.employee_id == employee_id,
+                # R1.1：读口径切 person_id（repo 单一入口解析，带旧口径回落）
+                person_repo.read_criterion(db, employee_id, Skill.person_id, Skill.employee_id),
                 Skill.competency_definition_id == definition.id,
             )
         )

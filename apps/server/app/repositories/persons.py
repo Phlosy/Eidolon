@@ -9,11 +9,15 @@ services/seed.py），这里只提供 `create_person` 原语；person 本身没�
 没有 PersonService。
 """
 
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.organization import Employee
 from app.models.person import Person
+
+logger = logging.getLogger(__name__)
 
 
 def create_person(
@@ -45,3 +49,47 @@ def resolve_person_id(db: Session, employee_id: int) -> int | None:
     回退口径由调用方决定，不在此处静默兜底。
     """
     return db.scalar(select(Employee.person_id).where(Employee.id == employee_id))
+
+
+def resolve_person_ids(db: Session, employee_ids: list[int]) -> dict[int, int]:
+    """批量版 resolve_person_id（名册这类 N+1 敏感路径用）。
+
+    解析不到的 employee_id 不进返回值，并记一次 warning（方案 §5 风险对策）。
+    """
+    if not employee_ids:
+        return {}
+    rows = db.execute(
+        select(Employee.id, Employee.person_id).where(Employee.id.in_(employee_ids))
+    ).all()
+    resolved = {emp_id: person_id for emp_id, person_id in rows if person_id is not None}
+    missing = [emp_id for emp_id in employee_ids if emp_id not in resolved]
+    if missing:
+        logger.warning("person_id 批量解析遗漏（employee_ids=%s），按旧口径回落", missing)
+    return resolved
+
+
+def write_person_id(db: Session, employee_id: int) -> int | None:
+    """双写期的写入侧解析：解析不到时返回 None + warning —— person_id 留空，
+    绝不编造或静默兜底（方案 §5）。各域写入点统一从这里拿 person_id。"""
+    person_id = resolve_person_id(db, employee_id)
+    if person_id is None:
+        logger.warning(
+            "双写 person_id 解析失败（employee_id=%s），该行 person_id 留空", employee_id
+        )
+    return person_id
+
+
+def read_criterion(db: Session, employee_id: int, person_column, employee_column):
+    """切读期的读口径选择器：能解析出 person_id 就按 person 过滤（新口径）；
+    解析不到（legacy 行/悬空）回落 employee_id 旧口径 + warning（方案 §5）。
+
+    employee_id ↔ person_id 的换算只准发生在本文件 —— 各域 repo 切读时调用这里，
+    不各自写 join（D4.1）。
+    """
+    person_id = resolve_person_id(db, employee_id)
+    if person_id is not None:
+        return person_column == person_id
+    logger.warning(
+        "person_id 解析失败（employee_id=%s），读口径回落 employee_id 旧口径", employee_id
+    )
+    return employee_column == employee_id

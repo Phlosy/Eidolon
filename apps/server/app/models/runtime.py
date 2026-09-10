@@ -8,7 +8,7 @@ so replacing an instance never touches them.
 
 from datetime import datetime
 
-from sqlalchemy import JSON, ForeignKey, Index, String, Text, text
+from sqlalchemy import JSON, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -40,9 +40,20 @@ class EmployeeBrain(TimestampMixin, Base):
             sqlite_where=text("traits IS NULL"),
             postgresql_where=text("traits IS NULL"),
         ),
+        # R1.1（docs/person-core-migration.md D4 批次 1）：一人一脑的唯一性在 person 口径
+        # 上的镜像。必须写进模型，否则 alembic check 报漂移。
+        Index(
+            "uq_employee_brains_person",
+            "person_id",
+            unique=True,
+            sqlite_where=text("person_id IS NOT NULL"),
+            postgresql_where=text("person_id IS NOT NULL"),
+        ),
     )
 
+    # deprecated（R1.1）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), unique=True, index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     personality: Mapped[str] = mapped_column(Text, default="")
     goals: Mapped[str] = mapped_column(Text, default="")
     interests: Mapped[list] = mapped_column(JSON, default=list)
