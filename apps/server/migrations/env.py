@@ -29,10 +29,18 @@ target_metadata = Base.metadata
 # do not let that known historical table hide new model/migration drift in CI.
 _RETAINED_LEGACY_TABLES = {"tutorial_progress"}
 
+# K2（v26）：FTS5 虚拟表 knowledge_items_fts 及其影子表（_data/_idx/_content/
+# _docsize/_config）是 knowledge_items 的检索索引，刻意不进 ORM metadata
+# （同步在服务层，见 repositories/knowledge.py）——按前缀排除，不算漂移。
+_NON_MODEL_INDEX_PREFIXES = ("knowledge_items_fts",)
+
 
 def include_object(object_, name, type_, reflected, compare_to) -> bool:
     if type_ == "table" and reflected and compare_to is None:
-        return name not in _RETAINED_LEGACY_TABLES
+        if name in _RETAINED_LEGACY_TABLES:
+            return False
+        if name.startswith(_NON_MODEL_INDEX_PREFIXES):
+            return False
     return True
 
 

@@ -21,7 +21,10 @@ scope / department_id 分层语义不动。公司隔离的 join 链**保留经 o
 语义，由 employees/departments 提供；兼容期镜像列由双写维持，join 无需改道。
 """
 
-from sqlalchemy import func, or_, select
+import logging
+
+from sqlalchemy import func, or_, select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.request_context import get_request_identity
@@ -36,6 +39,11 @@ from app.models.knowledge import (
 )
 from app.models.organization import Department, Employee
 from app.repositories import persons as person_repo
+
+logger = logging.getLogger(__name__)
+
+#: 裸 SQL 入口的别名（本文件只有 FTS 索引维护用裸 SQL，其余一律 ORM）。
+sa_text = text
 
 # ---- memory (strictly per-owner) ----
 
@@ -132,7 +140,62 @@ def create_knowledge_item(db: Session, **fields) -> KnowledgeItem:
     item = KnowledgeItem(**fields)
     db.add(item)
     db.flush()
+    sync_knowledge_fts(db, item)  # K2：FTS 索引同步（降级可接受，见函数 docstring）
     return item
+
+
+# ---- K2：FTS5 全文索引（knowledge_items_fts，迁移 v26）----
+#
+# 虚拟表是 knowledge_items(title/topic/content) 的检索索引，rowid = items.id，
+# tokenize='trigram'（子串语义，对中日韩友好）。同步走服务层（不用 DB trigger）：
+# 写入入口已收敛到 create_knowledge_item —— 全仓没有绕过它的 content/title/topic
+# 变更点（晋升/评审只动 scope/status/sources，均非索引列）。
+#
+# 失败语义：FTS 同步/查询失败 = 检索降级（回落 token-overlap 旧路径），
+# 绝不炸主流程 —— 知识行本体已安全落库，索引可由迁移/重建修复。
+
+_FTS_TABLE = "knowledge_items_fts"
+
+
+def sync_knowledge_fts(db: Session, item: KnowledgeItem) -> None:
+    """把条目 upsert 进 FTS 索引（delete + insert，幂等）。失败只记 warning。"""
+    try:
+        db.execute(sa_text(f"DELETE FROM {_FTS_TABLE} WHERE rowid = :rowid"), {"rowid": item.id})
+        db.execute(
+            sa_text(
+                f"INSERT INTO {_FTS_TABLE} (rowid, title, topic, content)"
+                " VALUES (:rowid, :title, :topic, :content)"
+            ),
+            {
+                "rowid": item.id,
+                "title": item.title,
+                "topic": item.topic,
+                "content": item.content,
+            },
+        )
+    except SQLAlchemyError as exc:
+        logger.warning("knowledge FTS 同步失败（item=%s，检索降级，数据无恙）：%s", item.id, exc)
+
+
+def fts_match_ids(db: Session, tokens: set[str]) -> set[int] | None:
+    """FTS 候选集：tokens 的 OR MATCH（trigram 子串语义）。返回 None = FTS 不可用
+    （虚拟表不存在/语法错误），调用方回落旧路径。
+
+    tokens 来自 retrieval._tokens（正则按非字母数字切分，不含引号/运算符）；
+    双引号包裹 + 再剥离一次双保险 —— 任意用户输入不能炸 FTS 语法。
+    """
+    if not tokens:
+        return set()
+    query = " OR ".join(f'"{t.replace(chr(34), "")}"' for t in sorted(tokens))
+    try:
+        rows = db.execute(
+            sa_text(f"SELECT rowid FROM {_FTS_TABLE} WHERE {_FTS_TABLE} MATCH :query"),
+            {"query": query},
+        ).all()
+    except SQLAlchemyError as exc:
+        logger.warning("knowledge FTS 查询失败（回落 token-overlap 旧路径）：%s", exc)
+        return None
+    return {int(row[0]) for row in rows}
 
 
 # ---- skills ----
