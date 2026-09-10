@@ -122,6 +122,11 @@ def get_brain(db: Session, employee_id: int) -> EmployeeBrain | None:
     ).first()
 
 
+def get_brain_by_person(db: Session, person_id: int) -> EmployeeBrain | None:
+    """person 口径直读（T1.2：培养期角色没有 employee_id，走不了上面的换算入口）。"""
+    return db.scalars(select(EmployeeBrain).where(EmployeeBrain.person_id == person_id)).first()
+
+
 def ensure_brain(db: Session, employee_id: int, **defaults) -> EmployeeBrain:
     brain = get_brain(db, employee_id)
     if brain is None:

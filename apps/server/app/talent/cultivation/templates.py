@@ -15,8 +15,11 @@
 - ``competency_code``：本阶段证据挂载的能力维度（全局目录 code）；
 - ``signal_base`` / ``signal_spread``：证据 signal 的采样中位与噪声幅度
   （deterministic RNG 采样，signal = base ± spread）；
-- ``trait_bias``：人格偏移权重（T1.2 人格成型用，结构预留，本轮不消费）；
-- ``fortune``：际遇事件概率表（T1.2 填，结构预留，本轮恒空）。
+- ``trait_bias``：人格偏移向量（8 维 traits 的增量权重，T1.2 起消费）：角色人格
+  基线 = 注册表默认值 + 全模板 bias 求和 + 噪声；际遇的 trait_shift 在触发时累加；
+- ``fortune``：际遇事件概率表（T1.2 填实，见 FortuneEvent）；
+- ``assessment``：本阶段是否为评估节点（升学考试/实训结业……T1.2 起在阶段产出后
+  触发证据聚合评估，assessment_runs 走 person 口径）。
 
 首发三模板（愿景 §3.2 倾向表的直译）：学院派 = 四阶段学制、考试证据多；
 职业派 = 义务教育 + 专业实训、项目证据早；自学派 = 非规范自学、证据少而散。
@@ -25,6 +28,25 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class FortuneEvent:
+    """际遇事件（D5，愿景 §3.1）：对当前阶段产出的**扰动**（修正而非替代）。
+
+    - ``probability``：每阶段触发概率（RNG 与阶段采样同一确定性体系）；
+    - ``signal_delta``：本阶段证据 signal 修正（正负都有）；
+    - ``extra_topics``：额外知识主题（追加到本阶段覆盖集，照常产生产出）；
+    - ``trait_shift``：人格偏移向量（触发即累加进 brain traits）；
+    - ``narrative``：叙事文本（履历展示用）。
+    """
+
+    key: str
+    narrative: str
+    probability: float
+    signal_delta: int = 0
+    extra_topics: tuple[str, ...] = ()
+    trait_shift: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -41,7 +63,8 @@ class StageTemplate:
     signal_base: int
     signal_spread: int
     trait_bias: dict[str, float] = field(default_factory=dict)
-    fortune: tuple[dict, ...] = ()  # T1.2 际遇概率表
+    fortune: tuple[FortuneEvent, ...] = ()
+    assessment: bool = False  # 评估节点标记（T1.2）
 
 
 @dataclass(frozen=True)
@@ -70,7 +93,7 @@ ACADEMIC = CultivationTemplate(
             competency_code=_GENERAL,
             signal_base=55,
             signal_spread=10,
-            trait_bias={"conscientiousness": 0.05},
+            trait_bias={"conscientiousness": 0.04, "collaboration": 0.02},
         ),
         StageTemplate(
             stage_id="junior",
@@ -84,7 +107,17 @@ ACADEMIC = CultivationTemplate(
             competency_code=_GENERAL,
             signal_base=60,
             signal_spread=10,
-            trait_bias={"conscientiousness": 0.05},
+            trait_bias={"conscientiousness": 0.04},
+            fortune=(
+                FortuneEvent(
+                    key="side_obsession",
+                    narrative="沉迷课外领域，课内成绩波动但视野大开",
+                    probability=0.10,
+                    signal_delta=-5,
+                    extra_topics=("课外领域深耕",),
+                    trait_shift={"curiosity": 0.05},
+                ),
+            ),
         ),
         StageTemplate(
             stage_id="senior",
@@ -98,7 +131,24 @@ ACADEMIC = CultivationTemplate(
             competency_code=_GENERAL,
             signal_base=70,
             signal_spread=8,
-            trait_bias={"conscientiousness": 0.1},
+            trait_bias={"conscientiousness": 0.05},
+            assessment=True,  # 升学考试
+            fortune=(
+                FortuneEvent(
+                    key="competition_win",
+                    narrative="在学科竞赛中获奖",
+                    probability=0.15,
+                    signal_delta=10,
+                    trait_shift={"conscientiousness": 0.03},
+                ),
+                FortuneEvent(
+                    key="exam_failure",
+                    narrative="大考失利，重头再来",
+                    probability=0.10,
+                    signal_delta=-15,
+                    trait_shift={"conscientiousness": -0.02, "risk_tolerance": 0.02},
+                ),
+            ),
         ),
         StageTemplate(
             stage_id="university",
@@ -112,7 +162,18 @@ ACADEMIC = CultivationTemplate(
             competency_code=_GENERAL,
             signal_base=72,
             signal_spread=8,
-            trait_bias={"conscientiousness": 0.1},
+            trait_bias={"conscientiousness": 0.05, "independence": 0.03},
+            assessment=True,  # 毕业考核
+            fortune=(
+                FortuneEvent(
+                    key="good_teacher",
+                    narrative="遇到一位好老师，指点迷津",
+                    probability=0.20,
+                    signal_delta=5,
+                    extra_topics=("名师讲义研读",),
+                    trait_shift={"warmth": 0.02},
+                ),
+            ),
         ),
     ),
 )
@@ -133,6 +194,7 @@ VOCATIONAL = CultivationTemplate(
             competency_code=_GENERAL,
             signal_base=55,
             signal_spread=10,
+            trait_bias={"collaboration": 0.03},
         ),
         StageTemplate(
             stage_id="vocational_training",
@@ -146,7 +208,40 @@ VOCATIONAL = CultivationTemplate(
             competency_code=_EXECUTION,
             signal_base=75,
             signal_spread=8,
-            trait_bias={"adaptability": 0.1},
+            trait_bias={"adaptability": 0.08, "risk_tolerance": 0.02},
+            assessment=True,  # 实训结业
+            fortune=(
+                FortuneEvent(
+                    key="client_praise",
+                    narrative="实训项目获甲方好评",
+                    probability=0.15,
+                    signal_delta=10,
+                    trait_shift={"adaptability": 0.03},
+                ),
+                FortuneEvent(
+                    key="skill_contest",
+                    narrative="入围技能竞赛集训",
+                    probability=0.10,
+                    signal_delta=8,
+                    extra_topics=("竞赛集训",),
+                    trait_shift={"conscientiousness": 0.02},
+                ),
+                FortuneEvent(
+                    key="equipment_failure",
+                    narrative="实训设备故障，折腾三天排障",
+                    probability=0.15,
+                    signal_delta=-5,
+                    extra_topics=("设备故障排障实录",),
+                    trait_shift={"adaptability": 0.04, "creativity": 0.02},
+                ),
+                FortuneEvent(
+                    key="wrong_mentor",
+                    narrative="跟错师傅走了弯路",
+                    probability=0.10,
+                    signal_delta=-10,
+                    trait_shift={"independence": 0.03},
+                ),
+            ),
         ),
     ),
 )
@@ -167,7 +262,37 @@ SELF_TAUGHT = CultivationTemplate(
             competency_code=_GENERAL,
             signal_base=55,
             signal_spread=25,  # 置信度方差大：钻得深 vs 想当然
-            trait_bias={"curiosity": 0.1, "creativity": 0.1, "risk_tolerance": 0.05},
+            trait_bias={"curiosity": 0.08, "creativity": 0.08, "risk_tolerance": 0.05},
+            fortune=(
+                FortuneEvent(
+                    key="oss_pr_merged",
+                    narrative="开源项目的 PR 被合并",
+                    probability=0.12,
+                    signal_delta=12,
+                    trait_shift={"creativity": 0.04},
+                ),
+                FortuneEvent(
+                    key="rabbit_hole",
+                    narrative="沉迷某个冷门领域数月",
+                    probability=0.20,
+                    extra_topics=("冷门领域深潜",),
+                    trait_shift={"curiosity": 0.06},
+                ),
+                FortuneEvent(
+                    key="misled_by_docs",
+                    narrative="被过时的教程文档带偏，返工重来",
+                    probability=0.15,
+                    signal_delta=-8,
+                    trait_shift={"risk_tolerance": 0.03},
+                ),
+                FortuneEvent(
+                    key="community_fame",
+                    narrative="在社区问答中一战成名",
+                    probability=0.08,
+                    signal_delta=10,
+                    trait_shift={"collaboration": 0.04},
+                ),
+            ),
         ),
     ),
 )

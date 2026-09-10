@@ -12,6 +12,7 @@ from app.models.cultivation import CharacterProfile, TrainingProgram
 from app.models.person import Person
 from app.repositories import cultivation as cultivation_repo
 from app.repositories import persons as person_repo
+from app.talent.cultivation import engine as engine_module
 
 #: T1.0 只开放玩家自训与空白养成；issued 是 T2 发行方生成器的事。
 _CREATABLE_ORIGINS = {"trained", "blank"}
@@ -38,8 +39,14 @@ def create_character(
     person, profile = cultivation_repo.create_character(
         db, name=name, origin=origin, owner_company_id=owner_company_id
     )
+    rng_seed = None
     if template is not None:
-        cultivation_repo.create_program(db, person_id=person.id, template=template)
+        program = cultivation_repo.create_program(db, person_id=person.id, template=template)
+        rng_seed = program.rng_seed
+    # T1.2 人格成型基线：模板倾向 + 噪声（blank = 中性 + 噪声）；幂等
+    engine_module.initialize_character_brain(
+        db, person.id, template_id=template, seed=rng_seed or profile.identity_id
+    )
     db.commit()
     return person, profile
 
@@ -75,8 +82,6 @@ def _owned_profile(db: Session, profile_id: int, owner_company_id: int) -> Chara
 
 def advance_program(db: Session, program_id: int, owner_company_id: int):
     """推进培养实例一个阶段（本公司持有校验 → 引擎）。"""
-    from app.talent.cultivation import engine
-
     program = db.get(TrainingProgram, program_id)
     if program is None:
         raise HTTPException(status_code=404, detail="program not found")
@@ -84,8 +89,8 @@ def advance_program(db: Session, program_id: int, owner_company_id: int):
     if profile is None or profile.owner_company_id != owner_company_id:
         raise HTTPException(status_code=404, detail="program not found")
     try:
-        return engine.advance_program(db, program_id)
-    except engine.CultivationError as exc:
+        return engine_module.advance_program(db, program_id)
+    except engine_module.CultivationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
@@ -100,12 +105,10 @@ def run_free_session(
     signal: int,
 ):
     """自由养成会话（blank/无进行中模板实例的角色）。"""
-    from app.talent.cultivation import engine
-
     profile = _owned_profile(db, profile_id, owner_company_id)
     try:
-        return engine.run_free_session(
+        return engine_module.run_free_session(
             db, profile.person_id, topic=topic, mode=mode, kind=kind, signal=signal
         )
-    except engine.CultivationError as exc:
+    except engine_module.CultivationError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

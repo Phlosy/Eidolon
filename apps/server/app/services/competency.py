@@ -304,18 +304,78 @@ def assess_employee_competencies(
     employee = db.get(Employee, employee_id)
     if employee is None:  # pragma: no cover - 调用方先校验
         raise ValueError(f"employee {employee_id} not found")
-    started = datetime.now(UTC)
     # R1.3：证据/能力行/审计 run 全部按 person 口径读、双写落库
-    owner_evidence = person_repo.read_criterion(
-        db, employee_id, CompetencyEvidence.person_id, CompetencyEvidence.employee_id
+    return _run_aggregation(
+        db,
+        person_id=person_repo.write_person_id(db, employee_id),
+        employee_id=employee_id,
+        company_id=employee.company_id,
+        triggered_by=triggered_by,
+        assessment_type="",
+        commit=commit,
     )
-    owner_competency = person_repo.read_criterion(
-        db, employee_id, EmployeeCompetency.person_id, EmployeeCompetency.employee_id
+
+
+def assess_person_competencies(
+    db: Session,
+    person_id: int,
+    *,
+    owner_company_id: int,
+    assessment_type: str = "stage_assessment",
+    triggered_by: str = "cultivation",
+    commit: bool = True,
+) -> AssessmentRun:
+    """对一名 **person-only 角色**做阶段评估（T1.2，cultivation-system-design §2 D6）。
+
+    与员工路径共用同一个聚合核心（确定性、inputs_hash 审计锚点语义不变）；
+    assessment_runs 走 person 口径，company_id 快照用角色 owner_company
+    （员工路径语义：company 上下文快照，跟人无关）。员工路径的正式考核入口
+    仍是上面的 assess_employee_competencies / services/assessment.run_assessment。
+    """
+    return _run_aggregation(
+        db,
+        person_id=person_id,
+        employee_id=None,
+        company_id=owner_company_id,
+        triggered_by=triggered_by,
+        assessment_type=assessment_type,
+        commit=commit,
+    )
+
+
+def _run_aggregation(
+    db: Session,
+    *,
+    person_id: int | None,
+    employee_id: int | None,
+    company_id: int,
+    triggered_by: str,
+    assessment_type: str,
+    commit: bool,
+) -> AssessmentRun:
+    """聚合核心：读该人的全部 Evidence → 分组聚合 → 更新/创建能力行 → 写审计 run。"""
+    started = datetime.now(UTC)
+    owner_evidence = (
+        CompetencyEvidence.person_id == person_id
+        if employee_id is None
+        else person_repo.read_criterion(
+            db, employee_id, CompetencyEvidence.person_id, CompetencyEvidence.employee_id
+        )
+    )
+    owner_competency = (
+        EmployeeCompetency.person_id == person_id
+        if employee_id is None
+        else person_repo.read_criterion(
+            db, employee_id, EmployeeCompetency.person_id, EmployeeCompetency.employee_id
+        )
     )
     evidence_rows = list(
         db.scalars(select(CompetencyEvidence).where(owner_evidence).order_by(CompetencyEvidence.id))
     )
-    inputs_hash = inputs_hash_of(employee_id=employee_id, evidence_rows=evidence_rows)
+    inputs_hash = inputs_hash_of(
+        employee_id=employee_id if employee_id is not None else person_id,
+        evidence_rows=evidence_rows,
+    )
 
     grouped: dict[int, list[CompetencyEvidence]] = {}
     for row in evidence_rows:
@@ -337,7 +397,7 @@ def assess_employee_competencies(
         if row is None:
             row = EmployeeCompetency(
                 employee_id=employee_id,
-                person_id=person_repo.write_person_id(db, employee_id),
+                person_id=person_id,
                 competency_definition_id=definition_id,
                 score=aggregated.score,
                 confidence=aggregated.confidence,
@@ -373,10 +433,11 @@ def assess_employee_competencies(
     db.flush()
 
     run = AssessmentRun(
-        company_id=employee.company_id,
+        company_id=company_id,
         employee_id=employee_id,
-        person_id=person_repo.write_person_id(db, employee_id),
+        person_id=person_id,
         triggered_by=triggered_by,
+        assessment_type=assessment_type,
         status="completed",
         evidence_ids=[row.id for row in evidence_rows],
         algorithm_version=ALGORITHM_VERSION,

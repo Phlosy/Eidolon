@@ -109,3 +109,44 @@ def test_employee_competency_rows_are_written_by_the_aggregator_only():
         "employee_competencies 行只能由聚合服务创建（能力只能被证明）—— 第二写入口：\n"
         + "\n".join(f"  - {offender}" for offender in offenders)
     )
+
+
+def test_competency_score_attributes_are_written_by_aggregators_only():
+    """D6（cultivation-system-design §2）：能力分字段的**赋值**也只准在聚合器里。
+
+    构造守卫（上面）管建行；这条管 `row.score = …` 式的改分。扫描面 = import 了
+    EmployeeCompetency 的文件（不 import 就摸不到这个模型）；白名单 =
+    两个聚合服务。LearningPriority.score 等别的模型的 score 不在扫描面内。
+    """
+    watched = {"score", "confidence", "evidence_count", "status", "trend", "trend_window"}
+    # 接收者名启发式（同 role 守卫的先例）：聚合器里的能力行变量叫 row/comp*。
+    # 已知盲区：把能力行取名叫别的（如 item）就能绕过 —— 所以这条守卫与上面的
+    # 构造白名单配套使用，不单独承担全部语义。
+    import re as _re
+
+    receiver_ok = _re.compile(r"^(row|comp|competency)")
+    offenders: list[str] = []
+    for path, relative in _python_files(("app",)):
+        if relative in _EMPLOYEE_COMPETENCY_WRITER_FILES:
+            continue
+        source = path.read_text(encoding="utf-8")
+        if "EmployeeCompetency" not in source:
+            continue
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            targets = []
+            if isinstance(node, ast.Assign):
+                targets = list(node.targets)
+            elif isinstance(node, ast.AnnAssign):
+                targets = [node.target]
+            for target in targets:
+                if not (isinstance(target, ast.Attribute) and target.attr in watched):
+                    continue
+                receiver = target.value
+                name = receiver.id if isinstance(receiver, ast.Name) else ""
+                if receiver_ok.match(name):
+                    offenders.append(f"{relative}:{node.lineno} 直接写 {target.attr}")
+    assert not offenders, (
+        "能力分只能由聚合服务写（能力只能被证明）—— 发现第二写分路径：\n"
+        + "\n".join(f"  - {offender}" for offender in offenders)
+    )

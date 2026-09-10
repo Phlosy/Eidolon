@@ -151,7 +151,8 @@ def test_advance_via_api_and_timeline_visible(client, db, default_company_id):
     detail = client.get(f"/api/v1/cultivation/characters/{character['id']}")
     assert detail.status_code == 200
     events = detail.json()["events"]
-    assert len(events) == 1 and events[0]["kind"] == "course"
+    assert any(e["kind"] == "course" for e in events)
+    assert all(e["kind"] in {"course", "fortune"} for e in events)  # 际遇合法出现
 
 
 def test_advance_other_companys_program_is_404(client, db, default_company_id):
@@ -189,3 +190,204 @@ def test_v28_learning_sessions_program_id_column(tmp_path):
             ).scalar_one()
             == 1
         )
+
+
+# ===========================================================================
+# T1.2：际遇事件 + 人格成型 + 阶段评估（方案 D5/D6）
+# ===========================================================================
+
+import dataclasses  # noqa: E402
+
+from app.brain.registry import TRAIT_REGISTRY  # noqa: E402
+from app.brain.traits import BrainTraits  # noqa: E402
+from app.models.competency import EmployeeCompetency  # noqa: E402
+from app.repositories import runtimes as runtime_repo  # noqa: E402
+from app.services import competency as competency_service  # noqa: E402
+from app.talent.cultivation.templates import TEMPLATES, FortuneEvent  # noqa: E402
+
+
+def test_fortune_sequence_is_deterministic_by_seed(db, default_company_id):
+    """同 seed ⇒ 际遇序列逐值一致（际遇与阶段采样同一确定性 RNG 体系）。"""
+    seed = uuid.uuid4().hex
+    events = []
+    for _ in range(2):
+        _person, _profile, program = _character(db, default_company_id, rng_seed=seed)
+        engine.advance_program(db, program.id)  # stage 0（无际遇表）
+        engine.advance_program(db, program.id)  # stage 1（side_obsession 0.10）
+        events.append(
+            [
+                # 确定性语义在采样结果上（主题/信号/际遇），不在 DB 自增 id 上
+                (
+                    e.kind,
+                    e.outcome.get("topics"),
+                    e.outcome.get("signals"),
+                    e.outcome.get("fortunes"),
+                    e.outcome.get("fortune"),
+                )
+                for e in cultivation_repo.list_education_events(db, program.person_id)
+            ]
+        )
+    assert events[0] == events[1]
+
+
+def test_different_seeds_produce_different_distributions(db, default_company_id):
+    """验收标准 1：不同 seed 的产出有差异（N 次采样，断言出现至少两种不同组合）。"""
+    combos = set()
+    for _ in range(8):
+        _person, _profile, program = _character(db, default_company_id, rng_seed=uuid.uuid4().hex)
+        event = engine.advance_program(db, program.id)
+        combos.add((tuple(event.outcome["topics"]), tuple(event.outcome["signals"])))
+    assert len(combos) >= 2, "8 个不同 seed 产出完全一致 —— 确定性体系失效"
+
+
+def test_forced_fortune_perturbs_signals_traits_and_timeline(db, default_company_id):
+    """强制触发（概率=1 的 patch 模板）：signal 修正 + traits 偏移 + fortune 事件落库。"""
+    person, _profile, program = _character(db, default_company_id)
+    # 人格基线先成型（创建不走 service 时由 advance 兜底，这里显式初始化以便对拍）
+    engine.initialize_character_brain(db, person.id, template_id="academic", seed=program.rng_seed)
+    brain = runtime_repo.get_brain_by_person(db, person.id)
+    baseline = BrainTraits.from_brain(brain).snapshot()["conscientiousness"]
+
+    boosted = dataclasses.replace(
+        TEMPLATES["academic"].stages[2],
+        fortune=(
+            FortuneEvent(
+                key="competition_win",
+                narrative="在学科竞赛中获奖",
+                probability=1.0,
+                signal_delta=10,
+                trait_shift={"conscientiousness": 0.03},
+            ),
+        ),
+    )
+    monkey_template = dataclasses.replace(
+        TEMPLATES["academic"],
+        stages=TEMPLATES["academic"].stages[:2] + (boosted,) + TEMPLATES["academic"].stages[3:],
+    )
+    import app.talent.cultivation.engine as engine_module
+
+    original = engine_module.TEMPLATES["academic"]
+    engine_module.TEMPLATES["academic"] = monkey_template
+    try:
+        program.current_stage = 2  # 跳到高三（评估节点 + 强制际遇）
+        db.commit()
+        event = engine.advance_program(db, program.id)
+    finally:
+        engine_module.TEMPLATES["academic"] = original
+
+    assert event.outcome["fortunes"] == ["competition_win"]
+    assert event.outcome["assessment_run_id"] is not None  # 评估节点同时接线
+    fortune_events = [
+        e for e in cultivation_repo.list_education_events(db, person.id) if e.kind == "fortune"
+    ]
+    assert len(fortune_events) == 1
+    assert fortune_events[0].outcome["narrative"] == "在学科竞赛中获奖"
+    # traits 偏移落 brain（累加 + clamp）
+    after = BrainTraits.from_brain(runtime_repo.get_brain_by_person(db, person.id)).snapshot()[
+        "conscientiousness"
+    ]
+    expected = TRAIT_REGISTRY["conscientiousness"].clamp(baseline + 0.03)
+    assert abs(after - expected) < 1e-9
+
+
+def test_traits_baseline_direction_by_template(db, default_company_id):
+    """人格成型方向：学院派 conscientiousness 均值 > 自学派；自学派 curiosity 均值更高。"""
+    academic_consc, self_curiosity, academic_curiosity, self_consc = [], [], [], []
+    for _ in range(10):
+        for template_id, consc_out, curiosity_out in (
+            ("academic", academic_consc, academic_curiosity),
+            ("self_taught", self_consc, self_curiosity),
+        ):
+            person, _profile, program = _character(db, default_company_id, template=template_id)
+            engine.initialize_character_brain(
+                db, person.id, template_id=template_id, seed=program.rng_seed
+            )
+            traits = BrainTraits.from_brain(
+                runtime_repo.get_brain_by_person(db, person.id)
+            ).snapshot()
+            consc_out.append(traits["conscientiousness"])
+            curiosity_out.append(traits["curiosity"])
+    assert sum(academic_consc) / 10 > sum(self_consc) / 10
+    assert sum(self_curiosity) / 10 > sum(academic_curiosity) / 10
+
+
+def test_blank_character_brain_is_neutral_baseline(db, default_company_id):
+    """blank 自由养成：中性基线（无模板倾向）+ 噪声；person-only 行。"""
+    person, _profile = cultivation_repo.create_character(
+        db,
+        name=f"Blank {uuid.uuid4().hex[:6]}",
+        origin="blank",
+        owner_company_id=default_company_id,
+    )
+    db.commit()
+    engine.initialize_character_brain(db, person.id, template_id=None, seed="fixed-seed")
+    brain = runtime_repo.get_brain_by_person(db, person.id)
+    assert brain is not None and brain.employee_id is None
+    traits = BrainTraits.from_brain(brain).snapshot()
+    for spec in TRAIT_REGISTRY.values():
+        assert abs(traits[spec.key] - 0.5) <= 0.05 + 1e-9, f"{spec.key} 偏离中性基线"
+
+
+def test_stage_assessment_aggregates_education_evidence(db, default_company_id):
+    """评估节点：assessment_runs 落库（person 口径 + owner_company 快照），
+    能力画像来自证据聚合；edu 分级体现在 confidence（课程 0.5 vs 项目 0.9）。"""
+
+    # 课程证据多的角色 vs 项目证据多的角色（同 signal）—— 分级体现在 confidence
+    def _run_with(evidence_kind: str) -> float:
+        person, _profile = cultivation_repo.create_character(
+            db,
+            name=f"Edu {uuid.uuid4().hex[:6]}",
+            origin="trained",
+            owner_company_id=default_company_id,
+        )
+        db.commit()
+        session, _outputs, _ids = engine._run_cultivation_session(
+            db, None, person.id, topic=f"主题 {uuid.uuid4().hex[:6]}", mode="web_research"
+        )
+        engine._write_education_evidence(
+            db,
+            person.id,
+            session=session,
+            evidence_kind=evidence_kind,
+            competency_code="analysis_problem_solving",
+            signal=80,
+            observation="分级验证",
+        )
+        db.commit()
+        run = competency_service.assess_person_competencies(
+            db, person.id, owner_company_id=default_company_id, commit=False
+        )
+        db.commit()
+        return run.outputs[str(_definition_id(db))]["confidence"]
+
+    def _definition_id(db) -> int:
+        return int(
+            db.scalar(
+                sa.text(
+                    "SELECT d.id FROM competency_definitions d"
+                    " JOIN competency_domains dm ON dm.id = d.domain_id"
+                    " WHERE d.code = 'analysis_problem_solving' AND dm.company_id IS NULL"
+                )
+            )
+        )
+
+    course_conf = _run_with("edu_course")
+    project_conf = _run_with("edu_project")
+    assert project_conf > course_conf, "D4 分级必须体现在 confidence（项目 > 课程）"
+
+    # 模板评估节点全链：跳到 vocational 实训结业阶段
+    person, profile, program = _character(db, default_company_id, template="vocational")
+    program.current_stage = 1  # 实训阶段（assessment=True）
+    db.commit()
+    event = engine.advance_program(db, program.id)
+    run_id = event.outcome["assessment_run_id"]
+    assert run_id is not None
+    run_exists = db.scalar(
+        sa.text("SELECT count(*) FROM assessment_runs WHERE id = :id"), {"id": run_id}
+    )
+    assert run_exists == 1
+    rows = list(
+        db.scalars(sa.select(EmployeeCompetency).where(EmployeeCompetency.person_id == person.id))
+    )
+    assert rows and all(r.employee_id is None for r in rows)
+    assert all(r.status in ("provisional", "assessed") for r in rows)
