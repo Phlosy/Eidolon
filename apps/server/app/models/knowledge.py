@@ -29,9 +29,11 @@ class KnowledgeItem(TimestampMixin, Base):
     __tablename__ = "knowledge_items"
 
     scope: Mapped[str] = mapped_column(String(50), default=KnowledgeScope.private.value)
+    # deprecated（R1.2）：属主读口径已切到 owner_person_id；列保留作兼容镜像，随表留存不删。
     owner_employee_id: Mapped[int | None] = mapped_column(
         ForeignKey("employees.id"), nullable=True, index=True
     )
+    owner_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     department_id: Mapped[int | None] = mapped_column(ForeignKey("departments.id"), nullable=True)
     title: Mapped[str] = mapped_column(String(300))
     content: Mapped[str] = mapped_column(Text, default="")

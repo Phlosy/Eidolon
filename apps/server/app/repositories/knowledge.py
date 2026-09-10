@@ -14,6 +14,11 @@ skill_usages / learning_records / learning_priorities 的属主口径已从
 employee_id（deprecated 镜像列）切到 person_id；入参仍是 employee_id，
 经 app/repositories/persons.py 的单一入口换算（read_criterion / write_person_id），
 解析不到时回落旧口径 + warning。
+
+R1.2（批次 2）knowledge_items：只有 **owner 口径** person 化（owner_person_id），
+scope / department_id 分层语义不动。公司隔离的 join 链**保留经 owner_employee_id
+→ employees**：persons 表刻意没有 company_id（人是跨公司的），公司边界是成员身份
+语义，由 employees/departments 提供；兼容期镜像列由双写维持，join 无需改道。
 """
 
 from sqlalchemy import func, or_, select
@@ -92,7 +97,12 @@ def list_knowledge_items(
         stmt = stmt.where(KnowledgeItem.topic == topic)
     if scope == KnowledgeScope.private.value:
         # private knowledge is only ever queried per owner
-        stmt = stmt.where(KnowledgeItem.owner_employee_id == employee_id)
+        # R1.2：owner 口径切 owner_person_id（单一入口换算，解析不到回落镜像列 + warning）
+        stmt = stmt.where(
+            person_repo.read_criterion(
+                db, employee_id, KnowledgeItem.owner_person_id, KnowledgeItem.owner_employee_id
+            )
+        )
     return list(db.scalars(stmt))
 
 
@@ -114,6 +124,11 @@ def get_knowledge_item(db: Session, item_id: int) -> KnowledgeItem | None:
 
 
 def create_knowledge_item(db: Session, **fields) -> KnowledgeItem:
+    # 双写（R1.2）：owner_employee_id 是 deprecated 镜像；owner_person_id 为权威口径。
+    # owner 为 NULL 的条目（department/company scope）没有人称可解析，直接跳过。
+    owner_employee_id = fields.get("owner_employee_id")
+    if owner_employee_id is not None:
+        fields.setdefault("owner_person_id", person_repo.write_person_id(db, owner_employee_id))
     item = KnowledgeItem(**fields)
     db.add(item)
     db.flush()

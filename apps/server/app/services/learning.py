@@ -29,7 +29,7 @@ from app.models.enums import (
     LearningSessionStatus,
     LearningSourceType,
 )
-from app.models.knowledge import KnowledgeItem, LearningPriority
+from app.models.knowledge import LearningPriority
 from app.models.learning import LearningSession
 from app.models.organization import Company, Employee
 from app.models.provider import ModelBinding
@@ -377,30 +377,30 @@ def _produce_outputs(
     environment = "mock"
     if mode == LearningMode.web_research.value:
         for index in range(3):
-            db.add(
-                KnowledgeItem(
-                    scope="private",
-                    owner_employee_id=employee.id,
-                    title=f"Web Research #{index + 1}: {session.topic}",
-                    content=f"simulated research finding {index + 1} for {session.topic}",
-                    topic=session.topic[:200],
-                    status="active",
-                    confidence=0.4,
-                    sources=[
-                        {
-                            "learning_session_id": session.id,
-                            "url": f"https://example-research.local/item/{index + 1}",
-                            "title": f"Source {index + 1} about {session.topic}",
-                            "retrieved_at": now.isoformat(),
-                            "claim": f"finding {index + 1}",
-                            "source_quality": "low",
-                            "confidence": 0.4,
-                            "environment": environment,
-                        }
-                    ],
-                    freshness_status=KnowledgeFreshness.fresh.value,
-                    learned_at=now,
-                )
+            # 双写（R1.2）：走 repo 入口，owner_employee_id 镜像 + owner_person_id 权威一起落
+            knowledge_repo.create_knowledge_item(
+                db,
+                scope="private",
+                owner_employee_id=employee.id,
+                title=f"Web Research #{index + 1}: {session.topic}",
+                content=f"simulated research finding {index + 1} for {session.topic}",
+                topic=session.topic[:200],
+                status="active",
+                confidence=0.4,
+                sources=[
+                    {
+                        "learning_session_id": session.id,
+                        "url": f"https://example-research.local/item/{index + 1}",
+                        "title": f"Source {index + 1} about {session.topic}",
+                        "retrieved_at": now.isoformat(),
+                        "claim": f"finding {index + 1}",
+                        "source_quality": "low",
+                        "confidence": 0.4,
+                        "environment": environment,
+                    }
+                ],
+                freshness_status=KnowledgeFreshness.fresh.value,
+                learned_at=now,
             )
             outputs["knowledge"] += 1
         # 双写（R1.1）：走 repo 入口，employee_id 镜像 + person_id 权威一起落
@@ -421,33 +421,31 @@ def _produce_outputs(
         )
         outputs["questions"] += 1
     elif mode == LearningMode.knowledge_review.value:
-        db.add(
-            KnowledgeItem(
-                scope="private",
-                owner_employee_id=employee.id,
-                title=f"Review: {session.topic}",
-                content="simulated knowledge review note",
-                topic=session.topic[:200],
-                status="active",
-                confidence=0.5,
-                freshness_status=KnowledgeFreshness.fresh.value,
-                learned_at=now,
-            )
+        knowledge_repo.create_knowledge_item(
+            db,
+            scope="private",
+            owner_employee_id=employee.id,
+            title=f"Review: {session.topic}",
+            content="simulated knowledge review note",
+            topic=session.topic[:200],
+            status="active",
+            confidence=0.5,
+            freshness_status=KnowledgeFreshness.fresh.value,
+            learned_at=now,
         )
         outputs["knowledge"] += 1
     elif mode == LearningMode.document_study.value:
-        db.add(
-            KnowledgeItem(
-                scope="private",
-                owner_employee_id=employee.id,
-                title=f"Document study: {session.topic}",
-                content="simulated document study note",
-                topic=session.topic[:200],
-                status="active",
-                confidence=0.5,
-                freshness_status=KnowledgeFreshness.fresh.value,
-                learned_at=now,
-            )
+        knowledge_repo.create_knowledge_item(
+            db,
+            scope="private",
+            owner_employee_id=employee.id,
+            title=f"Document study: {session.topic}",
+            content="simulated document study note",
+            topic=session.topic[:200],
+            status="active",
+            confidence=0.5,
+            freshness_status=KnowledgeFreshness.fresh.value,
+            learned_at=now,
         )
         outputs["knowledge"] += 1
     # practice：产出标记 environment=practice 的 SkillUsage/Evidence 留给真实 practice 路径

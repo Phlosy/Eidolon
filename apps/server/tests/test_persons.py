@@ -17,7 +17,7 @@ from factories import make_employee, make_person
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import _alembic_config
-from app.models.organization import Employee
+from app.models.organization import Company, Employee
 from app.repositories import organization as org_repo
 from app.repositories import persons as person_repo
 
@@ -422,3 +422,136 @@ def test_v22_backfills_person_id_on_all_batch1_tables(tmp_path):
                 {"name": index_name},
             ).scalar_one()
             assert "WHERE" in index_sql.upper() and "person_id IS NOT NULL" in index_sql
+
+
+# ===========================================================================
+# R1.2 批次 2：knowledge_items 属主口径（docs/person-core-migration.md §3 D4）
+# ===========================================================================
+
+
+V22 = "u7b9d1f3a5c8e"
+
+
+def test_knowledge_item_double_writes_owner_employee_and_person(db, default_company_id):
+    """双写：owner_employee_id 镜像 + owner_person_id 权威；无 owner 的条目跳过解析。"""
+    employee = make_employee(db, company_id=default_company_id, slug=_unique("ki"))
+    db.commit()
+
+    item = knowledge_repo.create_knowledge_item(
+        db, scope="private", owner_employee_id=employee.id, title="t", topic="t"
+    )
+    assert item.owner_employee_id == employee.id
+    assert item.owner_person_id == employee.person_id
+
+    shared = knowledge_repo.create_knowledge_item(
+        db, scope="company", department_id=None, title="c", topic="t"
+    )
+    assert shared.owner_employee_id is None and shared.owner_person_id is None
+
+
+def test_private_knowledge_owner_read_uses_person_column(db, default_company_id):
+    """切读：private 过滤按 owner_person_id；镜像列失真不影响读取（权威在 person）。"""
+    employee = make_employee(db, company_id=default_company_id, slug=_unique("kp"))
+    db.commit()
+    item = knowledge_repo.create_knowledge_item(
+        db, scope="private", owner_employee_id=employee.id, title="mine", topic="t"
+    )
+    db.execute(
+        sa.text("UPDATE knowledge_items SET owner_employee_id = -1 WHERE id = :id"),
+        {"id": item.id},
+    )
+    db.commit()
+    items = knowledge_repo.list_knowledge_items(db, scope="private", employee_id=employee.id)
+    assert [i.title for i in items] == ["mine"]
+
+
+def test_private_knowledge_isolation_survives_person_switch(db, default_company_id):
+    """隔离不变量：别人的 private 读不到 —— 切 person 口径后这条铁律不变（§3.4.1）。"""
+    owner = make_employee(db, company_id=default_company_id, slug=_unique("kown"))
+    other = make_employee(db, company_id=default_company_id, slug=_unique("koth"))
+    knowledge_repo.create_knowledge_item(
+        db, scope="private", owner_employee_id=owner.id, title="secret", topic="t"
+    )
+    db.commit()
+    assert knowledge_repo.list_knowledge_items(db, scope="private", employee_id=other.id) == []
+    mine = knowledge_repo.list_knowledge_items(db, scope="private", employee_id=owner.id)
+    assert [i.title for i in mine] == ["secret"]
+
+
+def test_knowledge_company_isolation_still_via_employee_membership(db, default_company_id):
+    """公司边界仍由 employees 成员身份提供（persons 无 company_id），切读后语义不变。"""
+    other_company = Company(name="Other Co", slug=_unique("other-co"), description="")
+    db.add(other_company)
+    db.flush()
+    outsider = make_employee(db, company_id=other_company.id, slug=_unique("kout"))
+    mine = make_employee(db, company_id=default_company_id, slug=_unique("kin"))
+    knowledge_repo.create_knowledge_item(
+        db, scope="private", owner_employee_id=outsider.id, title="outside", topic="t"
+    )
+    knowledge_repo.create_knowledge_item(
+        db, scope="private", owner_employee_id=mine.id, title="inside", topic="t"
+    )
+    db.commit()
+    items = knowledge_repo.list_knowledge_items(
+        db, scope="private", employee_id=mine.id, company_id=default_company_id
+    )
+    assert [i.title for i in items] == ["inside"]
+
+
+def test_v23_backfills_owner_person_id_and_skips_null_owner(tmp_path):
+    """v23 内联回填：有 owner 的行回填 owner_person_id；NULL owner（scope 分层条目）跳过。"""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'batch2.db'}")
+    _upgrade(engine, V22)
+    with engine.begin() as conn:
+        conn.execute(
+            sa.text(
+                "INSERT INTO companies (name, slug, description, industry, settings, stage,"
+                " created_at, updated_at) VALUES ('Co', 'co', '', '', '{}', 'FOUNDING',"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO persons (slug, name, avatar, username, created_at, updated_at)"
+                " VALUES ('ada', 'Ada', '', 'ada', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO employees (company_id, name, slug, role, title, avatar, status,"
+                " lifecycle_status, username, runtime_type, runtime_config, workspace_path,"
+                " memory_namespace, person_id, created_at, updated_at) VALUES (1, 'Ada', 'ada',"
+                " 'engineer', '', '', 'idle', 'active', 'ada', 'mock', '{}', '/tmp/ada',"
+                " 'mem-ada', 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        # 有属主的 private 条目（应回填）+ 无属主的 company 条目（应保持 NULL）
+        conn.execute(
+            sa.text(
+                "INSERT INTO knowledge_items (scope, owner_employee_id, title, content, topic,"
+                " status, confidence, sources, freshness_status, created_at, updated_at) VALUES"
+                " ('private', 1, 'owned', '', 't', 'active', 0.0, '[]', 'fresh',"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00'),"
+                " ('company', NULL, 'shared', '', 't', 'active', 0.0, '[]', 'fresh',"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+
+    _upgrade(engine, "head")
+
+    with engine.connect() as conn:
+        owned = conn.execute(
+            sa.text("SELECT owner_person_id FROM knowledge_items WHERE title = 'owned'")
+        ).scalar_one()
+        shared = conn.execute(
+            sa.text("SELECT owner_person_id FROM knowledge_items WHERE title = 'shared'")
+        ).scalar_one()
+        assert owned == 1, "有 owner 的行必须回填 owner_person_id"
+        assert shared is None, "NULL owner 的行必须保持 NULL"
+        index = conn.execute(
+            sa.text(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+                " AND name = 'ix_knowledge_items_owner_person_id'"
+            )
+        ).scalar_one_or_none()
+        assert index is not None
