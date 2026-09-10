@@ -106,18 +106,37 @@ def list_characters(
     return list(db.scalars(stmt))
 
 
+def count_profiles_by_origin(db: Session, origin: str) -> int:
+    """按来源计数（发行方命名索引；不做公司过滤 —— 发行供给是全局的）。"""
+    from sqlalchemy import func
+
+    return int(
+        db.scalar(
+            select(func.count())
+            .select_from(CharacterProfile)
+            .where(CharacterProfile.origin == origin)
+        )
+        or 0
+    )
+
+
 def create_program(
     db: Session,
     *,
     person_id: int,
     template: str = "",
     rng_seed: str | None = None,
+    metadata_json: dict | None = None,
 ) -> TrainingProgram:
-    """开一次培养实例。rng_seed 创建时落库（确定性来源，测试可注入固定 seed）。"""
+    """开一次培养实例。rng_seed 创建时落库（确定性来源，测试可注入固定 seed）。
+
+    `metadata_json` = 培养参数（T2.4 发行方档位；只影响采样参数，不影响能力分）。
+    """
     program = TrainingProgram(
         person_id=person_id,
         template=template,
         rng_seed=rng_seed or uuid.uuid4().hex,
+        metadata_json=metadata_json or {},
     )
     db.add(program)
     db.flush()

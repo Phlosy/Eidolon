@@ -367,8 +367,8 @@ cd apps/web && npm run build
 | T2.1 Person Read Model / API | **DONE**（2026-09-10） | `f4165d4` | `app/talent/person/` + `/api/v1/persons/*`；对拍/404/null 语义全锁；**无迁移**；pytest 701 / web 312 |
 | T2.2 Cultivation Completion & Eligibility | **DONE**（2026-09-10） | `6a79102` | 自由养成显式结业 + `cultivation.completed` + 三轴资格判定集中一处；附带修复 roster person-only 行缺陷（I13）；**无迁移**；pytest 712 / web 314 |
 | T2.3 Market Core & MarketAdapter | **DONE**（2026-09-10） | `18e1bcb` | 迁移 v29（两张表 + 部分唯一索引）+ LocalMarketAdapter + MarketService + 公开投影读面；pytest 723 |
-| T2.4 Issuer & Market Supply | **NEXT** | — | 入口：设计 §7 D11 + plan §4.5 |
-| T2.5 Person-scoped Fit | PLANNED | — | 本文件 §4.6 |
+| T2.4 Issuer & Market Supply | **DONE**（2026-09-10） | `见 Progress Log` | 迁移 v30（training_programs.metadata_json）+ IssuerService（三档参数）+ CLI；`origin=issued` 走真实培养链；pytest 736 |
+| T2.5 Person-scoped Fit | **NEXT** | — | 入口：plan §4.6 + 设计 §9 |
 | T2.6 Recruitment | PLANNED | — | 本文件 §4.7，I1–I5 |
 | T2.7 Market Experience & NPC | PLANNED | — | 本文件 §4.8 |
 | T2.8 E2E / Hardening / Freeze | PLANNED | — | 本文件 §13/§14 |
@@ -445,3 +445,28 @@ cd apps/web && npm run build
     （listed_by=TestCo）→ 详情 200（traits 8 / general 10 / timeline 1 / evidence 1 / market_state=listed，
     无 person_id、owner_company_id、session_ids 泄露）→ 下架 204（重复 204）→ 详情 404、
     搜索 0 → 重新挂牌 201；events = listed/delisted/listed 各一次；participants 单行（幂等）。
+
+- **2026-09-10 · T2.4 DONE**：commit 哈希见紧随的 `docs(t2): T2.4 进度落盘` 提交（避免自引用哈希）。
+  - 迁移 **v30**（`c5d7e9f1b3a6` ← `b4c6d8e0f2a3`）：`training_programs.metadata_json`
+    （JSON NOT NULL + server_default `'{}'`；刻意不塞 `resource_used`、不建参数表）；
+    up/down/up 实测；dev 库已 upgrade；`alembic check` 无漂移。
+  - 后端：`talent/market/issuer.py`（`IssuerService` + 三档 `TIERS` + `CultivationParams`），
+    `engine.advance_program(assessment_company_id=...)`（发行上下文覆盖，玩家路径不变）、
+    采样应用参数（signal_bonus / fortune_weight / intensity_bonus，默认值与 T1 逐值一致）、
+    `market_service.list_for_participant`（供给予路径共用事件）、`create_program(metadata_json=)`、
+    `count_profiles_by_origin`；CLI `scripts/issue_talent.py` + `make market-issue`。
+  - 决策：**D13**（发行方上下文：owner NULL + 部署默认公司作评估历史快照）；
+    `origin=issued` 由发行方产出，**玩家端点仍拒绝**。
+  - 测试：后端 +13（`tests/test_market_issuer.py`）：真实培养链（履历/证据/评估 run/能力行有证据背书）、
+    在市场挂牌（system_issuer）+ 公开投影可读 + `/persons/*` 404、只产出不挂牌、
+    同 seed 确定性、三档分布单调（证据条数与平均 signal；固定模板隔离参数）、
+    rare 双模板、未知档位拒绝、玩家端点拒 issued、D11 两条守卫（AST 无 score/confidence、
+    不构造 EmployeeCompetency/AssessmentRun）、档位契约冻结、owner NULL。
+  - 门禁：pytest **736 passed** / 6 deselected；ruff check 全绿、format 仅 5 个既有 WIP 红；
+    alembic check 无漂移（head `c5d7e9f1b3a6` / v30）；web 314 passed + tsc/eslint/prettier 全绿（未改前端）。
+  - 实机：`make market-issue ISSUE_ARGS="--tier rare --count 2 --seed live-demo"` → 两名 issued 角色
+    （CH-TBW2BR8T5AC8 / CH-3MTW07X6AQ6H），各 22–23 条教育证据、mean_signal 74.3/78.6、
+    listings 3/4；DB 校验：programs 双模板 completed + metadata.issuer.tier=rare、
+    assessment company=1（快照）、能力行得分有证据背书（77@18 / 99@4）、无 employee 行；
+    市场 API：detail 200（traits 8 / general 10 / timeline 7 / evidence 20 / market_state=listed）、
+    `origin=issued` 与 `quality_tier=rare` 过滤各命中 2、无内部 id 泄露。

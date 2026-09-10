@@ -54,14 +54,6 @@ def list_person(
     if profile is None or company_id is None or profile.owner_company_id != company_id:
         raise MarketError("person_not_found", http_status=404)
 
-    decision = eligibility.can_list(db, person_id)
-    if not decision.allowed:
-        if decision.reason is eligibility.EligibilityReason.already_listed:
-            existing = _adapter().get_listing_for_person(db, person_id)
-            assert existing is not None  # already_listed ⇒ active listing 存在
-            return existing, False
-        raise MarketError(decision.reason.value)
-
     company = org_repo.get_company(db, company_id)
     participant = market_repo.ensure_participant(
         db,
@@ -69,10 +61,41 @@ def list_person(
         company_id=company_id,
         display_name=company.name if company is not None else "",
     )
+    return list_for_participant(
+        db,
+        person_id=person_id,
+        participant_id=int(participant.id),
+        quality_tier=quality_tier,
+        company_id=company_id,
+    )
+
+
+def list_for_participant(
+    db: Session,
+    *,
+    person_id: int,
+    participant_id: int,
+    quality_tier: str | None = None,
+    company_id: int | None = None,
+) -> tuple[MarketListingView, bool]:
+    """以任意**市场参与者**的名义挂牌（玩家公司 / 系统发行方 / T2.7 NPC 供给）。
+
+    资格仍走 `eligibility.can_list`（发行方也不能挂牌未结业/已入职的人）；
+    公司边界由调用方负责（玩家路径 = `list_person` 的持有校验；发行方路径 = 系统角色）。
+    事件只在此处发布 —— 所有供给予路径共用一份事实。
+    """
+    decision = eligibility.can_list(db, person_id)
+    if not decision.allowed:
+        if decision.reason is eligibility.EligibilityReason.already_listed:
+            existing = _adapter().get_listing_for_person(db, person_id)
+            assert existing is not None
+            return existing, False
+        raise MarketError(decision.reason.value)
+
     view = _adapter().list_candidate(
         db,
         person_id=person_id,
-        listed_by_participant_id=int(participant.id),
+        listed_by_participant_id=participant_id,
         quality_tier=quality_tier,
     )
     db.commit()

@@ -301,3 +301,52 @@ SELF_TAUGHT = CultivationTemplate(
 TEMPLATES: dict[str, CultivationTemplate] = {
     template.template_id: template for template in (ACADEMIC, VOCATIONAL, SELF_TAUGHT)
 }
+
+
+# ---- 培养参数（T2.4）：发行方档位只影响**采样参数与概率分布** ----
+
+
+@dataclass(frozen=True)
+class CultivationParams:
+    """一次培养实例的附加参数（存在 `training_programs.metadata_json`）。
+
+    只允许影响"怎么学"的采样：证据 signal 修正、际遇触发权重、阶段覆盖主题数补充。
+    **绝不含能力分/成功率/置信度**（D11/概念架构 §4 规则 3：能力只能被证据证明）。
+    默认值 = 无影响（玩家路径与 T1 逐值一致）。
+    """
+
+    signal_bonus: int = 0  # 每阶段证据 signal 修正（±）
+    fortune_weight: float = 1.0  # 际遇触发概率权重（1.0 = 模板原值）
+    intensity_bonus: int = 0  # 阶段覆盖主题数补充（更多证据条数）
+
+    _SIGNAL_BOUNDS = (-20, 20)
+    _WEIGHT_BOUNDS = (0.0, 2.0)
+    _INTENSITY_BOUNDS = (0, 4)
+
+
+def parse_cultivation_params(raw: dict | None) -> CultivationParams:
+    """从 `metadata_json["issuer"]`（或平铺）解析参数；越界夹取，未知键忽略。
+
+    解析必须**永不抛错**：它是读路径的一部分（历史行可能带任何 JSON）。
+    """
+    if not isinstance(raw, dict):
+        return CultivationParams()
+    block = raw.get("issuer") if isinstance(raw.get("issuer"), dict) else raw
+
+    def _int(key: str, low: int, high: int) -> int:
+        value = block.get(key, 0)
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return 0
+        return max(low, min(high, int(value)))
+
+    def _float(key: str, low: float, high: float) -> float:
+        value = block.get(key, 1.0)
+        if not isinstance(value, (int, float)) or isinstance(value, bool):
+            return 1.0
+        return max(low, min(high, float(value)))
+
+    return CultivationParams(
+        signal_bonus=_int("signal_bonus", *CultivationParams._SIGNAL_BOUNDS),
+        fortune_weight=_float("fortune_weight", *CultivationParams._WEIGHT_BOUNDS),
+        intensity_bonus=_int("intensity_bonus", *CultivationParams._INTENSITY_BOUNDS),
+    )

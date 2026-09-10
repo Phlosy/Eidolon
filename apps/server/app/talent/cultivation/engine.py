@@ -34,7 +34,7 @@ from app.models.learning import LearningSession
 from app.repositories import cultivation as cultivation_repo
 from app.services import competency as competency_service
 from app.services import learning as learning_service
-from app.talent.cultivation.templates import TEMPLATES, FortuneEvent
+from app.talent.cultivation.templates import TEMPLATES, FortuneEvent, parse_cultivation_params
 
 
 class CultivationError(ValueError):
@@ -187,8 +187,15 @@ def _write_education_evidence(
     return int(row.id)
 
 
-def advance_program(db: Session, program_id: int) -> EducationEvent:
-    """推进一个模板阶段：采样 → 学习产出 → 证据 → 履历事件；走完置 ready。"""
+def advance_program(
+    db: Session, program_id: int, *, assessment_company_id: int | None = None
+) -> EducationEvent:
+    """推进一个模板阶段：采样 → 学习产出 → 证据 → 履历事件；走完置 ready。
+
+    `assessment_company_id`：评估 run 的公司上下文快照覆盖（仅发行方路径使用 ——
+    发行角色 `owner_company_id` 为 NULL（在市场，T1 语义），评估需要一个历史上下文；
+    玩家路径不传，行为与 T1 逐值一致）。
+    """
     program = db.get(TrainingProgram, program_id)
     if program is None:
         raise CultivationError("program not found")
@@ -205,16 +212,23 @@ def advance_program(db: Session, program_id: int) -> EducationEvent:
     initialize_character_brain(
         db, program.person_id, template_id=program.template, seed=program.rng_seed
     )
+    # 培养参数（T2.4）：发行方档位只影响采样参数（默认值 = 逐值不变）
+    params = parse_cultivation_params(getattr(program, "metadata_json", None))
     rng = _rng_for(program, program.current_stage)
     # 知识覆盖采样：主题子集 + signal 噪声（分布而非定值，愿景 §3.1）
-    covered = rng.sample(list(stage.topics), k=min(stage.intensity, len(stage.topics)))
+    covered = rng.sample(
+        list(stage.topics),
+        k=min(stage.intensity + params.intensity_bonus, len(stage.topics)),
+    )
     signals = [
-        max(0, min(100, stage.signal_base + delta))
+        max(0, min(100, stage.signal_base + params.signal_bonus + delta))
         for delta in (rng.randint(-stage.signal_spread, stage.signal_spread) for _ in covered)
     ]
     # 际遇（D5）：同一 RNG 流上按概率触发；扰动是修正不是替代 —— 基础产出照常，
     # 际遇在其上加减（signal 修正 / 额外主题 / traits 偏移）。
-    triggered = [f for f in stage.fortune if rng.random() < f.probability]
+    triggered = [
+        f for f in stage.fortune if rng.random() < min(1.0, f.probability * params.fortune_weight)
+    ]
     extra_topics = [topic for fortune in triggered for topic in fortune.extra_topics]
     for _topic in extra_topics:
         covered.append(_topic)
@@ -223,7 +237,9 @@ def advance_program(db: Session, program_id: int) -> EducationEvent:
                 0,
                 min(
                     100,
-                    stage.signal_base + rng.randint(-stage.signal_spread, stage.signal_spread),
+                    stage.signal_base
+                    + params.signal_bonus
+                    + rng.randint(-stage.signal_spread, stage.signal_spread),
                 ),
             )
         )
@@ -259,12 +275,15 @@ def advance_program(db: Session, program_id: int) -> EducationEvent:
     assessment_run_id = None
     if stage.assessment:
         profile = cultivation_repo.get_profile_by_person(db, program.person_id)
-        if profile is None or profile.owner_company_id is None:
+        company_context = assessment_company_id or (
+            profile.owner_company_id if profile is not None else None
+        )
+        if company_context is None:
             raise CultivationError("角色无所属公司，无法做阶段评估（company 快照缺失）")
         run = competency_service.assess_person_competencies(
             db,
             program.person_id,
-            owner_company_id=profile.owner_company_id,
+            owner_company_id=company_context,
             triggered_by=f"cultivation:program:{program.id}:stage:{program.current_stage}",
             commit=False,
         )

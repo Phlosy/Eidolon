@@ -18,7 +18,7 @@ character_profiles.person_id 的唯一约束，完整性靠服务层 + 守卫
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Integer, String
+from sqlalchemy import JSON, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, utcnow
@@ -63,6 +63,10 @@ class TrainingProgram(TimestampMixin, Base):
     rng_seed: Mapped[str] = mapped_column(String(64))
     # active / completed / abandoned
     status: Mapped[str] = mapped_column(String(20), default="active")
+    #: 培养参数（T2.4）：当前只有发行方档位参数 `{"issuer": {...}}` ——
+    #: 只影响采样参数与概率分布（signal 修正 / 际遇权重 / 覆盖主题数补充），
+    #: **绝不影响能力分**（能力只能由证据聚合器写，概念架构 §4 规则 3）。
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict, server_default=text("'{}'"))
 
 
 class EducationEvent(TimestampMixin, Base):

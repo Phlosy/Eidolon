@@ -128,6 +128,12 @@ status:
 dev-inventory: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/dev_inventory.py $(INV_ARGS)
 
+## market-issue: 发行本地市场人才（T2.4；走真实培养链，档位只影响采样参数）
+##   例：make market-issue ISSUE_ARGS="--tier rare --count 2"
+.PHONY: market-issue
+market-issue: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/issue_talent.py $(ISSUE_ARGS)
+
 ## dev-cleanup-plan: **只读**清理规划（dry-run；必须显式传 COMPANY_IDS，如 COMPANY_IDS="1 3"；不删不改）
 .PHONY: dev-cleanup-plan
 dev-cleanup-plan: check-env

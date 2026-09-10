@@ -215,6 +215,7 @@ repository 层强制）；**Market 是唯一的跨公司读取域**，且必须�
 | **D10** | 无经济依赖 | T2 代码不得出现 wallet/ledger/price/escrow 等 M1 概念；有守卫测试 | 用户 §十一/§十八D |
 | **D11** | `issued` 走真实培养 | 发行方角色必须经 `advance_program` 真实产出证据，品质档位只影响**参数与概率分布**，不直接写能力分 | 用户 §十二；概念架构 §4 规则 3 |
 | **D12** | 招募不复制人级资产 | 见 §3.2；有守卫测试 | 用户 §3.1 |
+| **D13** | 发行方上下文（T2.4） | issued 角色**生下来就在市场**：`character_profiles.owner_company_id = NULL`（T1 语义）；评估需要非空公司上下文，由 `IssuerService` 显式传入**本部署默认公司**作**历史快照**（仅 provenance — 不产生所有权，`/persons/*` 不因此可读；招募后也不回写，I5）。引擎侧唯一接口：`advance_program(assessment_company_id=...)`；玩家路径不传，行为与 T1 逐值一致 | audit：`assessment_runs.company_id` NOT NULL；市场供给无公司行 |
 
 ## 8. MarketAdapter 契约
 
@@ -310,6 +311,22 @@ Protocol 由远端实现，**不修改**本契约。
 | **I11** | `character_profiles.lifecycle` 只含 `cultivating`/`ready` | T2.0 enum + T2.2 |
 | **I12** | 能力分只能由聚合器写（含市场/发行路径） | 既有 app 级守卫（`test_competency_guards.py`） |
 | **I13** | **person-only 行与 employee 行可并存**（培养期产生的 `employee_id IS NULL` 行 + 招募后的 employee 行）：所有 person 口径读面必须能处理这类行，不得假设“双写两列必有一 employee” | T2.2 回归（`test_roster_api.py`）＋ T2.6 复查 |
+
+## 10b. 发行方（T2.4 落地形态）
+
+- `app/talent/market/issuer.py`：`IssuerService.issue(...)` —— 建角色（`origin=issued`，
+  `owner_company_id=NULL`）→ 按档位跑满培养实例（`advance_program` 循环至 completed，
+  评估节点自动触发）→ `market_service.list_for_participant`（participant = `system_issuer`）
+  → 事件 `market.listed`（不新增 `market.issued` 同义事件）；
+- 档位（`TIERS`，**发行参数契约**）：`normal` = vocational；`fine` = academic + 参数
+  （signal+5 / 际遇权重 1.25 / 覆盖 +1）；`rare` = academic+vocational 双履历 + 更高参数
+  （signal+10 / 1.5 / +1）。**只影响采样分布，不写能力分**（有 AST 守卫）；
+- 培养参数载体：`training_programs.metadata_json`（v30）→ `CultivationParams`
+  （`signal_bonus` / `fortune_weight` / `intensity_bonus`，越界夹取、未知键忽略、
+  默认值 = 与 T1 逐值一致）；
+- 触发：CLI `scripts/issue_talent.py` + `make market-issue ISSUE_ARGS="--tier rare --count 2"`
+  （不做发行 UI —— 属 T2.7）；
+- 玩家端点 `POST /cultivation/characters` **仍拒绝** `origin=issued`（玩家不能自铸官方角色）。
 
 ## 11. 与 M1 / M2 的边界
 
