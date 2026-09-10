@@ -1,6 +1,11 @@
 """Competency read repository (P5). 只读；写面只有聚合服务（app/services/competency.py）。
 
 读取一律显式查询（不建 relationship，避免 N+1 与"随手取第一个"）。
+
+R1.3 切读（docs/person-core-migration.md D4 批次 3）：employee_competencies /
+competency_evidence 的属主口径从 employee_id（deprecated 镜像列）切到 person_id；
+入参仍是 employee_id，经 app/repositories/persons.py 单一入口换算，解析不到
+回落旧口径 + warning。
 """
 
 from __future__ import annotations
@@ -15,6 +20,7 @@ from app.models.competency import (
     EmployeeCompetency,
 )
 from app.models.enums import CompetencyKind
+from app.repositories import persons as person_repo
 
 
 def list_domains(
@@ -56,7 +62,11 @@ def definitions_by_id(db: Session, definition_ids: list[int]) -> dict[int, Compe
 def employee_competency_rows(
     db: Session, employee_id: int, definition_ids: list[int] | None = None
 ) -> list[EmployeeCompetency]:
-    query = select(EmployeeCompetency).where(EmployeeCompetency.employee_id == employee_id)
+    query = select(EmployeeCompetency).where(
+        person_repo.read_criterion(
+            db, employee_id, EmployeeCompetency.person_id, EmployeeCompetency.employee_id
+        )
+    )
     if definition_ids:
         query = query.where(EmployeeCompetency.competency_definition_id.in_(definition_ids))
     return list(db.scalars(query))
@@ -72,7 +82,11 @@ def list_evidence(
     return list(
         db.scalars(
             select(CompetencyEvidence)
-            .where(CompetencyEvidence.employee_id == employee_id)
+            .where(
+                person_repo.read_criterion(
+                    db, employee_id, CompetencyEvidence.person_id, CompetencyEvidence.employee_id
+                )
+            )
             .order_by(CompetencyEvidence.occurred_at.desc(), CompetencyEvidence.id.desc())
             .limit(limit)
             .offset(offset)

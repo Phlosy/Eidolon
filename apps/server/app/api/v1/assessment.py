@@ -201,12 +201,13 @@ def employee_assessments(
     db: Session = Depends(get_db),
 ) -> list:
     _employee_or_404(db, employee_id, company_id)
+    # R1.3：assessment 历史按 person 口径读（单一入口换算，带旧口径回落）
+    run_owner = person_repo.read_criterion(
+        db, employee_id, AssessmentRun.person_id, AssessmentRun.employee_id
+    )
     runs = list(
         db.scalars(
-            select(AssessmentRun)
-            .where(AssessmentRun.employee_id == employee_id)
-            .order_by(AssessmentRun.id.desc())
-            .limit(limit)
+            select(AssessmentRun).where(run_owner).order_by(AssessmentRun.id.desc()).limit(limit)
         )
     )
     return [_run_summary(db, run) for run in runs]
@@ -337,9 +338,19 @@ def competency_explanation(
     definition = _resolve_competency_definition(db, competency)
     domain = db.get(CompetencyDomain, definition.domain_id)
 
+    # R1.3：能力行/证据/历史 run 全部按 person 口径读（单一入口换算，带旧口径回落）
+    competency_owner = person_repo.read_criterion(
+        db, employee_id, EmployeeCompetency.person_id, EmployeeCompetency.employee_id
+    )
+    evidence_owner = person_repo.read_criterion(
+        db, employee_id, CompetencyEvidence.person_id, CompetencyEvidence.employee_id
+    )
+    run_owner = person_repo.read_criterion(
+        db, employee_id, AssessmentRun.person_id, AssessmentRun.employee_id
+    )
     row = db.scalar(
         select(EmployeeCompetency).where(
-            EmployeeCompetency.employee_id == employee_id,
+            competency_owner,
             EmployeeCompetency.competency_definition_id == definition.id,
         )
     )
@@ -353,7 +364,7 @@ def competency_explanation(
         db.scalars(
             select(CompetencyEvidence)
             .where(
-                CompetencyEvidence.employee_id == employee_id,
+                evidence_owner,
                 CompetencyEvidence.competency_definition_id == definition.id,
             )
             .order_by(CompetencyEvidence.occurred_at.desc())
@@ -363,7 +374,7 @@ def competency_explanation(
     distribution_rows = db.execute(
         select(CompetencyEvidence.source_kind, func.count())
         .where(
-            CompetencyEvidence.employee_id == employee_id,
+            evidence_owner,
             CompetencyEvidence.competency_definition_id == definition.id,
         )
         .group_by(CompetencyEvidence.source_kind)
@@ -374,10 +385,7 @@ def competency_explanation(
 
     runs = list(
         db.scalars(
-            select(AssessmentRun)
-            .where(AssessmentRun.employee_id == employee_id)
-            .order_by(AssessmentRun.id.desc())
-            .limit(5)
+            select(AssessmentRun).where(run_owner).order_by(AssessmentRun.id.desc()).limit(5)
         )
     )
     profile_ids = {run.profile_id for run in runs if run.profile_id}

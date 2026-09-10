@@ -18,6 +18,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import sqlalchemy as sa
+from factories import make_employee, person_id_of
 
 from app.models.competency import (
     AssessmentRun,
@@ -26,7 +27,7 @@ from app.models.competency import (
 )
 from app.models.enums import CompetencyStatus, EvidenceSourceKind
 from app.models.knowledge import Skill, SkillUsage
-from app.models.organization import Company, Employee
+from app.models.organization import Company
 from app.services import competency as svc
 
 _T0 = datetime.now(UTC) - timedelta(days=5)
@@ -38,24 +39,24 @@ def _hire(db, company_id: int | None = None, company: Company | None = None) -> 
     global _tag
     _tag += 1
     if company is None:
-        employee = Employee(
+        employee = make_employee(
+            db,
             company_id=company_id,
-            name=f"Competency Tester {_tag}",
             slug=f"comp-test-{_tag}",
+            name=f"Competency Tester {_tag}",
             workspace_path=f"/tmp/comp-{_tag}-ws",
             memory_namespace=f"mem-comp-{_tag}",
         )
-        db.add(employee)
         db.flush()
         return int(employee.id)
-    employee = Employee(
+    employee = make_employee(
+        db,
         company_id=company.id,
-        name=f"Competency Tester {_tag}",
         slug=f"comp-other-{_tag}",
+        name=f"Competency Tester {_tag}",
         workspace_path=f"/tmp/comp-o-{_tag}-ws",
         memory_namespace=f"mem-comp-o-{_tag}",
     )
-    db.add(employee)
     db.flush()
     return int(employee.id)
 
@@ -92,6 +93,7 @@ def _add_evidence(
 ) -> CompetencyEvidence:
     evidence = CompetencyEvidence(
         employee_id=employee_id,
+        person_id=person_id_of(db, employee_id),
         competency_definition_id=definition_id,
         source_kind=kind,
         source_id=project * 1000,
@@ -204,6 +206,7 @@ def test_appending_evidence_never_lowers_confidence(db, default_company_id):
     db.add(
         CompetencyEvidence(
             employee_id=employee_id,
+            person_id=person_id_of(db, employee_id),
             competency_definition_id=definition_id,
             source_kind=EvidenceSourceKind.test.value,
             source_ref="T0",
@@ -219,6 +222,7 @@ def test_appending_evidence_never_lowers_confidence(db, default_company_id):
     db.add(
         CompetencyEvidence(
             employee_id=employee_id,
+            person_id=person_id_of(db, employee_id),
             competency_definition_id=definition_id,
             source_kind=EvidenceSourceKind.review.value,
             source_ref="T1",

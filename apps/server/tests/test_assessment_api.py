@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import pytest
 import sqlalchemy as sa
+from factories import make_employee, person_id_of
 
 from app.models.competency import CompetencyEvidence
 from app.models.organization import Department, Employee
@@ -24,14 +25,14 @@ _seq = 0
 def _hire(db, default_company_id: int) -> int:
     global _seq
     _seq += 1
-    employee = Employee(
+    employee = make_employee(
+        db,
         company_id=default_company_id,
-        name=f"Api Tester {_seq}",
         slug=f"api-tester-{_seq}",
+        name=f"Api Tester {_seq}",
         workspace_path=f"/tmp/api-{_seq}-ws",
         memory_namespace=f"mem-api-{_seq}",
     )
-    db.add(employee)
     db.commit()
     return int(employee.id)
 
@@ -91,6 +92,7 @@ def _seed_evidence_and_run(client, db, default_company_id) -> tuple[int, int]:
     db.add(
         CompetencyEvidence(
             employee_id=employee_id,
+            person_id=person_id_of(db, employee_id),
             competency_definition_id=_def(db, "execution"),
             source_kind="task",
             source_ref="T-1",
@@ -100,6 +102,7 @@ def _seed_evidence_and_run(client, db, default_company_id) -> tuple[int, int]:
     db.add(
         CompetencyEvidence(
             employee_id=employee_id,
+            person_id=person_id_of(db, employee_id),
             competency_definition_id=_def(db, "quality_reliability"),
             source_kind="review",
             source_ref="R-1",

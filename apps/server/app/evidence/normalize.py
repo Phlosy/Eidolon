@@ -22,6 +22,7 @@ from app.models.knowledge import LearningRecord, SkillUsage
 from app.models.organization import Employee
 from app.models.project import Artifact, Task
 from app.models.project_delivery import ReviewMeeting
+from app.repositories import persons as person_repo
 
 
 def dedup_key_of(
@@ -76,9 +77,12 @@ def upsert_evidence(db: Session, candidate: EvidenceCandidate) -> tuple[Competen
         competency_definition_id=candidate.competency_definition_id,
     )
     db.flush()  # 同事务内重复消费也要去重（SessionLocal autoflush=False）
+    # R1.3：幂等判定按 person 口径（稳定身份的属主语义跟人走）；镜像列双写维持。
     existing = db.scalar(
         select(CompetencyEvidence).where(
-            CompetencyEvidence.employee_id == key[0],
+            person_repo.read_criterion(
+                db, key[0], CompetencyEvidence.person_id, CompetencyEvidence.employee_id
+            ),
             CompetencyEvidence.source_kind == key[1],
             CompetencyEvidence.source_id == key[2],
             CompetencyEvidence.competency_definition_id == key[3],
@@ -98,6 +102,7 @@ def upsert_evidence(db: Session, candidate: EvidenceCandidate) -> tuple[Competen
 
     row = CompetencyEvidence(
         employee_id=candidate.employee_id,
+        person_id=person_repo.write_person_id(db, candidate.employee_id),
         competency_definition_id=candidate.competency_definition_id,
         source_kind=candidate.source_type,
         source_id=candidate.source_id,

@@ -89,17 +89,19 @@ def test_profile_code_version_is_unique(db):
 
 def test_resolve_position_profile_by_assignment(db, default_company_id):
     """engineer 任职 ⇒ software_engineer 档案；无任职 ⇒ None。"""
-    from app.models.organization import Department, Employee
+    from factories import make_employee
+
+    from app.models.organization import Department
     from app.models.position import PositionAssignment, PositionDefinition, PositionSlot
 
-    employee = Employee(
+    employee = make_employee(
+        db,
         company_id=default_company_id,
-        name="Resolve Tester",
         slug="resolve-tester",
+        name="Resolve Tester",
         workspace_path="/tmp/resolve-ws",
         memory_namespace="mem-resolve",
     )
-    db.add(employee)
     db.flush()
     department = db.scalar(
         sa.select(Department).where(

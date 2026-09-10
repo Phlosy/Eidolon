@@ -39,6 +39,7 @@ from app.models.position import PositionDefinition
 from app.models.project import Project, Task
 from app.models.project_delivery import ReviewMeeting
 from app.repositories import knowledge as knowledge_repo
+from app.repositories import persons as person_repo
 from app.repositories import position as position_repo
 from app.schemas.position import AssignmentIn
 from app.services import position_service
@@ -246,7 +247,12 @@ def experience_summary(db: Session, employee_id: int) -> dict:
         db.scalar(
             select(func.count())
             .select_from(AssessmentRun)
-            .where(AssessmentRun.employee_id == employee_id)
+            # R1.3：读口径切 person_id（单一入口换算，带旧口径回落）
+            .where(
+                person_repo.read_criterion(
+                    db, employee_id, AssessmentRun.person_id, AssessmentRun.employee_id
+                )
+            )
         )
         or 0
     )
@@ -562,7 +568,13 @@ def reconcile_employee_plans(db: Session, employee_id: int) -> int:
             row.competency_definition_id: row
             for row in db.scalars(
                 select(EmployeeCompetency).where(
-                    EmployeeCompetency.employee_id == employee_id,
+                    # R1.3：能力行按 person 口径读（单一入口换算，带旧口径回落）
+                    person_repo.read_criterion(
+                        db,
+                        employee_id,
+                        EmployeeCompetency.person_id,
+                        EmployeeCompetency.employee_id,
+                    ),
                     EmployeeCompetency.competency_definition_id.in_(
                         [item.competency_definition_id for item in items]
                     ),
@@ -846,7 +858,11 @@ def _timeline(db: Session, employee_id: int) -> list[dict]:
         )
     for run in db.scalars(
         select(AssessmentRun)
-        .where(AssessmentRun.employee_id == employee_id)
+        .where(
+            person_repo.read_criterion(
+                db, employee_id, AssessmentRun.person_id, AssessmentRun.employee_id
+            )
+        )
         .order_by(AssessmentRun.created_at.desc())
     ):
         events.append(

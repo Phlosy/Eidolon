@@ -17,6 +17,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import sqlalchemy as sa
+from factories import make_employee, person_id_of
 
 from app.assessment import catalog
 from app.models.assessment import AssessmentResult
@@ -32,14 +33,14 @@ _seq = 0
 def _hire(db, default_company_id: int) -> int:
     global _seq
     _seq += 1
-    employee = Employee(
+    employee = make_employee(
+        db,
         company_id=default_company_id,
-        name=f"Engine Tester {_seq}",
         slug=f"engine-test-{_seq}",
+        name=f"Engine Tester {_seq}",
         workspace_path=f"/tmp/eng-{_seq}-ws",
         memory_namespace=f"mem-eng-{_seq}",
     )
-    db.add(employee)
     db.flush()
     return int(employee.id)
 
@@ -107,6 +108,7 @@ def _add_evidence(
 ) -> int:
     row = CompetencyEvidence(
         employee_id=employee_id,
+        person_id=person_id_of(db, employee_id),
         competency_definition_id=_def(db, comp_code),
         source_kind=kind,
         source_id=project * 1000 + _seq,

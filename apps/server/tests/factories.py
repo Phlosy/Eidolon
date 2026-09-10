@@ -12,6 +12,11 @@ from app.models.person import Person
 from app.repositories import persons as person_repo
 
 
+def person_id_of(db: Session, employee_id: int) -> int | None:
+    """测试种子行的双写辅助：直接落 domain 行时用它补 person_id（R1.1+ 切读口径）。"""
+    return person_repo.resolve_person_id(db, employee_id)
+
+
 def make_person(
     db: Session,
     *,

@@ -35,6 +35,7 @@ from app.models.competency import (
 from app.models.enums import CompetencyKind, CompetencyStatus, EvidenceSourceKind
 from app.models.knowledge import Skill, SkillUsage
 from app.models.organization import Employee
+from app.repositories import persons as person_repo
 
 #: 基础引擎标识 —— inputs_hash 必须包含它；改公式时**升版本**而不是悄悄变行为。
 ENGINE_VERSION = "competency-base-v1"
@@ -254,9 +255,13 @@ def skill_usage_evidence_for(db: Session, usage: SkillUsage) -> CompetencyEviden
         return None
     if usage.outcome != "useful":
         return None
+    # R1.3：幂等判定与写入都用 person 口径（单一入口换算，带旧口径回落 + 双写）
+    owner = person_repo.read_criterion(
+        db, usage.employee_id, CompetencyEvidence.person_id, CompetencyEvidence.employee_id
+    )
     existing = db.scalar(
         select(CompetencyEvidence).where(
-            CompetencyEvidence.employee_id == usage.employee_id,
+            owner,
             CompetencyEvidence.competency_definition_id == skill.competency_definition_id,
             CompetencyEvidence.source_kind == EvidenceSourceKind.skill_usage.value,
             CompetencyEvidence.source_id == usage.id,
@@ -266,6 +271,7 @@ def skill_usage_evidence_for(db: Session, usage: SkillUsage) -> CompetencyEviden
         return existing
     evidence = CompetencyEvidence(
         employee_id=usage.employee_id,
+        person_id=person_repo.write_person_id(db, usage.employee_id),
         competency_definition_id=skill.competency_definition_id,
         source_kind=EvidenceSourceKind.skill_usage.value,
         source_id=usage.id,
@@ -299,12 +305,15 @@ def assess_employee_competencies(
     if employee is None:  # pragma: no cover - 调用方先校验
         raise ValueError(f"employee {employee_id} not found")
     started = datetime.now(UTC)
+    # R1.3：证据/能力行/审计 run 全部按 person 口径读、双写落库
+    owner_evidence = person_repo.read_criterion(
+        db, employee_id, CompetencyEvidence.person_id, CompetencyEvidence.employee_id
+    )
+    owner_competency = person_repo.read_criterion(
+        db, employee_id, EmployeeCompetency.person_id, EmployeeCompetency.employee_id
+    )
     evidence_rows = list(
-        db.scalars(
-            select(CompetencyEvidence)
-            .where(CompetencyEvidence.employee_id == employee_id)
-            .order_by(CompetencyEvidence.id)
-        )
+        db.scalars(select(CompetencyEvidence).where(owner_evidence).order_by(CompetencyEvidence.id))
     )
     inputs_hash = inputs_hash_of(employee_id=employee_id, evidence_rows=evidence_rows)
 
@@ -317,7 +326,7 @@ def assess_employee_competencies(
         aggregated = compute_for_group(rows, window_end=started)
         row = db.scalar(
             select(EmployeeCompetency).where(
-                EmployeeCompetency.employee_id == employee_id,
+                owner_competency,
                 EmployeeCompetency.competency_definition_id == definition_id,
             )
         )
@@ -328,6 +337,7 @@ def assess_employee_competencies(
         if row is None:
             row = EmployeeCompetency(
                 employee_id=employee_id,
+                person_id=person_repo.write_person_id(db, employee_id),
                 competency_definition_id=definition_id,
                 score=aggregated.score,
                 confidence=aggregated.confidence,
@@ -365,6 +375,7 @@ def assess_employee_competencies(
     run = AssessmentRun(
         company_id=employee.company_id,
         employee_id=employee_id,
+        person_id=person_repo.write_person_id(db, employee_id),
         triggered_by=triggered_by,
         status="completed",
         evidence_ids=[row.id for row in evidence_rows],

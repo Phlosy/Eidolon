@@ -9,6 +9,7 @@ input_hash 存在；不提供 ranking/recommended 端点。
 from __future__ import annotations
 
 import sqlalchemy as sa
+from factories import person_id_of
 
 from app.models.competency import EmployeeCompetency
 from app.models.organization import Company, Employee
@@ -59,6 +60,7 @@ def test_fit_endpoint_reports_known_unknown_and_uncertainty(client, db, default_
         )
         data = {
             "employee_id": employee_id,
+            "person_id": person_id_of(db, employee_id),
             "competency_definition_id": _def_id(db, code),
             "score": score,
             "confidence": confidence,
@@ -108,6 +110,7 @@ def test_fit_endpoint_uses_reason_codes_not_hardcoded_text(client, db, default_c
         db.add(
             EmployeeCompetency(
                 employee_id=employee_id,
+                person_id=person_id_of(db, employee_id),
                 competency_definition_id=_def_id(db, code),
                 score=score,
                 confidence=confidence,
@@ -177,6 +180,7 @@ def test_insufficient_confidence_is_not_a_failure_at_api(client, db, default_com
     db.add(
         EmployeeCompetency(
             employee_id=employee_id,
+            person_id=person_id_of(db, employee_id),
             competency_definition_id=_def_id(db, "execution"),
             score=82,
             confidence=0.18,

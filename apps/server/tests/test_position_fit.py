@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 import sqlalchemy as sa
+from factories import person_id_of
 
 from app.models.competency import EmployeeCompetency
 from app.models.position import PositionDefinition
@@ -73,6 +74,7 @@ def _set_competency(db, employee_id: int, code: str, score: int | None, confiden
     if row is None:
         row = EmployeeCompetency(
             employee_id=employee_id,
+            person_id=person_id_of(db, employee_id),
             competency_definition_id=_def_id(db, code),
             score=score,
             confidence=confidence,

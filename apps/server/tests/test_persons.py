@@ -9,11 +9,12 @@
 """
 
 import uuid
+from datetime import UTC, datetime
 
 import pytest
 import sqlalchemy as sa
 from alembic import command
-from factories import make_employee, make_person
+from factories import make_employee, make_person, person_id_of
 from sqlalchemy.exc import IntegrityError
 
 from app.core.database import _alembic_config
@@ -555,3 +556,175 @@ def test_v23_backfills_owner_person_id_and_skips_null_owner(tmp_path):
             )
         ).scalar_one_or_none()
         assert index is not None
+
+
+# ===========================================================================
+# R1.3 批次 3：能力度量域（docs/person-core-migration.md §3 D4）
+# ===========================================================================
+
+from app.evidence import normalize  # noqa: E402
+from app.evidence.candidate import EvidenceCandidate  # noqa: E402
+from app.models.competency import (  # noqa: E402
+    AssessmentRun,
+    CompetencyEvidence,
+)
+from app.repositories import competency as competency_repo  # noqa: E402
+from app.services import competency as competency_service  # noqa: E402
+
+V23 = "v8c0e2a4b6d9"
+
+
+def _general_definition_id(db) -> int:
+    return competency_repo.general_definitions(db)[0].id
+
+
+def test_evidence_upsert_double_writes_person(db, default_company_id):
+    """事件消费者的写入点（normalize.upsert_evidence）双写 person_id + employee_id。"""
+    employee = make_employee(db, company_id=default_company_id, slug=_unique("ev"))
+    db.commit()
+    record = knowledge_repo.create_learning_record(db, employee_id=employee.id, topic="t")
+    db.commit()
+    candidate = EvidenceCandidate(
+        employee_id=employee.id,
+        source_type="learning",
+        source_id=record.id,
+        source_ref="learning://x",
+        observation="学习完成一条记录",
+        competency_definition_id=_general_definition_id(db),
+        signal=80,
+        strength=0.8,
+        reliability=0.5,
+        environment="",
+        occurred_at=datetime.now(UTC),
+        metadata={},
+    )
+    row, created = normalize.upsert_evidence(db, candidate)
+    assert created is True
+    assert row.employee_id == employee.id and row.person_id == employee.person_id
+    # 幂等：重复消费更新同一行（person 口径去重）
+    row2, created2 = normalize.upsert_evidence(db, candidate)
+    assert created2 is False and row2.id == row.id
+
+
+def test_assessment_run_and_competency_rows_double_write(db, default_company_id):
+    """聚合器产出：assessment_runs 与 employee_competencies 都双写 person_id。"""
+    employee = make_employee(db, company_id=default_company_id, slug=_unique("asm"))
+    db.commit()
+    db.add(
+        CompetencyEvidence(
+            employee_id=employee.id,
+            person_id=person_id_of(db, employee.id),
+            competency_definition_id=_general_definition_id(db),
+            source_kind="learning",
+            source_ref="L-1",
+            signal=85,
+        )
+    )
+    db.commit()
+    run = competency_service.assess_employee_competencies(db, employee.id)
+    assert run.employee_id == employee.id and run.person_id == employee.person_id
+    rows = competency_repo.employee_competency_rows(db, employee.id)
+    assert rows and all(
+        row.person_id == employee.person_id and row.employee_id == employee.id for row in rows
+    )
+    # 审计历史按 person 口径读得到（镜像列失真也不丢）
+    db.execute(
+        sa.text("UPDATE assessment_runs SET employee_id = -1 WHERE id = :id"), {"id": run.id}
+    )
+    db.commit()
+    history = list(
+        db.scalars(
+            sa.select(AssessmentRun).where(
+                person_repo.read_criterion(
+                    db, employee.id, AssessmentRun.person_id, AssessmentRun.employee_id
+                )
+            )
+        )
+    )
+    assert [r.id for r in history] == [run.id]
+
+
+def test_v24_backfills_person_id_on_batch3_tables(tmp_path):
+    """v24 内联回填：3 表 person_id 非空率 100%，部分唯一索引就位。"""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'batch3.db'}")
+    _upgrade(engine, V23)
+    with engine.begin() as conn:
+        conn.execute(
+            sa.text(
+                "INSERT INTO companies (name, slug, description, industry, settings, stage,"
+                " created_at, updated_at) VALUES ('Co', 'co', '', '', '{}', 'FOUNDING',"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO persons (slug, name, avatar, username, created_at, updated_at)"
+                " VALUES ('ada', 'Ada', '', 'ada', '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO employees (company_id, name, slug, role, title, avatar, status,"
+                " lifecycle_status, username, runtime_type, runtime_config, workspace_path,"
+                " memory_namespace, person_id, created_at, updated_at) VALUES (1, 'Ada', 'ada',"
+                " 'engineer', '', '', 'idle', 'active', 'ada', 'mock', '{}', '/tmp/ada',"
+                " 'mem-ada', 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO competency_domains (company_id, code, name, kind, description,"
+                " order_index, built_in, created_at, updated_at) VALUES (NULL, 'general',"
+                " 'General', 'general', '', 0, 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO competency_definitions (domain_id, code, name, description, facets,"
+                " evidence_kinds, order_index, built_in, created_at, updated_at) VALUES"
+                " (1, 'execution', 'Execution', '', '[]', '[]', 0, 1,"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO competency_evidence (employee_id, competency_definition_id,"
+                " source_kind, source_ref, environment, occurred_at, metadata_json, created_at,"
+                " updated_at) VALUES (1, 1, 'task', 'T-1', '', '2026-01-01 00:00:00', '{}',"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO employee_competencies (employee_id, competency_definition_id,"
+                " score, confidence, evidence_count, status, metadata_json, created_at,"
+                " updated_at) VALUES (1, 1, 80, 0.7, 1, 'assessed', '{}',"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO assessment_runs (company_id, employee_id, triggered_by,"
+                " assessment_type, status, evidence_ids, algorithm_version, inputs_hash, outputs,"
+                " metadata_json, created_at, updated_at) VALUES (1, 1, 'recompute', '',"
+                " 'completed', '[]', 'v1', 'hash', '{}', '{}',"
+                " '2026-01-01 00:00:00', '2026-01-01 00:00:00')"
+            )
+        )
+
+    _upgrade(engine, "head")
+
+    with engine.connect() as conn:
+        for table in ("employee_competencies", "competency_evidence", "assessment_runs"):
+            total = conn.execute(sa.text(f"SELECT count(*) FROM {table}")).scalar_one()
+            backfilled = conn.execute(
+                sa.text(f"SELECT count(*) FROM {table} WHERE person_id = 1")
+            ).scalar_one()
+            assert total == 1 and backfilled == 1, f"{table} 回填遗漏"
+        index_sql = conn.execute(
+            sa.text(
+                "SELECT sql FROM sqlite_master WHERE type = 'index'"
+                " AND name = 'uq_employee_competency_person'"
+            )
+        ).scalar_one()
+        assert "WHERE" in index_sql.upper() and "person_id IS NOT NULL" in index_sql

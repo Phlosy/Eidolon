@@ -157,6 +157,7 @@ persons 表本身保持最小（身份字段 + 时间戳），宁可后续迁移
 
 - 文档同步：concept-architecture.md §2.1 的拆分声明标记落地、architecture.md 实体章节更新、handover 基线数字更新；
 - 技术债登记：遗留 employee_id 列清单 + 最终删除条件（等 T2 稳定后评估）；
+- **R1.3 遗留观察**：`evidence/normalize.py::upsert_evidence` 在 `db.add` 后不 flush，而 SessionLocal `autoflush=False`——pipeline 的 `project.completed` 同事务内「先 upsert 后 assess」可能漏读最后一条 pending 证据。既有行为非本拆分引入，R1.5 单独排查确认；
 - **验收**：`SELECT count(*) FROM employees WHERE person_id IS NULL` 为 0；person 侧四批次表 `person_id` 非空率 100%；全门禁绿。
 
 ## 5. 风险与对策

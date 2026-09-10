@@ -13,9 +13,10 @@
 from __future__ import annotations
 
 import sqlalchemy as sa
+from factories import make_employee, person_id_of
 
 from app.models.competency import CompetencyEvidence
-from app.models.organization import Company, Employee
+from app.models.organization import Company
 from app.services import competency as svc
 
 GENERAL_CODES = {
@@ -38,15 +39,14 @@ _seq = 0
 def _hire(db, company_id: int) -> int:
     global _seq
     _seq += 1
-    employee = Employee(
+    employee = make_employee(
+        db,
         company_id=company_id,
-        name=f"Read API Tester {_seq}",
         slug=f"read-api-{company_id}-{_seq}",
+        name=f"Read API Tester {_seq}",
         workspace_path=f"/tmp/read-{company_id}-{_seq}-ws",
         memory_namespace=f"mem-read-{company_id}-{_seq}",
     )
-    db.add(employee)
-    db.flush()
     db.commit()
     return int(employee.id)
 
@@ -107,6 +107,7 @@ def test_assessed_competency_appears_under_professional(client, db, default_comp
     db.add(
         CompetencyEvidence(
             employee_id=employee_id,
+            person_id=person_id_of(db, employee_id),
             competency_definition_id=definition_id,
             source_kind="test",
             source_ref="TEST-42 18/18 passed",
@@ -159,6 +160,7 @@ def test_evidence_readback_is_traceable(client, db, default_company_id):
     definition_id = _def_id(db, "testing")
     evidence = CompetencyEvidence(
         employee_id=employee_id,
+        person_id=person_id_of(db, employee_id),
         competency_definition_id=definition_id,
         source_kind="review",
         source_ref="REV-7 / design review",

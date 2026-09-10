@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.models.competency import (
@@ -27,6 +27,7 @@ from app.models.competency import (
 )
 from app.models.position import PositionDefinition
 from app.models.position_profile import PositionProfileVersion
+from app.repositories import persons as person_repo
 from app.services import position_profile as profile_service
 from app.talent.fit import hashing
 from app.talent.fit.evaluator import classify, evaluate, normalized_fit
@@ -126,7 +127,10 @@ def calculate(
         row.competency_definition_id: row
         for row in db.scalars(
             select(EmployeeCompetency).where(
-                EmployeeCompetency.employee_id == employee_id,
+                # R1.3：能力行按 person 口径读（单一入口换算，带旧口径回落）
+                person_repo.read_criterion(
+                    db, employee_id, EmployeeCompetency.person_id, EmployeeCompetency.employee_id
+                ),
                 EmployeeCompetency.competency_definition_id.in_(
                     [req.competency_definition_id for req in requirements]
                 ),
@@ -373,9 +377,18 @@ def calculate_many(
     competency_rows: dict[int, dict[int, EmployeeCompetency]] = {
         employee_id: {} for employee_id in employee_ids
     }
+    # R1.3：批量口径切 person_id（一次换算）；解析不到的 employee 回落 employee_id 旧口径。
+    # key 仍是 employee_id —— 能力行双写着两列。
+    person_ids = person_repo.resolve_person_ids(db, list(employee_ids))
+    competency_fallback_ids = [emp_id for emp_id in employee_ids if emp_id not in person_ids]
+    competency_owner = EmployeeCompetency.person_id.in_(person_ids.values())
+    if competency_fallback_ids:
+        competency_owner = or_(
+            competency_owner, EmployeeCompetency.employee_id.in_(competency_fallback_ids)
+        )
     for row in db.scalars(
         select(EmployeeCompetency).where(
-            EmployeeCompetency.employee_id.in_(list(employee_ids)),
+            competency_owner,
             EmployeeCompetency.competency_definition_id.in_(
                 [req.competency_definition_id for req in requirements]
             ),

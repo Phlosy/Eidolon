@@ -193,9 +193,11 @@ def _batch_derived(db: Session, people: list[Employee]):
 
     definitions = _definition_map(db)
     domain_kinds = _domain_kinds(db)
-    for row in db.scalars(
-        select(EmployeeCompetency).where(EmployeeCompetency.employee_id.in_(ids))
-    ).all():
+    # R1.3：能力行与上方 brains 同一次批量解析 + 回落集，口径切 person_id
+    competency_owner = EmployeeCompetency.person_id.in_(person_ids.values())
+    if fallback_ids:
+        competency_owner = or_(competency_owner, EmployeeCompetency.employee_id.in_(fallback_ids))
+    for row in db.scalars(select(EmployeeCompetency).where(competency_owner)).all():
         definition = definitions.get(row.competency_definition_id)
         if definition is None:
             continue

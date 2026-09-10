@@ -37,6 +37,7 @@ from app.models.enums import CompetencyStatus
 from app.models.organization import Employee
 from app.models.project import Project, Task
 from app.models.project_delivery import ReviewMeeting
+from app.repositories import persons as person_repo
 
 ENGINE_VERSION = "assessment-profile-v1"
 ALGORITHM_VERSION = "assessment-profile-v1"
@@ -263,7 +264,14 @@ def run_assessment(
     # 在白天任意时刻）都在窗口内；hash 仍用日粒度，保证同一天重放逐字一致。
     window_end = window_to + timedelta(days=1)
     window_from = _utc(window_from) if window_from else None
-    evidence_scope = select(CompetencyEvidence).where(CompetencyEvidence.employee_id == employee_id)
+    # R1.3：证据窗口/能力行/审计 run 全部按 person 口径读、双写落库
+    owner_evidence = person_repo.read_criterion(
+        db, employee_id, CompetencyEvidence.person_id, CompetencyEvidence.employee_id
+    )
+    owner_competency = person_repo.read_criterion(
+        db, employee_id, EmployeeCompetency.person_id, EmployeeCompetency.employee_id
+    )
+    evidence_scope = select(CompetencyEvidence).where(owner_evidence)
     if window_from is not None:
         evidence_scope = evidence_scope.where(CompetencyEvidence.occurred_at >= _utc(window_from))
     evidence_scope = evidence_scope.where(CompetencyEvidence.occurred_at <= _utc(window_end))
@@ -365,7 +373,7 @@ def run_assessment(
 
         row = db.scalar(
             select(EmployeeCompetency).where(
-                EmployeeCompetency.employee_id == employee_id,
+                owner_competency,
                 EmployeeCompetency.competency_definition_id == definition_id,
             )
         )
@@ -385,6 +393,7 @@ def run_assessment(
         if row is None:
             row = EmployeeCompetency(
                 employee_id=employee_id,
+                person_id=person_repo.write_person_id(db, employee_id),
                 competency_definition_id=definition_id,
                 score=new_score,
                 confidence=confidence,
@@ -415,6 +424,7 @@ def run_assessment(
     run = AssessmentRun(
         company_id=employee.company_id,
         employee_id=employee_id,
+        person_id=person_repo.write_person_id(db, employee_id),
         profile_id=profile.id,
         profile_version=profile.version,
         assessment_type=assessment_type,

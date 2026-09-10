@@ -39,6 +39,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -98,9 +99,21 @@ class EmployeeCompetency(TimestampMixin, Base):
     __tablename__ = "employee_competencies"
     __table_args__ = (
         UniqueConstraint("employee_id", "competency_definition_id", name="uq_employee_competency"),
+        # R1.3（docs/person-core-migration.md D4 批次 3）：uq(employee_id, definition) 在
+        # person 口径上的镜像（部分唯一索引必须写进模型，否则 alembic check 报漂移）。
+        Index(
+            "uq_employee_competency_person",
+            "person_id",
+            "competency_definition_id",
+            unique=True,
+            sqlite_where=text("person_id IS NOT NULL"),
+            postgresql_where=text("person_id IS NOT NULL"),
+        ),
     )
 
+    # deprecated（R1.3）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     competency_definition_id: Mapped[int] = mapped_column(
         ForeignKey("competency_definitions.id"), index=True
     )
@@ -135,7 +148,9 @@ class CompetencyEvidence(TimestampMixin, Base):
         ),
     )
 
+    # deprecated（R1.3）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     competency_definition_id: Mapped[int] = mapped_column(
         ForeignKey("competency_definitions.id"), index=True
     )
@@ -174,7 +189,10 @@ class AssessmentRun(TimestampMixin, Base):
     __tablename__ = "assessment_runs"
 
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
+    # deprecated（R1.3）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
+    # company_id 是公司上下文快照，与人称切换无关，不动。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     #: P10 引入 profile/criteria 表后再接线（此时不加 FK，避免指向不存在的表）
     profile_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     position_assignment_id: Mapped[int | None] = mapped_column(Integer, nullable=True)

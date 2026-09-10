@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 
 import pytest
 import sqlalchemy as sa
+from factories import make_employee
 
 from app.evidence import normalize, pipeline, reconcile
 from app.evidence.collectors import REGISTRY
@@ -32,14 +33,14 @@ _seq = 0
 def _hire(db, company_id: int | None = None) -> int:
     global _seq
     _seq += 1
-    employee = Employee(
+    employee = make_employee(
+        db,
         company_id=company_id,
-        name=f"Evidence Tester {_seq}",
         slug=f"evidence-test-{_seq}",
+        name=f"Evidence Tester {_seq}",
         workspace_path=f"/tmp/ev-{_seq}-ws",
         memory_namespace=f"mem-ev-{_seq}",
     )
-    db.add(employee)
     db.flush()
     return int(employee.id)
 

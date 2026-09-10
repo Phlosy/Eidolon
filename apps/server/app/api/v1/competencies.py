@@ -30,6 +30,7 @@ from app.models.competency import (
 )
 from app.models.organization import Employee
 from app.repositories import competency as competency_repo
+from app.repositories import persons as person_repo
 from app.schemas.competency import (
     CompetencyDefinitionOut,
     CompetencyDomainOut,
@@ -137,7 +138,11 @@ def employee_competency_evidence(
     没有任意 POST evidence：人工反馈必须走明确业务入口（如技能评价）。
     """
     _employee_or_404(db, employee_id, company_id)
-    query = sa.select(CompetencyEvidence).where(CompetencyEvidence.employee_id == employee_id)
+    query = sa.select(CompetencyEvidence).where(
+        person_repo.read_criterion(
+            db, employee_id, CompetencyEvidence.person_id, CompetencyEvidence.employee_id
+        )
+    )
     if source_type:
         query = query.where(CompetencyEvidence.source_kind == source_type)
     if assessment_run_id is not None:

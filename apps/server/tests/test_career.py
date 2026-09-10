@@ -9,6 +9,7 @@ Assessment 驱动；promotion 由 Human 触发、低匹配仍可（Warning）；
 from __future__ import annotations
 
 import sqlalchemy as sa
+from factories import person_id_of
 
 from app.models.career import CareerEvent
 from app.models.competency import EmployeeCompetency
@@ -61,6 +62,7 @@ def _set_comp(db, employee_id: int, code: str, score: int | None, confidence: fl
     )
     data = {
         "employee_id": employee_id,
+        "person_id": person_id_of(db, employee_id),
         "competency_definition_id": def_id,
         "score": score,
         "confidence": confidence,
