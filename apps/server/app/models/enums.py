@@ -638,3 +638,26 @@ class EmploymentState(StrEnum):
 
     unemployed = "unemployed"
     employed = "employed"
+
+
+class MarketListingStatus(StrEnum):
+    """挂牌行状态（T2.3 落库；一次"在市"= 一行 active）。
+
+    与 `MarketState`（app/talent/market/contracts.py，派生不落库的三值视图）配对：
+    这里只表达挂牌行自身的两值生命周期（挂牌 → 关闭）。
+    """
+
+    active = "active"
+    closed = "closed"
+
+
+class MarketParticipantKind(StrEnum):
+    """市场参与者类型（T2 设计 D8）：玩家公司 / NPC 公司 / 系统发行方。
+
+    NPC 公司**不写进 `companies`**（避免污染公司作用域读面）；
+    player_company 行通过 `company_id` 指向真实公司。
+    """
+
+    player_company = "player_company"
+    npc_company = "npc_company"
+    system_issuer = "system_issuer"

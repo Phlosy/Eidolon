@@ -15,6 +15,18 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
+from app.models.enums import MarketListingStatus, MarketParticipantKind
+
+#: 枚举的唯一家是 app/models/enums.py（模型与迁移要 import 它们）；这里保持
+#: T2.0 冻结的导入路径可用（re-export），契约测试按此钉住。
+__all__ = [
+    "MarketListingStatus",
+    "MarketListingView",
+    "MarketParticipantKind",
+    "MarketSearchQuery",
+    "MarketState",
+]
+
 
 class MarketState(StrEnum):
     """市场态（**派生，不落库**，设计 §4.1）。
@@ -27,29 +39,6 @@ class MarketState(StrEnum):
     unavailable = "unavailable"
     unlisted = "unlisted"
     listed = "listed"
-
-
-class MarketListingStatus(StrEnum):
-    """挂牌行状态（落库；一次"在市"= 一行 active）。
-
-    与 `MarketState` 的区别：`MarketState` 是给读面/UI 的**三值派生态**，
-    本枚举是 `market_listings` 行的**两值生命周期**（挂牌 → 关闭）。
-    """
-
-    active = "active"
-    closed = "closed"
-
-
-class MarketParticipantKind(StrEnum):
-    """市场参与者类型（设计 D8）：玩家公司 / NPC 公司 / 系统发行方。
-
-    NPC 公司**不写进 `companies`**（避免污染公司作用域读面），
-    player_company 行通过 `company_id` 指向真实公司。
-    """
-
-    player_company = "player_company"
-    npc_company = "npc_company"
-    system_issuer = "system_issuer"
 
 
 @dataclass(frozen=True)

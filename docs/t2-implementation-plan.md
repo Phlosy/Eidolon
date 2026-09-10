@@ -366,8 +366,8 @@ cd apps/web && npm run build
 | T2.0 Domain Contract Freeze | **DONE**（2026-09-10） | `9465947` | 设计 + 执行基线落盘；枚举/契约代码 + 守卫测试；**无迁移**；pytest 690 / web 303 |
 | T2.1 Person Read Model / API | **DONE**（2026-09-10） | `f4165d4` | `app/talent/person/` + `/api/v1/persons/*`；对拍/404/null 语义全锁；**无迁移**；pytest 701 / web 312 |
 | T2.2 Cultivation Completion & Eligibility | **DONE**（2026-09-10） | `6a79102` | 自由养成显式结业 + `cultivation.completed` + 三轴资格判定集中一处；附带修复 roster person-only 行缺陷（I13）；**无迁移**；pytest 712 / web 314 |
-| T2.3 Market Core & MarketAdapter | **NEXT** | — | `[migration v29]`；入口：设计 §6/§8 + plan §4.4 |
-| T2.4 Issuer & Market Supply | PLANNED | — | 设计 §7 D11 |
+| T2.3 Market Core & MarketAdapter | **DONE**（2026-09-10） | `见 Progress Log` | 迁移 v29（两张表 + 部分唯一索引）+ LocalMarketAdapter + MarketService + 公开投影读面；pytest 723 |
+| T2.4 Issuer & Market Supply | **NEXT** | — | 入口：设计 §7 D11 + plan §4.5 |
 | T2.5 Person-scoped Fit | PLANNED | — | 本文件 §4.6 |
 | T2.6 Recruitment | PLANNED | — | 本文件 §4.7，I1–I5 |
 | T2.7 Market Experience & NPC | PLANNED | — | 本文件 §4.8 |
@@ -419,3 +419,29 @@ cd apps/web && npm run build
   - 实机：空白角色 complete 200/ready → 重复 complete 200（幂等）→ `/persons/{id}` ready；
     模板角色 complete → 409；dev 库三轴抽查（person 3/5 `ready+unemployed+unlisted ⇒ can_list=ok`、
     person 4 `cultivating ⇒ not_ready`）与 `cultivation.completed`（reason=free）均正确；`/talent-roster` 200。
+
+- **2026-09-10 · T2.3 DONE**：commit 哈希见紧随的 `docs(t2): T2.3 进度落盘` 提交（避免自引用哈希）。
+  - 迁移 **v29**（`b4c6d8e0f2a3`，down_revision `a3b5c7d9e1f4`）：`market_participants`
+    （部分唯一 `uq_market_participant_company(kind, company_id) WHERE company_id IS NOT NULL`）+
+    `market_listings`（部分唯一 `uq_market_listing_active_person(person_id) WHERE status='active'`）；
+    up/down/up 实测；dev 库已 upgrade 到 v29，`alembic check` 无漂移。**无经济列**（M1 边界）。
+  - 后端：`models/market.py`、`repositories/market.py`（幂等创建 ON CONFLICT + 回查；关闭走
+    条件 UPDATE rowcount）、`talent/market/local_adapter.py`（实现 T2.0 Protocol）、
+    `services/market.py`（挂牌/下架编排 + `close_listing_for_recruitment` 供 T2.6 同事务复用）、
+    `talent/market/read_model.py`（公开投影白名单 + outcome/evidence 显式键选择）、
+    `api/v1/market.py`（POST/DELETE/GET/GET detail）、`schemas/market.py`；
+    枚举 `MarketListingStatus`/`MarketParticipantKind` 归位 `app/models/enums.py`（contracts re-export）；
+    `eligibility.market_state` 接入 active listing（T2.2 预留的单点）。
+  - 测试：后端 +11（`tests/test_market_core.py`）：v29 up/down/up + 两个部分唯一索引；
+    挂牌/下架往返（I6/I7）；重复挂牌幂等（201→200、单行、不重发事件）；资格门禁 409
+    （not_ready / employed）；跨公司挂牌 404；跨公司下架 404；跨公司**公开投影**可读且
+    禁止键（person_id/owner_company_id/credential/memory/messages/drive/content/inputs_hash）
+    不出现；outcome 去 session_ids、证据保留 source_ref；知识摘要无正文；closed/unknown → 404；
+    市场 API 经济词汇守卫（D10）。
+  - 门禁：pytest **723 passed** / 6 deselected；ruff check 全绿、format 仅 5 个既有 WIP 红；
+    alembic check 无漂移（head `b4c6d8e0f2a3` / v29）；web 314 passed + tsc/eslint/prettier/build 全绿
+    （本阶段未改前端）。
+  - 实机：建角色 → 自由学习 → 结业 → 挂牌 201 → 重复挂牌 200（同 listing）→ 搜索命中
+    （listed_by=TestCo）→ 详情 200（traits 8 / general 10 / timeline 1 / evidence 1 / market_state=listed，
+    无 person_id、owner_company_id、session_ids 泄露）→ 下架 204（重复 204）→ 详情 404、
+    搜索 0 → 重新挂牌 201；events = listed/delisted/listed 各一次；participants 单行（幂等）。

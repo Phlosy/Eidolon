@@ -14,6 +14,10 @@ def get_default_company(db: Session) -> Company | None:
     return db.scalars(select(Company).order_by(Company.id).limit(1)).first()
 
 
+def get_company(db: Session, company_id: int) -> Company | None:
+    return db.get(Company, company_id)
+
+
 def get_company_by_slug(db: Session, slug: str) -> Company | None:
     return db.scalars(select(Company).where(Company.slug == slug)).first()
 

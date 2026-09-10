@@ -105,10 +105,15 @@ def employment_state(db: Session, person_id: int) -> EmploymentState:
 def market_state(db: Session, person_id: int) -> MarketState:
     """市场态派生（单轴读面）。
 
-    T2.3 之前不存在 `market_listings` ⇒「listed」不可达；此处按前两轴给
-    `unlisted`（有资格、未挂牌）或 `unavailable`（还不具备资格）。T2.3 落地后在
-    **这里**加一个 active listing 分支即可，调用方（`person_axes`）无需改动。
+    顺序：先看挂牌实体（T2.3 落地：存在 active listing ⇒ `listed`），
+    没有的话按前两轴给 `unlisted`（有资格、未挂牌）或 `unavailable`（还不具备资格）。
+    挂牌是"事实"（有行就是 listed），资格是"条件"—— 已被招募/培养中的角色即便
+    有历史挂牌行也只会是 closed 行，因此这里只认 active。
     """
+    from app.repositories import market as market_repo
+
+    if market_repo.get_active_listing_for_person(db, person_id) is not None:
+        return MarketState.listed
     cultivation = cultivation_state(db, person_id)
     employment = employment_state(db, person_id)
     if cultivation == CultivationState.ready.value and employment is EmploymentState.unemployed:

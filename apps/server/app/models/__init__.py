@@ -57,6 +57,7 @@ from app.models.lifecycle import (
     ResourceAsset,
     ResourceProvider,
 )
+from app.models.market import MarketListing, MarketParticipant
 from app.models.organization import Company, Department, Employee
 from app.models.person import Person
 from app.models.position import (
@@ -148,6 +149,8 @@ __all__ = [
     "RuntimeInstance",
     "Secret",
     "Skill",
+    "MarketListing",
+    "MarketParticipant",
     "Task",
     "TaskDependency",
     "WorkSession",

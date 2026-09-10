@@ -18,6 +18,7 @@ from app.api.v1 import (
     knowledge,
     learning_api,
     lifecycle,
+    market,
     messages,
     meta,
     organizations,
@@ -49,6 +50,7 @@ protected.include_router(knowledge.router)
 protected.include_router(behavior.router)
 protected.include_router(competencies.router)
 protected.include_router(persons.router)
+protected.include_router(market.router)
 protected.include_router(cultivation.router)
 protected.include_router(assessment.router)
 protected.include_router(career.router)

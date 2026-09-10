@@ -46,6 +46,21 @@ def identity_out(db: Session, person: Person) -> dict:
     }
 
 
+def traits_out(db: Session, person_id: int) -> list[dict]:
+    """人格 8 维（复用既有出口；培育/市场/员工读面共用同一份）。"""
+    return traits_service.person_traits_out(db, person_id)
+
+
+def competencies_out(db: Session, person_id: int) -> dict:
+    """能力画像（证据聚合读面；未评估 = null）。"""
+    return competency_service.person_capabilities_out(db, person_id)
+
+
+def knowledge_summary_out(db: Session, person_id: int) -> dict:
+    """知识摘要（只有统计与主题，不含正文）。"""
+    return knowledge_repo.knowledge_summary_by_person(db, person_id)
+
+
 def timeline_out(db: Session, person_id: int, *, limit: int, offset: int = 0) -> list[dict]:
     """履历事件（倒序 = 最新在前，与培养 UI 的时间线一致）。"""
     from app.schemas.cultivation import EducationEventOut
@@ -96,9 +111,9 @@ def person_profile(
         raise ValueError(f"unknown include: {sorted(unknown)}")
     profile = {
         "identity": identity_out(db, person),
-        "traits": traits_service.person_traits_out(db, person.id),
-        "competencies": competency_service.person_capabilities_out(db, person.id),
-        "knowledge_summary": knowledge_repo.knowledge_summary_by_person(db, person.id),
+        "traits": traits_out(db, person.id),
+        "competencies": competencies_out(db, person.id),
+        "knowledge_summary": knowledge_summary_out(db, person.id),
         "timeline": None,
         "evidence": None,
     }

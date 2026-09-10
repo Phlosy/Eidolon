@@ -247,6 +247,21 @@ class MarketAdapter(Protocol):
 同步签名（本地 T2 与项目 sync service 层一致）。**M2 若需异步**：新增 `AsyncMarketAdapter`
 Protocol 由远端实现，**不修改**本契约。
 
+**T2.3 落地形态**（已实现）：
+
+- `app/talent/market/local_adapter.py::LocalMarketAdapter` 实现本 Protocol（只做市场资源）；
+- `MarketService` = `app/services/market.py`：挂牌/下架编排（资格 → 适配器 → 事件），
+  另向 T2.6 暴露 `close_listing_for_recruitment`（**不 commit**，招募事务内共用）；
+- 枚举唯一家在 `app/models/enums.py`（`MarketListingStatus` / `MarketParticipantKind`，
+  模型与迁移要 import 它们）；`contracts.py` 保持 T2.0 冻结的导入路径（re-export）；
+  `MarketState`（派生视图）仍在 contracts；
+- 公开投影 = `app/talent/market/read_model.py`：**显式字段选择**（不是序列化整个 ORM），
+  履历 outcome 经 `PUBLIC_OUTCOME_KEYS` 白名单（去掉 `session_ids` 等内部引用），
+  证据取 `PUBLIC_EVIDENCE_KEYS`（保留 `source_ref`/`assessment_run_id` 供验收 A 下钻）；
+  索引级列表投影不含 traits/competency/evidence（那些在详情，避免 N+1）；
+- `eligibility.market_state` 已接入 active listing：有行 ⇒ `listed`，否则按前两轴
+  `unlisted` / `unavailable`（调用方零改动 —— T2.2 预留的单点已生效）。
+
 ### 8.3 记录与查询（只读契约，`app/talent/market/contracts.py`）
 
 - `MarketListingView`：`listing_id`、`person_id`、`identity_id`、`name`、`origin`、

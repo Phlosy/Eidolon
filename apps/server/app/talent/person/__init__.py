@@ -14,19 +14,25 @@ from app.talent.person.access import is_own_person, visible_person_or_404
 from app.talent.person.read_model import (
     DEFAULT_INCLUDES,
     OPTIONAL_INCLUDES,
+    competencies_out,
     evidence_out,
     identity_out,
+    knowledge_summary_out,
     person_profile,
     timeline_out,
+    traits_out,
 )
 
 __all__ = [
     "DEFAULT_INCLUDES",
     "OPTIONAL_INCLUDES",
+    "competencies_out",
     "evidence_out",
     "identity_out",
+    "knowledge_summary_out",
     "is_own_person",
     "person_profile",
     "timeline_out",
+    "traits_out",
     "visible_person_or_404",
 ]

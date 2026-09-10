@@ -1,0 +1,115 @@
+"""/market —— T2.3 本地人才市场（挂牌 / 下架 / 浏览 / 档案）。
+
+**作用域**（设计 §6/D4）：市场是**受控的跨公司读取域**。
+- 读（列表/档案）：任何登录用户可读**公开投影**（只含白名单字段，见 schemas/market.py）；
+- 写（挂牌/下架）：仅限本公司持有的 person 与本公司发起的挂牌 —— 否则 404（不泄露存在性）。
+
+不含任何交易语义（无价格/报单/结算 —— M1，设计 D10/D2）。
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy.orm import Session
+
+from app.api.scope import resolve_company_id
+from app.core.database import get_db
+from app.schemas.market import (
+    MarketCandidateOut,
+    MarketListingCreateIn,
+    MarketListingOut,
+    MarketListingPageOut,
+)
+from app.services import market as market_service
+from app.talent.market.contracts import MarketSearchQuery
+
+router = APIRouter(prefix="/market", tags=["market"])
+
+
+def _http_error(exc: market_service.MarketError) -> HTTPException:
+    return HTTPException(status_code=exc.http_status, detail=exc.reason)
+
+
+@router.post("/listings", response_model=MarketListingOut)
+def create_listing(
+    payload: MarketListingCreateIn,
+    response: Response,
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """挂牌（幂等）：同 person 重复挂牌返回既有 active 挂牌（200），新建 201。
+
+    资格不足（未 ready / 已入职）→ 409 + reason（`not_ready` / `employed`）。
+    """
+    try:
+        view, created = market_service.list_person(
+            db,
+            person_id=payload.person_id,
+            company_id=company_id,
+            quality_tier=payload.quality_tier,
+        )
+    except market_service.MarketError as exc:
+        raise _http_error(exc) from exc
+    response.status_code = 201 if created else 200
+    return {
+        "listing_id": view.listing_id,
+        "identity_id": view.identity_id,
+        "name": view.name,
+        "avatar": "",
+        "origin": view.origin,
+        "cultivation_state": view.cultivation_state,
+        "status": view.status.value,
+        "quality_tier": view.quality_tier,
+        "listed_at": view.listed_at,
+        "closed_at": view.closed_at,
+        "listed_by": str(view.listed_by_participant_id),
+    }
+
+
+@router.delete("/listings/{listing_id}", status_code=204)
+def delete_listing(
+    listing_id: int,
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> Response:
+    """下架（幂等）：重复下架仍 204；非本公司挂牌 → 404。"""
+    try:
+        market_service.delist(db, listing_id=listing_id, company_id=company_id)
+    except market_service.MarketError as exc:
+        raise _http_error(exc) from exc
+    return Response(status_code=204)
+
+
+@router.get("/listings", response_model=MarketListingPageOut)
+def list_listings(
+    text: str | None = Query(None, description="按姓名 / 身份 ID 模糊搜索"),
+    origin: str | None = Query(None, description="trained | blank | issued"),
+    quality_tier: str | None = Query(None, description="发行方档位（T2.4）"),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+) -> dict:
+    """在市人才列表（仅 active 挂牌，公开投影）。"""
+    query = MarketSearchQuery(
+        text=text, origin=origin, quality_tier=quality_tier, limit=limit, offset=offset
+    )
+    return market_service.search(db, query)
+
+
+@router.get("/listings/{listing_id}", response_model=MarketCandidateOut)
+def get_listing(
+    listing_id: int,
+    timeline_limit: int = Query(default=50, ge=1, le=200),
+    evidence_limit: int = Query(default=20, ge=0, le=200),
+    db: Session = Depends(get_db),
+) -> dict:
+    """候选人公开档案：时间线 / 人格 / 能力画像（score+confidence 并列）/ 证据下钻。
+
+    只对 **active** 挂牌开放：下架或被招募后不再对外可读（404）。
+    """
+    try:
+        return market_service.listing_detail(
+            db, listing_id, timeline_limit=timeline_limit, evidence_limit=evidence_limit
+        )
+    except market_service.MarketError as exc:
+        raise _http_error(exc) from exc
