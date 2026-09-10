@@ -363,7 +363,7 @@ cd apps/web && npm run build
 
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
-| T2.0 Domain Contract Freeze | **DONE**（2026-09-10） | `见 Progress Log` | 设计 + 执行基线落盘；枚举/契约代码 + 守卫测试；**无迁移**；pytest 690 / web 303 |
+| T2.0 Domain Contract Freeze | **DONE**（2026-09-10） | `9465947` | 设计 + 执行基线落盘；枚举/契约代码 + 守卫测试；**无迁移**；pytest 690 / web 303 |
 | T2.1 Person Read Model / API | **NEXT** | — | 入口：设计 §9 + 本文件 §4.2 |
 | T2.2 Cultivation Completion & Eligibility | PLANNED | — | 设计 §7 D1/D6 |
 | T2.3 Market Core & MarketAdapter | PLANNED | — | `[migration v29]`，设计 §6/§8 |
@@ -375,7 +375,7 @@ cd apps/web && npm run build
 
 ### Progress Log
 
-- **2026-09-10 · T2.0 DONE**：commit 哈希与门禁基线见紧随的 `docs(t2): 记录 T2.0 哈希与门禁基线` 提交（避免自引用哈希）。
+- **2026-09-10 · T2.0 DONE**：commit **`9465947`**（`docs/architecture: freeze T2 talent market domain (T2.0)`，19 files / +1165）。
   - 产出：`docs/t2-talent-market-design.md`、`docs/t2-implementation-plan.md`、`app/talent/market/contracts.py`、`tests/test_market_contract.py`；
     枚举 `CultivationState` / `TalentOrigin` 入 `app/models/enums.py`，培养域 magic string 替换为枚举（行为不变）。
   - 门禁：pytest **690 passed** / 6 deselected（+7 契约测试）；ruff check 全绿、改动文件 format 干净（5 个既有 WIP 红不变）；
