@@ -133,6 +133,19 @@ def list_programs(db: Session, person_id: int) -> list[TrainingProgram]:
     )
 
 
+def list_programs_for_persons(db: Session, person_ids: list[int]) -> list[TrainingProgram]:
+    """批量取培养实例（列表页卡片进度用）：一条 SQL，避免每个角色一次查询。"""
+    if not person_ids:
+        return []
+    return list(
+        db.scalars(
+            select(TrainingProgram)
+            .where(TrainingProgram.person_id.in_(person_ids))
+            .order_by(TrainingProgram.id)
+        )
+    )
+
+
 def create_education_event(db: Session, *, person_id: int, **fields) -> EducationEvent:
     event = EducationEvent(person_id=person_id, **fields)
     db.add(event)

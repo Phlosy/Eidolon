@@ -14,17 +14,36 @@ from app.schemas.cultivation import (
     CharacterCreateIn,
     CharacterDetailOut,
     CharacterOut,
+    CharacterProgramSummary,
     EducationEventOut,
     FreeSessionIn,
     FreeSessionResultOut,
     ProgramOut,
 )
+from app.services import competency as competency_service
 from app.services import cultivation as cultivation_service
+from app.services import traits as traits_service
 
 router = APIRouter(prefix="/cultivation", tags=["cultivation"])
 
 
-def _character_out(person, profile) -> CharacterOut:
+def _stages_total(template_id: str) -> int:
+    """模板阶段数（只认后端模板注册表，前端不重复维护）。"""
+    from app.talent.cultivation.templates import TEMPLATES
+
+    template = TEMPLATES.get(template_id)
+    return len(template.stages) if template is not None else 0
+
+
+def _character_out(person, profile, program=None) -> CharacterOut:
+    summary = None
+    if program is not None:
+        summary = CharacterProgramSummary(
+            template=program.template,
+            current_stage=program.current_stage,
+            stages_total=_stages_total(program.template),
+            status=program.status,
+        )
     return CharacterOut(
         id=profile.id,
         person_id=profile.person_id,
@@ -35,7 +54,15 @@ def _character_out(person, profile) -> CharacterOut:
         owner_company_id=profile.owner_company_id,
         lifecycle=profile.lifecycle,
         created_at=profile.created_at,
+        program=summary,
     )
+
+
+def _program_out(program) -> ProgramOut:
+    """ProgramOut + 模板阶段总数（阶段数只在模板注册表里定义，前端不重复维护）。"""
+    out = ProgramOut.model_validate(program)
+    out.stages_total = _stages_total(program.template)
+    return out
 
 
 @router.post("/characters", response_model=CharacterOut, status_code=201)
@@ -52,7 +79,11 @@ def create_character(
         template=payload.template,
         owner_company_id=company_id,
     )
-    return _character_out(person, profile)
+    from app.repositories import cultivation as cultivation_repo
+
+    programs = cultivation_repo.list_programs(db, person.id)
+    active = next((p for p in programs if p.status == "active"), None)
+    return _character_out(person, profile, active)
 
 
 @router.get("/characters", response_model=list[CharacterOut])
@@ -61,11 +92,26 @@ def list_characters(
     company_id: int | None = Depends(resolve_company_id),
     db: Session = Depends(get_db),
 ) -> list[CharacterOut]:
+    from app.models.cultivation import TrainingProgram
+    from app.repositories import cultivation as cultivation_repo
     from app.repositories import persons as person_repo
 
     profiles = cultivation_service.list_characters(db, company_id, lifecycle)
+    # 批量取培养实例（一条 SQL），每个角色取活跃实例；没有则最近一个（已完成的也显示进度）
+    programs = cultivation_repo.list_programs_for_persons(
+        db, [profile.person_id for profile in profiles]
+    )
+    program_by_person: dict[int, TrainingProgram] = {}
+    for program in programs:
+        current = program_by_person.get(program.person_id)
+        if current is None or program.status == "active":
+            program_by_person[program.person_id] = program
     return [
-        _character_out(person_repo.get_person(db, profile.person_id), profile)
+        _character_out(
+            person_repo.get_person(db, profile.person_id),
+            profile,
+            program_by_person.get(profile.person_id),
+        )
         for profile in profiles
     ]
 
@@ -81,8 +127,10 @@ def get_character(
     )
     return CharacterDetailOut(
         **_character_out(person, profile).model_dump(),
-        programs=[ProgramOut.model_validate(p) for p in programs],
+        programs=[_program_out(p) for p in programs],
         events=[EducationEventOut.model_validate(e) for e in events],
+        traits=traits_service.person_traits_out(db, person.id),
+        competencies=competency_service.person_capabilities_out(db, person.id),
     )
 
 
@@ -103,7 +151,7 @@ def advance_program(
     current = next(p for p in program if p.id == program_id)
     profile = cultivation_repo.get_profile_by_person(db, event.person_id)
     return AdvanceResultOut(
-        program=ProgramOut.model_validate(current),
+        program=_program_out(current),
         event=EducationEventOut.model_validate(event),
         lifecycle=profile.lifecycle if profile else "cultivating",
     )

@@ -239,3 +239,70 @@ def test_v27_relaxes_legacy_not_null_and_keeps_data(tmp_path):
                 " '2026-01-02 00:00:00', '2026-01-02 00:00:00')"
             )
         )
+
+
+# ---- T1.3：成品档案读面（traits + 证据聚合能力画像） ----
+
+
+def test_character_detail_exposes_traits_and_unrated_profile(client, db, default_company_id):
+    """详情读面：8 维人格 + general 能力全量；未评估如实 null（绝不显示 0 分）。"""
+    from app.brain.registry import TRAIT_REGISTRY
+
+    created = _create(client, f"Profile {uuid.uuid4().hex[:6]}", origin="blank")
+    assert created.status_code == 201, created.text
+    character = created.json()
+
+    response = client.get(f"/api/v1/cultivation/characters/{character['id']}")
+    assert response.status_code == 200, response.text
+    body = response.json()
+
+    assert {trait["code"] for trait in body["traits"]} == set(TRAIT_REGISTRY)
+    assert all(0.0 <= trait["value"] <= 1.0 for trait in body["traits"])
+    assert all(trait["display"] == round(trait["value"] * 100) for trait in body["traits"])
+
+    general = body["competencies"]["general"]
+    assert general, "general 能力目录应全量返回"
+    assert all(row["score"] is None and row["confidence"] is None for row in general)
+    assert all(row["status"] == "unrated" for row in general)
+    assert body["competencies"]["professional"] == []
+
+
+def test_character_profile_scored_only_by_evidence_after_template(client, db, default_company_id):
+    """走完学院派（含升学/毕业评估节点）⇒ 能力分只能由证据聚合而来。"""
+    created = _create(client, f"Grad {uuid.uuid4().hex[:6]}", template="academic")
+    assert created.status_code == 201, created.text
+    character = created.json()
+    detail = client.get(f"/api/v1/cultivation/characters/{character['id']}").json()
+    program_id = detail["programs"][0]["id"]
+
+    for _ in range(4):  # 小学 / 初中 / 高中 / 大学
+        advanced = client.post(f"/api/v1/cultivation/programs/{program_id}/advance")
+        assert advanced.status_code == 200, advanced.text
+
+    body = client.get(f"/api/v1/cultivation/characters/{character['id']}").json()
+    assert body["lifecycle"] == "ready"
+    scored = [row for row in body["competencies"]["general"] if row["score"] is not None]
+    assert scored, "走完评估节点后应有证据聚合出的能力分"
+    assert all(row["evidence_count"] > 0 for row in scored)
+    assert all(row["confidence"] is not None for row in scored)
+
+
+def test_character_list_includes_program_summary(client, db, default_company_id):
+    """列表卡片进度：活跃实例摘要（模板/阶段/总数/状态）；自由养成为 null。"""
+    created = _create(client, f"List {uuid.uuid4().hex[:6]}", template="academic")
+    assert created.status_code == 201, created.text
+    body = created.json()
+    assert body["program"] == {
+        "template": "academic",
+        "current_stage": 0,
+        "stages_total": 4,
+        "status": "active",
+    }
+
+    blank = _create(client, f"ListBlank {uuid.uuid4().hex[:6]}", origin="blank").json()
+    assert blank["program"] is None
+
+    listed = client.get("/api/v1/cultivation/characters").json()
+    rows = {row["id"]: row for row in listed}
+    assert rows[body["id"]]["program"]["stages_total"] == 4
+    assert rows[blank["id"]]["program"] is None

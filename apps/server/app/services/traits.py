@@ -21,6 +21,19 @@ def employee_traits_out(db: Session, employee_id: int) -> list[dict]:
     """
     # R1.1：brain 读口径已切 person_id（repo 入口解析，带旧口径回落）
     brain = runtime_repo.get_brain(db, employee_id)
+    return _traits_out(brain)
+
+
+def person_traits_out(db: Session, person_id: int) -> list[dict]:
+    """person 口径人格读出（T1.3 培养 UI：角色没有 employee 行）。
+
+    培养期人格由 T1.2 的 `initialize_character_brain` + 际遇偏移写入，本函数只读。
+    """
+    brain = runtime_repo.get_brain_by_person(db, person_id)
+    return _traits_out(brain)
+
+
+def _traits_out(brain) -> list[dict]:
     traits = BrainTraits.from_brain(brain)
     out: list[dict] = []
     for spec in TRAIT_REGISTRY.values():

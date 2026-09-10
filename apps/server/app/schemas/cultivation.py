@@ -19,6 +19,8 @@ class ProgramOut(ORMModel):
     id: int
     template: str
     current_stage: int
+    #: 模板阶段总数（由后端模板注册表透出，前端进度条不再猜）
+    stages_total: int = 0
     resource_used: dict
     status: str
     created_at: datetime
@@ -34,6 +36,15 @@ class EducationEventOut(ORMModel):
     occurred_at: datetime
 
 
+class CharacterProgramSummary(BaseModel):
+    """列表卡片用的培养进度快照（详情页用完整 ProgramOut）。"""
+
+    template: str
+    current_stage: int
+    stages_total: int
+    status: str
+
+
 class CharacterOut(BaseModel):
     id: int
     person_id: int
@@ -44,11 +55,17 @@ class CharacterOut(BaseModel):
     owner_company_id: int | None
     lifecycle: str
     created_at: datetime
+    #: 活跃培养实例摘要（自由养成 / 已结束无实例时为 None）
+    program: CharacterProgramSummary | None = None
 
 
 class CharacterDetailOut(CharacterOut):
     programs: list[ProgramOut]
     events: list[EducationEventOut]
+    # T1.3 成品档案：人格（8 维，只读）+ 证据聚合能力画像（未评估 = score/confidence null）。
+    # 与 /employees/{id}/traits、/employees/{id}/competencies 同构，前端复用同一套展示契约。
+    traits: list[dict] = Field(default_factory=list)
+    competencies: dict[str, list[dict]] = Field(default_factory=dict)
 
 
 class FreeSessionIn(BaseModel):

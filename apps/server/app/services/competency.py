@@ -479,11 +479,26 @@ def employee_capabilities_out(db: Session, employee_id: int) -> dict:
     """
     from app.repositories import competency as competency_repo
 
+    return _capabilities_out(db, competency_repo.employee_competency_rows(db, employee_id))
+
+
+def person_capabilities_out(db: Session, person_id: int) -> dict:
+    """person 口径能力读面（T1.3 培养 UI）：与员工读面同构，同样只读聚合行。
+
+    角色在阶段评估（T1.2）之前没有聚合行 ⇒ 全部 unrated，绝不显示 0 分。
+    """
+    from app.repositories import competency as competency_repo
+
+    return _capabilities_out(db, competency_repo.person_competency_rows(db, person_id))
+
+
+def _capabilities_out(db: Session, rows: list) -> dict:
+    from app.repositories import competency as competency_repo
+
     domains = competency_repo.list_domains(db)
     domain_by_id = {domain.id: domain for domain in domains}
     definitions = competency_repo.list_definitions(db, domain_ids=list(domain_by_id))
     definition_by_id = {definition.id: definition for definition in definitions}
-    rows = competency_repo.employee_competency_rows(db, employee_id)
     row_by_definition = {row.competency_definition_id: row for row in rows}
 
     general_definitions = competency_repo.general_definitions(db)

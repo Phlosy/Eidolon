@@ -72,6 +72,16 @@ def employee_competency_rows(
     return list(db.scalars(query))
 
 
+def person_competency_rows(
+    db: Session, person_id: int, definition_ids: list[int] | None = None
+) -> list[EmployeeCompetency]:
+    """person 口径直读（T1.3 培养 UI：角色没有 employee 行，走不了上面的换算入口）。"""
+    query = select(EmployeeCompetency).where(EmployeeCompetency.person_id == person_id)
+    if definition_ids:
+        query = query.where(EmployeeCompetency.competency_definition_id.in_(definition_ids))
+    return list(db.scalars(query))
+
+
 def list_evidence(
     db: Session,
     employee_id: int,
