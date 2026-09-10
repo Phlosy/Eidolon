@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -561,6 +561,36 @@ function useOutsideClose(
   }, [open, onClose, ref]);
 }
 
+/**
+ * 锚定触发器下方的浮层菜单，并把它夹在视口内。
+ * 云文档工具栏靠右上角，左对齐菜单在常见笔记本宽度（如 1512px）下会被右边缘裁掉，
+ * 因此溢出时改为贴着触发器右边缘（夹到视口内）展开。
+ * 位置在 layout effect 里量取，首帧即为最终位置，不会先闪一下再跳。
+ */
+function useAnchoredMenu(
+  open: boolean,
+  buttonRef: React.RefObject<HTMLButtonElement | null>,
+  menuRef: React.RefObject<HTMLDivElement | null>,
+) {
+  const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!open) {
+      setCoords(null);
+      return;
+    }
+    const anchor = buttonRef.current?.getBoundingClientRect();
+    const menu = menuRef.current;
+    if (!anchor || !menu) return;
+    const margin = 8;
+    const maxLeft = window.innerWidth - menu.offsetWidth - margin;
+    setCoords({
+      left: Math.max(margin, Math.min(anchor.left, maxLeft)),
+      top: anchor.bottom + 6,
+    });
+  }, [open, buttonRef, menuRef]);
+  return coords;
+}
+
 function DriveCreateMenu({
   open,
   onToggle,
@@ -577,14 +607,8 @@ function DriveCreateMenu({
   const { t } = useTranslation();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
+  const coords = useAnchoredMenu(open, buttonRef, menuRef);
   useOutsideClose(menuRef, open, onClose);
-
-  useEffect(() => {
-    if (!open || !buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    setCoords({ left: rect.left, top: rect.bottom + 6 });
-  }, [open]);
 
   const items = [
     { icon: FileText, label: t("drive:newMenu.markdown"), onClick: onNewDocument, enabled: true },
@@ -613,14 +637,14 @@ function DriveCreateMenu({
       >
         <FilePlus2 className="h-4 w-4" />
       </button>
-      {open && coords
+      {open
         ? createPortal(
             <div
               ref={menuRef}
               role="menu"
               data-testid="drive-create-menu"
-              className="fixed z-[70] w-52 rounded-xl border border-border bg-popover p-1.5 shadow-xl"
-              style={{ left: coords.left, top: coords.top }}
+              className="fixed z-[70] w-52 rounded-xl border border-border bg-surface-elevated p-1.5 shadow-xl"
+              style={coords ? { left: coords.left, top: coords.top } : { visibility: "hidden" }}
             >
               {items.map(({ icon: ItemIcon, label, onClick: handle, enabled }) => (
                 <button
@@ -667,14 +691,8 @@ function DriveUploadMenu({
   const { t } = useTranslation();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState<{ left: number; top: number } | null>(null);
+  const coords = useAnchoredMenu(open, buttonRef, menuRef);
   useOutsideClose(menuRef, open, onClose);
-
-  useEffect(() => {
-    if (!open || !buttonRef.current) return;
-    const rect = buttonRef.current.getBoundingClientRect();
-    setCoords({ left: rect.left, top: rect.bottom + 6 });
-  }, [open]);
 
   return (
     <>
@@ -690,14 +708,14 @@ function DriveUploadMenu({
       >
         <Upload className="h-4 w-4" />
       </button>
-      {open && coords
+      {open
         ? createPortal(
             <div
               ref={menuRef}
               role="menu"
               data-testid="drive-upload-menu"
-              className="fixed z-[70] w-48 rounded-xl border border-border bg-popover p-1.5 shadow-xl"
-              style={{ left: coords.left, top: coords.top }}
+              className="fixed z-[70] w-48 rounded-xl border border-border bg-surface-elevated p-1.5 shadow-xl"
+              style={coords ? { left: coords.left, top: coords.top } : { visibility: "hidden" }}
             >
               <button
                 type="button"

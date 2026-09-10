@@ -105,6 +105,19 @@ describe("DrivePage", () => {
     expect(screen.getByRole("menuitem", { name: "Upload folder" })).toBeInTheDocument();
   });
 
+  it("dropdown menu surfaces stay opaque — regression: bg-popover had no theme token", () => {
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: "Create" }));
+    const createMenu = screen.getByTestId("drive-create-menu");
+    expect(createMenu).toHaveClass("bg-surface-elevated");
+    expect(createMenu).not.toHaveClass("bg-popover");
+
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+    const uploadMenu = screen.getByTestId("drive-upload-menu");
+    expect(uploadMenu).toHaveClass("bg-surface-elevated");
+    expect(uploadMenu).not.toHaveClass("bg-popover");
+  });
+
   it("no big 'Drive' title header at top — toolbar starts right away", () => {
     renderPage();
     expect(screen.queryByRole("heading", { name: "Drive" })).not.toBeInTheDocument();
