@@ -16,6 +16,7 @@ from app.models.project_delivery import (
     ReviewPackage,
     TutorialProgress,
 )
+from app.repositories import persons as person_repo
 
 
 def _create(db: Session, model, **fields):
@@ -64,6 +65,11 @@ def list_phases(db: Session, project_id: int) -> list[ProjectPhase]:
 
 
 def create_document(db: Session, **fields) -> DocumentArtifact:
+    # 双写（R1.4）：author_employee_id（deprecated 镜像）+ author_person_id（权威口径）
+    if fields.get("author_employee_id") is not None:
+        fields.setdefault(
+            "author_person_id", person_repo.write_person_id(db, fields["author_employee_id"])
+        )
     return _create(db, DocumentArtifact, **fields)
 
 
@@ -119,6 +125,12 @@ def next_document_minor(db: Session, project_id: int, document_type: str) -> int
 
 
 def create_review(db: Session, **fields) -> ReviewMeeting:
+    # 双写（R1.4）：presenter_employee_id（deprecated 镜像）+ presenter_person_id（权威口径）
+    if fields.get("presenter_employee_id") is not None:
+        fields.setdefault(
+            "presenter_person_id",
+            person_repo.write_person_id(db, fields["presenter_employee_id"]),
+        )
     return _create(db, ReviewMeeting, **fields)
 
 

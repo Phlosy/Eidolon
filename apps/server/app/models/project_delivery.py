@@ -6,7 +6,7 @@ baseline, change and delivery semantics over exact Drive revisions.
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -73,9 +73,11 @@ class DocumentArtifact(TimestampMixin, Base):
     drive_revision_id: Mapped[int | None] = mapped_column(
         ForeignKey("drive_revisions.id"), nullable=True
     )
+    # deprecated（R1.4）：署名读口径已切到 author_person_id；列保留作兼容镜像，随表留存不删。
     author_employee_id: Mapped[int | None] = mapped_column(
         ForeignKey("employees.id"), nullable=True
     )
+    author_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     review_status: Mapped[str] = mapped_column(String(30), default="draft")
     baseline_status: Mapped[str] = mapped_column(String(30), default="none")
     source_document_id: Mapped[int | None] = mapped_column(
@@ -97,9 +99,11 @@ class ReviewMeeting(TimestampMixin, Base):
         String(40), default=ReviewStatus.preparing.value, index=True
     )
     scheduled_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # deprecated（R1.4）：汇报人读口径已切到 presenter_person_id；列保留作兼容镜像。
     presenter_employee_id: Mapped[int | None] = mapped_column(
         ForeignKey("employees.id"), nullable=True
     )
+    presenter_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     participants: Mapped[dict] = mapped_column(JSON, default=dict)
     decision: Mapped[str | None] = mapped_column(String(40), nullable=True)
     acted_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)

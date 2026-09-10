@@ -6,7 +6,7 @@ at the repository/service level: company-scope providers are visible to all,
 employee-scope providers only to their owner.
 """
 
-from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy import JSON, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -23,9 +23,11 @@ class Provider(TimestampMixin, Base):
     provider_type: Mapped[str] = mapped_column(String(50), default=ProviderType.custom.value)
     base_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     scope: Mapped[str] = mapped_column(String(50), default=ProviderScope.company.value)
+    # deprecated（R1.4）：属主读口径已切到 owner_person_id；列保留作兼容镜像，随表留存不删。
     owner_employee_id: Mapped[int | None] = mapped_column(
         ForeignKey("employees.id"), nullable=True, index=True
     )
+    owner_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     enabled: Mapped[bool] = mapped_column(default=True)
     # Reference into the secret store (e.g. "local:<uuid4>"), NOT the key itself.
     credential_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
@@ -42,7 +44,9 @@ class ModelBinding(TimestampMixin, Base):
 
     __tablename__ = "model_bindings"
 
+    # deprecated（R1.4）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     provider_id: Mapped[int] = mapped_column(ForeignKey("providers.id"))
     model: Mapped[str] = mapped_column(String(200))
     alias: Mapped[str] = mapped_column(String(200), default="")

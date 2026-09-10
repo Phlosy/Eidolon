@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
@@ -38,6 +38,7 @@ from app.models.provider import ModelBinding, Provider
 from app.models.runtime import RuntimeInstance
 from app.providers.base import PRESETS_BY_TYPE
 from app.repositories import git as git_repo
+from app.repositories import persons as person_repo
 from app.repositories import project as project_repo
 from app.repositories import project_delivery as delivery_repo
 from app.services import position_compat
@@ -124,12 +125,28 @@ class Facts:
         facts.role_of = position_compat.role_mirror(db, facts.employees)
         ids = [employee.id for employee in facts.employees]
         if ids:
+            # R1.4：运行时实例/模型绑定的属主口径切 person_id（批量解析 + 回落集）
+            person_ids = person_repo.resolve_person_ids(db, ids)
+            fallback_ids = [emp_id for emp_id in ids if emp_id not in person_ids]
+
+            def _owner_clause(person_column, employee_column):
+                clause = person_column.in_(person_ids.values())
+                if fallback_ids:
+                    clause = or_(clause, employee_column.in_(fallback_ids))
+                return clause
+
             for runtime in db.scalars(
-                select(RuntimeInstance).where(RuntimeInstance.employee_id.in_(ids))
+                select(RuntimeInstance).where(
+                    _owner_clause(RuntimeInstance.person_id, RuntimeInstance.employee_id)
+                )
             ):
                 facts.runtimes[runtime.employee_id] = runtime
             bindings = list(
-                db.scalars(select(ModelBinding).where(ModelBinding.employee_id.in_(ids)))
+                db.scalars(
+                    select(ModelBinding).where(
+                        _owner_clause(ModelBinding.person_id, ModelBinding.employee_id)
+                    )
+                )
             )
             for binding in bindings:
                 facts.bindings.setdefault(binding.employee_id, []).append(binding)

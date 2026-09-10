@@ -33,7 +33,7 @@ from app.models.knowledge import LearningPriority
 from app.models.learning import LearningSession
 from app.models.organization import Company, Employee
 from app.models.provider import ModelBinding
-from app.models.runtime import EmployeeBrain, RuntimeInstance
+from app.models.runtime import EmployeeBrain
 from app.repositories import knowledge as knowledge_repo
 from app.repositories import organization as org_repo
 from app.repositories import persons as person_repo
@@ -310,7 +310,8 @@ def create_session(
 
 
 def _attach_runtime(db: Session, session: LearningSession, employee: Employee) -> None:
-    runtime = db.scalar(select(RuntimeInstance).where(RuntimeInstance.employee_id == employee.id))
+    # R1.4：实例属主口径切 person_id（repo 入口解析，带旧口径回落）
+    runtime = runtime_repo.get_instance_for_employee(db, employee.id)
     if runtime is not None:
         session.runtime_instance_id = runtime.id
         session.runtime_type = runtime.runtime_type

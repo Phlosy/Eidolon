@@ -65,8 +65,21 @@ class EmployeeBrain(TimestampMixin, Base):
 
 class RuntimeInstance(TimestampMixin, Base):
     __tablename__ = "runtime_instances"
+    __table_args__ = (
+        # R1.4（docs/person-core-migration.md D4 批次 4）：一人一实例在 person 口径上的
+        # 镜像（employee_id unique 的对应物）。必须写进模型，否则 alembic check 报漂移。
+        Index(
+            "uq_runtime_instances_person",
+            "person_id",
+            unique=True,
+            sqlite_where=text("person_id IS NOT NULL"),
+            postgresql_where=text("person_id IS NOT NULL"),
+        ),
+    )
 
+    # deprecated（R1.4）：读口径已切到 person_id；列保留作兼容镜像，随表留存不删。
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), unique=True, index=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     runtime_type: Mapped[str] = mapped_column(String(50), default=RuntimeType.mock.value)
     deployment_mode: Mapped[str] = mapped_column(String(50), default=DeploymentMode.mock.value)
     container_id: Mapped[str | None] = mapped_column(String(100), nullable=True)

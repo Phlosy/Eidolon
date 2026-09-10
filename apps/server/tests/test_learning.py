@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import date
 
 import sqlalchemy as sa
-from factories import make_employee
+from factories import make_employee, person_id_of
 
 from app.core.config import settings
 from app.models.enums import LearningSessionStatus, LearningSourceType
@@ -235,13 +235,18 @@ def test_provider_and_model_recorded_on_session(db):
     db.add(provider)
     db.flush()
     binding = ModelBinding(
-        employee_id=employee_id, provider_id=provider.id, model="mock-model", alias="mock-alias"
+        employee_id=employee_id,
+        person_id=person_id_of(db, employee_id),  # R1.4：种子行双写（读口径已切 person）
+        provider_id=provider.id,
+        model="mock-model",
+        alias="mock-alias",
     )
     db.add(binding)
     db.flush()
     db.add(
         RuntimeInstance(
             employee_id=employee_id,
+            person_id=person_id_of(db, employee_id),  # R1.4：种子行双写
             runtime_type="mock",
             status="running",
             model_binding_id=binding.id,

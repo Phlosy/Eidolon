@@ -8,6 +8,7 @@ from app.models.drive import DriveCollaborator, DriveNode, DriveRevision
 from app.models.enums import DriveNodeKind
 from app.models.organization import Employee
 from app.models.project import Project
+from app.repositories import persons as person_repo
 
 
 def list_nodes(
@@ -63,6 +64,12 @@ def create_node(db: Session, **fields) -> DriveNode:
             parent = db.get(DriveNode, fields["parent_id"])
             if parent is not None and parent.company_id is not None:
                 fields["company_id"] = parent.company_id
+    # 双写（R1.4）：owner_employee_id（deprecated 镜像）+ owner_person_id（权威口径）；
+    # owner 为 NULL 的节点（zone 根/公共资源）没有人称可解析，跳过。
+    if fields.get("owner_employee_id") is not None:
+        fields.setdefault(
+            "owner_person_id", person_repo.write_person_id(db, fields["owner_employee_id"])
+        )
     # 带 path 的创建一律碰撞安全（所有 drive 目录的唯一切入点）。
     # SQLite：INSERT ... ON CONFLICT DO NOTHING + 回查 —— 无异常、不毒化
     # 会话、任意事务内可用；并发创建同一目录（入职/补收敛/教程轮询）由唯一
@@ -90,6 +97,7 @@ def _create_node_collision_safe(db: Session, fields: dict) -> DriveNode:
         "project_id": fields.get("project_id"),
         "doc_type": fields.get("doc_type"),
         "owner_employee_id": fields.get("owner_employee_id"),
+        "owner_person_id": fields.get("owner_person_id"),
         "current_version": fields.get("current_version", 1),
         "work_session_id": fields.get("work_session_id"),
         "created_at": fields.get("created_at") or utcnow(),
@@ -114,6 +122,11 @@ def _create_node_collision_safe(db: Session, fields: dict) -> DriveNode:
 
 
 def create_revision(db: Session, **fields) -> DriveRevision:
+    # 双写（R1.4）：author_employee_id（deprecated 镜像）+ author_person_id（权威口径）
+    if fields.get("author_employee_id") is not None:
+        fields.setdefault(
+            "author_person_id", person_repo.write_person_id(db, fields["author_employee_id"])
+        )
     revision = DriveRevision(**fields)
     db.add(revision)
     db.flush()
@@ -172,7 +185,10 @@ def count_documents_by_owner(db: Session, owner_employee_id: int) -> int:
     return int(
         db.scalar(
             select(func.count(DriveNode.id)).where(
-                DriveNode.owner_employee_id == owner_employee_id,
+                # R1.4：属主口径切 owner_person_id（单一入口换算，带旧口径回落）
+                person_repo.read_criterion(
+                    db, owner_employee_id, DriveNode.owner_person_id, DriveNode.owner_employee_id
+                ),
                 DriveNode.kind == DriveNodeKind.document.value,
             )
         )

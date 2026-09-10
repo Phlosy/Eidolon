@@ -14,6 +14,7 @@ from app.core.database import SessionLocal
 from app.core.logging import get_logger
 from app.core.redaction import redact_data
 from app.models.event import Event
+from app.repositories import persons as person_repo
 
 logger = get_logger(__name__)
 
@@ -58,6 +59,10 @@ class EventBus:
         )
         try:
             with SessionLocal() as db:
+                # R1.4：actor 的 person 镜像在**唯一落库点**统一解析双写 ——
+                # publish 签名不变，全仓调用方零改动；解析失败留空 + warning（§5）。
+                if actor_employee_id is not None:
+                    event.actor_person_id = person_repo.write_person_id(db, actor_employee_id)
                 db.add(event)
                 db.commit()
         except Exception:

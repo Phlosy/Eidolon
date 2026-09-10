@@ -147,13 +147,33 @@ def _batch_derived(db: Session, people: list[Employee]):
     for employee_id, kinds in issues.items():
         derived[employee_id].integrity = kinds
 
+    # R1.1/R1.3/R1.4：brain / 能力行 / 运行时实例 / 模型绑定的属主读口径都切 person_id
+    # （同一次批量解析）；解析不到的 employee 回落 employee_id 旧口径（方案 §5）。
+    # key 仍是 employee_id —— 这些行都双写着两列。
+    person_ids = person_repo.resolve_person_ids(db, ids)
+    fallback_ids = [emp_id for emp_id in ids if emp_id not in person_ids]
+
+    def _owner_clause(person_column, employee_column):
+        clause = person_column.in_(person_ids.values())
+        if fallback_ids:
+            clause = or_(clause, employee_column.in_(fallback_ids))
+        return clause
+
     runtimes = {
         runtime.employee_id: runtime
         for runtime in db.scalars(
-            select(RuntimeInstance).where(RuntimeInstance.employee_id.in_(ids))
+            select(RuntimeInstance).where(
+                _owner_clause(RuntimeInstance.person_id, RuntimeInstance.employee_id)
+            )
         )
     }
-    bindings = list(db.scalars(select(ModelBinding).where(ModelBinding.employee_id.in_(ids))))
+    bindings = list(
+        db.scalars(
+            select(ModelBinding).where(
+                _owner_clause(ModelBinding.person_id, ModelBinding.employee_id)
+            )
+        )
+    )
     provider_ids = {binding.provider_id for binding in bindings if binding.provider_id}
     providers = {
         provider.id: provider
@@ -170,13 +190,8 @@ def _batch_derived(db: Session, people: list[Employee]):
         d.provider_name = provider.name if provider else None
         d.provider_model = binding.model or (provider.name if provider else None)
 
-    # R1.1：brain 读口径切 person_id（批量解析，一次换算）；解析不到的 employee
-    # 回落 employee_id 旧口径（方案 §5）。key 仍是 employee_id —— brain 行双写着两列。
-    person_ids = person_repo.resolve_person_ids(db, ids)
-    fallback_ids = [emp_id for emp_id in ids if emp_id not in person_ids]
-    brain_owner = EmployeeBrain.person_id.in_(person_ids.values())
-    if fallback_ids:
-        brain_owner = or_(brain_owner, EmployeeBrain.employee_id.in_(fallback_ids))
+    # R1.1：brain 读口径切 person_id（与上方运行时/绑定同一次批量解析 + 回落集）
+    brain_owner = _owner_clause(EmployeeBrain.person_id, EmployeeBrain.employee_id)
     brains = {
         brain.employee_id: brain for brain in db.scalars(select(EmployeeBrain).where(brain_owner))
     }
@@ -194,9 +209,7 @@ def _batch_derived(db: Session, people: list[Employee]):
     definitions = _definition_map(db)
     domain_kinds = _domain_kinds(db)
     # R1.3：能力行与上方 brains 同一次批量解析 + 回落集，口径切 person_id
-    competency_owner = EmployeeCompetency.person_id.in_(person_ids.values())
-    if fallback_ids:
-        competency_owner = or_(competency_owner, EmployeeCompetency.employee_id.in_(fallback_ids))
+    competency_owner = _owner_clause(EmployeeCompetency.person_id, EmployeeCompetency.employee_id)
     for row in db.scalars(select(EmployeeCompetency).where(competency_owner)).all():
         definition = definitions.get(row.competency_definition_id)
         if definition is None:
@@ -208,9 +221,11 @@ def _batch_derived(db: Session, people: list[Employee]):
             "kind": domain_kinds.get(definition.domain_id, "general"),
         }
 
+    # R1.4：事件行为主体口径切 actor_person_id（同一回落集）；group/取值仍用
+    # actor_employee_id 镜像列 —— 双写保证它与 person 一一对应，key 语义不变。
     latest_ids = db.scalars(
         select(func.max(Event.id))
-        .where(Event.actor_employee_id.in_(ids))
+        .where(_owner_clause(Event.actor_person_id, Event.actor_employee_id))
         .group_by(Event.actor_employee_id)
     ).all()
     if latest_ids:

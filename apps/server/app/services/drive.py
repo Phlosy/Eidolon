@@ -24,6 +24,7 @@ from app.models.organization import Company
 from app.models.project import Project
 from app.repositories import drive as drive_repo
 from app.repositories import organization as org_repo
+from app.repositories import persons as person_repo
 from app.repositories import project as project_repo
 from app.repositories import project_delivery as delivery_repo
 
@@ -570,5 +571,9 @@ def check_write_permission(db: Session, node: DriveNode, actor_employee_id: int 
             raise HTTPException(status_code=403, detail="only project members may write")
         return
     # knowledge / skills / handbook: author writes, everyone reads
-    if node.owner_employee_id is not None and node.owner_employee_id != actor_employee_id:
+    # R1.4：作者判定按 person 口径（matches_owner：person 镜像优先，legacy 行回落
+    # owner_employee_id）——「只有作者可写」的行为与切换前完全一致。
+    if node.owner_employee_id is not None and not person_repo.matches_owner(
+        db, actor_employee_id, node.owner_person_id, node.owner_employee_id
+    ):
         raise HTTPException(status_code=403, detail="only the author may write this document")

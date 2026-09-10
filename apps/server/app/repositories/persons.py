@@ -93,3 +93,19 @@ def read_criterion(db: Session, employee_id: int, person_column, employee_column
         "person_id 解析失败（employee_id=%s），读口径回落 employee_id 旧口径", employee_id
     )
     return employee_column == employee_id
+
+
+def matches_owner(
+    db: Session,
+    employee_id: int,
+    person_value: int | None,
+    employee_value: int | None,
+) -> bool:
+    """内存态归属判定（read_criterion 的 ORM 对象版）：person 口径优先 ——
+    解析得到 person_id 且行上 person 镜像列非空时按 person 比较；否则回落
+    employee 镜像列。用于权限检查这类拿到整行后的判定（drive 写权限、provider
+    属主可见性），行为与切读前的 employee 口径完全一致。"""
+    person_id = resolve_person_id(db, employee_id)
+    if person_id is not None and person_value is not None:
+        return person_value == person_id
+    return employee_value is not None and employee_value == employee_id

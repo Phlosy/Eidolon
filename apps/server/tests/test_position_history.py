@@ -29,7 +29,6 @@ from app.core.database import _alembic_config
 from app.models.enums import EmployeeStatus, LifecycleStatus, RuntimeType
 from app.models.lifecycle import AccessPackage
 from app.models.organization import Company, Department
-from app.models.runtime import RuntimeInstance
 
 V11 = "j5e8a1b4c730"
 EMPLOYMENT_COLUMNS_ADDED = (
@@ -113,13 +112,16 @@ def _seed_legacy(engine: Engine) -> datetime:
             {"eid": charlie_id, "now": now_sql},
         )
         session.flush()
-        session.add(
-            RuntimeInstance(
-                employee_id=charlie_id,
-                runtime_type=RuntimeType.mock.value,
-                deployment_mode="mock",
-                status="running",
-            )
+        # runtime_instances 同理：v25 给模型加了 person_id，v11 的库里没有该列。
+        session.execute(
+            sa.text(
+                "INSERT INTO runtime_instances (employee_id, runtime_type, deployment_mode,"
+                " image, image_tag, status, health_status, workspace_path, data_path,"
+                " cpu_limit, memory_limit_mb, restart_policy, metadata_json, created_at,"
+                " updated_at) VALUES (:eid, 'mock', 'mock', '', 'latest', 'running', 'unknown',"
+                " '', '', 2.0, 4096, 'unless-stopped', '{}', :now, :now)"
+            ),
+            {"eid": charlie_id, "now": now_sql},
         )
         package = AccessPackage(
             slug="engineer", name="Engineer", description="", role="engineer", built_in=True

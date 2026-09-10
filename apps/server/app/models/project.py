@@ -5,7 +5,7 @@ See docs/architecture.md §3.2.
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -143,7 +143,9 @@ class Artifact(TimestampMixin, Base):
     )
     version: Mapped[int] = mapped_column(default=1)
     status: Mapped[str] = mapped_column(String(50), default=ArtifactStatus.draft.value)
+    # deprecated（R1.4）：署名读口径已切到 author_person_id；列保留作兼容镜像，随表留存不删。
     author_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
+    author_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
 
     project: Mapped[Project] = relationship(back_populates="artifacts")
 
@@ -153,7 +155,10 @@ class Message(TimestampMixin, Base):
 
     company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"))
     project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
+    # deprecated（R1.4）：sender/recipient 读口径已切到 *_person_id；列保留作兼容镜像。
     sender_id: Mapped[int] = mapped_column(ForeignKey("employees.id"))
+    sender_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     recipient_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
+    recipient_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     channel: Mapped[str] = mapped_column(String(100), default="general")
     content: Mapped[str] = mapped_column(Text, default="")

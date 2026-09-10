@@ -728,3 +728,281 @@ def test_v24_backfills_person_id_on_batch3_tables(tmp_path):
             )
         ).scalar_one()
         assert "WHERE" in index_sql.upper() and "person_id IS NOT NULL" in index_sql
+
+
+# ===========================================================================
+# R1.4 批次 4：资源与署名域（docs/person-core-migration.md §3 D4）
+# ===========================================================================
+
+from fastapi import HTTPException  # noqa: E402
+
+from app.events.bus import bus  # noqa: E402
+from app.models.enums import DriveZone  # noqa: E402
+from app.repositories import drive as drive_repo  # noqa: E402
+from app.repositories import events as events_repo  # noqa: E402
+from app.repositories import providers as provider_repo  # noqa: E402
+from app.services import drive as drive_service  # noqa: E402
+
+V24 = "w9d1f3b5c7e0"
+
+
+def test_runtime_instance_and_binding_double_write(db, default_company_id):
+    """runtime_instances / providers / model_bindings：双写 + 读口径 person 化。"""
+    employee = make_employee(db, company_id=default_company_id, slug=_unique("rt"))
+    db.commit()
+
+    instance = runtime_repo.create_instance(
+        db, employee_id=employee.id, runtime_type="mock", deployment_mode="mock"
+    )
+    assert instance.employee_id == employee.id and instance.person_id == employee.person_id
+    assert runtime_repo.get_instance_for_employee(db, employee.id).id == instance.id
+
+    provider = provider_repo.create_provider(
+        db, name="p", scope="employee", owner_employee_id=employee.id
+    )
+    assert provider.owner_employee_id == employee.id
+    assert provider.owner_person_id == employee.person_id
+    binding = provider_repo.create_binding(
+        db, employee_id=employee.id, provider_id=provider.id, model="m", is_primary=True
+    )
+    assert binding.person_id == employee.person_id
+    assert [b.id for b in provider_repo.list_bindings_for_employee(db, employee.id)] == [binding.id]
+    # 镜像列失真后读口径仍命中（权威在 person_id）
+    db.execute(
+        sa.text("UPDATE model_bindings SET employee_id = -1 WHERE id = :id"), {"id": binding.id}
+    )
+    db.commit()
+    assert provider_repo.get_primary_binding(db, employee.id).id == binding.id
+    db.execute(
+        sa.text("UPDATE model_bindings SET employee_id = :eid WHERE id = :id"),
+        {"eid": employee.id, "id": binding.id},
+    )
+    db.commit()
+    # 属主可见性：employee-scope provider 只有 owner 可见（person 口径）
+    assert provider_repo.get_provider_visible(db, provider.id, employee.id) is not None
+
+
+def test_drive_owner_double_write_and_author_permission(db, default_company_id):
+    """drive 新建文档：owner/author 双写；「只有作者可写」切换后行为不变（含 legacy 回落）。"""
+    author = make_employee(db, company_id=default_company_id, slug=_unique("dauthor"))
+    other = make_employee(db, company_id=default_company_id, slug=_unique("dother"))
+    db.commit()
+
+    node = drive_service.create_markdown_document(
+        db,
+        zone=DriveZone.knowledge.value,
+        name=_unique("r14-doc"),
+        content="# doc",
+        actor_employee_id=author.id,
+    )
+    assert node.owner_employee_id == author.id and node.owner_person_id == author.person_id
+    revision = drive_repo.list_revisions(db, node.id)[0]
+    assert revision.author_employee_id == author.id
+    assert revision.author_person_id == author.person_id
+
+    # 非作者写 → 403；作者写 → 放行
+    try:
+        drive_service.check_write_permission(db, node, other.id)
+        raise AssertionError("非作者不应有写权限")
+    except HTTPException as exc:
+        assert exc.status_code == 403
+    drive_service.check_write_permission(db, node, author.id)
+    # K1 物化路径：actor=None 跳过检查，不受影响
+    drive_service.check_write_permission(db, node, None)
+
+    # legacy 行（person 镜像缺失）回落 owner_employee_id，判定不变
+    db.execute(
+        sa.text("UPDATE drive_nodes SET owner_person_id = NULL WHERE id = :id"),
+        {"id": node.id},
+    )
+    db.commit()
+    db.expire_all()
+    node = db.merge(node)
+    try:
+        drive_service.check_write_permission(db, node, other.id)
+        raise AssertionError("legacy 行非作者仍不应有写权限")
+    except HTTPException as exc:
+        assert exc.status_code == 403
+    drive_service.check_write_permission(db, node, author.id)
+    # 恢复镜像（共享测试库，别把失真行留给下游）
+    db.execute(
+        sa.text("UPDATE drive_nodes SET owner_person_id = :pid WHERE id = :id"),
+        {"pid": author.person_id, "id": node.id},
+    )
+    db.commit()
+
+
+def test_event_actor_double_write_and_read_switch(db, default_company_id):
+    """events 落库点统一双写 actor_person_id；list_events 按 person 口径读。"""
+    employee = make_employee(db, company_id=default_company_id, slug=_unique("ev4"))
+    db.commit()
+    marker = _unique("r14-event")
+    bus.publish("test.r14", {"marker": marker}, actor_employee_id=employee.id)
+
+    events = events_repo.list_events(db, actor_employee_id=employee.id)
+    hit = [e for e in events if e.payload.get("marker") == marker]
+    assert hit and hit[0].actor_employee_id == employee.id
+    assert hit[0].actor_person_id == employee.person_id
+    # 镜像列失真后按 person 口径仍读到
+    db.execute(
+        sa.text("UPDATE events SET actor_employee_id = -1 WHERE id = :id"), {"id": hit[0].id}
+    )
+    db.commit()
+    db.expire_all()
+    assert any(
+        e.id == hit[0].id for e in events_repo.list_events(db, actor_employee_id=employee.id)
+    )
+    db.execute(
+        sa.text("UPDATE events SET actor_employee_id = :eid WHERE id = :id"),
+        {"eid": employee.id, "id": hit[0].id},
+    )
+    db.commit()
+
+
+def test_v25_backfills_person_mirrors_on_batch4_tables(tmp_path):
+    """v25 内联回填：源列非空的行镜像列 100% 回填；NULL 源列跳过；部分唯一索引就位。"""
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'batch4.db'}")
+    _upgrade(engine, V24)
+    ts = "'2026-01-01 00:00:00', '2026-01-01 00:00:00'"
+    with engine.begin() as conn:
+        conn.execute(
+            sa.text(
+                "INSERT INTO companies (name, slug, description, industry, settings, stage,"
+                " created_at, updated_at) VALUES ('Co', 'co', '', '', '{}', 'FOUNDING',"
+                f" {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO persons (slug, name, avatar, username, created_at, updated_at)"
+                f" VALUES ('ada', 'Ada', '', 'ada', {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO employees (company_id, name, slug, role, title, avatar, status,"
+                " lifecycle_status, username, runtime_type, runtime_config, workspace_path,"
+                " memory_namespace, person_id, created_at, updated_at) VALUES (1, 'Ada', 'ada',"
+                " 'engineer', '', '', 'idle', 'active', 'ada', 'mock', '{}', '/tmp/ada',"
+                f" 'mem-ada', 1, {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO runtime_instances (employee_id, runtime_type, deployment_mode,"
+                " image, image_tag, status, health_status, workspace_path, data_path,"
+                " cpu_limit, memory_limit_mb, restart_policy, metadata_json, created_at,"
+                f" updated_at) VALUES (1, 'mock', 'mock', 'img', 'latest', 'running',"
+                f" 'healthy', '/tmp/ws', '/tmp/data', 2.0, 4096, 'unless-stopped', '{{}}', {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO providers (name, provider_type, scope, owner_employee_id, enabled,"
+                f" metadata_json, created_at, updated_at) VALUES ('p', 'custom', 'employee', 1,"
+                f" 1, '{{}}', {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO model_bindings (employee_id, provider_id, model, alias, is_primary,"
+                f" position, created_at, updated_at) VALUES (1, 1, 'm', '', 1, 0, {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO drive_nodes (kind, name, path, zone, owner_employee_id,"
+                f" current_version, created_at, updated_at) VALUES ('document', 'd',"
+                f" 'drive/knowledge/d.md', 'knowledge', 1, 1, {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO drive_revisions (node_id, version, sha256, author_employee_id,"
+                " created_at) VALUES (1, 1, 'h', 1, '2026-01-01 00:00:00')"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO projects (company_id, name, description, status, goal,"
+                " source_order_text, priority, customer, background, objectives,"
+                " technical_requirements, constraints, deliverables, review_configuration,"
+                f" participants, tutorial_accelerated, created_at, updated_at) VALUES (1, 'P',"
+                f" '', 'requested', '', '', 'medium', '', '', '[]', '[]', '[]', '[]', '{{}}',"
+                f" '{{}}', 0, {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO artifacts (company_id, project_id, type, title, content, version,"
+                f" status, author_id, created_at, updated_at) VALUES (1, 1, 'other', 'a', '',"
+                f" 1, 'draft', 1, {ts})"
+            )
+        )
+        # recipient_id NULL 的消息：回填必须跳过
+        conn.execute(
+            sa.text(
+                "INSERT INTO messages (company_id, sender_id, recipient_id, channel, content,"
+                f" created_at, updated_at) VALUES (1, 1, NULL, 'general', 'hi', {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO document_artifacts (project_id, category, document_type, title,"
+                " format, version_major, version_minor, version_label, drive_node_id,"
+                " author_employee_id, review_status, baseline_status, metadata_json,"
+                f" created_at, updated_at) VALUES (1, 'c', 'prd', 't', 'markdown', 0, 1,"
+                f" 'v0.1', 1, 1, 'draft', 'none', '{{}}', {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                'INSERT INTO project_phases (project_id, phase_type, name, "order", status,'
+                f" gate_required, metadata_json, created_at, updated_at) VALUES (1, 'delivery',"
+                f" '交付', 0, 'pending', 0, '{{}}', {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                "INSERT INTO review_meetings (project_id, phase_id, source_phase_id,"
+                " review_type, title, status, presenter_employee_id, participants, comments,"
+                f" action_items, decision_version, created_at, updated_at) VALUES (1, 1, 1,"
+                f" 'gate', 'r', 'preparing', 1, '{{}}', '', '[]', 0, {ts})"
+            )
+        )
+        conn.execute(
+            sa.text(
+                f"INSERT INTO events (type, actor_employee_id, payload, created_at, updated_at)"
+                f" VALUES ('t', 1, '{{}}', {ts})"
+            )
+        )
+
+    _upgrade(engine, "head")
+
+    expectations = (
+        ("runtime_instances", "person_id"),
+        ("providers", "owner_person_id"),
+        ("model_bindings", "person_id"),
+        ("drive_nodes", "owner_person_id"),
+        ("drive_revisions", "author_person_id"),
+        ("artifacts", "author_person_id"),
+        ("messages", "sender_person_id"),
+        ("document_artifacts", "author_person_id"),
+        ("review_meetings", "presenter_person_id"),
+        ("events", "actor_person_id"),
+    )
+    with engine.connect() as conn:
+        for table, mirror in expectations:
+            value = conn.execute(sa.text(f"SELECT {mirror} FROM {table}")).scalar_one()
+            assert value == 1, f"{table}.{mirror} 回填遗漏"
+        # 可空源列跳过：recipient_id NULL ⇒ recipient_person_id 保持 NULL
+        assert (
+            conn.execute(sa.text("SELECT recipient_person_id FROM messages")).scalar_one() is None
+        )
+        index_sql = conn.execute(
+            sa.text(
+                "SELECT sql FROM sqlite_master WHERE type = 'index'"
+                " AND name = 'uq_runtime_instances_person'"
+            )
+        ).scalar_one()
+        assert "WHERE" in index_sql.upper() and "person_id IS NOT NULL" in index_sql

@@ -37,6 +37,7 @@ from app.models.enums import (
 from app.models.lifecycle import Entitlement, ResourceAccount
 from app.models.organization import Employee
 from app.repositories import drive as drive_repo
+from app.repositories import persons as person_repo
 from app.services import drive as drive_service
 
 
@@ -219,14 +220,18 @@ class CloudDocsProvisioner(ResourceProvisioner):
     ) -> ProvisionResult:
         count = apply_asset_target(ctx.db, employee, self.key, target)
         # rewire real DriveNode ownership for documents the employee authored
+        # R1.4：owner 改写必须连 person 镜像一起改，两列不失衡（author 语义跟人走）
         if target.get("kind") != "employee":
             for node in drive_repo.list_nodes(db=ctx.db):
                 if node.owner_employee_id == employee.id:
                     node.owner_employee_id = None
+                    node.owner_person_id = None
         else:
+            target_person_id = person_repo.write_person_id(ctx.db, target["employee_id"])
             for node in drive_repo.list_nodes(db=ctx.db):
                 if node.owner_employee_id == employee.id:
                     node.owner_employee_id = target["employee_id"]
+                    node.owner_person_id = target_person_id
         ctx.db.flush()
         return ProvisionResult(detail=f"transferred {count} docs asset(s)")
 

@@ -14,6 +14,7 @@ from app.models.project import (
     TaskDependency,
     WorkSession,
 )
+from app.repositories import persons as person_repo
 
 
 def list_projects(db: Session, company_id: int | None = None) -> list[Project]:
@@ -173,6 +174,9 @@ def get_artifact(db: Session, artifact_id: int) -> Artifact | None:
 
 
 def create_artifact(db: Session, **fields) -> Artifact:
+    # 双写（R1.4）：author_id（deprecated 镜像）+ author_person_id（权威口径）
+    if fields.get("author_id") is not None:
+        fields.setdefault("author_person_id", person_repo.write_person_id(db, fields["author_id"]))
     artifact = Artifact(**fields)
     db.add(artifact)
     db.flush()
@@ -180,7 +184,18 @@ def create_artifact(db: Session, **fields) -> Artifact:
 
 
 def count_artifacts_by_author(db: Session, author_id: int) -> int:
-    return len(list(db.scalars(select(Artifact.id).where(Artifact.author_id == author_id))))
+    # R1.4：署名口径切 author_person_id（单一入口换算，带旧口径回落）
+    return len(
+        list(
+            db.scalars(
+                select(Artifact.id).where(
+                    person_repo.read_criterion(
+                        db, author_id, Artifact.author_person_id, Artifact.author_id
+                    )
+                )
+            )
+        )
+    )
 
 
 def list_messages(db: Session, project_id: int | None = None) -> list[Message]:
@@ -194,6 +209,13 @@ def list_messages(db: Session, project_id: int | None = None) -> list[Message]:
 
 
 def create_message(db: Session, **fields) -> Message:
+    # 双写（R1.4）：sender_id/recipient_id（deprecated 镜像）+ *_person_id（权威口径）；
+    # recipient 可空，NULL 跳过解析。
+    fields.setdefault("sender_person_id", person_repo.write_person_id(db, fields["sender_id"]))
+    if fields.get("recipient_id") is not None:
+        fields.setdefault(
+            "recipient_person_id", person_repo.write_person_id(db, fields["recipient_id"])
+        )
     message = Message(**fields)
     db.add(message)
     db.flush()

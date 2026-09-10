@@ -8,7 +8,7 @@ project-zone DriveNodes at startup (see services/drive_migration.py).
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, utcnow
@@ -34,9 +34,11 @@ class DriveNode(TimestampMixin, Base):
         ForeignKey("projects.id"), nullable=True, index=True
     )
     doc_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # deprecated（R1.4）：属主读口径已切到 owner_person_id；列保留作兼容镜像，随表留存不删。
     owner_employee_id: Mapped[int | None] = mapped_column(
         ForeignKey("employees.id"), nullable=True, index=True
     )
+    owner_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     current_version: Mapped[int] = mapped_column(default=1)
     # Link to the work session that produced this document (v0.3, nullable).
     work_session_id: Mapped[int | None] = mapped_column(
@@ -53,9 +55,11 @@ class DriveRevision(Base):
     node_id: Mapped[int] = mapped_column(ForeignKey("drive_nodes.id"), index=True)
     version: Mapped[int] = mapped_column()
     sha256: Mapped[str] = mapped_column(String(64))
+    # deprecated（R1.4）：署名读口径已切到 author_person_id；列保留作兼容镜像，随表留存不删。
     author_employee_id: Mapped[int | None] = mapped_column(
         ForeignKey("employees.id"), nullable=True
     )
+    author_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 

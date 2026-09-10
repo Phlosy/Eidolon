@@ -64,7 +64,13 @@ def reconcile_employee(db: Session, employee_id: int) -> dict[str, int]:
 
     reviews = db.scalars(
         select(ReviewMeeting).where(
-            ReviewMeeting.presenter_employee_id == employee_id,
+            # R1.4：汇报人口径切 presenter_person_id（单一入口换算，带旧口径回落）
+            person_repo.read_criterion(
+                db,
+                employee_id,
+                ReviewMeeting.presenter_person_id,
+                ReviewMeeting.presenter_employee_id,
+            ),
             ReviewMeeting.decision.isnot(None),
         )
     ).all()

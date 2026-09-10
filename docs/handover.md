@@ -113,12 +113,12 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   ```
 - 门禁（改动后必须全绿）：
   ```bash
-  pytest apps/server/tests -q        # 期望 645 passed / 6 deselected
+  pytest apps/server/tests -q        # 期望 649 passed / 6 deselected
   ruff check apps/server/app apps/server/tests
   ruff format --check apps/server/app apps/server/tests   # 只允许 5 个既有 WIP 红
   cd apps/server && alembic check    # No new upgrade operations detected
   cd apps/web && pnpm exec tsc --noEmit && pnpm exec eslint . && pnpm exec prettier --check .
-  cd apps/web && pnpm exec vitest run    # 期望 67 files / 280 passed
+  cd apps/web && pnpm exec vitest run    # 期望 67 files / 281 passed
   cd apps/web && pnpm build
   ```
 - 数据库：`apps/server/data/eidolon.db`；快速查 job：

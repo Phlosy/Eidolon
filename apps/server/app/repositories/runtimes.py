@@ -33,7 +33,13 @@ def get_instance(db: Session, instance_id: int) -> RuntimeInstance | None:
 
 
 def get_instance_for_employee(db: Session, employee_id: int) -> RuntimeInstance | None:
-    stmt = select(RuntimeInstance).where(RuntimeInstance.employee_id == employee_id)
+    # R1.4：属主口径切 person_id（单一入口换算，带旧口径回落）；
+    # 公司隔离 join 仍走 employees 成员身份（persons 无 company_id，见批次 2 裁定）。
+    stmt = select(RuntimeInstance).where(
+        person_repo.read_criterion(
+            db, employee_id, RuntimeInstance.person_id, RuntimeInstance.employee_id
+        )
+    )
     identity = get_request_identity()
     if identity is not None:
         stmt = stmt.join(Employee, RuntimeInstance.employee_id == Employee.id).where(
@@ -53,6 +59,8 @@ def list_instances_by_runtime_type(db: Session, runtime_type: str) -> list[Runti
 
 
 def create_instance(db: Session, **fields) -> RuntimeInstance:
+    # 双写（R1.4）：employee_id（deprecated 镜像）+ person_id（权威口径）
+    fields.setdefault("person_id", person_repo.write_person_id(db, fields["employee_id"]))
     instance = RuntimeInstance(**fields)
     db.add(instance)
     db.flush()
