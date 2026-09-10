@@ -99,13 +99,23 @@ def test_characters_are_company_scoped(client, db, default_company_id):
     assert body["identity_id"] == mine["identity_id"] and body["events"] == []
 
 
-def test_list_filter_by_lifecycle(client):
-    _create(client, f"Cult {uuid.uuid4().hex[:6]}")
+def test_list_filter_by_lifecycle(client, db):
+    created = _create(client, f"Cult {uuid.uuid4().hex[:6]}").json()
     response = client.get("/api/v1/cultivation/characters", params={"lifecycle": "cultivating"})
     assert response.status_code == 200
     assert all(c["lifecycle"] == "cultivating" for c in response.json())
-    response = client.get("/api/v1/cultivation/characters", params={"lifecycle": "ready"})
-    assert response.status_code == 200 and response.json() == []
+    # 自包含：把自己养成 ready（引擎跑完模板），再看两个过滤桶的归属
+    from app.repositories import cultivation as cultivation_repo
+
+    profile = cultivation_repo.get_profile(db, created["id"])
+    profile.lifecycle = "ready"
+    db.commit()
+    ready = client.get("/api/v1/cultivation/characters", params={"lifecycle": "ready"}).json()
+    assert created["id"] in {c["id"] for c in ready}
+    cultivating = client.get(
+        "/api/v1/cultivation/characters", params={"lifecycle": "cultivating"}
+    ).json()
+    assert created["id"] not in {c["id"] for c in cultivating}
 
 
 # ---- 迁移 v27 ----

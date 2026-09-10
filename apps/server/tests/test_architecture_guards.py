@@ -616,3 +616,24 @@ def test_person_only_rows_must_belong_to_a_character(db):
     )
     db.commit()
     assert cultivation_repo.find_orphan_person_only_rows(db) == []
+
+
+def test_education_evidence_never_enters_formal_assessment_collection():
+    """D4 隔离硬规则：edu_* 教育证据不进员工正式考核的采集链。
+
+    隔离是结构性的：collectors 注册表只认 EVENT_DISPATCH 里的事件来源，
+    教育证据由培养引擎直写 upsert_evidence、不经事件总线 —— 两个清单一旦
+    有人登记 edu_*，员工考核就会吃到培养数据（证据通胀），这里当场红。
+    """
+    from app.evidence.collectors import REGISTRY
+    from app.evidence.pipeline import CONSUMED_EVENTS
+    from app.evidence.policy import EVENT_DISPATCH
+    from app.models.enums import EvidenceSourceKind
+
+    edu_kinds = {kind.value for kind in EvidenceSourceKind if kind.value.startswith("edu_")}
+    assert edu_kinds, "edu_* 来源枚举必须存在（T1.1 分级表）"
+    collected = set(EVENT_DISPATCH.values()) | set(REGISTRY._collectors)
+    assert not (edu_kinds & collected), (
+        f"教育来源混进了正式考核采集链：{sorted(edu_kinds & collected)}"
+    )
+    assert not ({"cultivation"} & CONSUMED_EVENTS), "培养事件不得被证据 pipeline 消费"

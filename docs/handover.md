@@ -113,7 +113,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   ```
 - 门禁（改动后必须全绿）：
   ```bash
-  pytest apps/server/tests -q        # 期望 664 passed / 6 deselected
+  pytest apps/server/tests -q        # 期望 673 passed / 6 deselected
   ruff check apps/server/app apps/server/tests
   ruff format --check apps/server/app apps/server/tests   # 只允许 5 个既有 WIP 红
   cd apps/server && alembic check    # No new upgrade operations detected

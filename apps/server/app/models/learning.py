@@ -36,6 +36,9 @@ class LearningSession(TimestampMixin, Base):
         ForeignKey("employees.id"), nullable=True, index=True
     )
     person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # T1.1（cultivation-system-design §2 D3）：培养期会话挂在培养实例上（无 FK，D3 纪律）；
+    # 员工路径的会话此列永远为 NULL。
+    program_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     topic: Mapped[str] = mapped_column(String(500))
     reason: Mapped[str] = mapped_column(Text, default="")
     source_type: Mapped[str] = mapped_column(String(40), default="manual")

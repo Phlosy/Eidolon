@@ -62,13 +62,13 @@ def list_memory_entries(db: Session, employee_id: int) -> list[MemoryEntry]:
     )
 
 
-def create_memory_entry(db: Session, employee_id: int, **fields) -> MemoryEntry:
-    # 双写：employee_id（deprecated 镜像）+ person_id（权威口径）
-    entry = MemoryEntry(
-        employee_id=employee_id,
-        person_id=person_repo.write_person_id(db, employee_id),
-        **fields,
-    )
+def create_memory_entry(db: Session, employee_id: int | None, **fields) -> MemoryEntry:
+    # 双写：员工路径 employee_id（deprecated 镜像）+ person_id（权威口径）同落；
+    # 培养路径（T1.1）person-only：employee_id=None + 显式 person_id。
+    person_id = fields.pop("person_id", None)
+    if employee_id is not None and person_id is None:
+        person_id = person_repo.write_person_id(db, employee_id)
+    entry = MemoryEntry(employee_id=employee_id, person_id=person_id, **fields)
     db.add(entry)
     db.flush()
     return entry
@@ -221,8 +221,11 @@ def get_skill_by_name(db: Session, employee_id: int, name: str) -> Skill | None:
 
 
 def create_skill(db: Session, **fields) -> Skill:
-    # 双写：fields 里的 employee_id 是 deprecated 镜像；person_id 由单一入口解析补齐
-    fields.setdefault("person_id", person_repo.write_person_id(db, fields["employee_id"]))
+    # 双写：员工路径 fields 里的 employee_id 是 deprecated 镜像，person_id 由单一入口
+    # 解析补齐；培养路径（T1.1）person-only：employee_id 缺省 + 显式 person_id。
+    employee_id = fields.get("employee_id")
+    if employee_id is not None:
+        fields.setdefault("person_id", person_repo.write_person_id(db, employee_id))
     skill = Skill(**fields)
     db.add(skill)
     db.flush()
@@ -239,8 +242,11 @@ def create_skill_usage(db: Session, **fields) -> SkillUsage | None:
         existing = get_skill_usage(db, task_id=task_id, skill_id=skill_id)
         if existing is not None:
             return existing
-    # 双写：employee_id（deprecated 镜像）+ person_id（权威口径）
-    fields.setdefault("person_id", person_repo.write_person_id(db, fields["employee_id"]))
+    # 双写：员工路径 employee_id（deprecated 镜像）+ person_id（权威口径）同落；
+    # 培养路径（T1.1）person-only：employee_id 缺省 + 调用方显式传 person_id。
+    employee_id = fields.get("employee_id")
+    if employee_id is not None:
+        fields.setdefault("person_id", person_repo.write_person_id(db, employee_id))
     usage = SkillUsage(**fields)
     db.add(usage)
     db.flush()
@@ -369,8 +375,11 @@ def list_learning_records(db: Session, employee_id: int) -> list[LearningRecord]
 
 
 def create_learning_record(db: Session, **fields) -> LearningRecord:
-    # 双写：employee_id（deprecated 镜像）+ person_id（权威口径）
-    fields.setdefault("person_id", person_repo.write_person_id(db, fields["employee_id"]))
+    # 双写：员工路径 employee_id（deprecated 镜像）+ person_id（权威口径）同落；
+    # 培养路径（T1.1）person-only：employee_id 缺省 + 调用方显式传 person_id。
+    employee_id = fields.get("employee_id")
+    if employee_id is not None:
+        fields.setdefault("person_id", person_repo.write_person_id(db, employee_id))
     record = LearningRecord(**fields)
     db.add(record)
     db.flush()
@@ -417,8 +426,11 @@ def get_priority_by_topic(db: Session, employee_id: int, topic: str) -> Learning
 
 
 def create_learning_priority(db: Session, **fields) -> LearningPriority:
-    # 双写：employee_id（deprecated 镜像）+ person_id（权威口径）
-    fields.setdefault("person_id", person_repo.write_person_id(db, fields["employee_id"]))
+    # 双写：员工路径 employee_id（deprecated 镜像）+ person_id（权威口径）同落；
+    # 培养路径（T1.1）person-only：employee_id 缺省 + 调用方显式传 person_id。
+    employee_id = fields.get("employee_id")
+    if employee_id is not None:
+        fields.setdefault("person_id", person_repo.write_person_id(db, employee_id))
     priority = LearningPriority(**fields)
     db.add(priority)
     db.flush()

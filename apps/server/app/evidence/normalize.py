@@ -51,20 +51,39 @@ def _source_exists(db: Session, candidate: EvidenceCandidate) -> bool:
     if kind in {EvidenceSourceKind.task.value, EvidenceSourceKind.test.value}:
         task = db.get(Task, candidate.source_id)
         return task is not None
+    if kind.startswith("edu_"):
+        # 教育证据的来源是培养期学习会话（T1.1）
+        from app.models.learning import LearningSession
+
+        return db.get(LearningSession, candidate.source_id) is not None
     return True
 
 
 def upsert_evidence(db: Session, candidate: EvidenceCandidate) -> tuple[CompetencyEvidence, bool]:
-    """校验 + 幂等写入。返回 (row, created)。不 commit（调用方决定事务边界）。"""
-    employee = db.get(Employee, candidate.employee_id)
-    if employee is None:
-        raise ValueError(f"employee {candidate.employee_id} not found")
+    """校验 + 幂等写入。返回 (row, created)。不 commit（调用方决定事务边界）。
+
+    属主两种形态：员工（employee_id，公司边界校验照旧）或 person-only
+    （candidate.person_id，培养期教育证据——没有员工/公司上下文可校验，
+    目录公司隔离规则不适用于全局内置目录）。
+    """
+    person_only = candidate.employee_id is None
+    if person_only:
+        if candidate.person_id is None:
+            raise ValueError("person-only 证据必须带 candidate.person_id")
+        person_id: int | None = candidate.person_id
+    else:
+        employee = db.get(Employee, candidate.employee_id)
+        if employee is None:
+            raise ValueError(f"employee {candidate.employee_id} not found")
+        person_id = person_repo.write_person_id(db, candidate.employee_id)
     definition = db.get(CompetencyDefinition, candidate.competency_definition_id)
     if definition is None:
         raise ValueError(f"competency_definition {candidate.competency_definition_id} not found")
     domain = db.get(CompetencyDomain, definition.domain_id)
     if domain is None or (
-        domain.company_id is not None and domain.company_id != employee.company_id
+        domain.company_id is not None
+        and not person_only
+        and domain.company_id != employee.company_id
     ):
         raise ValueError(f"competency {definition.code} 不在员工可见目录（公司隔离被绕开）")
     if not _source_exists(db, candidate):
@@ -78,11 +97,16 @@ def upsert_evidence(db: Session, candidate: EvidenceCandidate) -> tuple[Competen
     )
     db.flush()  # 同事务内重复消费也要去重（SessionLocal autoflush=False）
     # R1.3：幂等判定按 person 口径（稳定身份的属主语义跟人走）；镜像列双写维持。
+    owner = (
+        CompetencyEvidence.person_id == person_id
+        if person_only
+        else person_repo.read_criterion(
+            db, key[0], CompetencyEvidence.person_id, CompetencyEvidence.employee_id
+        )
+    )
     existing = db.scalar(
         select(CompetencyEvidence).where(
-            person_repo.read_criterion(
-                db, key[0], CompetencyEvidence.person_id, CompetencyEvidence.employee_id
-            ),
+            owner,
             CompetencyEvidence.source_kind == key[1],
             CompetencyEvidence.source_id == key[2],
             CompetencyEvidence.competency_definition_id == key[3],
@@ -102,7 +126,7 @@ def upsert_evidence(db: Session, candidate: EvidenceCandidate) -> tuple[Competen
 
     row = CompetencyEvidence(
         employee_id=candidate.employee_id,
-        person_id=person_repo.write_person_id(db, candidate.employee_id),
+        person_id=person_id,
         competency_definition_id=candidate.competency_definition_id,
         source_kind=candidate.source_type,
         source_id=candidate.source_id,

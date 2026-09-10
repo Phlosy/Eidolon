@@ -484,6 +484,14 @@ class EvidenceSourceKind(StrEnum):
     assessment = "assessment"
     learning = "learning"
     skill_usage = "skill_usage"
+    # T1.1（cultivation-system-design §2 D4）：教育证据分级来源。
+    # 只由培养引擎直接写（upsert_evidence），**不进** pipeline collectors 的
+    # 采集清单 —— 公司员工的正式考核链在结构上采不到它们（隔离守卫钉死）。
+    edu_course = "edu_course"
+    edu_exam = "edu_exam"
+    edu_project = "edu_project"
+    edu_internship = "edu_internship"
+    edu_competition = "edu_competition"
 
 
 class ExpectationRole(StrEnum):

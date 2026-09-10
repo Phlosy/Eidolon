@@ -307,7 +307,10 @@ def test_skill_usage_becomes_evidence_once(db, default_company_id):
     count = db.scalar(
         sa.select(sa.func.count())
         .select_from(CompetencyEvidence)
-        .where(CompetencyEvidence.source_id == usage.id)
+        .where(
+            CompetencyEvidence.source_id == usage.id,
+            CompetencyEvidence.source_kind == EvidenceSourceKind.skill_usage.value,
+        )
     )
     assert again.id == evidence.id and count == 1  # 幂等
 

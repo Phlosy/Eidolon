@@ -23,8 +23,18 @@ SOURCE_RELIABILITY: dict[str, float] = {
     EvidenceSourceKind.skill_usage.value: 0.65,
     EvidenceSourceKind.user_feedback.value: 0.6,
     EvidenceSourceKind.learning.value: 0.5,
+    # T1.1 教育证据分级（cultivation-system-design §2 D4，愿景 §4.1 防证据通胀）：
+    # 课程 < 考试 < 毕业项目/实习/竞赛（接近真实工作）。
+    EvidenceSourceKind.edu_course.value: 0.5,
+    EvidenceSourceKind.edu_exam.value: 0.8,
+    EvidenceSourceKind.edu_project.value: 0.9,
+    EvidenceSourceKind.edu_internship.value: 0.9,
+    EvidenceSourceKind.edu_competition.value: 0.95,
 }
 DEFAULT_SOURCE_RELIABILITY = 0.5
+
+#: 教育证据的环境标识（与 mock 打折同构，但分级已由 source 档表达，不再额外乘系数）
+EDUCATION_ENVIRONMENT = "education"
 
 #: 期望角色的证明力度（strength 默认值）
 ROLE_STRENGTH: dict[str, float] = {

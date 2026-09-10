@@ -125,7 +125,10 @@ def test_same_event_consumed_twice_never_duplicates(db, default_company_id):
     count = db.scalar(
         sa.select(sa.func.count())
         .select_from(CompetencyEvidence)
-        .where(CompetencyEvidence.source_id == task_id)
+        .where(
+            CompetencyEvidence.source_id == task_id,
+            CompetencyEvidence.source_kind == "task",
+        )
     )
     assert count == 1, "重复消费产生了重复证据"
 

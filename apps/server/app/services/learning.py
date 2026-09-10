@@ -371,18 +371,45 @@ def run_session(db: Session, session: LearningSession, *, execute: bool = True) 
 def _produce_outputs(
     db: Session, session: LearningSession, employee: Employee, company: Company
 ) -> dict:
-    """mock 学习产出（全部 environment=mock / practice 标识；不碰 Competency）。"""
+    """员工路径的产出包装：委托给共用原语（company 不参与产出，保留签名）。"""
+    outputs, _item_ids = produce_learning_outputs(
+        db, session, person_id=employee.person_id, employee_id=employee.id
+    )
+    return outputs
+
+
+def produce_learning_outputs(
+    db: Session,
+    session: LearningSession,
+    *,
+    person_id: int | None,
+    employee_id: int | None,
+) -> tuple[dict, list[int]]:
+    """学习产出的共用原语（T1.1，cultivation-system-design §2 D3）。
+
+    员工路径与培养路径**完全共用**：产出知识条目（owner_person_id 权威 +
+    owner_employee_id 镜像）、技能候选、问题记录。培养路径 employee_id=None
+    （person-only 双写纪律，D1）。返回 (outputs 计数, 新建知识条目 id 列表)
+    —— 调用方（培养引擎）可对条目置信度等施加分布噪声。
+    mock 学习产出（全部 environment=mock / practice 标识；不碰 Competency）。
+    """
     mode = session.learning_mode
     outputs = {"knowledge": 0, "skill_candidates": 0, "questions": 0}
+    item_ids: list[int] = []
     now = datetime.now(UTC)
     environment = "mock"
+    # person_id 为 None（personless legacy 员工）时不能显式传 None —— 那会挡住
+    # repo 双写入口的 setdefault 解析；只在有值时传。
+    person_kw: dict = {"person_id": person_id} if person_id is not None else {}
+    owner_kw: dict = {"owner_person_id": person_id} if person_id is not None else {}
     if mode == LearningMode.web_research.value:
         for index in range(3):
             # 双写（R1.2）：走 repo 入口，owner_employee_id 镜像 + owner_person_id 权威一起落
-            knowledge_repo.create_knowledge_item(
+            item = knowledge_repo.create_knowledge_item(
                 db,
                 scope="private",
-                owner_employee_id=employee.id,
+                owner_employee_id=employee_id,
+                **owner_kw,
                 title=f"Web Research #{index + 1}: {session.topic}",
                 content=f"simulated research finding {index + 1} for {session.topic}",
                 topic=session.topic[:200],
@@ -403,11 +430,13 @@ def _produce_outputs(
                 freshness_status=KnowledgeFreshness.fresh.value,
                 learned_at=now,
             )
+            item_ids.append(int(item.id))
             outputs["knowledge"] += 1
         # 双写（R1.1）：走 repo 入口，employee_id 镜像 + person_id 权威一起落
         knowledge_repo.create_skill(
             db,
-            employee_id=employee.id,
+            employee_id=employee_id,
+            **person_kw,
             name=f"Candidate: {session.topic[:80]}",
             description="学习产出的技能候选（未验证）",
             validation_status="candidate",
@@ -415,17 +444,19 @@ def _produce_outputs(
         outputs["skill_candidates"] += 1
         knowledge_repo.create_learning_record(
             db,
-            employee_id=employee.id,
+            employee_id=employee_id,
+            **person_kw,
             kind="question",
             topic=session.topic[:200],
             observation=f"Open question from learning: {session.topic}",
         )
         outputs["questions"] += 1
     elif mode == LearningMode.knowledge_review.value:
-        knowledge_repo.create_knowledge_item(
+        item = knowledge_repo.create_knowledge_item(
             db,
             scope="private",
-            owner_employee_id=employee.id,
+            owner_employee_id=employee_id,
+            **owner_kw,
             title=f"Review: {session.topic}",
             content="simulated knowledge review note",
             topic=session.topic[:200],
@@ -434,12 +465,14 @@ def _produce_outputs(
             freshness_status=KnowledgeFreshness.fresh.value,
             learned_at=now,
         )
+        item_ids.append(int(item.id))
         outputs["knowledge"] += 1
     elif mode == LearningMode.document_study.value:
-        knowledge_repo.create_knowledge_item(
+        item = knowledge_repo.create_knowledge_item(
             db,
             scope="private",
-            owner_employee_id=employee.id,
+            owner_employee_id=employee_id,
+            **owner_kw,
             title=f"Document study: {session.topic}",
             content="simulated document study note",
             topic=session.topic[:200],
@@ -448,10 +481,11 @@ def _produce_outputs(
             freshness_status=KnowledgeFreshness.fresh.value,
             learned_at=now,
         )
+        item_ids.append(int(item.id))
         outputs["knowledge"] += 1
     # practice：产出标记 environment=practice 的 SkillUsage/Evidence 留给真实 practice 路径
     db.flush()
-    return outputs
+    return outputs, item_ids
 
 
 # ---------------------------------------------------------------------------

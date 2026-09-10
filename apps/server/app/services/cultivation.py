@@ -8,7 +8,7 @@ T1.0 只有角色 CRUD：建角色（trained/blank；可选 template 顺带开 p
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.cultivation import CharacterProfile
+from app.models.cultivation import CharacterProfile, TrainingProgram
 from app.models.person import Person
 from app.repositories import cultivation as cultivation_repo
 from app.repositories import persons as person_repo
@@ -61,3 +61,51 @@ def get_character_detail(
     programs = cultivation_repo.list_programs(db, person.id)
     events = cultivation_repo.list_education_events(db, person.id)
     return person, profile, programs, events
+
+
+# ---- T1.1：培养推进 / 自由养成（引擎在 app/talent/cultivation/engine.py）----
+
+
+def _owned_profile(db: Session, profile_id: int, owner_company_id: int) -> CharacterProfile:
+    profile = cultivation_repo.get_profile(db, profile_id)
+    if profile is None or profile.owner_company_id != owner_company_id:
+        raise HTTPException(status_code=404, detail="character not found")
+    return profile
+
+
+def advance_program(db: Session, program_id: int, owner_company_id: int):
+    """推进培养实例一个阶段（本公司持有校验 → 引擎）。"""
+    from app.talent.cultivation import engine
+
+    program = db.get(TrainingProgram, program_id)
+    if program is None:
+        raise HTTPException(status_code=404, detail="program not found")
+    profile = cultivation_repo.get_profile_by_person(db, program.person_id)
+    if profile is None or profile.owner_company_id != owner_company_id:
+        raise HTTPException(status_code=404, detail="program not found")
+    try:
+        return engine.advance_program(db, program_id)
+    except engine.CultivationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+def run_free_session(
+    db: Session,
+    profile_id: int,
+    owner_company_id: int,
+    *,
+    topic: str,
+    mode: str,
+    kind: str,
+    signal: int,
+):
+    """自由养成会话（blank/无进行中模板实例的角色）。"""
+    from app.talent.cultivation import engine
+
+    profile = _owned_profile(db, profile_id, owner_company_id)
+    try:
+        return engine.run_free_session(
+            db, profile.person_id, topic=topic, mode=mode, kind=kind, signal=signal
+        )
+    except engine.CultivationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc

@@ -49,3 +49,20 @@ class CharacterOut(BaseModel):
 class CharacterDetailOut(CharacterOut):
     programs: list[ProgramOut]
     events: list[EducationEventOut]
+
+
+class FreeSessionIn(BaseModel):
+    topic: str = Field(min_length=1, max_length=500)
+    mode: str = "web_research"  # LearningMode 值
+    kind: str = "course"  # EducationEvent.kind：course/exam/project/internship/competition
+    signal: int = Field(default=60, ge=0, le=100)  # 强度 → 证据 signal
+
+
+class AdvanceResultOut(BaseModel):
+    program: ProgramOut
+    event: EducationEventOut
+    lifecycle: str  # 推进后的角色 lifecycle（走完模板 → ready）
+
+
+class FreeSessionResultOut(BaseModel):
+    event: EducationEventOut
