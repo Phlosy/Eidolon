@@ -365,7 +365,7 @@ cd apps/web && npm run build
 | --- | --- | --- | --- |
 | T2.0 Domain Contract Freeze | **DONE**（2026-09-10） | `9465947` | 设计 + 执行基线落盘；枚举/契约代码 + 守卫测试；**无迁移**；pytest 690 / web 303 |
 | T2.1 Person Read Model / API | **DONE**（2026-09-10） | `f4165d4` | `app/talent/person/` + `/api/v1/persons/*`；对拍/404/null 语义全锁；**无迁移**；pytest 701 / web 312 |
-| T2.2 Cultivation Completion & Eligibility | **DONE**（2026-09-10） | `见 Progress Log` | 自由养成显式结业 + `cultivation.completed` + 三轴资格判定集中一处；附带修复 roster person-only 行缺陷（I13）；**无迁移**；pytest 712 / web 314 |
+| T2.2 Cultivation Completion & Eligibility | **DONE**（2026-09-10） | `6a79102` | 自由养成显式结业 + `cultivation.completed` + 三轴资格判定集中一处；附带修复 roster person-only 行缺陷（I13）；**无迁移**；pytest 712 / web 314 |
 | T2.3 Market Core & MarketAdapter | **NEXT** | — | `[migration v29]`；入口：设计 §6/§8 + plan §4.4 |
 | T2.4 Issuer & Market Supply | PLANNED | — | 设计 §7 D11 |
 | T2.5 Person-scoped Fit | PLANNED | — | 本文件 §4.6 |
@@ -400,7 +400,7 @@ cd apps/web && npm run build
   - 风险：`/persons/*` 当前以 person 持有所属公司为主口径；招募后（T2.6）原持有方与新雇主都可读 ——
     这是设计 §5/§6 的有意行为，但需在 T2.6 测试中用对拍固定下来。
 
-- **2026-09-10 · T2.2 DONE**：commit 哈希见紧随的 `docs(t2): T2.2 进度落盘` 提交（避免自引用哈希）。
+- **2026-09-10 · T2.2 DONE**：commit **`6a79102`**（`feat(cultivation): T2.2 explicit completion + market eligibility`，17 files / +729）。
   - 交付：`app/talent/market/eligibility.py`（三轴读面 + `can_list`/`can_recruit` 纯矩阵与 DB 包装，唯一判定处）、
     `EmploymentState` 入 `app/models/enums.py`、
     `services/cultivation.complete_cultivation` + `POST /cultivation/characters/{id}/complete`（幂等；模板进行中 409）、
