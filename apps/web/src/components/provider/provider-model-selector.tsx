@@ -12,6 +12,8 @@ interface ProviderModelSelectorProps {
   providerId: number | null;
   value: string;
   onChange: (model: string) => void;
+  /** 员工级账号是仅属主可见的，探测必须带上属主员工，否则后端 404。 */
+  employeeId?: number;
   disabled?: boolean;
 }
 
@@ -24,6 +26,7 @@ export function ProviderModelSelector({
   providerId,
   value,
   onChange,
+  employeeId,
   disabled,
 }: ProviderModelSelectorProps) {
   const { t } = useTranslation();
@@ -32,7 +35,7 @@ export function ProviderModelSelector({
   useEffect(() => {
     if (providerId != null) setDiscovering(true);
   }, [providerId]);
-  const modelsQuery = useProviderModels(providerId, discovering);
+  const modelsQuery = useProviderModels(providerId, discovering, employeeId);
   const discovered = modelsQuery.data?.models ?? [];
 
   return (

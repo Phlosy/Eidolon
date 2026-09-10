@@ -224,7 +224,7 @@ export function EmployeeProvidersSection({
             );
             return (
               <div key={provider.id} className="space-y-1.5">
-                <ProviderCard provider={provider} />
+                <ProviderCard provider={provider} employeeId={employeeId} />
                 <div className="ml-2 space-y-1 border-l-2 border-border pl-3">
                   {providerBindings.map((binding) => (
                     <BindingRow
@@ -301,7 +301,7 @@ export function EmployeeProvidersSection({
               }}
               probe={async () => {
                 try {
-                  const result = await listProviderModels(editProvider.id);
+                  const result = await listProviderModels(editProvider.id, employeeId);
                   return { ok: true, error: null, models: result.models };
                 } catch (error) {
                   return {

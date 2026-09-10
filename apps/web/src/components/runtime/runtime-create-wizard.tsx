@@ -218,6 +218,7 @@ export function RuntimeCreateWizard({
           providerId={state.providerId}
           value={state.model}
           onChange={(model) => setState((s) => ({ ...s, model }))}
+          employeeId={employeeId}
         />
       ) : null}
 

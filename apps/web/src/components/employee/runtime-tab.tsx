@@ -197,7 +197,12 @@ export function RuntimeTab({ employeeId }: { employeeId: number }) {
               {t("runtime:changeProvider.noSupportedProviders")}
             </p>
           ) : null}
-          <ProviderModelSelector providerId={providerId} value={model} onChange={setModel} />
+          <ProviderModelSelector
+            providerId={providerId}
+            value={model}
+            onChange={setModel}
+            employeeId={employeeId}
+          />
           {changeProvider.isError ? (
             <p className="text-xs text-red-600 dark:text-red-400">{changeProvider.error.message}</p>
           ) : null}

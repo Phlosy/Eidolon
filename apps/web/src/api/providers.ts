@@ -47,10 +47,19 @@ export function deleteProvider(id: number): Promise<void> {
   return del<void>(`/providers/${id}`);
 }
 
-export function testProvider(id: number): Promise<ProviderTestResult> {
-  return post<ProviderTestResult>(`/providers/${id}/test`);
+export function testProvider(id: number, employeeId?: number): Promise<ProviderTestResult> {
+  return post<ProviderTestResult>(`/providers/${id}/test${providerScopeQuery(employeeId)}`);
 }
 
-export function listProviderModels(id: number): Promise<ProviderModels> {
-  return get<ProviderModels>(`/providers/${id}/models`);
+/**
+ * 员工级账号（scope=employee）是**仅属主可见**的：不带 employee_id 时后端按
+ * company-scope 过滤，会直接 404 "provider not found"。所以凡是作用于
+ * 员工自己账号的请求，都必须把当前员工作为作用域带上。
+ */
+export function listProviderModels(id: number, employeeId?: number): Promise<ProviderModels> {
+  return get<ProviderModels>(`/providers/${id}/models${providerScopeQuery(employeeId)}`);
+}
+
+function providerScopeQuery(employeeId?: number): string {
+  return employeeId != null ? `?employee_id=${employeeId}` : "";
 }

@@ -7,15 +7,22 @@ import type { ProviderTestResult } from "../../types";
 
 interface ProviderTestButtonProps {
   providerId: number;
+  /** 员工级账号是仅属主可见的，测试连接必须带上属主员工，否则后端 404。 */
+  employeeId?: number;
   /** Called with the latest result so parents can surface it (e.g. on the card). */
   onResult?: (result: ProviderTestResult) => void;
   disabled?: boolean;
 }
 
 /** Runs POST /providers/{id}/test: spinner while pending, then ok/fail with latency. */
-export function ProviderTestButton({ providerId, onResult, disabled }: ProviderTestButtonProps) {
+export function ProviderTestButton({
+  providerId,
+  employeeId,
+  onResult,
+  disabled,
+}: ProviderTestButtonProps) {
   const { t } = useTranslation();
-  const test = useTestProvider();
+  const test = useTestProvider(employeeId);
   const onResultRef = useRef(onResult);
   onResultRef.current = onResult;
 

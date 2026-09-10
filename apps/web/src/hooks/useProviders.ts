@@ -146,16 +146,20 @@ export function useDeleteProvider() {
   });
 }
 
-/** POST /providers/{id}/test — result is transient, nothing to invalidate. */
-export function useTestProvider() {
-  return useMutation({ mutationFn: (id: number) => testProvider(id) });
+/**
+ * POST /providers/{id}/test — result is transient, nothing to invalidate.
+ * 传 employeeId 才能在员工级账号（仅属主可见）上跑通，否则后端 404。
+ */
+export function useTestProvider(employeeId?: number) {
+  return useMutation({ mutationFn: (id: number) => testProvider(id, employeeId) });
 }
 
-/** Lazy model discovery — only runs when `enabled` (ProviderModelSelector "Discover" click). */
-export function useProviderModels(id: number | null, enabled: boolean) {
+/** Lazy model discovery — only runs when `enabled` (ProviderModelSelector "Discover" click).
+ *  employeeId 是员工级账号的作用域，必须进 queryKey，否则切换员工会串用缓存。 */
+export function useProviderModels(id: number | null, enabled: boolean, employeeId?: number) {
   return useQuery({
-    queryKey: ["providers", id, "models"],
-    queryFn: () => listProviderModels(id!),
+    queryKey: ["providers", id, "models", { employeeId: employeeId ?? null }],
+    queryFn: () => listProviderModels(id!, employeeId),
     enabled: enabled && id != null,
     staleTime: 60_000,
   });

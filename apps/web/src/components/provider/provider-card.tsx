@@ -24,6 +24,8 @@ const TYPE_VARIANT: Record<Provider["provider_type"], "default" | "info" | "viol
 
 interface ProviderCardProps {
   provider: Provider;
+  /** 所属员工页的员工 id：员工级账号的测试/探测需要它作为作用域。 */
+  employeeId?: number;
   onEdit?: (provider: Provider) => void;
   onToggleEnabled?: (provider: Provider) => void;
   onDelete?: (provider: Provider) => void;
@@ -37,6 +39,7 @@ interface ProviderCardProps {
  */
 export function ProviderCard({
   provider,
+  employeeId,
   onEdit,
   onToggleEnabled,
   onDelete,
@@ -96,7 +99,11 @@ export function ProviderCard({
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <ProviderTestButton providerId={provider.id} onResult={setTestResult} />
+        <ProviderTestButton
+          providerId={provider.id}
+          employeeId={employeeId ?? provider.owner_employee_id ?? undefined}
+          onResult={setTestResult}
+        />
         {onDiscoverModels ? (
           <Button variant="outline" size="sm" onClick={() => onDiscoverModels(provider)}>
             {t("provider:actions.discoverModels")}
