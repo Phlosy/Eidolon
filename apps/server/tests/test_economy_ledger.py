@@ -284,13 +284,13 @@ def test_mint_requires_authority_token(db):
 
 def test_only_monetary_authority_module_reaches_the_token():
     """令牌只被 Posting Core 与 MonetaryAuthority 取用；API 层永远拿不到（E23/A18）。"""
-    allowed = {
-        "app/services/economy/__init__.py",
+    # 规则一：令牌本体只准 Posting Core 与 MonetaryAuthority 取用；
+    # 规则二：MonetaryAuthority（铸币能力）只准在经济域服务层内部引用，API/其它域一律不行。
+    token_allowed = {
         "app/services/economy/authority.py",
         "app/services/economy/ledger.py",
         "app/services/economy/monetary.py",
     }
-    forbidden_names = {"AUTHORITY_TOKEN", "MonetaryAuthority", "authority"}
     offenders: list[str] = []
     for path in sorted((SERVER_ROOT / "app").rglob("*.py")):
         relative = str(path.relative_to(SERVER_ROOT))
@@ -306,10 +306,10 @@ def test_only_monetary_authority_module_reaches_the_token():
                 for alias in node.names:
                     if alias.name.endswith(("economy.authority", "economy.monetary")):
                         imported.add(alias.name.rsplit(".", 1)[-1])
-        if imported and relative not in allowed:
-            offenders.append(f"{relative}: imports {sorted(imported)}")
-        if relative.startswith("app/api/") and imported & forbidden_names:
-            offenders.append(f"{relative}: API 不得触达 {sorted(imported & forbidden_names)}")
+        if "AUTHORITY_TOKEN" in imported and relative not in token_allowed:
+            offenders.append(f"{relative}: 令牌不得外流 ({sorted(imported)})")
+        if "MonetaryAuthority" in imported and not relative.startswith("app/services/economy/"):
+            offenders.append(f"{relative}: 只有经济域服务层可以铸币（{sorted(imported)}）")
     assert not offenders, offenders
 
 

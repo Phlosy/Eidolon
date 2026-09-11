@@ -32,6 +32,13 @@ from app.services.economy.projection import (
     rebuild_wallet_projection,
     verify_wallet_projection,
 )
+from app.services.economy.rewards import (
+    ACHIEVEMENT_CODES,
+    SELF_SERVICE_KINDS,
+    RewardError,
+    RewardEvaluation,
+    RewardService,
+)
 
 __all__ = [
     "AUTHORITY_KINDS",
@@ -48,8 +55,13 @@ __all__ = [
     "PostingEntry",
     "PostingRejected",
     "PostingResult",
+    "ACHIEVEMENT_CODES",
     "ProjectionCheck",
     "ProjectionDrift",
+    "RewardError",
+    "RewardEvaluation",
+    "RewardService",
+    "SELF_SERVICE_KINDS",
     "SupplySnapshot",
     "blueprint_entries",
     "derive_wallets",

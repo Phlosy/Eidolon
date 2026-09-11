@@ -63,3 +63,55 @@ class LedgerTransactionPageOut(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class RewardOptionOut(BaseModel):
+    """一个可领/已领奖励的当前状态（读面）。
+
+    `claimable=false` 时 `reason` 说明原因（`already_claimed` / `not_eligible` / `cooldown` /
+    `recovery_not_needed` / `reference_required`）；冷却类带 `next_eligible_at`。
+    """
+
+    reward_type: str
+    label: str
+    actor_kind: str
+    actor_ref: int
+    amount: int
+    currency: str
+    reference_key: str
+    claimable: bool
+    reason: str
+    policy_version: str
+    next_eligible_at: datetime | None = None
+    claimed_at: datetime | None = None
+    grant_id: int | None = None
+    metadata: dict = {}
+
+
+class RewardCatalogOut(BaseModel):
+    items: list[RewardOptionOut]
+
+
+class RewardClaimIn(BaseModel):
+    """领取请求（可选）。成就必须带 `reference_key`；教程可指定某个教程。"""
+
+    reference_key: str | None = None
+
+
+class RewardClaimOut(BaseModel):
+    """领取结果。`created=false` 表示命中幂等、复用了既有 grant（没有再次发钱）。"""
+
+    grant_id: int
+    reward_type: str
+    label: str
+    actor_kind: str
+    actor_ref: int
+    amount: int
+    currency: str
+    reference_key: str
+    status: str
+    policy_version: str
+    ledger_transaction_id: int | None = None
+    claimed_at: datetime | None = None
+    posted_at: datetime | None = None
+    created: bool
