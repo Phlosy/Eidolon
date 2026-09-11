@@ -391,7 +391,7 @@ cd apps/web && npm run build
 | --- | --- | --- | --- |
 | M1.0 Economic Domain Contract Freeze | **DONE**（2026-09-11） | `2f75590` | 设计 + 执行基线与契约代码；**无迁移**；pytest 798 / web 328 |
 | M1.1 Accounts & Double-entry Ledger | **DONE**（2026-09-11） | `12fb9a7` / `2d37938` / `9cb1e06` | `[migration v32]` `8f1abef8410f`；四小阶段 M1.1a–d 全部落地；**A1–A20 全部满足**；pytest 851 / web 328 |
-| M1.2 Monetary Authority & Reward System | **DONE**（2026-09-11） | `81eed9a` / `6e35963` / `7cc5541` | `[migration v33]` `691816bccb53`；7 类自助奖励全部落地（含救援经济）；pytest 873 / web 328 |
+| M1.2 Monetary Authority & Reward System | **DONE**（2026-09-11） | `81eed9a` / `6e35963` / `7cc5541` | `[migration v33]` `691816bccb53`；7 类自助奖励全部落地（含救援经济）；pytest 874 / web 328 |
 | M1.3 Official Work Market | **NEXT** | — | `[migration v34]` |
 | M1.4 Player Work Market | PLANNED | — | `[migration v35]` |
 | M1.5 Company Operating Economy | PLANNED | — | `[migration v36]` |
@@ -413,7 +413,7 @@ cd apps/web && npm run build
     事件 `reward.granted`；政策新增 `achievement_reward` 并加入救援金硬约束。
   - 口径裁定：**政策不建表**（真相在 `Settings` + `policy_version` 快照，plan §5 v33 只有 `reward_grants`）；
     自助可领类型白名单（官方类必须走各自业务流，M1.3+）；资格全部读既有业务事实。
-  - 测试：**+22**（873 passed / 6 deselected）；奖励 16（启动资金幂等/并发一次、资料与教程资格、
+  - 测试：**+22**（874 passed / 6 deselected）；奖励 16（启动资金幂等/并发一次、资料与教程资格、
     每日按 UTC 日、成就按 code、公司编制、救援阈值+冷却+政策约束、官方类拒绝、金额不可被调用方影响、
     混合奖励后 supply 恒等与投影一致），API 6（目录、幂等领取、409/404 语义、金额来自政策、
     公司作用域、事件只发一次）。
