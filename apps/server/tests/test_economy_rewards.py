@@ -414,6 +414,19 @@ def test_company_profile_completion_needs_a_position_definition(db):
 # ---------------------------------------------------------------- 救援经济（§16）
 
 
+def test_recovery_grant_needs_starter_grant_first(db):
+    """零余额但还没领启动资金 = 还没进入经济，不算"破产"（§16）。"""
+    company = _company(db, "RecoveryPrereq")
+    service = RewardService(db)
+    option = _evaluation(service, RewardType.recovery_grant, company_id=company.id, user_id=None)
+    assert option.claimable is False
+    assert option.reason == "starter_not_claimed"
+    service.claim(RewardType.starter_grant, company_id=company.id, user_id=None)
+    # 领了启动资金并且余额充足 ⇒ 仍然不发（阈值判定）
+    option = _evaluation(service, RewardType.recovery_grant, company_id=company.id, user_id=None)
+    assert option.reason == "recovery_not_needed"
+
+
 def test_recovery_grant_threshold_and_cooldown(db):
     company = _company(db, "RecoveryCo")
     service = RewardService(db)

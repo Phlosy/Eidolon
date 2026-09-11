@@ -347,7 +347,8 @@ Ledger（Debit company.actor 100000 / Credit ISSUANCE 100000）
 - 约束：冷却期（`recovery_cooldown_hours`）、期间上限、**必须低于任意官方任务收益**；
 - 定位：`破产兜底 + 新手引导`，不是收入来源（政策参数 + 测试约束，见 §30/§43）。
 
-**实现落点（M1.2）**：`RECOVERY_GRANT` 的"不是收入来源"由三层约束保证 ——
+**实现落点（M1.2）**：`RECOVERY_GRANT` 的"不是收入来源"由四层约束保证 ——
+(0) **先领过启动资金**才算"已经进入经济、仍然破产"（没领启动资金不叫破产：`starter_not_claimed`）；
 (1) 政策校验 `EconomicPolicy.__post_init__` 强制 `recovery_grant < starter_grant / achievement_reward /
 tutorial_reward` 且 `recovery_grant <= recovery_threshold`（加载配置时就报错，而不是等玩家刷）；
 (2) 资格硬条件：`available < recovery_threshold`（余额够就不发）；

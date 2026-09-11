@@ -241,6 +241,15 @@ def _achievement_eligible(
 def _recovery_eligible(
     service: RewardService, *, actor: EconomicActor, company_id: int, **_: object
 ):
+    # 救援金是"**已经用过启动资金**仍然破产"的兜底：没领启动资金就不算破产（§16）
+    starter = economy_repo.latest_posted_reward_grant(
+        service.db,
+        reward_type=RewardType.starter_grant.value,
+        actor_kind=EconomicActorKind.company.value,
+        actor_ref=company_id,
+    )
+    if starter is None:
+        return False, "starter_not_claimed", None
     available = service.company_available_balance(company_id)
     if available >= service.policy.recovery_threshold:
         return False, "recovery_not_needed", None
