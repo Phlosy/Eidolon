@@ -18,13 +18,18 @@ from sqlalchemy.orm import Session
 from app.api.scope import resolve_company_id
 from app.core.database import get_db
 from app.core.request_context import get_request_identity
-from app.models.enums import WorkOrderStatus
+from app.economy.contracts import EconomicActor
+from app.models.enums import EvaluationMode, WorkOrderKind, WorkOrderStatus
 from app.repositories import economy as economy_repo
 from app.schemas.economy import (
+    EscrowOut,
+    WorkOrderCreateIn,
     WorkOrderDetailOut,
     WorkOrderPageOut,
     WorkOrderSubmitIn,
 )
+from app.services.economy.escrow import EscrowService
+from app.services.economy.ledger import LedgerError
 from app.services.economy.work_orders import WorkOrderError, WorkOrderService
 
 router = APIRouter(prefix="/work-orders", tags=["work-orders"])
@@ -45,6 +50,12 @@ def _order_out(order, *, company_id: int | None, service: WorkOrderService) -> d
         and company_id is not None
         and int(order.assignee_actor_ref or 0) == company_id
     )
+    is_issuer = (
+        order.issuer_actor_kind == "company"
+        and company_id is not None
+        and int(order.issuer_actor_ref or 0) == company_id
+    )
+    escrow_view = EscrowService(service.db).view_for_order(int(order.id))
     return {
         "work_order_id": int(order.id),
         "code": order.code,
@@ -66,7 +77,25 @@ def _order_out(order, *, company_id: int | None, service: WorkOrderService) -> d
         "assignee_company_id": int(order.assignee_actor_ref)
         if order.assignee_actor_ref is not None
         else None,
+        "issuer_company_id": int(order.issuer_actor_ref)
+        if order.issuer_actor_kind == "company" and order.issuer_actor_ref is not None
+        else None,
         "is_mine": bool(is_mine),
+        "is_issuer": bool(is_issuer),
+        "escrow": (
+            EscrowOut(
+                escrow_id=escrow_view.escrow_id,
+                status=escrow_view.status,
+                amount=escrow_view.amount,
+                currency=escrow_view.currency,
+                account_balance=escrow_view.account_balance,
+                payee_company_id=escrow_view.payee_actor_ref
+                if escrow_view.payee_actor_kind == "company"
+                else None,
+            )
+            if escrow_view is not None
+            else None
+        ),
         "submission_count": len(service.submissions(int(order.id))),
         "payable_amount": service.payable_amount(order),
         "policy_version": order.policy_version,
@@ -108,6 +137,64 @@ def list_work_orders(
         "limit": limit,
         "offset": offset,
     }
+
+
+@router.post("", response_model=WorkOrderDetailOut, status_code=201)
+def create_work_order(
+    payload: WorkOrderCreateIn,
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """发布**玩家**订单（`player_bounty` / `player_contract`）。
+
+    - **发布前必须锁资**（E11）：钱在同一事务里从本公司账户转入该订单自己的托管账户；
+      余额不足 → 409 `insufficient_funds`，**不会留下"已发布但没锁资"的订单**；
+    - 官方类 kind 一律拒绝（422 `kind_not_player_kind`）——想发行必须走官方渠道（CLI，M1.3）；
+    - 金额上限 `player_order_max_reward`（政策护栏）。
+    """
+    current = _company_or_404(company_id)
+    service = WorkOrderService(db)
+    try:
+        kind = WorkOrderKind(payload.kind.upper())
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="unknown work order kind") from exc
+    try:
+        result = service.publish_player_order(
+            issuer=EconomicActor.company(current),
+            title=payload.title,
+            reward_amount=payload.reward_amount,
+            kind=kind,
+            description=payload.description,
+            requirements=payload.requirements,
+            deliverables=payload.deliverables,
+            evaluation_mode=EvaluationMode(payload.evaluation_mode),
+            deadline_at=payload.deadline_at,
+        )
+    except WorkOrderError as exc:
+        raise HTTPException(status_code=exc.http_status, detail=exc.reason) from exc
+    except LedgerError as exc:
+        # 余额不足/账户不可用：整笔已回滚（不产生订单）
+        raise HTTPException(status_code=exc.http_status, detail=exc.reason) from exc
+    return get_work_order(int(result.order.id), company_id=company_id, db=db)
+
+
+@router.post("/{order_id}/cancel", response_model=WorkOrderDetailOut)
+def cancel_work_order(
+    order_id: int,
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """取消订单（只有发布方本人；`OPEN`/`ACCEPTED` → `CANCELLED`）并**退款给发布方**。
+
+    非发布方 → 404（不泄露存在性）；不可取消状态 → 409；重复取消幂等。
+    """
+    current = _company_or_404(company_id)
+    service = WorkOrderService(db)
+    try:
+        service.cancel(order_id, company_id=current)
+    except WorkOrderError as exc:
+        raise HTTPException(status_code=exc.http_status, detail=exc.reason) from exc
+    return get_work_order(order_id, company_id=company_id, db=db)
 
 
 @router.get("/{order_id}", response_model=WorkOrderDetailOut)

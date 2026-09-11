@@ -117,6 +117,34 @@ class RewardClaimOut(BaseModel):
     created: bool
 
 
+class EscrowOut(BaseModel):
+    """托管状态（玩家订单）：钱锁在哪、锁了多少、还剩多少（都来自账本）。"""
+
+    escrow_id: int
+    status: str
+    amount: int
+    currency: str
+    account_balance: int
+    payee_company_id: int | None = None
+
+
+class WorkOrderCreateIn(BaseModel):
+    """玩家发布订单（`player_bounty` / `player_contract`）。
+
+    **金额由发布方自己出**（发布前必须锁资，E11）；请求体不能指定 funding_mode ——
+    玩家订单一律 `player_escrow`，想要"印钱"必须走官方渠道（M1.3 CLI）。
+    """
+
+    title: str
+    reward_amount: int
+    kind: str = "PLAYER_BOUNTY"
+    description: str = ""
+    requirements: dict = {}
+    deliverables: dict = {}
+    evaluation_mode: str = "auto"
+    deadline_at: datetime | None = None
+
+
 class WorkOrderOut(BaseModel):
     """工作订单（公开字段：官方订单本身不含任何公司私有数据）。"""
 
@@ -138,7 +166,10 @@ class WorkOrderOut(BaseModel):
     submitted_at: datetime | None = None
     settled_at: datetime | None = None
     assignee_company_id: int | None = None
+    issuer_company_id: int | None = None
     is_mine: bool = False
+    is_issuer: bool = False
+    escrow: EscrowOut | None = None
     submission_count: int = 0
     payable_amount: int = 0
     policy_version: str = ""
