@@ -278,7 +278,7 @@ CREATE UNIQUE INDEX uq_market_listing_active_person ON market_listings(person_id
 | R2 | 跨公司读取若复用公司作用域读面 → 泄露私有数据（credential/文档/私信） | 安全事故 | 设计 §6 白名单 + T2.3 投影测试（断言禁止字段不出现） |
 | R3 | Fit 引擎 person 化时"另写一套" → 两套口径漂移 | 语义分叉 | T2.5 对拍测试（person vs employee 同值） |
 | R4 | T2.6 若复用 `onboard` 会新建 Person（复制身份） | 破坏 I1/I2 | T2.6 使用 `RecruitmentService`，测试断言 `create_person` 未调用 |
-| R5 | 培养期私有知识（`owner_employee_id IS NULL`）在入职前无 company 归属 → 共享 scope 不可见 | 验收 B 失败 | 入职后经 private scope `read_criterion` 可见（R1.2 已切读）；T2.6/T2.8 用真实检索验证；若检索失败则补 scope 解析（记录为已知最大不确定点） |
+| R5 | 培养期私有知识（`owner_employee_id IS NULL`）在入职前无 company 归属 | 验收 B 失败 | ✅ **T2.6 已修复并实测**：`knowledge.list_knowledge_items` 的公司过滤补 person 口径分支（`owner_person_id → 当前在职行`）；真实 retrieval pipeline 能召回培养期知识，且跨公司/同公司他人仍不可见（两条测试钉住） |
 | R6 | 招聘/挂牌若直接从 UI 拼语义（前端拼 lifecycle 判断） | UI 成为真相 | eligibility 集中在 T2.2 policy；前端只读状态 |
 | R7 | NPC 若用 `companies` 行承载 → 污染公司作用域读面 | 数据噪声 | D8：独立 `market_participants` 表 |
 | R8 | 事件消费者不幂等/无启动兜底 | 状态漂移 | 同步事务负责不变量；消费者（T2.7 起）幂等 + sweep 模式（概念架构规则 6） |
@@ -369,8 +369,8 @@ cd apps/web && npm run build
 | T2.3 Market Core & MarketAdapter | **DONE**（2026-09-10） | `18e1bcb` | 迁移 v29（两张表 + 部分唯一索引）+ LocalMarketAdapter + MarketService + 公开投影读面；pytest 723 |
 | T2.4 Issuer & Market Supply | **DONE**（2026-09-10） | `2c6236f` | 迁移 v30（training_programs.metadata_json）+ IssuerService（三档参数）+ CLI；`origin=issued` 走真实培养链；pytest 736 |
 | T2.5 Person-scoped Fit | **DONE**（2026-09-10） | `524868c` | 一套引擎两个入口（owner 口径 person 优先，hash 相等）+ 市场 Fit 读面 + 搜索标注排序；无迁移；pytest 745 |
-| T2.6 Recruitment | **NEXT** | — | 入口：plan §4.7 + 设计 §3.2/§5（I1–I5、I7、I8） |
-| T2.7 Market Experience & NPC | PLANNED | — | 本文件 §4.8 |
+| T2.6 Recruitment | **DONE**（2026-09-10） | `见 Progress Log` | 招募事务（CAS + 同事务建人/任职）+ R5 知识读路径修复 + 验收 B 实测；无迁移；pytest 754 |
+| T2.7 Market Experience & NPC | **NEXT** | — | 入口：plan §4.8（市场 UI + NPC 参与者） |
 | T2.8 E2E / Hardening / Freeze | PLANNED | — | 本文件 §13/§14 |
 
 ### Progress Log
@@ -491,3 +491,24 @@ cd apps/web && npm run build
     （0.976 → 0.944 → 未评估最后）；市场 Fit 详情 200（12 条逐项评估、无 inputs_hash/owner id）；
     **对拍**：`/persons/1/fit` 与 `/employees/1/position-fit/4` 八项字段全等、hash 相等
     （owner 分别为 person-only 与 person+employee）；未知 listing/职位 → 404。
+
+- **2026-09-10 · T2.6 DONE**：commit 哈希见紧随的 `docs(t2): T2.6 进度落盘` 提交（避免自引用哈希）。
+  - 后端：`services/recruitment.py`（RecruitmentService：CAS 关闭 listing → 建 Employee(person_id=既有)
+    → 回填 recruited_* → 可选 `assign_position(commit=False)` → career_events(joined) + audit →
+    单次 COMMIT → 提交后发 `person.recruited` 与 `employee.position_assigned`）；
+    `position_service.assign_position` 增加 `commit: bool = True`（不改默认行为）；
+    API `POST /market/listings/{id}/recruit`（未知 404 / 已关闭与重复 409 / 别家公司部门·编制 404）；
+    架构守卫登记：`employees.role` 镜像写入点加入 `services/recruitment.py`（与 lifecycle/seed 同口径）。
+  - **R5 修复（验收 B 的关键）**：`repositories/knowledge.list_knowledge_items` 的公司过滤补 person 口径
+    （`owner_person_id → 当前在职行`）—— 原先人级行会被 `owner_employee_id` join 整行过滤掉。
+  - 测试：后端 +9（`tests/test_recruitment.py` 8 条：golden path（I1–I5 快照对拍）/验收 B 真实检索/
+    发行角色招募后可读/重复招募 409 且只一人一 employee/未知 404/带编制同事务任职/跨公司编制与部门 404 且回滚/
+    D12 守卫；`test_knowledge_retrieval_scopes.py` +1：人级知识只对当前在职公司可见、scope 未放宽）。
+  - 门禁：pytest **754 passed** / 6 deselected；ruff 全绿、format 仅 5 个既有 WIP 红；
+    alembic check 无漂移（head 仍 `c5d7e9f1b3a6` / v30，**本阶段无迁移**）；
+    web 314 passed + tsc/eslint/prettier 全绿（未改前端）。
+  - 实机：真实链路 建角色→自由学习（主题「T2.6 招募实机检索标记」）→结业→挂牌→招募 200
+    （person 10 → employee 3，identity_id 不变）；重复招募 409 `listing_not_active`；
+    DB：employee.person_id=10 / lifecycle=active / runtime=mock；知识行仍 `owner_person_id=10,
+    owner_employee_id=NULL`（无复制）；**真实 retrieval 召回该主题**；同公司他人不可见；
+    listing closed/reason=recruited/recruited_employee_id=3；career joined=1。

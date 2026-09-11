@@ -145,3 +145,86 @@ def test_shared_scopes_do_not_leak_across_companies(db, employees_by_slug, defau
     )
     other_side = retrieval.retrieve_for_task(db, other_employee.id, f"{marker} task", "").knowledge
     assert f"{marker}-md" not in other_side
+
+
+def test_person_owned_knowledge_follows_current_employer_only(
+    db, employees_by_slug, default_company_id
+):
+    """T2.6 验收 B 的隔离面：人级（person-only）知识只对**当前在职公司**可见。
+
+    培养期知识是 `owner_person_id`-only（`owner_employee_id IS NULL`）行：
+    - 没有在职行（在市场）→ 谁都检索不到；
+    - 招募进某公司后 → 该员工（以及同公司的合法路径）检索得到；
+    - 别的公司员工检索不到 —— 人级知识不构成绕开公司边界的后门；
+    - `company` scope 查询不会把 private 行带出来（scope 过滤仍然生效）。
+    """
+    from app.repositories import persons as person_repo
+
+    marker = _marker()
+    person = person_repo.create_person(
+        db, slug=f"k1-person-{uuid.uuid4().hex[:8]}", name="K1 Person"
+    )
+    db.flush()
+    item = knowledge_repo.create_knowledge_item(
+        db,
+        scope=KnowledgeScope.private.value,
+        owner_person_id=int(person.id),
+        title=f"{marker} person note",
+        content="k1 person-owned knowledge",
+        topic=f"{marker}-po",
+        status="active",
+        confidence=0.9,
+        sources=[],
+    )
+    db.commit()
+
+    # 1) 无在职行（在市场）：默认公司员工检索不到
+    alice = employees_by_slug["alice"]
+    assert (
+        f"{marker}-po"
+        not in retrieval.retrieve_for_task(db, alice["id"], f"{marker} task", "").knowledge
+    )
+
+    # 2) 招募进默认公司：新员工检索得到（真实 retrieval pipeline）
+    recruited = org_repo.create_employee(
+        db,
+        company_id=default_company_id,
+        person_id=int(person.id),
+        name="K1 Person",
+        slug=f"k1-person-emp-{uuid.uuid4().hex[:8]}",
+        role="engineer",
+        workspace_path=f"/tmp/k1-person-{uuid.uuid4().hex[:8]}",
+        memory_namespace=f"k1-person-mem-{uuid.uuid4().hex[:8]}",
+    )
+    db.commit()
+    assert (
+        f"{marker}-po"
+        in retrieval.retrieve_for_task(db, int(recruited.id), f"{marker} task", "").knowledge
+    )
+
+    # 3) 别家公司员工（alice 仍在默认公司；这里建另一家公司的员工）检索不到
+    other = Company(name=f"K1隔离 {marker}", slug=f"k1-iso-{uuid.uuid4().hex[:8]}", description="")
+    db.add(other)
+    db.flush()
+    other_employee = org_repo.create_employee(
+        db,
+        company_id=int(other.id),
+        name="K1 Outsider",
+        slug=f"k1-outsider-{uuid.uuid4().hex[:8]}",
+        role="engineer",
+        workspace_path=f"/tmp/k1-outsider-{uuid.uuid4().hex[:8]}",
+        memory_namespace=f"k1-outsider-mem-{uuid.uuid4().hex[:8]}",
+    )
+    db.commit()
+    assert (
+        f"{marker}-po"
+        not in retrieval.retrieve_for_task(
+            db, int(other_employee.id), f"{marker} task", ""
+        ).knowledge
+    )
+
+    # 4) scope 过滤没被放宽：private 行不会出现在 company scope 查询里
+    company_scope = knowledge_repo.list_knowledge_items(
+        db, scope=KnowledgeScope.company.value, company_id=default_company_id
+    )
+    assert item.id not in {row.id for row in company_scope}

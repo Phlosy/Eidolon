@@ -25,7 +25,7 @@ import logging
 
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.core.request_context import get_request_identity
 from app.models.enums import KnowledgeScope
@@ -89,13 +89,21 @@ def list_knowledge_items(
     # 请求内以 identity 为准；非请求上下文（identity None）回落到显式 company_id。
     effective_company_id = identity.company_id if identity is not None else company_id
     if effective_company_id is not None:
+        # R1 遗产：owner_employee_id 是镜像列；**人级行**（培养期/入职前的 person-only 行）
+        # 的 owner_employee_id 为 NULL，只走 employee 镜像 join 会被公司过滤整行扔掉 ——
+        # 那样"招募后立即携带培养期知识参与检索"（T2.6 验收 B）就不可能成立。
+        # 因此补一支 person 口径：owner_person_id → 当前在职行（uq_employees_person_id
+        # 保证至多一条），公司边界仍由"在职公司的知识"这同一条规则判定，不放松隔离。
+        owner_employee = aliased(Employee)
         stmt = (
             stmt.outerjoin(Employee, KnowledgeItem.owner_employee_id == Employee.id)
             .outerjoin(Department, KnowledgeItem.department_id == Department.id)
+            .outerjoin(owner_employee, owner_employee.person_id == KnowledgeItem.owner_person_id)
             .where(
                 or_(
                     Employee.company_id == effective_company_id,
                     Department.company_id == effective_company_id,
+                    owner_employee.company_id == effective_company_id,
                 )
             )
         )

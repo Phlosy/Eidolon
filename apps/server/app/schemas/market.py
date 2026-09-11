@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.schemas.competency import EmployeeCapabilitiesOut
 from app.schemas.person import PersonKnowledgeSummaryOut
@@ -175,3 +175,32 @@ class MarketCandidateOut(BaseModel):
     timeline: list[MarketTimelineEventOut]
     evidence: list[MarketEvidenceOut]
     market_state: str
+
+
+class RecruitIn(BaseModel):
+    """招募请求：把人变成**本公司**员工（T2.6）。
+
+    可选 `position_slot_id`：同一事务内建任职（部门随编制走）；
+    不传则只建人（运行时/工作区沿用既有员工流程）。无任何金额/合同字段（M1 边界）。
+    """
+
+    department_id: int | None = None
+    position_slot_id: int | None = None
+    title: str | None = None
+    role: str | None = Field(
+        default=None, description="engineer | researcher | ...（缺省按编制推导）"
+    )
+    reason: str = ""
+
+
+class RecruitOut(BaseModel):
+    """招募结果：**身份不变**（person_id / identity_id 与挂牌前一致）。"""
+
+    person_id: int
+    employee_id: int
+    employee_slug: str
+    identity_id: str | None = None
+    company_id: int
+    listing_id: int
+    position_slot_id: int | None = None
+    assignment_id: int | None = None

@@ -239,10 +239,16 @@ ROLE_READ_REASONS: dict[str, str] = {
 ROLE_WRITE_BASELINE: dict[str, int] = {
     "services/lifecycle.py": 1,
     "services/seed.py": 1,
+    # T2.6：从人才市场招募既有 Person 也是一条**入职路径**（Recruitment / Onboarding）——
+    # 与 lifecycle.onboard 同类，写镜像列的口径一致（真正的职位真相仍由 PositionAssignment 表达）。
+    "services/recruitment.py": 1,
 }
 ROLE_WRITE_REASONS: dict[str, str] = {
     "services/lifecycle.py": "招聘时写镜像列 → P6 撤列后由职位定义反查",
     "services/seed.py": "演示 workforce 建行时写镜像列 → P6 撤列后由职位定义给出身份",
+    "services/recruitment.py": (
+        "T2.6 市场招募（既有 Person 入职）写镜像列 → P6 撤列后由职位定义给出身份"
+    ),
 }
 
 # `.role` 属于别的模型的接收者（权限包 / 协作者 / 成员关系 / 入参）。

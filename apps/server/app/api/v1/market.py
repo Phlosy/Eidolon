@@ -23,8 +23,11 @@ from app.schemas.market import (
     MarketListingCreateIn,
     MarketListingOut,
     MarketListingPageOut,
+    RecruitIn,
+    RecruitOut,
 )
 from app.services import market as market_service
+from app.services import recruitment as recruitment_service
 from app.talent.fit import service as fit_service
 from app.talent.market import read_model as market_read_model
 from app.talent.market.contracts import MarketSearchQuery
@@ -177,3 +180,44 @@ def get_listing_fit(
     except fit_service.FitDomainError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return market_read_model.candidate_fit_out(listing_id, result)
+
+
+@router.post("/listings/{listing_id}/recruit", response_model=RecruitOut)
+def recruit_listing(
+    listing_id: int,
+    payload: RecruitIn,
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """招募在市候选人（T2.6）：把既有 Person 变成本公司员工。
+
+    - **不复制** Person 的 knowledge / traits / evidence / assessment / education；
+      `identity_id` 与 `person_id` 保持不变（I1–I4），历史 provenance 不改写（I5）；
+    - 只有 **active 挂牌** 可被招募（I7）；重复/并发招募 → 409（条件关闭 + 唯一约束，I8）；
+    - 未知 listing → 404；已关闭 → 409 `listing_not_active`；别家公司部门/编制 → 404。
+    """
+    if company_id is None:
+        raise HTTPException(status_code=404, detail="company_not_found")
+    try:
+        result = recruitment_service.RecruitmentService().recruit_existing_person(
+            db,
+            listing_id=listing_id,
+            company_id=int(company_id),
+            department_id=payload.department_id,
+            position_slot_id=payload.position_slot_id,
+            title=payload.title,
+            role=payload.role,
+            reason=payload.reason,
+        )
+    except recruitment_service.RecruitmentError as exc:
+        raise HTTPException(status_code=exc.http_status, detail=exc.reason) from exc
+    return {
+        "person_id": result.person_id,
+        "employee_id": result.employee_id,
+        "employee_slug": result.employee_slug,
+        "identity_id": result.identity_id,
+        "company_id": result.company_id,
+        "listing_id": result.listing_id,
+        "position_slot_id": result.position_slot_id,
+        "assignment_id": result.assignment_id,
+    }

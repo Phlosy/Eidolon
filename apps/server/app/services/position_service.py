@@ -496,8 +496,19 @@ def _target_slot(db: Session, payload: AssignmentIn) -> PositionSlot:
     raise HTTPException(status_code=422, detail="slot_id 或 position_id 必须给一个")
 
 
-def assign_position(db: Session, employee: Employee, payload: AssignmentIn) -> PositionAssignment:
-    """显式分配：关旧主职 + 开新主职，全程一个事务。"""
+def assign_position(
+    db: Session,
+    employee: Employee,
+    payload: AssignmentIn,
+    *,
+    commit: bool = True,
+) -> PositionAssignment:
+    """显式分配：关旧主职 + 开新主职，全程一个事务。
+
+    `commit=False`（T2.6 招募事务用）：不 commit、也不发 `employee.position_assigned` ——
+    调用方持有事务边界，并在自己的 commit 之后补发该事件（`assess_person_competencies`
+    的同一约定）。默认 True 时行为与本函数历史完全一致。
+    """
     slot = _target_slot(db, payload)
     definition = position_repo.get_definition(db, slot.position_definition_id)
     if definition is None:
@@ -592,20 +603,22 @@ def assign_position(db: Session, employee: Employee, payload: AssignmentIn) -> P
         },
         reason=payload.reason,
     )
-    db.commit()
-    bus.publish(
-        "employee.position_assigned",
-        {
-            "id": employee.id,
-            "slot_id": slot.id,
-            "position_code": definition.code,
-            "department_id": slot.department_id,
-            "kind": kind,
-        },
-        company_id=employee.company_id,
-        actor_employee_id=employee.id,
-    )
-    # P4d：Desired Access 由这个事件驱动重算，不在本事务里同步。
+    if commit:
+        db.commit()
+        bus.publish(
+            "employee.position_assigned",
+            {
+                "id": employee.id,
+                "slot_id": slot.id,
+                "position_code": definition.code,
+                "department_id": slot.department_id,
+                "kind": kind,
+            },
+            company_id=employee.company_id,
+            actor_employee_id=employee.id,
+        )
+    # P4d：Desired Access 由这个事件驱动重算，不在本事务里同步；
+    # commit=False 时由调用方在自己的 commit 之后补发。
     return assignment
 
 

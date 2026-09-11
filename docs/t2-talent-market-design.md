@@ -347,6 +347,28 @@ Protocol 由远端实现，**不修改**本契约。
   因此 `MarketSearchQuery.limit = None` 表示不分页（契约已标注）；
 - 非 active 挂牌 / 别家公司职位 / 未知职位 → 404（不泄露存在性）。
 
+## 10d. 招募（T2.6 落地形态）
+
+- `app/services/recruitment.py::RecruitmentService.recruit_existing_person`：
+  `CAS 关闭 listing（条件 UPDATE rowcount）→ 创建 Employee(person_id=既有) → 回填 listing.recruited_* →
+  （可选）position_service.assign_position(commit=False) → career_events(joined) + audit →
+  COMMIT → 发布 person.recruited（+ 分配过职位时补发 employee.position_assigned）`；
+- `position_service.assign_position` 新增 `commit: bool = True`（`False` = 不 commit、不发事件，
+  调用方持有事务边界并在提交后补发）—— 与 `assess_person_competencies(commit=False)` 同一约定；
+- **角色镜像列**（`employees.role`，deprecated）的写入点从"招聘 + 种子"扩到"招聘 + 种子 + 招募"：
+  招募与 `lifecycle.onboard` 同属入职路径，`position_compat` 的撤列口径不变（架构守卫已显式登记）；
+- **知识读路径修复（R5，验收 B 的关键）**：`repositories/knowledge.list_knowledge_items` 的公司过滤
+  原先只 join `owner_employee_id`（镜像列），**人级行**（培养期 person-only 行）会被整行过滤掉 ——
+  "招募后立即携带培养期知识参与检索"因此不可能成立。现补一支 person 口径：
+  `owner_person_id → 当前在职行`（`uq_employees_person_id` 保证至多一条），
+  公司边界仍由"在职公司的知识"同一条规则判定；scope 过滤不变（private 行不会出现在
+  department/company scope 查询里，隔离测试钉住）；
+- 招募失败语义：未知 listing → 404；已关闭/重复/并发 → 409 `listing_not_active`；
+  人已有生效主职 → 409 `already_employed`；别家公司部门/编制 → 404（不泄露存在性）；
+  失败**不留半个员工**（显式 rollback）；
+- 不做：runtime/provider 全链开通（沿用既有员工 runtime 流程）、owner_company_id 改写
+  （历史持有方保留，当前关系由 Employee/employments 表达 —— D5/I5）。
+
 ## 11. 与 M1 / M2 的边界
 
 | | 内容 | 归属 |
