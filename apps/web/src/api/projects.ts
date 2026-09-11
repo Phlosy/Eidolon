@@ -6,6 +6,7 @@ import type {
   ProjectGraph,
   ProjectTimeline,
   ProjectLifecycle,
+  ProjectSpec,
   ReviewDecisionInput,
   ReviewMeeting,
   ChangeRequest,
@@ -34,6 +35,15 @@ export function getProjectGraph(id: number): Promise<ProjectGraph> {
 
 export function getProjectLifecycle(id: number): Promise<ProjectLifecycle> {
   return get<ProjectLifecycle>(`/projects/${id}/lifecycle`);
+}
+
+/**
+ * M2.1 Canonical Executable Project 读面：回答那 8 个问题
+ * （spec / work_mode / Work Intake 责任 / 承担它的任职 / 管理 actor /
+ *  requirements+deliverables+acceptance / spec 版本 / 是否已进入执行）。
+ */
+export function getProjectSpec(id: number): Promise<ProjectSpec> {
+  return get<ProjectSpec>(`/projects/${id}/spec`);
 }
 
 export function completeProjectPhase(

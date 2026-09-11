@@ -220,7 +220,32 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   2. 职位是 `Responsibility + Authority + Expectations`，**不是** prompt / workflow / skill package；
      任命**永不**授予能力、**永不**复制前任的人级资产（W4/W7/W8/W26）；
   3. 不新建 Mission / Agent SoT；`Project` 是唯一执行根，`WorkOrder` 只是商业包装（W20/W21/W22/W23）。
-- 下一步：**M2.1 Canonical Executable Project Spec**（见 plan §4；开工前需先拍板 plan §16 的三个默认值问题）。
+- 下一步：**M2.2 Role Context & Adaptive Onboarding**（见 plan §5）。
+
+---
+
+## 5e. M2.1 Canonical Executable Project Spec（**DONE**，2026-09-11）
+
+- 迁移 **v40** `a1c2e3f40517`（纯 additive）；`upgrade → downgrade → upgrade` 实测；head = v40
+- **唯一立项入口** `services/projects.create_project()`，两个**正交**维度：
+  `work_mode`（产品：guided | managed）+ `planning_fixture`（基础设施：none | deterministic_template）
+- **三个产品拍板**（写进设计 §17 ADR-11..15）：
+  1. **D1** Work Intake = **公司可配的责任路由**（默认 CEO，可配 COO/PM Lead…）：
+     `Company.settings["work_routing"]` → 职位 code → PositionSlot → 生效 PRIMARY 任职。
+     解析不到 ⇒ `ProjectStatus.waiting_for_management`（**零任务零规划**），提示 Owner；
+     **系统绝不随便挑人、绝不代管规划**（W32/W34）
+  2. **D2** 新公司 `guided` → 首次真实项目完成后公司默认转 `managed`；`work_mode` 是**项目级快照**，
+     公司默认变化不改写既有项目（W35）；两种模式差别只有 **human involvement**，不是决策归属（W36）
+  3. **D3** 确定性模板**保留但降级为 Test/Tutorial/CI Fixture**（`DETERMINISTIC_TEMPLATE_PLAN`）：
+     只能**显式请求** + `EIDOLON_ALLOW_PLANNING_FIXTURES=true` 门控（未开启 ⇒ 422，不静默降级）；
+     生产**永不** fallback（W33）。`GRAPH_TEMPLATE` 这个名字已退役
+- 新读面：`GET /projects/{id}/spec`（回答 8 个问题）、`GET|PATCH /company/work-policy`
+- **改了行为的地方（有意）**：`POST /projects` 只传 `{name, description}` 不再隐式跑固定模板；
+  CI/教程/测试改用显式 `planning_fixture`，生产改走 managed 路由并停在等待管理动作
+- **测试纪律**：想只要"干净 Project 容器"的用例用 `no_work_intake` fixture（停在
+  `waiting_for_management`），避免后台 mock 派发污染断言
+- 前端：项目详情新增工作模式面板（模式 / 责任职位 / `waiting_for_management` 引导 / 负责人 stale 提示）
+- 下一步：M2.2 RoleContext（派生读模型 + Authority Projection + Role Resource Index）
 
 ---
 

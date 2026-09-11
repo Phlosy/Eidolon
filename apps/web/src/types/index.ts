@@ -15,7 +15,15 @@ export type RuntimeType =
   "mock" | "hermes" | "openclaw" | "codex" | "claude_code" | "opencode" | "custom";
 
 export type ProjectStatus =
-  "requested" | "planning" | "in_progress" | "in_review" | "completed" | "cancelled" | "rejected";
+  | "requested"
+  | "planning"
+  | "in_progress"
+  | "in_review"
+  | "completed"
+  | "cancelled"
+  | "rejected"
+  // M2.1（B11）：连负责人都没有 —— 系统不替公司规划，如实停在等待
+  | "waiting_for_management";
 
 export type MilestoneStatus = "pending" | "in_progress" | "completed";
 
@@ -130,6 +138,13 @@ export interface Project {
   review_configuration?: Record<string, unknown>;
   participants?: Record<string, unknown>;
   tutorial_accelerated?: boolean;
+  work_mode?: "guided" | "managed" | null;
+  planning_fixture?: "none" | "deterministic_template" | null;
+  spec_version?: number;
+  work_intake_position_code?: string | null;
+  management_employee_id?: number | null;
+  management_person_id?: number | null;
+  management_assigned_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -336,6 +351,10 @@ export interface CreateProjectInput {
   review_configuration?: ReviewConfiguration;
   participants?: ProjectParticipants;
   tutorial_accelerated?: boolean;
+  /** M2.1：不传就用公司默认；传了就快照到项目行，之后公司默认变化不影响它。 */
+  work_mode?: "guided" | "managed" | null;
+  /** M2.1：确定性规划 fixture —— **基础设施**，生产不传（仅教程/CI/演示）。 */
+  planning_fixture?: "none" | "deterministic_template";
 }
 
 export interface RequirementInput {
@@ -1967,4 +1986,84 @@ export interface ProvisioningPreviewInput {
   department_id: number;
   position_id?: number;
   access_package_ids?: number[];
+}
+
+/* -------------------------------------------------------------------------
+ * M2.1 · Canonical Executable Project（GET /projects/{id}/spec）
+ *
+ * 这份读模型回答产品要求的那 8 个问题；它只陈述事实，不给建议 ——
+ * 「接不接受 / 怎么拆 / 选谁」仍然由管理 Agent 或 Owner 回答。
+ * ---------------------------------------------------------------------- */
+
+export interface ProjectSpecFields {
+  background: string;
+  goal: string;
+  requirements: Array<{
+    code: string;
+    title: string;
+    priority: string;
+    acceptance_criteria: string;
+  }>;
+  constraints: string[];
+  deliverables: string[];
+  acceptance_criteria: string[];
+  priority: string;
+  deadline: string | null;
+  context: string;
+}
+
+export interface ProjectSpecCompleteness {
+  is_complete: boolean;
+  missing: string[];
+  optional_fields: string[];
+}
+
+export interface ProjectSpecWorkIntake {
+  responsibility: string;
+  status: "routed" | "no_position" | "no_incumbent" | "incumbent_unavailable";
+  position_code: string;
+  default_position_code: string;
+  is_configured: boolean;
+  position_definition_id: number | null;
+  assignment: {
+    employee_id: number;
+    person_id: number | null;
+    slot_id: number | null;
+    since: string | null;
+  } | null;
+  candidate_employee_ids: number[];
+  owner_user_id: number | null;
+  reason: string;
+}
+
+export interface ProjectSpecManagement {
+  employee_id: number | null;
+  person_id: number | null;
+  assigned_at: string | null;
+  position_code: string | null;
+  position_definition_id: number | null;
+  current_responsible_employee_id: number | null;
+  stale: boolean;
+}
+
+export interface ProjectSpecExecution {
+  entered: boolean;
+  task_count: number;
+  task_status_counts: Record<string, number>;
+  phase_count: number;
+  artifact_count: number;
+  planning_fixture: string | null;
+}
+
+export interface ProjectSpec {
+  project_id: number;
+  spec_version: number;
+  spec: ProjectSpecFields;
+  completeness: ProjectSpecCompleteness;
+  work_mode: "guided" | "managed" | null;
+  planning_fixture: "none" | "deterministic_template" | null;
+  work_intake: ProjectSpecWorkIntake;
+  management: ProjectSpecManagement;
+  execution: ProjectSpecExecution;
+  questions: Record<string, string>;
 }

@@ -66,7 +66,7 @@ Golden Path × 3 + 冻结
 | 阶段 | 名称 | 迁移 | 依赖 | 对应不变量 | 状态 |
 | --- | --- | --- | --- | --- | --- |
 | **M2.0** | Work & Role Domain Contract Freeze | **无** | Audit | W4/W5/W6/W7/W8/W9/W10/W11/W13/W18/W20/W21/W23/W24/W25/W26/W27/W28/W29 | **DONE** |
-| **M2.1** | Canonical Executable Project Spec | 有 | M2.0 | W22/W30 | PENDING |
+| **M2.1** | Canonical Executable Project Spec | 有（v40） | M2.0 | W22/W30/W32/W33/W34/W35/W36 | **DONE** |
 | **M2.2** | Role Context & Adaptive Onboarding | 有（Authority Projection） | M2.1 | W4/W5/W7/W8/W12/W27 | PENDING |
 | **M2.3** | Management Agent Tooling | 无（纯读 + 受校验写） | M2.2 | W3/W6/W11 | PENDING |
 | **M2.4** | Leadership Planning & Delegation | 有（DecisionRecord） | M2.3 | W1/W2/W3/W14/W15/W28 | PENDING |
@@ -149,43 +149,83 @@ Golden Path × 3 + 冻结
 
 ---
 
-## 4. M2.1 · Canonical Executable Project Spec `[有迁移]`
+## 4. M2.1 · Canonical Executable Project Spec `[有迁移]` — **DONE**
 
 ### Goal
 
-让 `Project` 成为**唯一权威工作根**，并承载 Canonical Spec；
-把「结构化交付」从**平行项目类型**降级为同一个 `Project` 上的**交付仪式配置**。
+让 `Project` 成为**唯一权威工作根**并承载 Canonical Spec；把两条历史路径
+降级为**两个显式且正交的维度**（产品 `work_mode` / 基础设施 `planning_fixture`），
+而不是两套互不可见的领域语义。
 
-### 范围
+### 已拍板的产品决策（本轮正式落地）
 
-- `projects.work_mode`（`managed` / `guided` / `template_graph`），默认值按迁移策略决定
-- Canonical Spec 字段补齐（设计 §11.4 的映射表；缺的列补，已有的不重命名）
-- `create_order()` / `create_structured_project()` 收敛为**同一个** `create_project()`：
-  以 `work_mode` 分支，而不是以 `is_structured` 分叉
-- `ProjectCreate.is_structured` 保留为**兼容解析**（老客户端仍可用），内部映射到 `work_mode`
+| # | 决策 | 冻结为 |
+| --- | --- | --- |
+| **D1** | Work Intake 默认 CEO，但**公司可配**（COO / PM Lead / Research Director / 自定义职位）；解析不到负责人 ⇒ `waiting_for_management`，系统**绝不**随便挑人或代管规划 | M2-ADR-11 / W32 / W34 |
+| **D2** | 新公司默认 `guided`；首次真实项目完成后公司默认转 `managed`；`work_mode` **项目级快照**，公司默认变化不改写既有项目；guided 与 managed 的差别只有 **human involvement** | M2-ADR-13/15 / W35 / W36 |
+| **D3** | 确定性模板**保留但降级为 Test/Tutorial/CI Fixture**；生产项目**永不** fallback 到它；只能显式请求 + 部署门控 | M2-ADR-12 / W33 |
 
-### 不做
+### 范围（已实现）
+
+- **迁移 v40**（`a1c2e3f40517`，纯 additive）：`projects.{work_mode, planning_fixture,
+  spec_version, work_intake_position_code, management_employee_id, management_person_id,
+  management_assigned_at}` + 索引 `ix_projects_work_mode`；**事实驱动回填**（有 phase ⇒
+  guided/none；无 phase 但有模板任务 ⇒ fixture；其余两边留 NULL = 未分类）
+- **单一立项入口** `services/projects.create_project()`：
+  `planning_fixture=deterministic_template` → 基础设施项目；`guided` → 引导仪式；
+  `managed` → Work Intake 责任路由。`create_order()` 保留为**退役别名**（不再含分叉）
+- **两条正交维度**：`ProjectWorkMode`（guided | managed，产品）+ `PlanningFixture`
+  （none | deterministic_template，基础设施）；`GRAPH_TEMPLATE` 更名
+  `DETERMINISTIC_TEMPLATE_PLAN`，`_generate_graph` 更名 `_apply_deterministic_template_plan`
+- **Work Intake 责任路由**（`app/work/work_intake.py`，只读）：公司配置 → 职位 code →
+  PositionSlot → 生效 PRIMARY 任职 → Employee；4 种结果状态；多条在任者按
+  `effective_from` 取最早并上报全部在任者（审计）
+- **公司工作策略 API**：`GET|PATCH /company/work-policy`（`work_mode` + `work_intake_position_code`）
+- **Canonical Spec 读面**：`GET /projects/{id}/spec` 回答 8 个问题（spec / completeness /
+  work_mode / planning_fixture / work_intake / management（含 `stale`）/ execution）
+- **不接管规划**（W34）：`orchestrator._advance` 的两个规划分支都以
+  `_uses_deterministic_plan()` 门控；非 fixture 项目在接收任务完成后发
+  `project.awaiting_management_action` 并**停住**
+- **默认值推进**（B7）：`work_defaults.promote_after_project_completion()` 在两个完成点
+  （orchestrator final_review / 交付域 delivery 阶段）调用；只改默认值、幂等、
+  用户显式配置过的公司永不被自动改写
+- **前端**：项目详情页新增工作模式面板（模式 + 责任职位 + `waiting_for_management`
+  引导 + 负责人/stale 提示）；`work_mode` 显式声明于立项向导与实战教程模板（与公司阶段无关）
+
+### 明确不做
 
 ```text
-不改 guided 的 11 阶段与人工评审门（M2.7 才统一 verdict 语义）
-不删 order_flow（M2.5 才退役 template_graph）
+不实现管理 Agent 的 Tool 面（M2.3）
+不实现 DecisionRecord 落表（M2.4）
+不退役确定性模板（M2.5）· 不统一 verdict 语义（M2.7）
+不改 M1/T2 任何冻结契约
 ```
 
 ### Acceptance
 
-| # | 判据 |
-| --- | --- |
-| B1 | 任何新建 Project 都能回答"我的 Canonical Spec 是什么"（9 个字段非空或显式为空说明） |
-| B2 | 同一个 `POST /projects` 请求体不再因 `is_structured` 走向两套互相不可见的语义 |
-| B3 | `guided` 与 `managed` 共用同一 `projects` 行与同一 Task 表（W30） |
-| B4 | 老客户端（只传 name/description）行为逐字段不变（回归测试） |
-| B5 | 不做 `projects` 表重建（SQLite：只加列，不加 FK） |
+| # | 判据 | 状态 |
+| --- | --- | --- |
+| B1 | 任何 Project 都能回答 Canonical Spec（8 个问题） | ✅ `test_project_answers_the_eight_canonical_questions` + `test_spec_reports_gaps_without_blocking_creation` |
+| B2 | `POST /projects` 不再通过 `is_structured` 进入两套互不可见的语义 | ✅ `test_is_structured_no_longer_routes_domain_semantics`（同一载荷换 `work_mode` 得到两种确定形状） |
+| B3 | guided / managed 共用同一 `projects` 行与同一 `tasks` 表 | ✅ `test_guided_and_managed_share_one_substrate` |
+| B4 | 旧客户端只传 name/description 时行为逐字段兼容 | ✅ `test_legacy_bare_request_still_accepted_field_compatible`（两种模式各过一遍） |
+| B5 | SQLite 只做 additive migration，不重建 `projects` 表 | ✅ `test_projects_migration_is_additive_only` + `alembic upgrade/downgrade/upgrade` 实测 |
+| B6 | managed 默认 Work Intake = CEO，但通过 Responsibility Routing 实现，不硬编码 CEO 特权 | ✅ `test_work_intake_is_responsibility_routing_with_configurable_target`（改配到 QA → 路由随之改变；未知 code ⇒ 422） |
+| B7 | 新公司默认 guided；完成首次真实项目后 company default 转 managed | ✅ `test_company_default_work_mode_follows_company_stage` + `test_first_completed_project_promotes_company_default` |
+| B8 | guided 与 managed 的差别是 human involvement，不是 decision ownership | ✅ `test_work_mode_never_encodes_decision_ownership`（AST/契约级：不存在以 work_mode 为键的决策表） |
+| B9 | template_graph 不得成为生产 fallback | ✅ `test_no_implicit_template_fallback_path_exists`（AST 守卫：模板调用必须在 fixture 门控内） |
+| B10 | deterministic graph 只能被 tutorial/test/dev fixture 显式使用 | ✅ `test_planning_fixture_requires_explicit_request_and_gate`（未开启 ⇒ 422，不静默降级） |
+| B11 | Manager 缺失或失败时进入 waiting/escalation，不允许系统代规划 | ✅ `test_missing_work_intake_manager_enters_waiting_not_fallback` + `test_managed_project_does_not_plan_itself` |
+| B12 | Project 的 work_mode 必须 snapshot | ✅ `test_work_mode_is_snapshotted_and_survives_company_default_change` |
 
 ### Risks
 
-`guided` 是老教程（`first-project-practice`）的载体 ⇒ 收敛时必须保证教程 7 步全部仍能通过。
-
----
+| 风险 | 对策 |
+| --- | --- |
+| `guided` 是实战教程的载体 ⇒ 收敛破坏教程 | 教程模板**显式**声明 `work_mode=guided`（与公司阶段解耦）；有 `test_practice_template_declares_guided` |
+| 测试共享公司状态 ⇒ 顺序依赖 | 依赖阶段/策略的用例**显式设置并还原**，或用不落库的纯函数路径；纯容器用例用 `no_work_intake` fixture |
+| 既有"一键立项即跑 Agent"的用法消失 | 这是 D3 的**有意**行为变更：基础设施用法改走 `planning_fixture`（测试/CI 已改）；生产改走 managed 路由 |
+| `work_mode` 留 NULL 的历史项目读面缺值 | 读面如实显示"历史项目（未分类）"；不做猜测性回填 |
 
 ## 5. M2.2 · Role Context & Adaptive Onboarding `[有迁移]`
 
@@ -494,6 +534,11 @@ CEO A 离任 → CEO B 上任
 | W28 DecisionRecord append-only | ✅ | | | | ✅ | | | | | | 锚点 |
 | W29 四个 verdict 面不互相替代 | ✅ | | | | | | | ✅ | | | 锚点 |
 | W30 guided/managed 共用底座 | 冻结 | ✅ | | | | ✅ | | ✅ | | | 锚点 |
+| W32 Work Intake 是责任路由 | 冻结 | ✅ | 强 | | ✅ | | | | | | 锚点 |
+| W33 fixture 只可显式+门控 | 冻结 | ✅ | | | | 强 | | | | | 锚点 |
+| W34 负责人缺失⇒等待不接管 | 冻结 | ✅ | | | ✅ | | | | | | 锚点 |
+| W35 work_mode 快照 | 冻结 | ✅ | | | | | | | | | 锚点 |
+| W36 模式差别只有人类参与 | 冻结 | ✅ | | | ✅ | | ✅ | | | | 锚点 |
 | W31 未开通不可执行 | 冻结 | | | | | | | | ✅ | | 锚点 |
 
 ---
@@ -519,6 +564,7 @@ CEO A 离任 → CEO B 上任
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
 | M2.0 Work & Role Domain Contract Freeze | **DONE**（2026-09-11） | `366c540` | 设计 + 执行基线 + 契约代码 + 守卫测试；**无迁移**；head 仍 `64fec2d13d9b` |
+| M2.1 Canonical Executable Project Spec | **DONE**（2026-09-11） | 见 §17.0 | 迁移 **v40**；单一立项入口 + 两轴路由 + Work Intake 责任路由 + Canonical Spec 读面；W32–W36 强制 |
 
 ### Progress Log
 
@@ -551,16 +597,43 @@ CEO A 离任 → CEO B 上任
     R2（守卫变装饰）— 已做反例注入验证；R3（target invariant 被误读为现状）— 不变量带
     `enforced` / `owner_stage`，测试只断言"无静默丢弃"。
 
-### 下一步（M2.1，不在 M2.0 范围）
+- **2026-09-11 · M2.1 DONE —— Canonical Executable Project Spec**
+  - **拍板落地**：D1（Work Intake = 可配责任路由，默认 CEO）、D2（新公司 guided → 首次真实项目后
+    转 managed；`work_mode` 项目级快照；模式差别只有 human involvement）、
+    D3（确定性模板降级为 Test/Tutorial/CI Fixture，生产永不 fallback）
+  - **迁移**：**v40** `a1c2e3f40517`（纯 additive：7 个新列 + 1 个索引 + 事实驱动回填）；
+    `upgrade → downgrade -1 → upgrade` 实测通过；`alembic check` 无漂移
+  - **代码**：`app/work/{work_intake,work_defaults}.py`（新增）、`app/services/projects.py`
+    （单一入口 + Canonical Spec 读面）、`app/services/project_delivery.py`（guided 仪式体 + 完成点推进）、
+    `app/workflow/orchestrator.py`（模板更名 + fixture 门控 + `awaiting_management_action`）、
+    `app/api/v1/{projects,company}.py`（`/spec`、`/company/work-policy`）、
+    `app/models/project.py` + 迁移、`app/models/enums.py`（`ProjectWorkMode` 收敛为两值 +
+    `PlanningFixture` + `ResponsibilityKind` + `ProjectStatus.waiting_for_management`）
+  - **前端**：项目详情工作模式面板 + `waiting_for_management` 状态与文案（中英逐键）+ `/spec` 类型
+  - **测试**：新增 `tests/test_m2_project_spec.py`（23 个，B1–B12 全覆盖）；
+    `test_m2_contract.py` 48 个（含跨模块不变量锚点解析）；既有 7 个依赖隐式模板的用例改为
+    **显式**请求 fixture / 显式 managed 容器
+  - **门禁**：pytest **1109 passed / 6 deselected**；ruff check 全绿；ruff format 仅既有 5 个 WIP 红；
+    alembic check 无漂移（head = v40）；web tsc / eslint / prettier / vitest(351) / build 全绿
+  - **风险**：R4（教程被收敛破坏）— 教程模板显式声明 guided，有测试；R11（测试顺序依赖）—
+    依赖公司阶段/策略的用例显式设置并还原；R12（"一键立项即跑 Agent"消失）— 这是 D3 的**有意**
+    行为变更，CI/测试改用显式 fixture，生产改走 managed 路由
 
-`Project` 承载 Canonical Spec + `work_mode` 收敛 + 单一 `create_project()` 入口。
+### 下一步（M2.2，不在 M2.1 范围）
 
-### 交付后暂停点（本轮不做）
+Role Context & Adaptive Onboarding：派生读模型 + Authority Projection + Role Resource Index。
 
-M2.1 之前必须先确认产品决策（设计 §11.3 与 Audit §26）：
-1. `managed` 模式的默认 Work Intake 职位是 `ceo` 还是公司可配？（M2-ADR-9 已给出机制，缺默认值拍板）
-2. `guided` 模式在新公司里默认开还是关？（影响教程与冷启动体验）
-3. `template_graph` 的退役是否需要保留"演示模式"（教程/CI）载具？
+### ~~交付后暂停点~~ → **已拍板（2026-09-11，D1/D2/D3）**
+
+1. **默认 Work Intake = CEO，但公司可配**（负责路由，不是 CEO 特权）→ M2-ADR-11 / B6
+2. **新公司默认 guided**；首次真实项目完成后公司默认转 managed；`work_mode` 项目级快照 → M2-ADR-13/15 / B7/B12
+3. **确定性模板保留**，但只作 Test/Tutorial/CI Fixture，生产**永不** fallback，且必须显式请求 + 部署门控 → M2-ADR-12 / B9/B10
+
+---
+
+## 17.0 M2.1 交付证据
+
+见本轮汇报与 §16 Progress Log（commit hash 由收尾提交补记）。
 
 ---
 

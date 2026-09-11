@@ -40,6 +40,10 @@ class ProjectStatus(StrEnum):
     completed = "completed"
     cancelled = "cancelled"
     rejected = "rejected"
+    #: M2.1（B11）：管理职责空缺/不可用 —— 系统**不替公司规划**，如实停在等待。
+    #: 与 `requested` 的区别：requested = 已受理待管理动作；
+    #: waiting_for_management = **连负责人都没有**（Work Intake 责任无人承担）。
+    waiting_for_management = "waiting_for_management"
 
 
 class MilestoneStatus(StrEnum):
@@ -990,18 +994,58 @@ class ReviewVerdict(StrEnum):
 
 
 class ProjectWorkMode(StrEnum):
-    """工作根的执行形态（设计 §11.3，W22 / W30）。
+    """**产品**工作模式（设计 §11.3，D2/M2-ADR-11，W22 / W30）。
 
-    三种形态**共用同一 `projects` 行、同一 Task 表、同一评审底座**；
-    它们不是三套代码路径，而是同一个 Project 上的执行方式。
+    两种模式**共用同一 `projects` 行、同一 Task 表、同一评审底座**；
+    它们的差别只有一个：
+
+        **human involvement level，不是 decision ownership。**
+
+    两种模式里「接不接 / 怎么拆 / 选谁 / 是否返工 / 是否交付」都来自
+    Manager Agent 或 Human Owner；系统都不代管。
+
+    它**只属于产品行为**。确定性的模板执行图（`GRAPH_TEMPLATE`）不在本枚举里 ——
+    它是测试/教程基础设施，见 `PlanningFixture`（D3/M2-ADR-12）。
     """
 
-    #: M2 目标：Task DAG 由 Manager Agent 决定（W2 / W16）
+    #: 目标形态：Manager Agent 自主规划，执行前不经人类确认（W2 / W16）
     managed = "managed"
-    #: 现有结构化交付：11 阶段 + 人工评审门（v0.5 正式交付域）
+    #: 教学/协助形态：Manager 仍然自主决策，但**关键动作需要人类确认与讲解**
     guided = "guided"
-    #: 现有 legacy：固定 GRAPH_TEMPLATE（M2.5 退役，历史数据保留可读）
-    template_graph = "template_graph"
+
+
+class PlanningFixture(StrEnum):
+    """确定性规划 fixture —— **基础设施轴，不是产品模式**（D3/M2-ADR-12，W33）。
+
+    它不是"第三种玩法"，而是给 CI / 教程 / golden path / 开发演示用的**确定性替身**：
+    让「Project → Task Graph → 执行 → Artifact → Review → Completed」这条链在
+    **不依赖 LLM Manager Agent** 的前提下可重复、可断言、零成本。
+
+    两条硬纪律（由契约测试钉死）：
+
+    1. **生产项目绝不能隐式落到它头上**（没有"Manager 没反应 → 偷偷用模板"）；
+    2. 只能**显式**请求，且受 `settings.allow_planning_fixtures` 门控
+       （默认 False；测试/CI/开发环境显式打开）。
+    """
+
+    #: 生产：Task DAG 只能由 Manager Agent / Human 创建
+    none = "none"
+    #: 基础设施替身：用固定模板生成确定性执行图（仅教程/CI/测试/演示）
+    deterministic_template = "deterministic_template"
+
+
+class ResponsibilityKind(StrEnum):
+    """组织责任类型（设计 §4 的职责路由，D1/M2-ADR-11，W32）。
+
+    Position 表达"公司希望你负责什么"——系统按**责任**路由，而不是写死"CEO 特权"。
+
+    M2.1 只开 `work_intake`（新公司的最终工作入口）。后续责任（交付管理、质量门……）
+    在 M2.2/M2.4 按同一机制追加：新增一个值 + 一条 `RESPONSIBILITY_DEFAULTS` 默认，
+    **不需要改路由代码**。
+    """
+
+    #: 谁负责接收工作、做高层判断与委派（默认=CEO，公司可配）
+    work_intake = "work_intake"
 
 
 class RoleResourceKind(StrEnum):

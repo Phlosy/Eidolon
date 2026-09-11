@@ -49,8 +49,19 @@ def _wait_for(predicate, timeout=40.0, interval=0.2):
 
 
 def _project(client, marker: int, description: str) -> dict:
+    """建一个**基础设施项目**：用确定性模板替掉 Manager 的规划。
+
+    M2.1（D3/W33）起，生产立项不再隐式落到固定模板上；本文件测的是
+    "行为策略是否真的随任务派发进入 runtime"，属于基础设施回归，
+    因此显式请求 `planning_fixture=deterministic_template`。
+    """
     return client.post(
-        "/api/v1/projects", json={"name": f"zz-bp-{marker}", "description": description}
+        "/api/v1/projects",
+        json={
+            "name": f"zz-bp-{marker}",
+            "description": description,
+            "planning_fixture": "deterministic_template",
+        },
     ).json()
 
 

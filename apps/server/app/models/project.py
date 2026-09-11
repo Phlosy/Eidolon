@@ -44,6 +44,27 @@ class Project(TimestampMixin, Base):
     participants: Mapped[dict] = mapped_column(JSON, default=dict)
     tutorial_accelerated: Mapped[bool] = mapped_column(Boolean, default=False)
 
+    # ---- M2.1 · Canonical Executable Project（设计 §11.3–§11.5，W22/W30/W32–W36）
+    #
+    # `work_mode` 是**产品**工作模式（guided | managed），**创建时快照**（W35）：
+    # 公司默认值后来怎么变都不改写本行 —— 执行中的语义不会漂移。
+    # nullable：M2.1 之前的历史项目（legacy）没有被分类，不作为任何一类的声称
+    # （“宁缺不错”：不把系统当年自动生成的图称作 managed）。
+    work_mode: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    # 规划 fixture（none | deterministic_template）——**基础设施轴，不是产品模式**（W33）。
+    # `deterministic_template` 只可能由显式请求 + 允许 fixture 的部署写入。
+    planning_fixture: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Canonical Spec 版本（`app/work/contracts.PROJECT_SPEC_VERSION`）
+    spec_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    # Work Intake 路由目标快照（职位 code；公司配置变更不影响历史）
+    work_intake_position_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # 当前管理 actor 的快照指针。**不是长期领域真相**：权威是
+    # 责任路由 → PositionSlot → PositionAssignment；历史由 DecisionRecord 承担（M2.4）。
+    # 刻意不加 FK（people 可离职、employee 行可被硬删除时历史仍要可读）。
+    management_employee_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    management_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    management_assigned_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
     milestones: Mapped[list["Milestone"]] = relationship(back_populates="project")
     tasks: Mapped[list["Task"]] = relationship(back_populates="project")
     artifacts: Mapped[list["Artifact"]] = relationship(back_populates="project")

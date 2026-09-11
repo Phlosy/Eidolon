@@ -437,17 +437,58 @@ def test_canonical_project_fields_all_have_existing_sources():
     assert not problems, "\n".join(problems)
 
 
-def test_project_work_modes_converge_with_an_owner_stage():
-    """W30：历史形态必须登记收敛目标与 owner 阶段，且目标本身收敛到自己。"""
-    modes = set(C.ProjectWorkMode)
-    assert C.PROJECT_WORK_MODE_TARGET in modes
-    assert set(C.PROJECT_WORK_MODE_CONVERGENCE) == modes
-    for mode, target in C.PROJECT_WORK_MODE_CONVERGENCE.items():
-        if mode is C.PROJECT_WORK_MODE_TARGET:
-            assert target is mode
-            continue
-        assert target is C.PROJECT_WORK_MODE_TARGET, f"{mode.value} 必须收敛到 managed"
-        assert C.PROJECT_WORK_MODE_OWNER_STAGE[mode] in C.M2_STAGES
+def test_work_modes_are_a_product_axis_with_two_values():
+    """D2/M2-ADR-11（W36）：工作模式只有 guided / managed，差别是**人类参与程度**。"""
+    assert {mode.value for mode in C.ProjectWorkMode} == {"guided", "managed"}
+    assert C.WORK_MODE_AFTER_ONBOARDING is C.ProjectWorkMode.managed
+    assert set(C.WORK_MODE_BY_COMPANY_STAGE) == {"FOUNDING", "OPERATING"}
+    assert C.WORK_MODE_BY_COMPANY_STAGE["FOUNDING"] is C.ProjectWorkMode.guided
+    assert C.WORK_MODE_BY_COMPANY_STAGE["OPERATING"] is C.ProjectWorkMode.managed
+    # 未知阶段保守回落 guided（宁可多一层人类确认，不默默自主）
+    assert C.default_work_mode_for_stage("WHATEVER") is C.ProjectWorkMode.guided
+    assert C.default_work_mode_for_stage(None) is C.ProjectWorkMode.guided
+
+
+def test_planning_fixture_is_a_separate_infrastructure_axis():
+    """D3/M2-ADR-12（W33）：确定性模板**不在**产品模式枚举里，是独立的基础设施轴。"""
+    assert {f.value for f in C.PlanningFixture} == {"none", "deterministic_template"}
+    assert "deterministic_template" not in {m.value for m in C.ProjectWorkMode}
+    assert "template" not in {m.value for m in C.ProjectWorkMode}
+    # fixture 必须显式请求 + 受部署门控，且禁止的隐式来源被点名
+    assert C.PLANNING_FIXTURE_SETTING == "allow_planning_fixtures"
+    assert {
+        "missing_manager_fallback",
+        "manager_timeout_fallback",
+        "manager_failure_fallback",
+        "empty_task_list_fallback",
+        "company_default_fixture_in_request_path",
+    } <= C.FORBIDDEN_IMPLICIT_PLANNING_SOURCES
+
+
+def test_responsibility_routing_is_declared_and_configurable():
+    """D1/M2-ADR-11（W32）：责任 → 默认职位，公司可覆盖；默认是 CEO 但不是特权。"""
+    assert C.RESPONSIBILITY_DEFAULTS[C.ResponsibilityKind.work_intake] == "ceo"
+    assert C.WORK_INTAKE_DEFAULT_POSITION == "ceo"
+    assert C.RESPONSIBILITY_SETTINGS_KEY == "work_routing"
+    assert C.WORK_MODE_SETTINGS_KEY == "work_mode_default"
+    # 责任类型是**枚举 + 默认表**，不是散落的字符串比较
+    assert set(C.RESPONSIBILITY_DEFAULTS) == set(C.ResponsibilityKind)
+
+
+def test_spec_questions_are_declared_as_a_machine_checkable_list():
+    """B1：Project 必须回答的 8 个问题在契约里点名（读面按它核对）。"""
+    assert len(C.PROJECT_SPEC_QUESTIONS) == 8
+    for key in (
+        "canonical_spec",
+        "work_mode",
+        "work_intake_responsibility",
+        "work_intake_assignment",
+        "management_actor",
+        "requirements_deliverables_acceptance",
+        "spec_version",
+        "execution_entered",
+    ):
+        assert key in C.PROJECT_SPEC_QUESTIONS
 
 
 # ---------------------------------------------------------------------------
@@ -793,15 +834,25 @@ def test_every_invariant_has_a_live_anchor_or_an_owner_stage():
     assert not problems, "\n".join(problems)
 
 
+#: 承载 M2 不变量锚点的测试模块（每个阶段可以有自己的文件；锚点表跨模块解析）。
+M2_TEST_MODULES = ("test_m2_contract", "test_m2_project_spec")
+
+
 def test_enforced_invariants_have_existing_anchor_tests():
-    """A11（续）：enforced 的锚点必须**真实存在**于本文件；删掉测试就会转红。"""
-    module = __import__(__name__)
+    """A11（续）：enforced 的锚点必须**真实存在**；删掉测试就会转红。
+
+    锚点可以住在任一 M2 阶段测试文件里（本文件 + `M2_TEST_MODULES` 列出的模块），
+    但必须能被解析到 —— 这样"某个阶段的测试被删了"不会静默通过。
+    """
+    import importlib
+
+    modules = [importlib.import_module(name) for name in M2_TEST_MODULES]
     missing: list[str] = []
     for invariant in C.INVARIANTS:
         if not invariant.enforced:
             continue
         for anchor in invariant.anchors:
-            if not hasattr(module, anchor):
+            if not any(hasattr(module, anchor) for module in modules):
                 missing.append(f"{invariant.id} -> {anchor}")
     assert not missing, f"不变量锚点不存在（锚点表与测试已漂移）：{missing}"
 

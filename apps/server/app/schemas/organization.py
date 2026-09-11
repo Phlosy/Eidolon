@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import EmployeeRole, EmployeeStatus, RuntimeType
+from app.models.enums import EmployeeRole, EmployeeStatus, ProjectWorkMode, RuntimeType
 from app.schemas.position import CurrentPositionOut
 
 
@@ -116,3 +116,33 @@ class EmployeeDetailOut(EmployeeOut):
     current_position: CurrentPositionOut | None = None
     assignment_integrity: AssignmentIntegrityOut
     role: str
+
+
+# ---------------------------------------------------------------------------
+# M2.1 · 公司工作策略（D1/D2）—— 只改**默认值**与**责任目标**，不改任何既有项目
+# ---------------------------------------------------------------------------
+
+
+class WorkPolicyOut(BaseModel):
+    """公司工作策略读面。
+
+    - `work_mode_default`：新建项目默认用哪种工作模式（冷启动 guided → 成熟 managed）；
+    - `work_mode_explicit`：用户是否显式改过（false 时系统会在学习期结束后自动推进）；
+    - `work_intake_position_code`：承担 Work Intake 责任的职位 code；
+    - `work_intake_is_configured`：是否显式覆盖了默认（默认 = CEO）；
+    - `allow_planning_fixtures`：本部署是否允许**显式**请求确定性规划 fixture
+      （测试/教程/CI 基础设施；生产应为 false）。
+    """
+
+    work_mode_default: str
+    work_mode_explicit: bool
+    work_mode_by_stage: dict[str, str]
+    work_intake_position_code: str
+    work_intake_default_position_code: str
+    work_intake_is_configured: bool
+    allow_planning_fixtures: bool
+
+
+class WorkPolicyPatchIn(BaseModel):
+    work_mode: ProjectWorkMode | None = None
+    work_intake_position_code: str | None = None

@@ -13,9 +13,16 @@ from app.services.seed import seed_default_company
 
 
 def _structured_project(owner_id: int) -> dict:
+    """结构化交付载荷。
+
+    M2.1：`work_mode` **显式**声明 guided —— 这份载荷（逐条需求 + 评审门 +
+    参与者）本来就是"引导/协助形态"的入口，显式写出来就不会因为公司阶段
+    （FOUNDING/OPERATING）而在同一份载荷上得到两种不同的项目形状。
+    """
     return {
         "name": "Classic Snake",
         "code": "SNAKE",
+        "work_mode": "guided",
         "priority": "high",
         "customer": "Eidolon Tutorial",
         "owner_id": owner_id,

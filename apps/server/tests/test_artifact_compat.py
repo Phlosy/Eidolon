@@ -56,13 +56,22 @@ def test_artifact_compat_response_shape(client):
     assert client.get("/api/v1/artifacts/999999").status_code == 404
 
 
-def test_project_artifacts_filter(client):
-    project_a = client.post(
-        "/api/v1/projects", json={"name": "compat-filter-a", "description": "A"}
+def _bare_project(client, name: str) -> dict:
+    """只建一个项目容器（M2.1：显式 managed + 不路由管理动作）。
+
+    引导形态（guided）会在立项时生成 Project Charter 等仪式文档；managed 在有在任者时
+    会起一个接收任务并异步派发 mock 运行时。本文件测的是 **artifact 兼容层的过滤语义**，
+    需要干净的容器 ⇒ 显式 managed + `no_work_intake`（停在 waiting_for_management）。
+    """
+    return client.post(
+        "/api/v1/projects",
+        json={"name": name, "description": name, "work_mode": "managed"},
     ).json()
-    project_b = client.post(
-        "/api/v1/projects", json={"name": "compat-filter-b", "description": "B"}
-    ).json()
+
+
+def test_project_artifacts_filter(client, no_work_intake):
+    project_a = _bare_project(client, "compat-filter-a")
+    project_b = _bare_project(client, "compat-filter-b")
     client.post(
         "/api/v1/artifacts",
         json={"project_id": project_a["id"], "type": "prd", "title": "A PRD", "content": "a"},

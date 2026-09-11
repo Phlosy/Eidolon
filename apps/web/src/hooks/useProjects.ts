@@ -10,6 +10,7 @@ import {
   decideReview,
   createChangeRequest,
   listProjects,
+  getProjectSpec,
 } from "../api/projects";
 import type { CreateProjectInput } from "../types";
 import type { ReviewDecisionInput } from "../types";
@@ -26,6 +27,14 @@ export function useProject(id: number) {
       const status = query.state.data?.status;
       return status && !["completed", "cancelled", "rejected"].includes(status) ? 10_000 : false;
     },
+  });
+}
+
+export function useProjectSpec(id: number) {
+  return useQuery({
+    queryKey: ["projects", id, "spec"],
+    queryFn: () => getProjectSpec(id),
+    enabled: Number.isFinite(id),
   });
 }
 

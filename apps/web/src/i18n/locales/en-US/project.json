@@ -13,7 +13,8 @@
     "in_review": "In Review",
     "completed": "Completed",
     "cancelled": "Cancelled",
-    "rejected": "Rejected"
+    "rejected": "Rejected",
+    "waiting_for_management": "Waiting for management"
   },
   "taskStatus": {
     "backlog": "Backlog",
@@ -346,5 +347,21 @@
       "rejected": "Rejected",
       "cancelled": "Cancelled"
     }
+  },
+  "workMode": {
+    "title": "Work mode",
+    "guided": "Guided / assisted",
+    "managed": "Managed",
+    "legacy": "Legacy project (unclassified)",
+    "hint": "Guided and managed differ only in **human involvement**: in both, accepting / decomposing / staffing decisions come from a management Agent or the Owner — the system never takes them over.",
+    "intakePosition": "Work Intake position: {{code}}",
+    "managePositions": "Manage positions",
+    "managedBy": "Taken in by employee #{{id}} ({{position}})",
+    "stale": "responsibility moved; awaiting re-route"
+  },
+  "waitingForManagement": {
+    "title": "Nobody is responsible for taking this project in yet",
+    "hint": "The system does not plan on the company's behalf, and never picks a random employee. Appoint the position that carries Work Intake responsibility (CEO by default), or handle it manually as Owner.",
+    "reason": "Reason"
   }
 }

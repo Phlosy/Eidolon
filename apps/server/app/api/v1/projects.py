@@ -15,6 +15,7 @@ from app.schemas.project import (
     ProjectGraph,
     ProjectOut,
     ProjectPatch,
+    ProjectSpecOut,
     ProjectTimeline,
 )
 from app.services import artifacts as artifact_service
@@ -31,7 +32,16 @@ def list_projects(db: Session = Depends(get_db)) -> list[ProjectOut]:
 
 @router.post("", response_model=ProjectOut, status_code=201)
 def create_project(payload: ProjectCreate, db: Session = Depends(get_db)) -> ProjectOut:
-    return ProjectOut.model_validate(project_service.create_order(db, payload))
+    """立项（M2.1 唯一入口）。
+
+    路由由两个**显式**维度决定（不再由 `is_structured` 隐式分叉）：
+      - `work_mode`：`guided`（教学/协助，含人类确认点）| `managed`（Manager Agent 自主）；
+      - `planning_fixture`：`none`（生产）| `deterministic_template`（测试/教程/CI，受部署门控）。
+
+    不传 `work_mode` 时用公司默认（冷启动 guided → 成熟 managed）；无论用哪个值，
+    它都会**快照**到项目行 —— 公司默认值之后变化不会改写本项目。
+    """
+    return ProjectOut.model_validate(project_service.create_project(db, payload))
 
 
 @router.get("/portfolio", response_model=list[ProjectTimeline])
@@ -112,3 +122,18 @@ def get_project_artifacts(project_id: int, db: Session = Depends(get_db)) -> lis
         raise HTTPException(status_code=404, detail="project not found")
     nodes = artifact_service.list_artifact_nodes(db, project_id=project_id)
     return [artifact_service.artifact_out(db, n) for n in nodes]
+
+
+@router.get("/{project_id}/spec", response_model=ProjectSpecOut)
+def get_project_spec(project_id: int, db: Session = Depends(get_db)) -> ProjectSpecOut:
+    """Canonical Executable Project 读面（M2.1，设计 §11.5）。
+
+    回答 8 个问题：Canonical Spec / work_mode / Work Intake 责任 / 承担它的任职 /
+    管理 actor / requirements+deliverables+acceptance / spec 版本 / 是否已进入执行。
+
+    纯只读：不改项目状态，也不给建议 —— 拆解与选人仍然由 Manager Agent 回答。
+    """
+    project = project_repo.get_project(db, project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="project not found")
+    return ProjectSpecOut.model_validate(project_service.get_project_spec(db, project))

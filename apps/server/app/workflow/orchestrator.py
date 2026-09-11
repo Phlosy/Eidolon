@@ -18,6 +18,7 @@ from app.models.enums import (
     EmployeeRole,
     EmployeeStatus,
     MilestoneStatus,
+    PlanningFixture,
     ProjectStatus,
     TaskKind,
     TaskStatus,
@@ -35,11 +36,24 @@ from app.runtimes.gateway import gateway
 from app.services import artifacts as artifact_service
 from app.services import position_compat
 from app.services import tasks as task_service
+from app.work import work_defaults
 
 logger = get_logger(__name__)
 
-# Milestone/task graph template generated after planning (§5).
-GRAPH_TEMPLATE = [
+#: 确定性模板执行图 —— **测试/教程/CI/演示基础设施，不是生产规划逻辑**（M2.1，D3/W33）。
+#:
+#: 它替掉的是 **Manager Agent 的规划**：让
+#: ``Project → Task Graph → 执行 → Artifact → Review → Completed``
+#: 这条链在不依赖 LLM Manager Agent 的前提下可重复、可断言、零成本。
+#:
+#: 两条硬纪律：
+#: 1. **生产项目永远不会落到它头上** —— 没有"Manager 没反应 → 用模板顶上"；
+#: 2. 只有 `projects.planning_fixture == deterministic_template` 的项目才会应用它，
+#:    而这个值只可能由**显式请求 + 部署门控**（`settings.allow_planning_fixtures`）写入。
+#:
+#: 名字刻意长而白：任何开发者看到 `DETERMINISTIC_TEMPLATE_PLAN` 都应该立刻明白
+#: 这不是公司自己的决策逻辑。
+DETERMINISTIC_TEMPLATE_PLAN = [
     ("Discovery", TaskKind.research.value, EmployeeRole.researcher.value, []),
     ("Build", TaskKind.development.value, EmployeeRole.engineer.value, [TaskKind.research.value]),
     (
@@ -416,33 +430,46 @@ class Orchestrator:
 
             if task.kind == TaskKind.order_review.value:
                 project.status = ProjectStatus.planning.value
-                # 立项后接手的 PM：先问"谁占着 PM 编制"，没人任职才回退旧列镜像
-                pm = position_compat.employee_by_legacy_role(
-                    db, company_id, EmployeeRole.product_manager.value
-                )
-                planning_start = project.planned_start_at or project.created_at
-                planning = task_service.create_task(
-                    db,
-                    project_id=project.id,
-                    title=f"产品规划：{project.name}",
-                    kind=TaskKind.planning.value,
-                    assignee_id=pm.id if pm else None,
-                    status=TaskStatus.todo.value,
-                    description=project.source_order_text,
-                    acceptance_criteria="产出完整 PRD",
-                    priority=9,
-                    sequence=1,
-                    planned_start_at=planning_start + timedelta(days=1),
-                    planned_end_at=planning_start + timedelta(days=2),
-                )
-                db.flush()
-                events.append(("task.created", _task_summary(planning)))
-                if planning.assignee_id:
-                    events.append(("task.assigned", _task_summary(planning)))
+                if self._uses_deterministic_plan(project):
+                    # 立项后接手的 PM：先问"谁占着 PM 编制"，没人任职才回退旧列镜像
+                    pm = position_compat.employee_by_legacy_role(
+                        db, company_id, EmployeeRole.product_manager.value
+                    )
+                    planning_start = project.planned_start_at or project.created_at
+                    planning = task_service.create_task(
+                        db,
+                        project_id=project.id,
+                        title=f"产品规划：{project.name}",
+                        kind=TaskKind.planning.value,
+                        assignee_id=pm.id if pm else None,
+                        status=TaskStatus.todo.value,
+                        description=project.source_order_text,
+                        acceptance_criteria="产出完整 PRD",
+                        priority=9,
+                        sequence=1,
+                        planned_start_at=planning_start + timedelta(days=1),
+                        planned_end_at=planning_start + timedelta(days=2),
+                    )
+                    db.flush()
+                    events.append(("task.created", _task_summary(planning)))
+                    if planning.assignee_id:
+                        events.append(("task.assigned", _task_summary(planning)))
+                else:
+                    # M2.1 / W34：**系统不接管规划**。
+                    # Manager Agent 已完成接收，接下来的拆解/委派由它做（工具面在 M2.3）；
+                    # 没有工具之前就**停在这里等**，而不是自己生成一张固定图。
+                    events.append(
+                        ("project.awaiting_management_action", _awaiting_payload(project))
+                    )
             elif task.kind == TaskKind.planning.value:
-                events.extend(self._generate_graph(db, project))
-                project.status = ProjectStatus.in_progress.value
-                events.append(("project.started", {"id": project.id, "name": project.name}))
+                if self._uses_deterministic_plan(project):
+                    events.extend(self._apply_deterministic_template_plan(db, project))
+                    project.status = ProjectStatus.in_progress.value
+                    events.append(("project.started", {"id": project.id, "name": project.name}))
+                else:
+                    events.append(
+                        ("project.awaiting_management_action", _awaiting_payload(project))
+                    )
             elif task.kind in (
                 TaskKind.research.value,
                 TaskKind.development.value,
@@ -456,21 +483,36 @@ class Orchestrator:
                     if milestone:
                         milestone.status = MilestoneStatus.completed.value
                 events.append(("project.completed", {"id": project.id, "name": project.name}))
+                # D2/B7：首次真实项目走完 ⇒ 公司默认工作模式从 guided 推进到 managed。
+                # 只改**默认值**，不改任何项目的 work_mode 快照（W35）。
+                work_defaults.promote_after_project_completion(db, company_id)
             db.commit()
         self._publish_advance_events(events, company_id, project.id)
         self.notify({"type": "dispatch"})
 
-    def _generate_graph(self, db, project) -> list[tuple[str, dict]]:
-        """按模板生成 Milestones+Tasks 图：research→development→testing→final_review."""
+    @staticmethod
+    def _uses_deterministic_plan(project) -> bool:
+        """该项目是否使用确定性模板替身规划（**基础设施**，见 W33）。"""
+        return project.planning_fixture == PlanningFixture.deterministic_template.value
+
+    def _apply_deterministic_template_plan(self, db, project) -> list[tuple[str, dict]]:
+        """按**确定性模板**生成 Milestones+Tasks 图（仅 fixture 项目）。
+
+        这是测试/教程/CI 的载具：research→development→testing→final_review。
+        它**不是**公司的规划策略 —— 生产项目的 Task 图只能由 Manager Agent 或 Human
+        经 `app/work/tools`（M2.3）创建。
+        """
         events: list[tuple[str, dict]] = []
         by_kind: dict[str, int] = {}
         schedule_start = project.planned_start_at or project.created_at
         schedule_windows = ((2, 5), (5, 11), (11, 15), (15, 18))
         project.planned_start_at = schedule_start
         project.planned_end_at = schedule_start + timedelta(days=18)
-        for order, (milestone_name, kind, role, deps) in enumerate(GRAPH_TEMPLATE, start=1):
+        for order, (milestone_name, kind, role, deps) in enumerate(
+            DETERMINISTIC_TEMPLATE_PLAN, start=1
+        ):
             start_offset, end_offset = schedule_windows[order - 1]
-            # 里程碑负责人同理：`role` 是 GRAPH_TEMPLATE 里的旧口径，
+            # 里程碑负责人同理：`role` 是 DETERMINISTIC_TEMPLATE_PLAN 里的旧口径，
             # 桥把它换算成"现在谁占着这个编制"，而不是"谁身上写着这个字符串"
             assignee = position_compat.employee_by_legacy_role(db, project.company_id, role)
             milestone = project_repo.create_milestone(
@@ -550,6 +592,21 @@ class Orchestrator:
                 task_id=data.get("id") if event_type.startswith("task.") else None,
                 actor_employee_id=data.get("assignee_id"),
             )
+
+
+def _awaiting_payload(project) -> dict:
+    """`project.awaiting_management_action` 的载荷。
+
+    这个事件是 M2.1 的"诚实信号"：管理动作还没发生，项目就停在这里等 ——
+    既不偷偷用模板，也不替 Manager 决定下一步。
+    """
+    return {
+        "id": project.id,
+        "name": project.name,
+        "work_mode": project.work_mode,
+        "management_employee_id": project.management_employee_id,
+        "reason": "awaiting_management_action",
+    }
 
 
 def _task_summary(task) -> dict:

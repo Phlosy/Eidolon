@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.request_context import get_request_identity
+from app.models.auth import CompanyMembership
 from app.models.organization import Company, Department, Employee
 
 
@@ -20,6 +21,23 @@ def get_company(db: Session, company_id: int) -> Company | None:
 
 def get_company_by_slug(db: Session, slug: str) -> Company | None:
     return db.scalars(select(Company).where(Company.slug == slug)).first()
+
+
+def owner_user_id(db: Session, company_id: int) -> int | None:
+    """公司 Owner 的 `users.id`（多 Owner 时取最早加入的那位）。
+
+    M2.1（D1）：没有可负责 Work Intake 的管理人员时，系统**不代管规划**，
+    而是把"由 Owner 手动处理"这条出路告诉用户 —— 这就需要能解析出 Owner。
+    """
+    return db.scalar(
+        select(CompanyMembership.user_id)
+        .where(
+            CompanyMembership.company_id == int(company_id),
+            CompanyMembership.role == "OWNER",
+        )
+        .order_by(CompanyMembership.id)
+        .limit(1)
+    )
 
 
 def get_department_by_slug(db: Session, company_id: int, slug: str) -> Department | None:

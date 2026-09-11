@@ -21,7 +21,15 @@ def _wait_for(predicate, timeout=60.0, interval=0.2):
 
 
 def _create_project(client, name: str) -> dict:
-    resp = client.post("/api/v1/projects", json={"name": name, "description": "drive 测试项目"})
+    resp = client.post(
+        "/api/v1/projects",
+        json={
+            "name": name,
+            "description": "drive 测试项目",
+            # M2.1（D3/W33）：确定性模板只能**显式**请求（基础设施 fixture）
+            "planning_fixture": "deterministic_template",
+        },
+    )
     assert resp.status_code == 201, resp.text
     return resp.json()
 

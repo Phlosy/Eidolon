@@ -48,8 +48,10 @@ from app.models.enums import (
     DecisionOutcome,
     FactKind,
     MemoryPlane,
+    PlanningFixture,
     ProjectWorkMode,
     ResponsibilityArea,
+    ResponsibilityKind,
     ReviewVerdict,
     RoleResourceKind,
 )
@@ -61,6 +63,8 @@ __all__ = [
     "DecisionOutcome",
     "ReviewVerdict",
     "ProjectWorkMode",
+    "PlanningFixture",
+    "ResponsibilityKind",
     "RoleResourceKind",
     "MemoryPlane",
     "ResponsibilityArea",
@@ -91,8 +95,18 @@ __all__ = [
     "verdict_boundaries",
     "CANONICAL_PROJECT_FIELDS",
     "PROJECT_FIELD_SOURCES",
-    "PROJECT_WORK_MODE_TARGET",
-    "PROJECT_WORK_MODE_CONVERGENCE",
+    "PROJECT_SPEC_VERSION",
+    "PROJECT_SPEC_QUESTIONS",
+    "SPEC_OPTIONAL_FIELDS",
+    "canonical_spec_gaps",
+    "RESPONSIBILITY_DEFAULTS",
+    "RESPONSIBILITY_SETTINGS_KEY",
+    "WORK_MODE_SETTINGS_KEY",
+    "WORK_MODE_BY_COMPANY_STAGE",
+    "WORK_MODE_AFTER_ONBOARDING",
+    "default_work_mode_for_stage",
+    "PLANNING_FIXTURE_SETTING",
+    "FORBIDDEN_IMPLICIT_PLANNING_SOURCES",
     "TaskGraphNode",
     "TaskGraphReport",
     "validate_task_graph",
@@ -689,7 +703,7 @@ CANONICAL_PROJECT_FIELDS: tuple[str, ...] = (
     "context",
 )
 
-#: 契约字段 → 现有承载（M2.0 只冻结；M2.1 让 managed 模式也读它们）。
+#: 契约字段 → 现有承载（M2.0 冻结，M2.1 落地）。
 #: 结论：**全部有现有承载，M2 不需要新表**。
 PROJECT_FIELD_SOURCES: dict[str, str] = {
     "background": "projects.background",
@@ -703,22 +717,91 @@ PROJECT_FIELD_SOURCES: dict[str, str] = {
     "context": "projects.description",
 }
 
-#: M2 的目标形态：`managed` 是唯一权威执行形态（M2.5 起默认）。
-PROJECT_WORK_MODE_TARGET = ProjectWorkMode.managed
+#: Canonical Spec 的版本号（M2.1 起落在 `projects.spec_version`）。
+#: 语义变更（新增必需字段/改变字段含义）必须 bump —— 这样"我使用哪个 spec 版本"可回答。
+PROJECT_SPEC_VERSION = 1
 
-#: 历史形态 → M2 目标形态的收敛映射（M2.0 只冻结表，不改行为）。
-#: 目标形态**自映射**（写出来比“隐含”更难被误改）。
-PROJECT_WORK_MODE_CONVERGENCE: dict[ProjectWorkMode, ProjectWorkMode] = {
-    ProjectWorkMode.managed: ProjectWorkMode.managed,
-    ProjectWorkMode.guided: ProjectWorkMode.managed,
-    ProjectWorkMode.template_graph: ProjectWorkMode.managed,
+#: Project 必须能回答的 8 个问题（用户拍板清单）→ 由哪里回答。
+#: 这是"可回答性"的机器可核对清单：契约测试断言每一个 key 都能在
+#: `GET /projects/{id}/spec` 的响应里找到。
+PROJECT_SPEC_QUESTIONS: dict[str, str] = {
+    "canonical_spec": "spec + completeness",
+    "work_mode": "work_mode",
+    "work_intake_responsibility": "work_intake.responsibility",
+    "work_intake_assignment": "work_intake.assignment",
+    "management_actor": "management",
+    "requirements_deliverables_acceptance": (
+        "spec.requirements / spec.deliverables / spec.acceptance_criteria"
+    ),
+    "spec_version": "spec_version",
+    "execution_entered": "execution",
 }
 
-#: 每个历史形态的收敛 owner 阶段（避免"冻结了但没人负责"）。
-PROJECT_WORK_MODE_OWNER_STAGE: dict[ProjectWorkMode, str] = {
-    ProjectWorkMode.guided: "M2.1",
-    ProjectWorkMode.template_graph: "M2.5",
+#: Spec 的"缺失"判定：字段为空/空列表即缺失。**只有 `context` 允许为空**（一句话立项）。
+#: 其余字段缺失只影响完整性报告，**不影响项目创建**（不拿模板当门禁）。
+SPEC_OPTIONAL_FIELDS: frozenset[str] = frozenset({"constraints", "deadline", "context"})
+
+
+def canonical_spec_gaps(spec: Mapping[str, Any]) -> tuple[str, ...]:
+    """返回 Canonical Spec 里"未被陈述"的字段（只报告，不拒绝 —— W5 的同源纪律）。
+
+    刻意不做：自动从 `background` 抽出 goal、从 description 编出 acceptance criteria。
+    "系统不替公司写需求"是这条函数存在的理由。
+    """
+    missing: list[str] = []
+    for field_name in CANONICAL_PROJECT_FIELDS:
+        value = spec.get(field_name)
+        empty = value is None or value == "" or value == [] or value == {}
+        if empty and field_name not in SPEC_OPTIONAL_FIELDS:
+            missing.append(field_name)
+    return tuple(missing)
+
+
+# ---------------------------------------------------------------------------
+# 9b. 职责路由（D1 / M2-ADR-11，W32）与工作模式默认（D2，W35）
+# ---------------------------------------------------------------------------
+
+#: 责任 → 默认承载职位 code（**默认值，不是特权**）。公司可用 `Company.settings` 覆盖。
+RESPONSIBILITY_DEFAULTS: dict[ResponsibilityKind, str] = {
+    ResponsibilityKind.work_intake: WORK_INTAKE_DEFAULT_POSITION,
 }
+
+#: `Company.settings` 里承载职责路由的键：`{"work_routing": {"work_intake": "ceo"}}`
+RESPONSIBILITY_SETTINGS_KEY = "work_routing"
+
+#: `Company.settings` 里承载"公司默认工作模式"的键：`{"work_mode_default": {"work_mode": ...}}`
+WORK_MODE_SETTINGS_KEY = "work_mode_default"
+
+#: 公司阶段 → 默认工作模式（D2：冷启动 guided，成熟后 managed）。
+#: 未知/新阶段一律按 `guided`（保守：宁可多一层人类确认，不默默自主）。
+WORK_MODE_BY_COMPANY_STAGE: dict[str, ProjectWorkMode] = {
+    "FOUNDING": ProjectWorkMode.guided,
+    "OPERATING": ProjectWorkMode.managed,
+}
+
+#: 学习期结束后的目标默认（首次真实项目走完后由 `work_defaults` 推进）。
+WORK_MODE_AFTER_ONBOARDING = ProjectWorkMode.managed
+
+
+def default_work_mode_for_stage(stage: str | None) -> ProjectWorkMode:
+    """公司阶段的默认工作模式（纯函数；公司显式覆盖优先于它）。"""
+    return WORK_MODE_BY_COMPANY_STAGE.get((stage or "").upper(), ProjectWorkMode.guided)
+
+
+#: 规划 fixture 的启用键（`Settings.allow_planning_fixtures`，默认 False）。
+#: 契约层只写名字；读取由 `app.core.config` 负责（纯契约层不 import settings）。
+PLANNING_FIXTURE_SETTING = "allow_planning_fixtures"
+
+#: 生产项目**永不允许**的隐式行为（W33）：这些是"系统偷偷替公司规划"的形态。
+FORBIDDEN_IMPLICIT_PLANNING_SOURCES: frozenset[str] = frozenset(
+    {
+        "missing_manager_fallback",
+        "manager_timeout_fallback",
+        "manager_failure_fallback",
+        "empty_task_list_fallback",
+        "company_default_fixture_in_request_path",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -1116,6 +1199,58 @@ INVARIANTS: tuple[Invariant, ...] = (
         "A recruited Agent is not READY_TO_WORK until provisioning completes.",
         enforced=False,
         owner_stage="M2.8",
+    ),
+    Invariant(
+        "W32",
+        "Work Intake is a company-configurable responsibility, not a CEO privilege; "
+        "the system never picks an arbitrary employee.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=(
+            "test_work_intake_is_responsibility_routing_with_configurable_target",
+            "test_missing_work_intake_manager_enters_waiting_not_fallback",
+        ),
+    ),
+    Invariant(
+        "W33",
+        "Deterministic planning fixtures are explicit, gated infrastructure; "
+        "production projects never fall back to them.",
+        enforced=True,
+        anchors=(
+            "test_planning_fixture_requires_explicit_request_and_gate",
+            "test_no_implicit_template_fallback_path_exists",
+        ),
+    ),
+    Invariant(
+        "W34",
+        "When the responsible manager is absent or fails, the project waits or escalates; "
+        "the system never takes over planning.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=(
+            "test_missing_work_intake_manager_enters_waiting_not_fallback",
+            "test_managed_project_does_not_plan_itself",
+        ),
+    ),
+    Invariant(
+        "W35",
+        "work_mode is snapshotted per project at creation; "
+        "later company-default changes never rewrite it.",
+        enforced=True,
+        anchors=(
+            "test_work_mode_is_snapshotted_and_survives_company_default_change",
+            "test_company_default_work_mode_follows_company_stage",
+        ),
+    ),
+    Invariant(
+        "W36",
+        "guided and managed differ only in human involvement level, never in decision ownership.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=(
+            "test_guided_and_managed_share_one_substrate",
+            "test_work_mode_never_encodes_decision_ownership",
+        ),
     ),
 )
 

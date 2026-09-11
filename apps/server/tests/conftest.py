@@ -27,6 +27,11 @@ os.environ["EIDOLON_AUTH_REQUIRED"] = "false"
 os.environ["EIDOLON_POSITION_ACCESS_SYNC"] = "false"
 # P6：证据流水线同样默认关（由专门测试显式开启并直接 await/调用处理，不靠后台消费者）。
 os.environ["EIDOLON_EVIDENCE_PIPELINE_ENABLED"] = "false"
+# M2.1：确定性规划 fixture 是**基础设施**（测试/教程/CI），生产默认关闭。
+# 测试显式打开它，让依赖"Project → Task Graph → 执行 → Artifact → 完成"的用例
+# 用 `planning_fixture="deterministic_template"` 请求确定性链条，
+# 而不是依赖"Manager 没反应就偷偷用模板"（那条路径已按 D3/W33 删除）。
+os.environ["EIDOLON_ALLOW_PLANNING_FIXTURES"] = "true"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -62,6 +67,32 @@ def fake_gitea(monkeypatch):
     fake = FakeGiteaProvisioner()
     monkeypatch.setitem(get_registry()._provisioners, "git:gitea", fake)
     return fake
+
+
+@pytest.fixture()
+def no_work_intake(db):
+    """把公司的 Work Intake 责任指向一个不存在的职位（**测试专用**）。
+
+    M2.1（D1/W32）起，`POST /projects` 且 `work_mode="managed"` 时，系统会把
+    Project Context **路由给**承担 Work Intake 责任的职位在任者。测试公司的 5 位
+    创始人各占一个编制（seed 的 "founding" 剧本），所以 CEO 是解析得到的 ——
+    于是项目会多出一个接收任务，并在后台真的派发一次 mock 运行时、往项目里丢 artifact。
+
+    想只要"一个干净的 Project 容器"的测试用这个 fixture：项目会停在
+    `waiting_for_management`（零任务、零规划），断言不受异步派发影响。
+    """
+
+    company = org_repo.get_default_company(db)
+    assert company is not None
+    original = dict(company.settings or {})
+    company.settings = {**original, "work_routing": {"work_intake": "__no_such_position__"}}
+    db.commit()
+    try:
+        yield company
+    finally:
+        db.rollback()
+        company.settings = original
+        db.commit()
 
 
 @pytest.fixture()

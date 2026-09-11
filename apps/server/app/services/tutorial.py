@@ -441,6 +441,9 @@ def classic_snake_template() -> TutorialTemplateOut:
         intake={
             "name": "Classic Snake",
             "code": "SNAKE",
+            # M2.1：实战教程走**引导/协助形态**（11 阶段 + 人工评审门），显式声明，
+            # 不依赖公司阶段默认 —— 教程的行为必须与公司成熟度无关。
+            "work_mode": "guided",
             "priority": "high",
             "customer": "Eidolon Tutorial",
             "description": "一个可直接运行的经典 Web 贪吃蛇小游戏。",

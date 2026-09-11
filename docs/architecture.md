@@ -257,13 +257,28 @@ class RuntimeAdapter(ABC):
 
 ## 5. Workflow 编排（workflow/orchestrator.py）
 
-不是通用引擎，是一个事件驱动的推进器，消费 EventBus 事件：
+不是通用引擎，是一个**事件驱动的推进器 + 调度器**，消费 EventBus 事件。
+
+> **M2.1 起（D3 / W33）**：固定模板**不再是生产规划逻辑**。它已更名为
+> `DETERMINISTIC_TEMPLATE_PLAN`，只对 **基础设施项目**（
+> `projects.planning_fixture = deterministic_template`，需显式请求 + 部署门控）生效。
+> 生产项目（`managed` / `guided`）的 Task 图必须由 **Manager Agent 或 Human** 创建；
+> 系统在管理动作尚未发生时**停在等待**，不会自己生成执行图（W2 / W34）。
 
 ```text
-POST /projects (source_order_text) → project.status=requested, event project.created
-  → 创建 task(kind=order_review, assignee=CEO)
+POST /projects  → services/projects.create_project()   ← M2.1 唯一立项入口
+  ├─ planning_fixture=deterministic_template → 基础设施项目（下表流程）
+  ├─ work_mode=guided                        → 11 ProjectPhase + 人工评审门（v0.5 交付域）
+  └─ work_mode=managed                       → Work Intake 责任路由
+        ├─ routed        → management_* 快照 + 一个「工作接收」任务（kind=order_review）
+        └─ 解析不到负责人 → status=waiting_for_management（零任务零规划）+ 事件
+```
+
+**基础设施项目（fixture）的确定性流程**（仅教程/CI/测试/演示）：
+
+```text
 order_review done → project.status=planning → task(planning, PM)
-planning done (产出 PRD artifact) → 按模板生成 Milestones+Tasks 图：
+planning done (产出 PRD artifact) → 按 DETERMINISTIC_TEMPLATE_PLAN 生成 Milestones+Tasks 图：
     M1 Discovery : research(researcher)
     M2 Build     : development(engineer)  depends-on research
     M3 Verify    : testing(qa)            depends-on development
@@ -272,6 +287,13 @@ planning done (产出 PRD artifact) → 按模板生成 Milestones+Tasks 图：
 testing done → final_review → done → project.status=completed, event project.completed
 QA rejected → development 任务回到 todo（重做），记录失败供 reflection
 ```
+
+**managed 项目的接收环节**：接收任务完成后 `project.status=planning` 并发
+`project.awaiting_management_action`；系统**不**创建 planning 任务、**不**生成任何图。
+拆解与委派由 Manager Agent 经 M2.3 的工具面完成。
+
+**默认值推进（D2/B7）**：项目完成时 `work_defaults.promote_after_project_completion()`
+把公司默认工作模式从 `guided` 推进到 `managed`（只改默认值、幂等、用户显式配置过的公司不改）。
 
 **Dispatcher**：task 进入 `todo` 且 assignee 当前 `idle` → 创建 WorkSession → Gateway 创建 Runtime Session → `send_task` → 消费 `stream_events`：更新员工状态/进度，收到 `completed` → 落 Artifact、task→in_review→done、触发 reflection。同一员工串行执行（一次一个 session）。
 

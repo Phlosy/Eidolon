@@ -19,10 +19,17 @@ def _wait_for(predicate, timeout=30.0, interval=0.2):
     return False
 
 
-def test_artifact_written_to_disk_with_sha256(client):
+def test_artifact_written_to_disk_with_sha256(client, no_work_intake):
+    # M2.1：只要一个项目容器（不跑仪式、不跑 Agent）⇒ 显式 managed。
+    # 测试公司的 Work Intake 职位无人任职，因此项目停在 waiting_for_management，
+    # 不产生任何副作用 —— 这正是我们要的"干净容器"。
     project = client.post(
         "/api/v1/projects",
-        json={"name": "artifact-file-check", "description": "验证 artifact 落盘"},
+        json={
+            "name": "artifact-file-check",
+            "description": "验证 artifact 落盘",
+            "work_mode": "managed",
+        },
     ).json()
     content = "# Hello\n\nartifact body for sha256 check\n"
     response = client.post(
@@ -48,9 +55,14 @@ def test_artifact_written_to_disk_with_sha256(client):
 
 
 def test_workflow_artifacts_materialized_with_session_link(client):
+    # M2.1（D3/W33）：全链路回归 = 基础设施项目 ⇒ 显式请求确定性规划 fixture
     project = client.post(
         "/api/v1/projects",
-        json={"name": "workflow-artifacts", "description": "全链路 artifact 落盘验证"},
+        json={
+            "name": "workflow-artifacts",
+            "description": "全链路 artifact 落盘验证",
+            "planning_fixture": "deterministic_template",
+        },
     ).json()
 
     def done():
@@ -119,9 +131,14 @@ def test_mock_runtime_weaves_prior_knowledge(client, db, employees_by_slug):
     )
     db.commit()
 
+    # M2.1（D3/W33）：需要真实派发才能观察检索注入 ⇒ 显式请求确定性 fixture
     project = client.post(
         "/api/v1/projects",
-        json={"name": f"{marker_topic} project", "description": "测试检索注入"},
+        json={
+            "name": f"{marker_topic} project",
+            "description": "测试检索注入",
+            "planning_fixture": "deterministic_template",
+        },
     ).json()
 
     def order_review_done():

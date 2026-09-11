@@ -105,6 +105,12 @@ class Settings(BaseSettings):
     autonomous_learning_enabled: bool = False
     learning_force_failure: bool = False
 
+    # M2.1 —— 规划 fixture（D3/M2-ADR-12，W33）：**测试/教程/CI/演示基础设施**，
+    # 不是产品模式。开启后，项目可以**显式**请求 `planning_fixture=deterministic_template`，
+    # 用固定模板生成确定性执行图（让 CI/golden path 不依赖 LLM Manager Agent）。
+    # 默认 False：生产项目**永远不能**隐式落到确定性模板上。
+    allow_planning_fixtures: bool = False
+
     # v0.7 — human user authentication. Sessions are opaque, hashed server-side,
     # and transported only in an HttpOnly cookie.
     auth_required: bool = True

@@ -20,6 +20,7 @@ from app.models.enums import (
     ProjectPhaseStatus,
     ProjectPhaseType,
     ProjectStatus,
+    ProjectWorkMode,
     ReviewDecision,
     ReviewStatus,
     ReviewType,
@@ -58,6 +59,7 @@ from app.services.document_generation import (
     DocumentSource,
     document_generation_service,
 )
+from app.work import work_defaults
 
 PHASE_DEFINITIONS = [
     (ProjectPhaseType.initiation, "Project Initiation", False),
@@ -95,43 +97,16 @@ REVIEW_FOR_SOURCE = {
 }
 
 
-def create_structured_project(db: Session, payload: ProjectCreate) -> Project:
-    company = org_repo.get_default_company(db)
-    if company is None:
+def create_guided_project_body(db: Session, payload: ProjectCreate, project: Project) -> Project:
+    """**guided 仪式体**（M2.1，设计 §11.3）：11 阶段 + 需求 + 章程 + 教程同步。
+
+    调用方（`services/projects.create_project`）已经建好了 `projects` 行（含 Canonical
+    Spec 与 `work_mode=guided` 快照）与项目 Drive 目录树；本函数只负责把
+    "引导/协助形态"特有的仪式铺上去。**不再自己建项目、不再自行判 409/422**。
+    """
+    company = org_repo.get_company(db, int(project.company_id))
+    if company is None:  # pragma: no cover - 防御：项目必有公司
         raise HTTPException(status_code=409, detail="no company seeded")
-    if payload.owner_id is not None:
-        owner = org_repo.get_employee(db, payload.owner_id)
-        if owner is None or owner.company_id != company.id:
-            raise HTTPException(status_code=422, detail="project owner does not belong to company")
-    code = (payload.code or _derive_code(payload.name)).upper()
-    existing = next(
-        (p for p in project_repo.list_projects(db, company.id) if (p.code or "").upper() == code),
-        None,
-    )
-    if existing:
-        raise HTTPException(status_code=409, detail="project code already exists")
-    project = project_repo.create_project(
-        db,
-        company_id=company.id,
-        name=payload.name.strip(),
-        description=payload.background or payload.description,
-        goal="\n".join(payload.objectives) or payload.goal,
-        status=ProjectStatus.in_progress.value,
-        owner_id=payload.owner_id or payload.participants.project_owner_employee_id,
-        source_order_text=payload.background or payload.description,
-        planned_end_at=payload.deadline,
-        code=code,
-        priority=payload.priority,
-        customer=payload.customer,
-        background=payload.background,
-        objectives=payload.objectives,
-        technical_requirements=payload.technical_requirements,
-        constraints=payload.constraints,
-        deliverables=payload.deliverables,
-        review_configuration=payload.review_configuration.model_dump(),
-        participants=payload.participants.model_dump(),
-        tutorial_accelerated=payload.tutorial_accelerated,
-    )
     for index, requirement in enumerate(payload.requirements, start=1):
         delivery_repo.create_requirement(
             db,
@@ -170,7 +145,6 @@ def create_structured_project(db: Session, payload: ProjectCreate) -> Project:
                 metadata_json={},
             )
         )
-    drive_service.ensure_project_folders(db, project)
     _generate_project_charter(db, project, phases[0])
     _sync_tutorial_project(db, project)
     db.commit()
@@ -178,10 +152,24 @@ def create_structured_project(db: Session, payload: ProjectCreate) -> Project:
     bus.publish(
         "project.lifecycle_started",
         {"id": project.id, "code": project.code, "phase": "requirements_analysis"},
-        company_id=company.id,
+        company_id=int(company.id),
         project_id=project.id,
     )
     return project
+
+
+def create_structured_project(db: Session, payload: ProjectCreate) -> Project:
+    """**兼容入口**（M2.1，B2）：显式强制 `work_mode=guided` 的立项。
+
+    保留给"我要结构化交付"的显式调用（教程、老测试、外部集成）。它**不再**是
+    `POST /projects` 的隐式分支 —— 隐式分支已由 `services/projects.create_project`
+    的 `work_mode` 取代。
+    """
+    if payload.work_mode is None:
+        payload = payload.model_copy(update={"work_mode": ProjectWorkMode.guided})
+    from app.services.projects import create_project as _create_project
+
+    return _create_project(db, payload)
 
 
 def get_lifecycle(db: Session, project: Project) -> ProjectLifecycleOut:
@@ -259,6 +247,9 @@ def complete_phase(db: Session, project: Project, phase: ProjectPhase) -> Projec
         archive.status = ProjectPhaseStatus.completed.value
         archive.started_at = archive.completed_at = utcnow()
         project.status = ProjectStatus.completed.value
+        # D2/B7：首次真实项目走完 ⇒ 公司默认工作模式从 guided 推进到 managed。
+        # 只改**默认值**，不改任何项目的 work_mode 快照（W35）。
+        work_defaults.promote_after_project_completion(db, int(project.company_id))
     else:
         if phase.phase_type == ProjectPhaseType.development.value:
             _generate_development_outputs(db, project, phase)

@@ -111,6 +111,7 @@ export const PROJECT_STATUS_VARIANT: Record<ProjectStatus, StatusVariant> = {
   completed: "default",
   cancelled: "muted",
   rejected: "danger",
+  waiting_for_management: "warning",
 };
 
 export const TASK_STATUS_VARIANT: Record<TaskStatus, StatusVariant> = {

@@ -13,7 +13,8 @@
     "in_review": "评审中",
     "completed": "已完成",
     "cancelled": "已取消",
-    "rejected": "已拒绝"
+    "rejected": "已拒绝",
+    "waiting_for_management": "等待管理"
   },
   "taskStatus": {
     "backlog": "待规划",
@@ -346,5 +347,21 @@
       "rejected": "已拒绝",
       "cancelled": "已取消"
     }
+  },
+  "workMode": {
+    "title": "工作模式",
+    "guided": "引导 / 协助",
+    "managed": "自主管理",
+    "legacy": "历史项目（未分类）",
+    "hint": "引导与自主的差别只有**人类参与程度**：两种模式下「接不接受 / 怎么拆 / 选谁」都来自管理 Agent 或 Owner，系统都不代管。",
+    "intakePosition": "Work Intake 责任职位：{{code}}",
+    "managePositions": "管理职位 / 任命",
+    "managedBy": "本项目由员工 #{{id}}（{{position}}）负责接收与管理",
+    "stale": "负责人已变更，等待重新路由"
+  },
+  "waitingForManagement": {
+    "title": "还没有人负责接收这个项目",
+    "hint": "系统不会替公司做规划，也不会随便挑一个人顶上。请先任命承担 Work Intake 责任的职位（默认 CEO），或由 Owner 手动处理。",
+    "reason": "原因"
   }
 }

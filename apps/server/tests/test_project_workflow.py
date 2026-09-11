@@ -6,8 +6,15 @@ TIMEOUT_SEC = 60
 
 
 def test_project_workflow(client, employees_by_slug):
+    # M2.1（D3/W33）：这是一条**基础设施回归**（orchestrator + mock runtime），
+    # 因此显式请求确定性规划 fixture —— 生产项目不会隐式落到固定模板上。
     resp = client.post(
-        "/api/v1/projects", json={"name": "Demo App", "description": "Build a todo CLI"}
+        "/api/v1/projects",
+        json={
+            "name": "Demo App",
+            "description": "Build a todo CLI",
+            "planning_fixture": "deterministic_template",
+        },
     )
     assert resp.status_code == 201, resp.text
     project_id = resp.json()["id"]

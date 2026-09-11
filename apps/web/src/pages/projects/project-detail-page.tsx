@@ -12,6 +12,7 @@ import { ProjectFilesSection } from "../../components/project/project-files-sect
 import { ProjectLifecycleBoard } from "../../components/project/project-lifecycle-board";
 import { ChangeRequestPanel } from "../../components/project/change-request-panel";
 import { TaskTable } from "../../components/project/task-table";
+import { ProjectWorkModePanel } from "../../components/project/project-work-mode-panel";
 import { Panel, SectionHeader } from "../../components/shared/panel";
 import { ProgressTrack } from "../../components/game/progress-track";
 import { deriveProjectProgress } from "../../utils/company-metrics";
@@ -108,6 +109,8 @@ export function ProjectDetailPage() {
           </div>
         </div>
       </Panel>
+
+      <ProjectWorkModePanel projectId={project.id} status={project.status} />
 
       {lifecycleQuery.data?.phases.length ? (
         <>

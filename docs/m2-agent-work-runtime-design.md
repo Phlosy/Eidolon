@@ -462,7 +462,7 @@ W23  WorkOrder remains economic/commercial wrapper, not execution truth.
 **裁决**：M2 **不新建 Mission 实体**。`Project` 承担工作根语义；
 `WorkOrder` 保持商业包装；两者的连接是一条**绑定边**，不是一套新语义。
 
-### 11.3 Project 两路径的最终处理决策
+### 11.3 Project 两路径的最终处理决策（M2.1 已落地）
 
 现状（Audit §6.1/§18）：
 
@@ -472,31 +472,37 @@ W23  WorkOrder remains economic/commercial wrapper, not execution truth.
 前端立项向导恒走 B（is_structured=True）；A 没有 UI 入口。
 ```
 
-**决策：Project 是唯一执行根；两种"路径"降级为同一个 Project 上的 `ProjectWorkMode`，不是两套代码路径。**
+**决策（M2-ADR-1 / M2-ADR-11 / M2-ADR-12）：`Project` 是唯一执行根；
+路由由两个**显式且正交**的维度决定，不再由 `is_structured` 隐式分叉。**
 
-```python
-class ProjectWorkMode(StrEnum):
-    managed        = "managed"         # M2 目标：Task DAG 由 Manager Agent 决定
-    guided         = "guided"          # 现有结构化交付：11 阶段 + 人工评审门（文档仪式）
-    template_graph = "template_graph"  # 现有 legacy：固定 GRAPH_TEMPLATE（M2.5 退役）
+```text
+维度 1（产品）        work_mode         = guided | managed
+维度 2（基础设施）    planning_fixture  = none | deterministic_template
 ```
 
-收敛规则（逐阶段落地，M2.0 **只冻结、不改行为**）：
+| 组合 | 语义 | 谁规划 |
+| --- | --- | --- |
+| `guided` + `none` | 引导/协助形态：Manager 仍自主决策，关键动作要**人类确认与讲解** | Manager Agent（+ 人类确认） |
+| `managed` + `none` | 自主管理形态：Manager Agent 自主规划与委派 | Manager Agent |
+| `*` + `deterministic_template` | **基础设施项目**：确定性模板替掉 Manager 的规划 | 固定模板（仅 CI/教程/测试/演示） |
 
-| 阶段 | 动作 |
-| --- | --- |
-| M2.0 | 冻结 `ProjectWorkMode` 与收敛映射；**不新增列、不改行为** |
-| M2.1 | `Project` 承载 Canonical Spec（Background/Goal/Requirements/Constraints/Deliverables/Acceptance/Priority/Deadline/Context）；`guided` 成为其上的**交付仪式配置**，不再是平行项目类型 |
-| M2.5 | `template_graph` 退役：`GRAPH_TEMPLATE` 退出业务真相，`managed` 成为默认 |
-| M2.7 | `guided` 的评审门改为**复用同一套 Review 契约**（`ReviewVerdict` + `ReviewMeeting` 的映射表），不保留第二套决策语义 |
-| M2.9 | `WorkOrder` → `Project` 绑定边落地；`submit.project_id` 从"自由字段"变成"受校验引用" |
+**收敛规则**（M2.1 已落地，逐阶段演进）：
+
+| 阶段 | 动作 | 状态 |
+| --- | --- | --- |
+| M2.0 | 冻结 `ProjectWorkMode` 与收敛映射；不新增列、不改行为 | ✅ DONE |
+| **M2.1** | `Project` 承载 Canonical Spec；`work_mode` 快照；单一 `create_project()`；Work Intake 责任路由；规划 fixture 拆出产品维度 | ✅ **DONE** |
+| M2.5 | `DETERMINISTIC_TEMPLATE_PLAN` 彻底退出业务路径（只留 fixture 项目） | PENDING |
+| M2.7 | `guided` 的评审门改为**复用同一套 Review 契约**（不保留第二套决策语义） | PENDING |
+| M2.9 | `WorkOrder` → `Project` 绑定边落地；`submit.project_id` 从"自由字段"变成"受校验引用" | PENDING |
 
 **不做什么**（避免把可用的子系统拆掉）：
 
 ```text
 ❌ 不删除 v0.5 正式交付域（ProjectPhase / ReviewMeeting / Baseline / DeliveryPackage）
-❌ 不删除 order_flow 的历史数据与 API（只在 M2.5 停止新项目生成 template_graph）
+❌ 不删除 order_flow 的历史数据与 API（历史项目 work_mode 留 NULL = 未分类）
 ❌ 不新建第四套任务实体
+❌ 不把 deterministic 模板做成"第三种玩法模式"（它是 Execution Fixture，不是产品模式）
 ```
 
 ### 11.4 Canonical Project Spec（Facts，不是 Execution Plan）
@@ -511,21 +517,110 @@ Acceptance Criteria / Priority / Deadline / Context
 注意：这些是 **Facts / Requirements**，**不是**系统给出的 **Execution Plan**。
 拆解由 Manager Agent 决定（W2 / W16）。
 
-字段映射现状（M2.1 落地，M2.0 只冻结）：
+字段映射（M2.1 已落地，全部落在既有列上 ⇒ **不需要新表**）：
 
-| 契约字段 | 现有承载 |
+| 契约字段 | 承载 |
 | --- | --- |
 | background | `projects.background` |
 | goal | `projects.goal` |
-| requirements | `project_requirements`（结构化路径）+ `projects.review_configuration`（无 requirement 时的兜底） |
+| requirements | `project_requirements`（guided）+ `projects.source_order_text`（一句式兜底） |
 | constraints | `projects.constraints` |
 | deliverables | `projects.deliverables` |
-| acceptance_criteria | `project_requirements.acceptance_criteria`（逐需求）+ `Project.review_configuration` |
+| acceptance_criteria | `project_requirements.acceptance_criteria`（逐需求） |
 | priority | `projects.priority` |
-| deadline | `projects.planned_end_at` |
-| context | `projects.description` + `source_order_text` |
+| deadline | `projects.planned_end_at`（缺省 = 创建 + 18 天，B4 的历史默认窗口） |
+| context | `projects.description` |
 
-> 结论：**契约字段全部有现有承载**，M2 不需要新表；缺的是「让 managed 模式也读它们」。
+### 11.5 Work Intake 是**责任路由**，不是 CEO 特权（D1，M2-ADR-11）
+
+```text
+Project Created
+      ↓
+resolve company work-intake responsibility      ← Company.settings["work_routing"]
+      ↓  职位 code（缺省 ceo，公司可配 COO / PM Lead / Research Director / 自定义）
+PositionDefinition → PositionSlot → 生效 PRIMARY PositionAssignment
+      ↓
+把 Project Context 交给该 Manager Agent（一个「工作接收」任务）
+```
+
+**不是**：
+
+```text
+Project Created → if CEO: ...            ❌ 硬编码 CEO 特权
+Project Created → 随便挑一个员工          ❌ 违反 Agent makes decisions.（W32）
+Project Created → 系统自己生成执行图      ❌ 违反 W2 / W34
+```
+
+| 路由结果 | 系统行为 |
+| --- | --- |
+| `routed` | 快照 `management_employee_id/person_id/assigned_at`；创建一个「工作接收」任务（`kind=order_review`），描述里带 **Project Brief**（Canonical Spec 的事实摘要）；派发 |
+| `no_position` | 项目 `status=waiting_for_management`，**零任务零规划**，事件 `project.waiting_for_management`（带原因与 Owner） |
+| `no_incumbent` | 同上 |
+| `incumbent_unavailable` | 同上（人在任但未就绪 / 已停用 / 离职中） |
+
+**多条在任者不是歧义**：公司指定的是**职位**，该职位的每一位在任者都按定义承担这份责任；
+路由取 `effective_from` 最早的一位，并把**全部在任者**放进 `candidate_employee_ids` 供审计。
+这**不**构成"系统替公司选人"（W1）。
+
+**管理 actor 的存储纪律**：`projects.management_*` 是**当前指针快照**，不是长期领域真相：
+
+```text
+权威：责任路由 → PositionSlot → PositionAssignment     （可重解析）
+历史：DecisionRecord（M2.4）                            （append-only，不被反推）
+```
+
+项目行**不**保存 `ceo_employee_id` 这样的角色特化字段 —— CEO 换人不会让项目失去历史，
+读面通过 `management.stale` 如实报告"快照与当前责任持有者不一致"（不静默改写）。
+
+### 11.6 规划 fixture：基础设施，不是产品模式（D3，M2-ADR-12）
+
+```text
+❌ 把 deterministic 模板当作"第三种玩法模式"
+✅ 把它当作 Execution Fixture：CI / 教程 / golden path / 开发演示的确定性替身
+```
+
+两条硬纪律（W33）：
+
+1. **生产项目永远不会落到它头上** —— 没有"Manager 没反应 → 偷偷用模板"；
+2. 只能**显式请求**（`planning_fixture=deterministic_template`）且受
+   `settings.allow_planning_fixtures` 门控（默认 false）；未开启时 **422**，
+   **绝不静默降级**成 `none`（静默降级会让测试以为自己在测确定性链）。
+
+**它保留的理由**：仍然需要一条完全确定性的
+`Project → Task Graph → 执行 → Artifact → Review → Completed`
+用于 CI / 迁移回归 / orchestrator 回归 / runtime 回归 / 教程 / golden path。
+若所有测试都依赖 LLM Manager Agent，测试会变得非确定、昂贵、慢、难复现。
+
+**命名纪律**：模板常量叫 `DETERMINISTIC_TEMPLATE_PLAN`，应用函数叫
+`_apply_deterministic_template_plan` —— 任何开发者看到名字都该立刻明白
+**这不是生产环境的公司决策逻辑**。
+
+**Manager 缺失或失败时的正确行为**（不是 fallback）：
+
+```text
+Management Action Failed → retry → escalate → ask Owner → replace Manager
+```
+
+### 11.7 `work_mode` 是项目级快照（D2，W35）
+
+```text
+FOUNDING  → 默认 guided      （冷启动要有明确的人类确认与讲解）
+首次真实项目完成 → 公司默认推进为 managed
+OPERATING → 默认 managed
+```
+
+- 解析优先级：请求显式值 → 公司默认（`Company.settings["work_mode_default"]` → 公司阶段）。
+- 解析结果**写入项目行**，之后公司默认值怎么变都**不改写**它 —— 执行中的语义不会漂移。
+- 公司默认值的推进（`promote_after_project_completion`）**只改默认值**，不改任何项目；
+  用户显式配置过默认值的公司**永不**被自动改写。
+- `guided` 与 `managed` 的差别只有 **human involvement level**，不是 decision ownership（W36）：
+
+```text
+managed：Manager 提出计划 → 系统 validate → 执行
+guided ：Manager 提出计划 → UI 展示并讲解 → 人类确认 → 系统 validate → 执行
+```
+
+两种模式里「接不接受 / 怎么拆 / 选谁 / 是否返工 / 是否交付」都来自 Manager Agent 或 Human Owner。
 
 ---
 
@@ -596,7 +691,7 @@ W11  Fit is decision-support only.
 
 ---
 
-## 14. M2 不变量（W1–W31）
+## 14. M2 不变量（W1–W36）
 
 | # | 不变量 | M2.0 状态 |
 | --- | --- | --- |
@@ -631,6 +726,11 @@ W11  Fit is decision-support only.
 | **W29** | The four verdict/assessment surfaces must not be substituted for each other. | **M2.0 强制** |
 | **W30** | `guided` and `managed` project modes share one Task/Assignment/Review substrate. | 冻结（M2.1/M2.5） |
 | **W31** | A recruited Agent is not READY_TO_WORK until provisioning completes. | 冻结（M2.8） |
+| **W32** | Work Intake is a company-configurable responsibility, not a CEO privilege; the system never picks an arbitrary employee. | **M2.1 强制** |
+| **W33** | Deterministic planning fixtures are explicit, gated infrastructure; production projects never fall back to them. | **M2.1 强制** |
+| **W34** | When the responsible manager is absent or fails, the project waits or escalates; the system never takes over planning. | **M2.1 强制** |
+| **W35** | work_mode is snapshotted per project at creation; later company-default changes never rewrite it. | **M2.1 强制** |
+| **W36** | guided and managed differ only in human involvement level, never in decision ownership. | **M2.1 强制** |
 
 > **"M2.0 强制"** = M2.0 就有可执行测试锚点；
 > **"冻结"** = M2.0 冻结契约与归属，锚点在其 owner 阶段落地。
@@ -680,6 +780,11 @@ W11  Fit is decision-support only.
 | **M2-ADR-8** | 官方 Starter Playbook 只作 Knowledge，不做 System Prompt | W4/W26；否则玩家换 CEO 就失去意义 |
 | **M2-ADR-9** | 路由（哪个职位负责 Work Intake）是**公司可配置的规则**，不是系统硬编码 | §2：系统只提供事实与规则，不替公司决定"应该怎么组织" |
 | **M2-ADR-10** | M2.0 无迁移、无行为改动，只冻结契约 | 与 M1.0 / T2.0 同一纪律 |
+| **M2-ADR-11** | Work Intake 是**公司可配的责任路由**（默认 CEO），不是 CEO 特权；解析不到负责人 ⇒ `waiting_for_management`，系统不代管 | 用户拍板 D1；`Agent makes decisions.` 的直接推论 |
+| **M2-ADR-12** | 产品工作模式只有 `guided` / `managed`；确定性模板是**独立的基础设施轴**（`PlanningFixture`） | 用户拍板 D3；两个维度混在一个 enum 会让"测试替身"看起来像一种玩法 |
+| **M2-ADR-13** | `work_mode` 与责任目标都是**项目级快照**；公司默认值的变化不改写既有项目 | 用户拍板 D2/B12；避免执行中语义漂移 |
+| **M2-ADR-14** | 管理 actor 在项目上只存**当前指针**，权威是责任路由、历史归 DecisionRecord | 用户拍板"Project 不要保存 CEO 决定"；换人不丢历史 |
+| **M2-ADR-15** | guided 是**教学/协助**层：Manager 仍自主决策，人类只在关键动作上确认 | 用户拍板 D2/B8；防止 guided 变成"系统替 CEO 规划" |
 
 ---
 
@@ -700,3 +805,6 @@ W11  Fit is decision-support only.
 | **Hard Constraint** | 系统强制并可拒绝的约束 |
 | **Soft Constraint** | 系统只报告、不拒绝的约束 |
 | **READY_TO_WORK** | 员工已具备 runtime + provider + workspace 的可执行状态（M2.8） |
+| **Work Intake** | 组织责任：谁负责接收工作、做高层判断与委派（默认 CEO，公司可配） |
+| **Planning Fixture** | 确定性规划替身（CI/教程/测试/演示基础设施，不是产品模式） |
+| **Human Involvement** | guided 与 managed 的**唯一**差别：关键动作是否需要人类确认与讲解 |

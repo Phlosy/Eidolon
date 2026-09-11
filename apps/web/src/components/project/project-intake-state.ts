@@ -49,6 +49,9 @@ export function createEmptyIntake(): CreateProjectInput {
       approver_names: [],
     },
     tutorial_accelerated: false,
+    // M2.1：立项向导收集逐条需求 + 评审门 + 参与者 —— 它**就是**引导/协助
+    // 形态（guided）的入口，因此显式声明，不随公司阶段漂移。
+    work_mode: "guided",
   };
 }
 

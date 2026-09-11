@@ -2,7 +2,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.models.enums import ArtifactStatus, ArtifactType, TaskStatus
+from app.models.enums import (
+    ArtifactStatus,
+    ArtifactType,
+    PlanningFixture,
+    ProjectWorkMode,
+    TaskStatus,
+)
 from app.schemas.organization import ORMModel
 
 
@@ -55,9 +61,20 @@ class ProjectCreate(BaseModel):
     review_configuration: ReviewConfiguration = Field(default_factory=ReviewConfiguration)
     participants: ProjectParticipants = Field(default_factory=ProjectParticipants)
     tutorial_accelerated: bool = False
+    # M2.1（W35）：不传就用公司默认；传了就**快照**到项目行，之后公司默认变化不影响它。
+    work_mode: ProjectWorkMode | None = None
+    # M2.1（D3/W33）：**基础设施轴**，只能显式请求且需部署开启 `allow_planning_fixtures`。
+    # 生产项目默认 `none` —— 不存在"Manager 没反应就用模板顶上"这条路径。
+    planning_fixture: PlanningFixture = PlanningFixture.none
 
     @property
     def is_structured(self) -> bool:
+        """**已退役的路由开关**（M2.1，B2）。
+
+        M2.0 之前它决定"走结构化交付还是走 legacy 订单流"；M2.1 起路由由
+        `work_mode`（产品）与 `planning_fixture`（基础设施）两个显式维度决定，
+        本属性**不再影响任何服务端分支**，只在读面上保留（老客户端/测试的兼容谓词）。
+        """
         return bool(
             self.code
             or self.background
@@ -91,6 +108,14 @@ class ProjectOut(ORMModel):
     review_configuration: dict = {}
     participants: dict = {}
     tutorial_accelerated: bool = False
+    # M2.1（设计 §11.5）
+    work_mode: str | None = None
+    planning_fixture: str | None = None
+    spec_version: int = 1
+    work_intake_position_code: str | None = None
+    management_employee_id: int | None = None
+    management_person_id: int | None = None
+    management_assigned_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -246,3 +271,102 @@ class MessageOut(ORMModel):
     content: str
     created_at: datetime
     updated_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# M2.1 · Canonical Executable Project read model（设计 §11.4/§11.5）
+#
+# `GET /projects/{id}/spec` 是「这个项目能不能回答那 8 个问题」的唯一出口：
+# 1. canonical spec 是什么  2. work_mode 是什么  3. Work Intake 责任是什么
+# 4. 哪个 Position Assignment 承担它  5. 管理的 actor 是谁
+# 6. requirements/deliverables/acceptance criteria 是什么  7. spec 版本
+# 8. 是否已进入执行
+# ---------------------------------------------------------------------------
+
+
+class SpecRequirementOut(BaseModel):
+    code: str
+    title: str
+    priority: str = "should"
+    acceptance_criteria: str = ""
+
+
+class ProjectSpecFieldsOut(BaseModel):
+    """Canonical Spec —— **Facts / Requirements**，不是 Execution Plan。"""
+
+    background: str = ""
+    goal: str = ""
+    requirements: list[SpecRequirementOut] = []
+    constraints: list[str] = []
+    deliverables: list[str] = []
+    acceptance_criteria: list[str] = []
+    priority: str = "medium"
+    deadline: datetime | None = None
+    context: str = ""
+
+
+class SpecCompletenessOut(BaseModel):
+    is_complete: bool
+    missing: list[str] = []
+    #: 契约里允许为空的字段（不参与 missing 判定）
+    optional_fields: list[str] = []
+
+
+class WorkIntakeAssignmentOut(BaseModel):
+    employee_id: int
+    person_id: int | None = None
+    slot_id: int | None = None
+    since: datetime | None = None
+
+
+class WorkIntakeOut(BaseModel):
+    responsibility: str
+    status: str
+    position_code: str
+    default_position_code: str
+    is_configured: bool = False
+    position_definition_id: int | None = None
+    assignment: WorkIntakeAssignmentOut | None = None
+    candidate_employee_ids: list[int] = []
+    owner_user_id: int | None = None
+    reason: str = ""
+
+
+class ProjectManagementOut(BaseModel):
+    """当前管理 actor 的快照指针。
+
+    `stale` 表示"快照里的人已经不是当前责任持有者了"（例如 CEO 换人）——
+    读面**如实报告漂移**，而不是默默改项目行：历史归 DecisionRecord（M2.4）。
+    """
+
+    employee_id: int | None = None
+    person_id: int | None = None
+    assigned_at: datetime | None = None
+    position_code: str | None = None
+    position_definition_id: int | None = None
+    current_responsible_employee_id: int | None = None
+    stale: bool = False
+
+
+class ProjectExecutionOut(BaseModel):
+    entered: bool
+    task_count: int = 0
+    task_status_counts: dict[str, int] = {}
+    phase_count: int = 0
+    artifact_count: int = 0
+    #: 本项目的规划 fixture（`none` = 由 Manager Agent / Human 负责规划）
+    planning_fixture: str | None = None
+
+
+class ProjectSpecOut(BaseModel):
+    project_id: int
+    spec_version: int
+    spec: ProjectSpecFieldsOut
+    completeness: SpecCompletenessOut
+    work_mode: str | None = None
+    planning_fixture: str | None = None
+    work_intake: WorkIntakeOut
+    management: ProjectManagementOut
+    execution: ProjectExecutionOut
+    #: 契约问题 → 响应里回答它的字段路径（机器可核对，见 contracts.PROJECT_SPEC_QUESTIONS）
+    questions: dict[str, str] = {}
