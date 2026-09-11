@@ -44,6 +44,7 @@ from app.models.enums import (
     WorkOrderStatus,
 )
 from app.repositories import economy as economy_repo
+from app.services.economy.escrow import EscrowService
 from app.services.economy.evaluations import EvaluationError, EvaluationService, bonus_total
 from app.services.economy.rewards import RewardService
 from app.services.economy.settlement import SettlementRequest, SettlementService
@@ -57,6 +58,9 @@ OFFICIAL_REWARD_TYPES: dict[WorkOrderKind, RewardType] = {
     WorkOrderKind.research_grant: RewardType.research_grant,
     WorkOrderKind.system_procurement: RewardType.system_procurement,
 }
+
+#: 玩家工作市场的两种 kind（钱来自发布方自己，Escrow 锁资，绝不 mint，E8）
+PLAYER_KINDS = (WorkOrderKind.player_bounty, WorkOrderKind.player_contract)
 
 #: 可领（open）的状态
 ACCEPTABLE_STATUSES = (WorkOrderStatus.open.value,)
@@ -165,12 +169,109 @@ class WorkOrderService:
             )
         return PublishResult(order=order, created=True)
 
+    def publish_player_order(
+        self,
+        *,
+        issuer: EconomicActor,
+        title: str,
+        reward_amount: int,
+        kind: WorkOrderKind = WorkOrderKind.player_bounty,
+        description: str = "",
+        requirements: dict | None = None,
+        deliverables: dict | None = None,
+        evaluation_mode: EvaluationMode = EvaluationMode.auto,
+        deadline_at: datetime | None = None,
+        code: str | None = None,
+        metadata: dict | None = None,
+        commit: bool = True,
+    ) -> PublishResult:
+        """发布**玩家**订单（钱由发布方自己出，发布前必须完成 Escrow 锁资，E11）。
+
+        - 只接受 `player_bounty` / `player_contract`（官方类走 `publish_official`）；
+        - **锁资在同一事务**：余额不足 ⇒ 整笔回滚，**不留"已发布但没锁资"的订单**
+          （不是"先发布后补钱"）；
+        - 金额**不受官方预算约束**（花的是自己的钱），但受余额与 E24（不可为负）约束；
+        - Supply 不变（E7）：钱只是从发布方账户挪进托管账户。
+        """
+        if kind not in PLAYER_KINDS:
+            raise WorkOrderError("kind_not_player_kind", http_status=422)
+        if issuer.kind is not EconomicActorKind.company:
+            # v1 玩家市场的发布方是公司（个人钱包读面在 M1.9）
+            raise WorkOrderError("issuer_must_be_company", http_status=422)
+        if int(reward_amount) <= 0:
+            raise WorkOrderError("reward_amount_must_be_positive", http_status=422)
+        if self.policy.player_order_max_reward and int(reward_amount) > int(
+            self.policy.player_order_max_reward
+        ):
+            # 政策护栏：超大额订单容易变成"洗钱/误操作"，需要显式调政策才能发
+            raise WorkOrderError("reward_exceeds_player_order_max", http_status=422)
+
+        resolved_code = code or self._next_code(kind)
+        existing = economy_repo.find_work_order_by_code(self.db, resolved_code)
+        if existing is not None:
+            return PublishResult(order=existing, created=False)
+
+        order = economy_repo.insert_work_order(
+            self.db,
+            code=resolved_code,
+            kind=kind.value,
+            title=title.strip(),
+            description=description,
+            requirements_json=dict(requirements or {}),
+            deliverables_json=dict(deliverables or {}),
+            reward_amount=int(reward_amount),
+            currency=Currency.credit.value,
+            policy_version=self.policy.version,
+            issuer_actor_kind=issuer.kind.value,
+            issuer_actor_ref=economy_repo.actor_columns(issuer)[1],
+            funding_mode=FundingMode.player_escrow.value,
+            evaluation_mode=evaluation_mode.value,
+            status=WorkOrderStatus.open.value,
+            deadline_at=deadline_at,
+            metadata_json=dict(metadata or {}),
+        )
+        try:
+            escrow = EscrowService(self.db).fund_for_order(
+                order_id=int(order.id),
+                payer=issuer,
+                amount=int(reward_amount),
+                expires_at=deadline_at,
+                metadata={"kind": kind.value},
+                commit=False,
+            )
+        except Exception:
+            # 锁资失败（余额不足/账户冻结/…)⇒ 整笔回滚：不留下未锁资的订单（E11）
+            if commit:
+                self.db.rollback()
+            raise
+        order.metadata_json = {**(order.metadata_json or {}), "escrow_id": int(escrow.id)}
+        self.db.flush()
+        if commit:
+            self.db.commit()
+            self._publish_event(
+                "work_order.published",
+                order,
+                {"reward_amount": int(order.reward_amount), "kind": order.kind},
+            )
+            self._publish_event(
+                "escrow.funded",
+                order,
+                {
+                    "escrow_id": int(escrow.id),
+                    "amount": int(escrow.amount),
+                    "transaction_id": escrow.funded_transaction_id,
+                },
+            )
+        return PublishResult(order=order, created=True)
+
     def _next_code(self, kind: WorkOrderKind) -> str:
         prefix = {
             WorkOrderKind.official_bounty: "OB",
             WorkOrderKind.official_contract: "OC",
             WorkOrderKind.research_grant: "RG",
             WorkOrderKind.system_procurement: "SP",
+            WorkOrderKind.player_bounty: "PB",
+            WorkOrderKind.player_contract: "PC",
         }.get(kind, "WO")
         return f"{prefix}-{self._next_sequence():05d}"
 
@@ -476,9 +577,22 @@ class WorkOrderService:
         if amount <= 0:  # pragma: no cover - APPROVED 必然有通过验收
             raise WorkOrderError("reward_amount_not_resolved")
 
+        funding_mode = FundingMode(order.funding_mode)
         reward_type = OFFICIAL_REWARD_TYPES.get(WorkOrderKind(order.kind))
-        if reward_type is None:  # pragma: no cover - publish 已限制 kind
+        if funding_mode is FundingMode.system_mint and reward_type is None:
+            # pragma: no cover - publish 已限制 kind
             raise WorkOrderError("kind_not_settleable")
+        if funding_mode is FundingMode.player_escrow and reward_type is not None:
+            # pragma: no cover - 玩家类 kind 没有官方奖励类型
+            raise WorkOrderError("kind_not_settleable")
+
+        escrow = (
+            EscrowService(self.db).get_for_order(order_id)
+            if funding_mode is FundingMode.player_escrow
+            else None
+        )
+        if funding_mode is FundingMode.player_escrow and escrow is None:
+            raise WorkOrderError("escrow_missing_for_player_order")
 
         settlement_key = f"work_order:{int(order.id)}"
         settlement = SettlementService(self.db).settle(
@@ -489,6 +603,8 @@ class WorkOrderService:
                 reason=f"work_order:{order.code}",
                 reference_type="work_order",
                 reference_id=str(int(order.id)),
+                funding_mode=funding_mode,
+                escrow_id=int(escrow.id) if escrow is not None else None,
                 metadata={
                     "work_order_code": order.code,
                     "kind": order.kind,
@@ -497,22 +613,25 @@ class WorkOrderService:
             ),
             commit=False,
         )
-        # 奖励审计行（官方类；不再 mint —— 钱由 SettlementService 发）
-        RewardService(self.db, policy=self.policy).record_external_grant(
-            reward_type=reward_type,
-            actor=EconomicActor.company(company_id),
-            company_id=company_id,
-            amount=amount,
-            reference_key=settlement_key,
-            ledger_transaction_id=int(settlement.transaction.id),
-            reason=f"work_order:{order.code}",
-            metadata={
-                "work_order_id": int(order.id),
-                "work_order_code": order.code,
-                "evaluation_id": None,
-            },
-            commit=False,
-        )
+        if reward_type is not None:
+            # 官方类：奖励审计行（不再 mint —— 钱由 SettlementService 发）
+            RewardService(self.db, policy=self.policy).record_external_grant(
+                reward_type=reward_type,
+                actor=EconomicActor.company(company_id),
+                company_id=company_id,
+                amount=amount,
+                reference_key=settlement_key,
+                ledger_transaction_id=int(settlement.transaction.id),
+                reason=f"work_order:{order.code}",
+                metadata={
+                    "work_order_id": int(order.id),
+                    "work_order_code": order.code,
+                    "evaluation_id": None,
+                },
+                commit=False,
+            )
+        # 玩家订单：**不写 reward_grants** —— 玩家之间的转移不是"发行/奖励"（E8）；
+        # 完整来源由 escrows 行 + ledger_transaction 承载（E16）。
 
         assert_transition(
             StateMachine.work_order, WorkOrderStatus.approved.value, WorkOrderStatus.settled.value
@@ -552,6 +671,77 @@ class WorkOrderService:
 
     # ---------------------------------------------------------------- 过期
 
+    def cancel(
+        self,
+        order_id: int,
+        *,
+        company_id: int,
+        reason: str = "issuer_cancelled",
+        commit: bool = True,
+    ) -> WorkOrder:
+        """发布方取消订单（`OPEN`/`ACCEPTED` → `CANCELLED`），**托管退款给发布方**。
+
+        只有发布方本人能取消（否则 404，不泄露存在性）；重复取消幂等；
+        玩家订单的 Escrow 在同一事务里退回（E11 的对称面：取消必须还钱）。
+        """
+        order = self._require(order_id)
+        if order.issuer_actor_kind != EconomicActorKind.company.value or int(
+            order.issuer_actor_ref or 0
+        ) != int(company_id):
+            raise WorkOrderError("not_your_order", http_status=404)
+        if order.status == WorkOrderStatus.cancelled.value:
+            return order  # 幂等重放
+        cancellable = (WorkOrderStatus.open.value, WorkOrderStatus.accepted.value)
+        if order.status not in cancellable:
+            raise WorkOrderError(f"order_not_cancellable:{order.status}")
+
+        assert_transition(StateMachine.work_order, order.status, WorkOrderStatus.cancelled.value)
+        if (
+            economy_repo.transition_work_order(
+                self.db,
+                order_id=order_id,
+                from_statuses=(order.status,),
+                to_status=WorkOrderStatus.cancelled.value,
+                metadata_json={**(order.metadata_json or {}), "cancel_reason": reason},
+            )
+            == 0
+        ):
+            self.db.expire_all()
+            current = self._require(order_id)
+            if current.status == WorkOrderStatus.cancelled.value:
+                return current
+            raise WorkOrderError(f"order_not_cancellable:{current.status}")
+
+        escrow_id = self._refund_escrow_if_any(order)
+        self.db.expire_all()
+        cancelled = self._require(order_id)
+        if commit:
+            self.db.commit()
+            self._publish_event(
+                "work_order.cancelled", cancelled, {"reason": reason, "escrow_id": escrow_id}
+            )
+            if escrow_id is not None:
+                self._publish_event(
+                    "escrow.refunded",
+                    cancelled,
+                    {
+                        "escrow_id": escrow_id,
+                        "amount": int(cancelled.reward_amount),
+                        "reason": reason,
+                    },
+                )
+        return cancelled
+
+    def _refund_escrow_if_any(self, order: WorkOrder) -> int | None:
+        """玩家订单取消/过期时把钱还给发布方（官方订单没有托管，直接跳过）。"""
+        if FundingMode(order.funding_mode) is not FundingMode.player_escrow:
+            return None
+        escrow = EscrowService(self.db).get_for_order(int(order.id))
+        if escrow is None:  # pragma: no cover - 玩家订单发布即锁资（E11）
+            return None
+        refunded, _created = EscrowService(self.db).refund(int(escrow.id), commit=False)
+        return int(refunded.id)
+
     def expire_overdue(self, *, now: datetime | None = None, commit: bool = True) -> int:
         """把过了 deadline 的未终态订单推进到 EXPIRED（幂等扫描，供 CLI/定时任务调用）。"""
         moment = now or utcnow()
@@ -575,6 +765,8 @@ class WorkOrderService:
                 )
                 > 0
             ):
+                # 玩家订单过期 ⇒ 托管退款（钱不能卡在托管里）
+                self._refund_escrow_if_any(order)
                 expired += 1
         if commit and expired:
             self.db.commit()
