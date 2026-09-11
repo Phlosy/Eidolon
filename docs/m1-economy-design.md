@@ -137,6 +137,36 @@ LedgerAccount
 - 系统账户固定三条（§8）；
 - **账户不可删除**，只能 `closed`（历史账本要能解释每一分钱）。
 
+**Escrow 账户与唯一性（M1.1 冻结）**：Escrow 账户归 `system` actor 所有，用 `subject_ref`
+（= escrow id）区分 —— `unique(actor_kind, actor_ref, currency, kind, subject_ref)`，
+普通账户 `subject_ref = 0`。**不设"全局 SYSTEM_ESCROW"账户**：托管必须逐笔可归属（§23），
+一个全局池子会让"这笔钱是谁锁的"退化成账本外的数字。
+
+**normal_side 与余额语义（M1.1 冻结）**：余额只有一个解释入口 —— 由 `kind` 派生的 `normal_side`：
+
+| AccountKind | normal_side | 余额含义 |
+| --- | --- | --- |
+| `actor` | debit | 主体可花余额（Company / User / NPC Wallet） |
+| `escrow` | debit | 该笔托管中、待释放或退回的资金 |
+| `treasury` | debit | 财政池余额 |
+| `burn` | debit | 累计销毁量（只增） |
+| `issuance` | credit | 累计发行量（只增） |
+
+```
+balance_delta(account, direction, amount) = +amount if direction == account.normal_side else −amount
+balance(account)                          = Σ balance_delta(entries)
+```
+
+- `normal_side` 开户时由 kind 派生并落库（**派生值**，不是可配置业务字段）；
+- **资金充足性与 AccountKind 绑定**（不是全局硬编码）：`actor` 与 `escrow` 是"真实持有资金"的账户，
+  debit 时必须 `available >= amount`；`issuance` / `treasury` / `burn` 是系统账务侧，
+  不受余额不足约束（否则 mint/burn 的第一腿在数字上无法成立）；
+- 业务代码不得自己解释借贷方向（禁止散落 `if direction == DEBIT: balance += amount`）——
+  统一走 `balance_delta`；
+- 未来引入 `revenue` / `expense` / `liability` / `equity`（完整会计）时只扩展该映射表：
+  余额语义入口不变，业务代码零改动（**留边界，不提前实现**）；
+- 账户状态：`active | frozen | closed`；`frozen` 不可过账，`closed` 终态；**不可删除**。
+
 ## 11. Wallet Projection
 
 `Wallet` 不是账务真相。真相是 Ledger Entries 聚合（E2）：
@@ -150,6 +180,36 @@ LedgerEntry[] ──(聚合)──> balance          （派生）
 - `WalletProjection`（或 `wallet_accounts` 缓存）**只是 Cache**：
   一个事务内更新，任何时刻都能由账本重算；重建脚本是 M1 的常规运维能力；
 - 余额永远不允许直接 `+= / -=`（E1）；所有变化经 Ledger 过账。
+
+**正式定义（M1.1 冻结）**
+
+```
+Ledger（accounts / transactions / entries）  =  Financial Source of Truth
+WalletProjection                             =  Rebuildable Operational Materialized Projection
+```
+
+`wallet_projection` 一行 = 一个 `ledger_accounts` 行（`account_id` 做主键）：
+
+| 列 | 语义 |
+| --- | --- |
+| `posted_balance` | 该主体的**总资产**（含被 Escrow 锁定但仍属本主体的份额）；对 escrow/系统账户即账户自身余额 |
+| `reserved_balance` | 本主体**锁定在 Escrow 中的份额**（归因到本主体的 escrow 账户余额之和）；非 actor 账户恒为 0 |
+| `available_balance` | `posted_balance − reserved_balance` = **可花余额**（消费判定与 CAS 的唯一口径） |
+| `version` | CAS 乐观并发计数器（每次投影更新 +1） |
+| `last_entry_id` | 最后一条导致变化的 entry（重建校验 / 追查用） |
+| `updated_at` | 投影更新时间 |
+
+- 均匀恒等式（所有 kind 都成立）：`available_balance = posted_balance − reserved_balance`；
+- 公司钱包示例：actor 账户 90,000 + 该主体出资的 Escrow 10,000 ⇒
+  `posted = 100,000`、`reserved = 10,000`、`available = 90,000`
+  （"锁资不改变净资产，只改变可花额度"）；
+- **Projection 不是财务事实来源**：清空 `wallet_projection` 后必须能仅由
+  `ledger_accounts + ledger_transactions + ledger_entries` 完整重算
+  （`rebuild_wallet_projection`，运维常规能力）；
+- `reserved` 的唯一事实来源是 **escrow 账户的 Ledger 余额 + `escrow_fund` 的出资腿归因**：
+  出资关系写在 entry 里，重建时可重新推导 —— 禁止把 reserved 设计成账本之外的独立数字；
+- 普通 Wallet（`actor` kind 且非 system）不得出现 `available_balance < 0`（E24）；
+  CAS 条件更新只落在这一列上（§33）。
 
 ## 12. Double-entry Ledger
 
@@ -185,6 +245,31 @@ LedgerEntry
   - escrow_release：Debit 收款 actor，Credit escrow
   - escrow_refund：Debit 出资 actor，Credit escrow
 - **单边账在结构上不可表达**（Transaction 必须 ≥2 条 Entry 且守恒）。
+
+### 12b. 唯一 Posting Core（M1.1 冻结，E27）
+
+所有资金变化只有一条路径：**便利原语 → 构造 posting → `LedgerService.post()`**。
+
+```
+mint() / transfer() / burn() / treasury_transfer() / escrow_fund() / escrow_release() / escrow_refund()
+        ↓ 构造 posting（腿取自 LEG_BLUEPRINTS，不手写方向）
+LedgerService.post()        ← 唯一入口
+        ├── 金额/币种/账户校验（存在、active、非自指、币种一致）
+        ├── 权限校验（mint / burn / treasury 需 MonetaryAuthority 内部令牌）
+        ├── 复式守恒 Σdebit == Σcredit（E3）
+        ├── 幂等（`idempotency_key` 命中 → 返回既有 transaction，绝不二次过账，E12 同族）
+        ├── 资金校验 + CAS（`available_balance >= amount`，rowcount 判定，E24）
+        ├── INSERT ledger_transactions + ledger_entries（append-only，E17）
+        └── 更新 wallet_projection（同事务，E28）
+```
+
+- 便利原语**不得各自写 Ledger**：禁止在其它模块出现 `db.add(LedgerEntry(...))`；
+- 上述步骤全部在**同一个数据库事务**内完成（CAS → Ledger → Projection）：
+  任何一步失败整体回滚。禁止"先 CAS 提交、再记账"，也禁止"先记账、再更新投影"（E28）；
+- 幂等语义统一为**返回既有结果**（200 + 既有交易），而不是报错；
+- 权限：`mint` / `burn` / `treasury_transfer` 只能由 `MonetaryAuthority` 携带内部令牌调用；
+  玩家/公司 API 永远不暴露（E23，§32 三层边界）；
+- LedgerEntry 一旦写入不得 UPDATE / DELETE（E17）：不提供修改入口，纠错只能追加 reversal 交易。
 
 ## 13. Currency
 
@@ -339,8 +424,13 @@ Offer 是"出价/申请"的通用表达：人才出价、合同申请、报价�
   ```
   payer → escrow（fund）→ 条件满足 → payee（release） 或 → payer（refund）
   ```
-- 每个 Escrow 一个独立 `escrow` 账户（§10）：资金既不属于 payer 也不属于 payee，
-  **Total Supply 不变**（E7）；
+- **每个 Escrow 一个独立 `escrow` 账户**（`kind=escrow`、归 `system` actor、`subject_ref = escrow id`；§10）：
+  资金既不属于 payer 也不属于 payee，**Total Supply 不变**（E7）；
+- **归因规则（M1.1 冻结）**：escrow 账户的出资人 = 该账户 `escrow_fund` 交易中 credit 腿所属主体；
+  v1 要求**一笔 Escrow 只有一个出资人**（创建时校验），因此
+  `reserved(actor) = Σ 归因到该 actor 的 escrow 账户余额`，且完全可由 Ledger 重建（E30）；
+  多出资人 Escrow（联合投资）留到 M2，届时按出资腿比例归因 —— 不提前实现；
+- 释放/退回后 escrow 账户余额必须归零（E25），该 actor 的 `reserved` 同步归零；
 - 支持：`fund / release / refund / expire`；竞争情形（release vs refund）由 CAS + 唯一约束裁定（§33）；
 - Escrow 余额必须能归零（结算完成后不允许残留）。
 
@@ -450,6 +540,9 @@ M1 之后还会出现"谁拥有经济权利"。**不能让一个字段承担全�
 | `official_reward_multiplier` | 官方奖励系数（调控用） | 1.0 |
 | `compute_credit_per_unit` | 算力单价 | 1 |
 | `policy_version` | 政策版本（落库到 Reward/Contract） | `econ-1` |
+
+**运维口径（M1.1 记录）**：政策快照是**进程内 `lru_cache`** —— 改配置需要**重启服务**
+或显式 `cache_clear()` 才能生效；在线调参 / 政策中心属于 **M1.9**，本阶段不提前设计 Admin Policy Center。
 
 ## 31. Analytics（一等能力）
 
@@ -566,6 +659,15 @@ Settlement:    PENDING → PROCESSING → COMPLETED
 | **E23** | 玩家/公司 API 不暴露 mint/burn/treasury（三层边界） |
 | **E24** | 余额不可为负（available = balance − reserved ≥ 0） |
 | **E25** | Escrow 结算完成后余额必须归零 |
+| **E26** | 余额语义只有一个入口（`kind → normal_side → balance_delta`），业务代码不得自行解释借贷方向 |
+| **E27** | 所有账务操作汇聚到唯一 Posting Core（`LedgerService.post()`），便利原语不得自行写 Ledger |
+| **E28** | CAS、Ledger 写入、Projection 更新必须在同一事务内完成（禁止跨事务两阶段） |
+| **E29** | WalletProjection 必须可由 Ledger 完整重建（清空后重算逐账户逐字段一致） |
+| **E30** | `reserved` 必须可由 Ledger 推导（escrow 账户余额 + 出资腿归因），不得是账本外的独立数字 |
+| **E31** | LedgerEntry append-only：不提供 UPDATE / DELETE 入口，纠错走 reversal |
+
+E26–E31 是 M1.1（账本底座）引入的落地性不变量；实现与测试锚点见
+`tests/test_economy_ledger.py` / `test_economy_projection.py` / `test_economy_concurrency.py`。
 
 ## 39. M1 / M2 Boundaries
 

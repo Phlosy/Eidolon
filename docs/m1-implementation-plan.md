@@ -75,22 +75,59 @@ M1.0 只冻结契约，**不建表、不动任何既有实体**（与 T2.0 同�
 
 ### M1.1 · Accounts & Double-entry Ledger `[migration v32]`
 
-- **Goal**：账本可过账、可查余额、可追溯。
-- **Scope**：`economic_actors`（或直接以 `(kind, ref)` 表达、无独立表）→ 决定；
-  `ledger_accounts`、`ledger_transactions`、`ledger_entries`、`wallet_projection`（缓存）；
-  `LedgerService`（mint/transfer/burn/escrow 腿的组合原语）、`AccountService`（开户/冻结/查询）、
-  余额查询与流水 API。
-- **Schema**：4 张表（accounts / transactions / entries / wallet_projection）+
-  唯一约束（`unique(actor_kind, actor_ref, currency, kind)`、`ledger_transactions.idempotency_key`）。
-- **Services**：`LedgerService` / `AccountService`（其余服务在后续阶段）。
-- **APIs**：`GET /economy/accounts`（本公司）、`GET /economy/transactions`（分页流水）、
-  `GET /economy/balance`。**无**写端点（写只发生在业务服务内）。
-- **Events**：`LedgerTransactionPosted`。
-- **Tests**：守恒 property 测试（随机腿集合 → 只接受平衡交易）；余额=派生重算一致；
-  幂等键重复过账不产生第二条；`available = balance − reserved`；行锁/CAS 竞争（并发扣款只有一次成功）；
-  E1 守卫（全库模型无 `balance` 列、AST 无余额赋值）。
-- **Acceptance**：mint/transfer/burn 三种腿组合的余额与守恒正确；缓存可从账本重建（重建脚本/测试）。
-- **Risks**：投影与账本漂移（→ 重建校验 + 守卫测试）。
+- **Goal**：账本可过账、可查余额、可追溯、**可重建** —— 建立 M1 全部后续阶段的金融底座。
+- **内部四小阶段**（同一阶段，实现顺序不可合并成一坨）：
+  - **M1.1a Schema + Accounting Contract**：迁移 v32（4 张表 + 唯一约束）、`app/models/economy.py`、
+    `normal_side` 派生与 `balance_delta` 统一入口、`SYSTEM_ACCOUNT_KINDS` 定义顺序清理；
+  - **M1.1b Ledger Posting Engine + CAS**：`AccountService`（开户/冻结/查询/系统账户 bootstrap）、
+    `LedgerService.post()`（唯一 Posting Core）、`MonetaryAuthority`（内部令牌）、CAS 扣款；
+  - **M1.1c Projection + Rebuild + Reconciliation**：`wallet_projection` 同事务维护、
+    `rebuild_wallet_projection`（只依赖 Ledger）、`verify_wallet_projection`（只报告不改）、CLI + make target；
+  - **M1.1d Read API + Hardening**：`GET /economy/balance`、`/economy/accounts`、`/economy/transactions`；
+    property / 并发 / 失败注入 / append-only 测试。
+- **Schema**：`ledger_accounts`、`ledger_transactions`、`ledger_entries`、`wallet_projection`；
+  唯一约束：`ledger_accounts(actor_kind, actor_ref, currency, kind, subject_ref)`、
+  `ledger_transactions.idempotency_key`（部分唯一，允许 NULL）。
+- **Services**：`AccountService` / `LedgerService` / `MonetaryAuthority` / 投影重建与对账
+  （`app/services/economy/`）；仓储 `app/repositories/economy.py`。
+- **APIs**：`GET /economy/balance`（公司作用域）、`GET /economy/accounts`、`GET /economy/transactions`
+  （分页 + 过滤）。**无写端点** —— 写只发生在业务服务内部（mint/burn/transfer 不对外）。
+- **Events**：`ledger.transaction_posted`（跨域有价值时才发；M1.1 只发这一条）。
+- **Tests**：开户幂等 / 系统账户 bootstrap / 冻结账户拒绝过账；复式守恒（含 property 随机交易序列）；
+  幂等键重复不产生第二条；`available = posted − reserved`；CAS 并发扣款只有一个成功；
+  并发同幂等键只落一笔；失败注入（CAS 后 / entries 后 / projection 后异常 → 全回滚）；
+  投影重建逐账户逐字段一致；对账能发现人为 drift；append-only（无 UPDATE/DELETE 入口）；
+  E1 守卫（财务字段只住经济模型）；Supply = minted − burned 且 transfer 不改变它。
+- **Migration**：v32（`down_revision = d6e8f0a2b4c7`）；up/down/up 实测 + `alembic check` 无漂移。
+- **Acceptance**：满足 §14b 的 **A1–A20** 全部条目。
+- **Risks**：投影与账本漂移（→ 重建校验 + 对账 + 守卫测试）；SQLite 并发语义
+  （→ CAS 条件更新 + rowcount 判定，不假装多节点共识）；性能（→ projection 是快路径，
+  账本是事实，必要时后续加索引）。
+
+#### M1.1 Acceptance Criteria（A1–A20，完成判定）
+
+| # | 判据 |
+| --- | --- |
+| **A1** | Ledger 是资金事实来源（余额是派生/缓存） |
+| **A2** | `wallet_projection` 可从 Ledger 完整重建（清空后重算一致） |
+| **A3** | 普通 Wallet（actor，非 system）不允许负 `available_balance` |
+| **A4** | 并发扣款通过 CAS 防止 double spend（100 两笔 80 → 恰好一笔成功） |
+| **A5** | CAS + Ledger 写入 + Projection 更新在同一事务 |
+| **A6** | 所有普通 transaction 复式守恒 Σdebit = Σcredit |
+| **A7** | 金额不使用 float（整数最小单位） |
+| **A8** | LedgerEntry append-only（无 UPDATE/DELETE 入口） |
+| **A9** | 所有便利原语最终走统一 `post()` 核心 |
+| **A10** | Idempotency 阻止重复记账（同 key 不产生第二条 transaction） |
+| **A11** | Transfer 不改变 Total Supply |
+| **A12** | Mint 增加 Supply |
+| **A13** | Burn 减少 Supply |
+| **A14** | 系统账户权限正确（mint/burn/treasury 仅 MonetaryAuthority 令牌） |
+| **A15** | Projection drift 可被检测（对账只报告不改） |
+| **A16** | Projection 可被重建 |
+| **A17** | Read API 公司作用域正确（跨公司看不到余额/流水） |
+| **A18** | 没有新增公开 Mint/Burn 写接口 |
+| **A19** | M1.1 没有越界实现 M1.2+（无 Starter/Reward/WorkOrder/Contract/Talent 价格） |
+| **A20** | 完整 gates 通过或仅剩明确记录的既有 WIP |
 
 ### M1.2 · Monetary Authority & Reward System `[migration v33]`
 
@@ -272,6 +309,15 @@ M1.0 只冻结契约，**不建表、不动任何既有实体**（与 T2.0 同�
 - 回滚：账本/奖励/订单/合同表互不破坏既有域（T2/T1/R1 表不动），`downgrade` 只 DROP M1 表；
 - 涉及 T2 的只有 M1.7（加一张 1:1 扩展表，不改 T2 表结构）。
 
+## 11b. Known Technical Debt（记录，不在 M1.1 处理）
+
+| 项 | 现状 | 处理时机 |
+| --- | --- | --- |
+| 政策快照缓存 | `economic_policy()` 是进程内 `lru_cache`；改配置需**重启**或显式 `cache_clear()` | **M1.9**（在线调参 / 政策中心），M1.1 不提前设计 Admin |
+| T2 回归专项门禁 | `test_t2_golden_path` / `test_recruitment` 目前随全量 pytest 一起跑 | **M1.7**（人才商业化触碰招募路径）列为必跑专项 |
+| 既有 ruff-format WIP（5 个文件） | 历史遗留，与本阶段无关 | 独立清理，不顺手扩大范围 |
+| 内容数据 i18n / R1 镜像列 | 已知，评估结论：暂不拆 | M1/M2 之后按域分批 |
+
 ## 12. Risks（M1 级）
 
 | # | 风险 | 应对 |
@@ -344,8 +390,8 @@ cd apps/web && npm run build
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
 | M1.0 Economic Domain Contract Freeze | **DONE**（2026-09-11） | `2f75590` | 设计 + 执行基线与契约代码；**无迁移**；pytest 798 / web 328 |
-| M1.1 Accounts & Double-entry Ledger | **NEXT** | — | `[migration v32]`；入口：设计 §10–§12 + plan §4/M1.1 |
-| M1.2 Monetary Authority & Reward System | PLANNED | — | `[migration v33]` |
+| M1.1 Accounts & Double-entry Ledger | **IN PROGRESS**（2026-09-11） | — | `[migration v32]`；四小阶段 M1.1a–d；验收 A1–A20；入口：设计 §10–§12b + plan §4/M1.1 |
+| M1.2 Monetary Authority & Reward System | **NEXT** | — | `[migration v33]`；Starter Grant / 资料奖励 / 教程奖励 / 签到（消费 M1.1 的 `MonetaryAuthority`） |
 | M1.3 Official Work Market | PLANNED | — | `[migration v34]` |
 | M1.4 Player Work Market | PLANNED | — | `[migration v35]` |
 | M1.5 Company Operating Economy | PLANNED | — | `[migration v36]` |
@@ -353,7 +399,7 @@ cd apps/web && npm run build
 | M1.7 Talent Commercialization | PLANNED | — | `[migration v38]`；必须跑 T2 回归 |
 | M1.8 NPC Economy | PLANNED | — | `[migration v39]`（或复用 participant profile_json） |
 | M1.9 Economy UI & Analytics | PLANNED | — | 无迁移 |
-| M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E25 全覆盖 + 失败注入 |
+| M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E31 全覆盖 + 失败注入 |
 
 ### Progress Log
 
