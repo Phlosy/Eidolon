@@ -13,10 +13,12 @@
 from __future__ import annotations
 
 import threading
+import time
 from datetime import UTC, datetime, timedelta
 
 import pytest
 import sqlalchemy as sa
+from sqlalchemy.exc import OperationalError
 
 from app.core.database import SessionLocal
 from app.economy.contracts import EconomicActor
@@ -136,6 +138,26 @@ def _listing(db, person_id: int, *, seller: Company | None) -> int:
     db.add(listing)
     db.commit()
     return int(listing.id)
+
+
+def _with_sqlite_retry(action, *, attempts: int = 4):
+    """SQLite 写锁竞争（"database is locked"）时重试；其它异常原样抛出。
+
+    并发用例断言的是**不变量**（恰好一个赢家、钱不动），而不是"某个线程必须一次成功"；
+    SQLite 单写 + 多连接的锁等待在这种压测下偶发超时属于环境噪声，重试是标准处理。
+    """
+    last: Exception | None = None
+    for _ in range(attempts):
+        try:
+            return action()
+        except OperationalError as exc:  # pragma: no cover - 只在竞争时走到
+            if "locked" not in str(exc):
+                raise
+            last = exc
+            time.sleep(0.05)
+    if last is not None:  # pragma: no cover
+        raise last
+    raise AssertionError("unreachable")
 
 
 class _Patched:
@@ -344,9 +366,13 @@ def test_races_have_exactly_one_winner(db):
     def claim(company: Company) -> None:
         with SessionLocal() as session:
             barrier.wait()
-            try:
+
+            def attempt() -> None:
                 accepted = WorkOrderService(session).accept(order.id, company_id=company.id)
                 winners.append(int(accepted.assignee_actor_ref or 0))
+
+            try:
+                _with_sqlite_retry(attempt)
             except Exception as exc:  # noqa: BLE001 - 断言只看"谁赢"
                 losers.append(f"{type(exc).__name__}:{exc}")
 
@@ -371,6 +397,7 @@ def test_races_have_exactly_one_winner(db):
     listing_id = _listing(db, person_id, seller=seller)
     TalentTradeService(db).set_terms(listing_id, company_id=seller.id, price=1_000)
     buyers = [_company(db, f"RaceBuyer{index}") for index in range(2)]
+    buyer_ids = [int(buyer.id) for buyer in buyers]
     buyer_accounts = [_fund(db, buyer, 5_000) for buyer in buyers]
 
     # 线程用独立连接写：先 commit（把 flush 未提交的账户落库 + 释放读事务，SQLite 才让写）
@@ -381,11 +408,15 @@ def test_races_have_exactly_one_winner(db):
     def buy(buyer: Company) -> None:
         with SessionLocal() as session:
             buy_barrier.wait()
-            try:
+
+            def attempt() -> None:
                 _, purchase = TalentTradeService(session).create_offer(
                     listing_id, buyer_company_id=buyer.id, amount=1_000
                 )
                 bought.append(f"ok:{buyer.id}" if purchase is not None else f"none:{buyer.id}")
+
+            try:
+                _with_sqlite_retry(attempt)
             except Exception as exc:  # noqa: BLE001 - 断言只看"谁赢"
                 bought.append(f"rejected:{type(exc).__name__}")
 
@@ -397,13 +428,10 @@ def test_races_have_exactly_one_winner(db):
     assert len([item for item in bought if item.startswith("ok")]) == 1, bought
     db.expire_all()
     assert db.get(MarketListing, listing_id).status == MarketListingClosedStatus.closed.value
-    # 输家的钱一分没动（没锁资、没付款）
-    loser_index = 1 if bought[0].endswith(str(buyers[0].id)) is False else 0
-    del loser_index
-    loser_account = buyer_accounts[
-        1 if bought[0].startswith("ok") and bought[0].endswith(str(buyers[0].id)) else 0
-    ]
-    assert econ_wallet(db, loser_account)["available"] == 5_000
+    # 输家的钱一分没动（没锁资、没付款）—— 按**公司 id** 认人，别按列表位置（线程顺序不定）
+    winner_id = int(next(item.split(":")[1] for item in bought if item.startswith("ok")))
+    loser_index = 0 if winner_id == buyer_ids[1] else 1
+    assert econ_wallet(db, buyer_accounts[loser_index])["available"] == 5_000
 
 
 def _wallet_account_id(db, company: Company) -> int:
@@ -616,7 +644,8 @@ def test_concurrent_spend_and_settlement_keep_invariants(db):
     def spend(amount: int) -> None:
         with SessionLocal() as session:
             barrier.wait()
-            try:
+
+            def attempt() -> None:
                 LedgerService(session).transfer(
                     payer_account_id=account,
                     payee_account_id=sink_account,
@@ -624,6 +653,9 @@ def test_concurrent_spend_and_settlement_keep_invariants(db):
                     reason="concurrent",
                 )
                 results.append(f"ok:{amount}")
+
+            try:
+                _with_sqlite_retry(attempt)
             except InsufficientFunds:
                 results.append(f"insufficient:{amount}")
             except Exception as exc:  # noqa: BLE001 - 失败要看得见（别变成"两笔都没跑"）
