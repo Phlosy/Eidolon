@@ -134,6 +134,21 @@ dev-inventory: check-env
 market-issue: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/issue_talent.py $(ISSUE_ARGS)
 
+## economy-verify: **只读**对账账本 vs 钱包投影（M1.1；drift 只报告不修）
+.PHONY: economy-verify
+economy-verify: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_wallets.py --verify
+
+## economy-rebuild: 由账本重建钱包投影（M1.1；安全——Ledger 是事实来源）
+.PHONY: economy-rebuild
+economy-rebuild: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_wallets.py --rebuild --yes
+
+## economy-supply: 打印货币供给快照（minted / burned / supply / circulating）
+.PHONY: economy-supply
+economy-supply: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_wallets.py --supply
+
 ## market-npc: 跑一轮 NPC 市场活动（T2.7c；发现 → Fit → 成交。先看：NPC_ARGS="--dry-run"）
 .PHONY: market-npc
 market-npc: check-env

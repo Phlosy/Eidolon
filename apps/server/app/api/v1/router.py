@@ -13,6 +13,7 @@ from app.api.v1 import (
     competencies,
     cultivation,
     drive,
+    economy,
     employees,
     git,
     knowledge,
@@ -45,6 +46,7 @@ protected.include_router(project_delivery.router)
 protected.include_router(tasks.router)
 protected.include_router(artifacts.router)
 protected.include_router(drive.router)
+protected.include_router(economy.router)
 protected.include_router(messages.router)
 protected.include_router(knowledge.router)
 protected.include_router(behavior.router)
