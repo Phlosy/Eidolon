@@ -324,6 +324,12 @@ ledger_transaction_id`。
   失败整笔回滚；并发重复领取由唯一约束裁定赢家、输家复用赢家（绝不再 mint，E10）；
 - 事件：`reward.granted`（设计表里的 `RewardGranted`，仓库约定用小写点分名，与 `market.listed` 一致）。
 
+**已知读面缺口（记录，M1.9 处理）**：个人类奖励（`PROFILE_COMPLETION` / `TUTORIAL_COMPLETION` /
+`DAILY_LOGIN`）发放到 **user 钱包**，而 `GET /economy/balance` 是公司作用域 —— 个人钱包目前只在
+`GET /economy/rewards`（`actor_kind=user`）、账本流水与 `make economy-verify` 里可见（实测确认）。
+M1.9 需要补"我的钱包"读面（个人余额 + 个人流水）；**不**把个人奖励并进公司钱包 —— 那会污染公司
+P&L（§9/§25：user 钱包与 company 钱包是两类主体）。
+
 ## 15. Starter Economy
 
 注册 → 创建第一家公司 → `STARTER_GRANT`（默认 100,000 CREDIT，**配置化**）：

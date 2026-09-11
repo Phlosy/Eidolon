@@ -420,6 +420,8 @@ cd apps/web && npm run build
   - 迁移：v33 up/down/up 实测 + `alembic check` 无漂移；dev 库已升到 v33。
   - 实现中修掉的 bug：教程奖励的 reference_key 丢失"未领过"过滤（第二次领取会命中同一 key）。
   - 后续收紧（同批提交）：救援金必须**先领过启动资金**才可领（没进入经济不算破产，`starter_not_claimed`）。
+  - 已知读面缺口（→ M1.9）：个人类奖励进 user 钱包，公司作用域的 `GET /economy/balance` 看不到；
+    个人钱包读面（我的钱包）列入 M1.9 Economy UI；不并入公司钱包（会污染公司 P&L）。
 
 - **2026-09-11 · M1.1 DONE**：`[migration v32]` `8f1abef8410f`；commits
   **`12fb9a7`**（M1.1a schema + accounting contracts）、**`2d37938`**（M1.1b/c posting core + projection）、
