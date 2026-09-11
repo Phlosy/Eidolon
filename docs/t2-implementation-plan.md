@@ -368,7 +368,7 @@ cd apps/web && npm run build
 | T2.2 Cultivation Completion & Eligibility | **DONE**（2026-09-10） | `6a79102` | 自由养成显式结业 + `cultivation.completed` + 三轴资格判定集中一处；附带修复 roster person-only 行缺陷（I13）；**无迁移**；pytest 712 / web 314 |
 | T2.3 Market Core & MarketAdapter | **DONE**（2026-09-10） | `18e1bcb` | 迁移 v29（两张表 + 部分唯一索引）+ LocalMarketAdapter + MarketService + 公开投影读面；pytest 723 |
 | T2.4 Issuer & Market Supply | **DONE**（2026-09-10） | `2c6236f` | 迁移 v30（training_programs.metadata_json）+ IssuerService（三档参数）+ CLI；`origin=issued` 走真实培养链；pytest 736 |
-| T2.5 Person-scoped Fit | **DONE**（2026-09-10） | `见 Progress Log` | 一套引擎两个入口（owner 口径 person 优先，hash 相等）+ 市场 Fit 读面 + 搜索标注排序；无迁移；pytest 745 |
+| T2.5 Person-scoped Fit | **DONE**（2026-09-10） | `524868c` | 一套引擎两个入口（owner 口径 person 优先，hash 相等）+ 市场 Fit 读面 + 搜索标注排序；无迁移；pytest 745 |
 | T2.6 Recruitment | **NEXT** | — | 入口：plan §4.7 + 设计 §3.2/§5（I1–I5、I7、I8） |
 | T2.7 Market Experience & NPC | PLANNED | — | 本文件 §4.8 |
 | T2.8 E2E / Hardening / Freeze | PLANNED | — | 本文件 §13/§14 |
@@ -471,7 +471,7 @@ cd apps/web && npm run build
     市场 API：detail 200（traits 8 / general 10 / timeline 7 / evidence 20 / market_state=listed）、
     `origin=issued` 与 `quality_tier=rare` 过滤各命中 2、无内部 id 泄露。
 
-- **2026-09-10 · T2.5 DONE**：commit 哈希见紧随的 `docs(t2): T2.5 进度落盘` 提交（避免自引用哈希）。
+- **2026-09-10 · T2.5 DONE**：commit **`524868c`**（`feat(fit): person-scoped fit engine + market fit read (T2.5)`，15 files / +934）。
   - 后端：`talent/fit/engine.py` 抽出 `_calculate(owner=FitOwner)` 共享核心 +
     `calculate_for_person`；`FitOwner.hash_payload`（person 优先）→ 同一人两条路径 **hash 相等**；
     `PositionFitResult` 增加 `person_id`、owner 字段可空；`hashing.inputs_hash` 改 owner 口径；
