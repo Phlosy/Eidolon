@@ -368,8 +368,8 @@ cd apps/web && npm run build
 | T2.2 Cultivation Completion & Eligibility | **DONE**（2026-09-10） | `6a79102` | 自由养成显式结业 + `cultivation.completed` + 三轴资格判定集中一处；附带修复 roster person-only 行缺陷（I13）；**无迁移**；pytest 712 / web 314 |
 | T2.3 Market Core & MarketAdapter | **DONE**（2026-09-10） | `18e1bcb` | 迁移 v29（两张表 + 部分唯一索引）+ LocalMarketAdapter + MarketService + 公开投影读面；pytest 723 |
 | T2.4 Issuer & Market Supply | **DONE**（2026-09-10） | `2c6236f` | 迁移 v30（training_programs.metadata_json）+ IssuerService（三档参数）+ CLI；`origin=issued` 走真实培养链；pytest 736 |
-| T2.5 Person-scoped Fit | **NEXT** | — | 入口：plan §4.6 + 设计 §9 |
-| T2.6 Recruitment | PLANNED | — | 本文件 §4.7，I1–I5 |
+| T2.5 Person-scoped Fit | **DONE**（2026-09-10） | `见 Progress Log` | 一套引擎两个入口（owner 口径 person 优先，hash 相等）+ 市场 Fit 读面 + 搜索标注排序；无迁移；pytest 745 |
+| T2.6 Recruitment | **NEXT** | — | 入口：plan §4.7 + 设计 §3.2/§5（I1–I5、I7、I8） |
 | T2.7 Market Experience & NPC | PLANNED | — | 本文件 §4.8 |
 | T2.8 E2E / Hardening / Freeze | PLANNED | — | 本文件 §13/§14 |
 
@@ -470,3 +470,24 @@ cd apps/web && npm run build
     assessment company=1（快照）、能力行得分有证据背书（77@18 / 99@4）、无 employee 行；
     市场 API：detail 200（traits 8 / general 10 / timeline 7 / evidence 20 / market_state=listed）、
     `origin=issued` 与 `quality_tier=rare` 过滤各命中 2、无内部 id 泄露。
+
+- **2026-09-10 · T2.5 DONE**：commit 哈希见紧随的 `docs(t2): T2.5 进度落盘` 提交（避免自引用哈希）。
+  - 后端：`talent/fit/engine.py` 抽出 `_calculate(owner=FitOwner)` 共享核心 +
+    `calculate_for_person`；`FitOwner.hash_payload`（person 优先）→ 同一人两条路径 **hash 相等**；
+    `PositionFitResult` 增加 `person_id`、owner 字段可空；`hashing.inputs_hash` 改 owner 口径；
+    `service.calculate_person_fit`（职位须属本公司或全局模板，否则 404）；
+    API `GET /persons/{id}/fit`（自有 person）与 `GET /market/listings/{id}/fit`（公开投影）；
+    市场搜索 `position_definition_id` 落地：附 Fit 摘要 + 排序（**不筛人**）；
+    `MarketSearchQuery.limit=None` = 不分页；`MarketListingItemOut`（列表项带 fit，
+    POST 挂牌响应形状不变 —— T2.3 契约冻结）。
+  - 测试：后端 +9（`tests/test_person_fit.py`）：person/employee 对拍（含 inputs_hash）、
+    person-only 候选可算、缺证据 UNRATED/INSUFFICIENT_DATA（不伪造 0）、persons Fit 公司边界、
+    市场 Fit 公开投影（无 inputs_hash/owner id/内部 id）、closed/unknown/别家公司职位 404、
+    搜索标注+排序且未评估仍在列、Fit 只读。
+  - 门禁：pytest **745 passed** / 6 deselected；ruff 全绿、format 仅 5 个既有 WIP 红；
+    alembic check 无漂移（head 仍 `c5d7e9f1b3a6` / v30，**本阶段无迁移**）；
+    web 314 passed + tsc/eslint/prettier 全绿（未改前端）。
+  - 实机：市场搜索带 engineer 职位 → 3 名在市候选人全部附 Fit 摘要并按 score 降序
+    （0.976 → 0.944 → 未评估最后）；市场 Fit 详情 200（12 条逐项评估、无 inputs_hash/owner id）；
+    **对拍**：`/persons/1/fit` 与 `/employees/1/position-fit/4` 八项字段全等、hash 相等
+    （owner 分别为 person-only 与 person+employee）；未知 listing/职位 → 404。

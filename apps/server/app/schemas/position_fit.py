@@ -37,7 +37,9 @@ class FitEvaluationOut(BaseModel):
 
 
 class PositionFitOut(BaseModel):
-    employee_id: int
+    #: owner（T2.5）：市场候选人为 person-only；在册员工两者都有
+    employee_id: int | None = None
+    person_id: int | None = None
     position_definition_id: int
     position_code: str
     configured: bool

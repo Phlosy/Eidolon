@@ -14,13 +14,19 @@ from sqlalchemy.orm import Session
 
 from app.api.scope import resolve_company_id
 from app.core.database import get_db
+from app.models.enums import MarketListingStatus
+from app.models.position import PositionDefinition
+from app.repositories import market as market_repo
 from app.schemas.market import (
     MarketCandidateOut,
+    MarketFitOut,
     MarketListingCreateIn,
     MarketListingOut,
     MarketListingPageOut,
 )
 from app.services import market as market_service
+from app.talent.fit import service as fit_service
+from app.talent.market import read_model as market_read_model
 from app.talent.market.contracts import MarketSearchQuery
 
 router = APIRouter(prefix="/market", tags=["market"])
@@ -28,6 +34,16 @@ router = APIRouter(prefix="/market", tags=["market"])
 
 def _http_error(exc: market_service.MarketError) -> HTTPException:
     return HTTPException(status_code=exc.http_status, detail=exc.reason)
+
+
+def _market_position_or_404(
+    db: Session, position_definition_id: int, company_id: int | None
+) -> PositionDefinition:
+    """市场侧职位解析：本公司职位或全局模板；其它一律 404（不泄露存在性）。"""
+    position = db.get(PositionDefinition, position_definition_id)
+    if position is None or (position.company_id is not None and position.company_id != company_id):
+        raise HTTPException(status_code=404, detail="position not found")
+    return position
 
 
 @router.post("/listings", response_model=MarketListingOut)
@@ -85,15 +101,33 @@ def list_listings(
     text: str | None = Query(None, description="按姓名 / 身份 ID 模糊搜索"),
     origin: str | None = Query(None, description="trained | blank | issued"),
     quality_tier: str | None = Query(None, description="发行方档位（T2.4）"),
+    position_definition_id: int | None = Query(
+        None, description="带此参数时附 Fit 摘要并按匹配度排序（不筛人：未知仍列出）"
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    company_id: int | None = Depends(resolve_company_id),
     db: Session = Depends(get_db),
 ) -> dict:
-    """在市人才列表（仅 active 挂牌，公开投影）。"""
-    query = MarketSearchQuery(
-        text=text, origin=origin, quality_tier=quality_tier, limit=limit, offset=offset
+    """在市人才列表（仅 active 挂牌，公开投影）。
+
+    `position_definition_id`（T2.5）：附 Fit 摘要 + 按匹配度排序 —— **永不剔除**
+    未评估的人（Unknown != Bad）。
+    """
+    position = (
+        _market_position_or_404(db, position_definition_id, company_id)
+        if position_definition_id is not None
+        else None
     )
-    return market_service.search(db, query)
+    query = MarketSearchQuery(
+        text=text,
+        origin=origin,
+        quality_tier=quality_tier,
+        position_definition_id=position_definition_id,
+        limit=limit,
+        offset=offset,
+    )
+    return market_service.search(db, query, position=position, company_id=company_id)
 
 
 @router.get("/listings/{listing_id}", response_model=MarketCandidateOut)
@@ -113,3 +147,33 @@ def get_listing(
         )
     except market_service.MarketError as exc:
         raise _http_error(exc) from exc
+
+
+@router.get("/listings/{listing_id}/fit", response_model=MarketFitOut)
+def get_listing_fit(
+    listing_id: int,
+    position_definition_id: int = Query(..., description="职位（本公司或全局模板）"),
+    profile_version_id: int | None = Query(None, description="显式画像版本（缺省 ACTIVE）"),
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """候选人 × 职位 的 Fit（市场公开投影）。
+
+    只对 **active** 挂牌开放；返回 score/confidence/coverage/missing，
+    **不含** inputs_hash 与 owner id（设计 §6.2）。
+    """
+    listing = market_repo.get_listing(db, listing_id)
+    if listing is None or listing.status != MarketListingStatus.active.value:
+        raise HTTPException(status_code=404, detail="listing_not_found")
+    position = _market_position_or_404(db, position_definition_id, company_id)
+    try:
+        result = fit_service.calculate_person_fit(
+            db,
+            person_id=int(listing.person_id),
+            position_definition_id=int(position.id),
+            company_id=company_id,
+            profile_version_id=profile_version_id,
+        )
+    except fit_service.FitDomainError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return market_read_model.candidate_fit_out(listing_id, result)

@@ -185,6 +185,7 @@ repository 层强制）；**Market 是唯一的跨公司读取域**，且必须�
 | 证据 | `competency_evidence` 公开字段：`source_kind`、`signal`、`occurred_at`、`observation`、挂载的 competency | 履历=证据链，支持下钻 |
 | 知识摘要 | `topic` + `scope` + `count`（**不含正文**） | 正文在招募后可读（private 随人走） |
 | 挂牌信息 | listing status、quality_tier、listed_at、participant 显示名 | T2.3 |
+| Fit | 对某职位的匹配：score / confidence / coverage / missing / 逐项评估状态 | T2.5；**不含** inputs_hash 与 owner id |
 
 ### 6.2 明确不公开
 
@@ -327,6 +328,24 @@ Protocol 由远端实现，**不修改**本契约。
 - 触发：CLI `scripts/issue_talent.py` + `make market-issue ISSUE_ARGS="--tier rare --count 2"`
   （不做发行 UI —— 属 T2.7）；
 - 玩家端点 `POST /cultivation/characters` **仍拒绝** `origin=issued`（玩家不能自铸官方角色）。
+
+## 10c. Fit（T2.5 落地形态）
+
+- **一套引擎两个入口**：`talent/fit/engine.py::_calculate(owner=FitOwner(...))` 是唯一核心；
+  `calculate(employee_id=…)` 与 `calculate_for_person(person_id=…)` 都只是入口适配
+  （员工入口行为逐字不变，既有 24 条 P8 测试全绿）；
+- **owner 口径 person 优先（R1 延续）**：`FitOwner.hash_payload` 在 person 可解析时只吃
+  person —— 同一个人的两条路径产出**同一个 `inputs_hash`**（实测对拍相等）；
+  employee_id 只在 person 解析不到时回落参与（legacy 行）；
+- 能力行读法：员工路径保持 `read_criterion`（person 优先 + 旧口径回落）；
+  person 路径直接按 `person_id` 读（市场候选人没有 employee 行）；
+- **市场公开投影**（`talent/market/read_model.candidate_fit_out`）：score / confidence /
+  coverage / missing / 逐项评估（`candidate_score` 命名）齐全；
+  **不含** `inputs_hash`、owner id、`requirement_id`、`competency_definition_id`；
+- 市场搜索带 `position_definition_id`：为每位在市候选人附 Fit **摘要** + 按匹配度排序
+  （有分在前、未评估在后），**从不筛人**（Unknown != Bad）；该路径需要全量再切片，
+  因此 `MarketSearchQuery.limit = None` 表示不分页（契约已标注）；
+- 非 active 挂牌 / 别家公司职位 / 未知职位 → 404（不泄露存在性）。
 
 ## 11. 与 M1 / M2 的边界
 

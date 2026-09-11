@@ -33,6 +33,7 @@ from app.talent.fit import hashing
 from app.talent.fit.evaluator import classify, evaluate, normalized_fit
 from app.talent.fit.models import (
     EvaluationStatus,
+    FitOwner,
     FitStatus,
     GapType,
     PositionFitResult,
@@ -87,7 +88,49 @@ def calculate(
     position: PositionDefinition,
     profile_version_id: int | None = None,
 ) -> PositionFitResult:
-    """计算一名员工对一个职位的匹配（profile_version 缺省用 ACTIVE；无画像 → NOT_EVALUABLE）。"""
+    """计算一名员工对一个职位的匹配（入口保持不变；内部委托共享核心）。
+
+    profile_version 缺省用 ACTIVE；无画像 → NOT_EVALUABLE。
+    """
+    return _calculate(
+        db,
+        owner=FitOwner(
+            person_id=person_repo.resolve_person_id(db, employee_id),
+            employee_id=employee_id,
+        ),
+        position=position,
+        profile_version_id=profile_version_id,
+    )
+
+
+def calculate_for_person(
+    db: Session,
+    *,
+    person_id: int,
+    position: PositionDefinition,
+    profile_version_id: int | None = None,
+) -> PositionFitResult:
+    """计算一名 **person（候选人 / 在册员工的"人"）** 对一个职位的匹配（T2.5）。
+
+    与员工入口共用同一核心：同一 person 的两条路径结果逐字段一致（含 inputs_hash）。
+    市场候选人没有 employee 行，因此能力行直接按 person_id 读（T2.1 的读面）。
+    """
+    return _calculate(
+        db,
+        owner=FitOwner(person_id=person_id),
+        position=position,
+        profile_version_id=profile_version_id,
+    )
+
+
+def _calculate(
+    db: Session,
+    *,
+    owner: FitOwner,
+    position: PositionDefinition,
+    profile_version_id: int | None = None,
+) -> PositionFitResult:
+    """共享核心：owner（person 或 employee）× PositionProfileVersion → 派生结果。"""
     position_id = int(position.id)
     now = datetime.now(UTC)
 
@@ -95,12 +138,13 @@ def calculate(
     if profile_version_id is not None:
         version = db.get(PositionProfileVersion, profile_version_id)
         if version is None or version.position_definition_id != position_id:
-            return _nonevaluable(position, reason="profile_version_not_found")
+            return _nonevaluable(owner, position, reason="profile_version_not_found")
     else:
         version = profile_service.active_profile(db, position_id)
 
     result = PositionFitResult(
-        employee_id=employee_id,
+        employee_id=owner.employee_id,
+        person_id=owner.person_id,
         position_definition_id=position_id,
         position_code=position.code,
         engine_version=POSITION_FIT_ENGINE_VERSION,
@@ -112,7 +156,7 @@ def calculate(
         result.qualification_status = QualificationStatus.INSUFFICIENT_DATA
         result.configured = False
         result.inputs_hash = hashing.inputs_hash(
-            employee_id=employee_id,
+            **owner.hash_payload,
             position_definition_id=position_id,
             profile_version=None,
             requirements=[],
@@ -123,20 +167,29 @@ def calculate(
     requirements = _requirements(db, version)
     definitions = _competency_map(db, {req.competency_definition_id for req in requirements})
     domains = _domain_map(db, {definition.domain_id for definition in definitions.values()})
-    competency_rows = {
-        row.competency_definition_id: row
-        for row in db.scalars(
+    definition_ids = [req.competency_definition_id for req in requirements]
+    if owner.employee_id is not None:
+        # 员工路径：逐字保持 R1.3 的读口径（person 优先 + 旧口径回落）
+        owner_rows = db.scalars(
             select(EmployeeCompetency).where(
-                # R1.3：能力行按 person 口径读（单一入口换算，带旧口径回落）
                 person_repo.read_criterion(
-                    db, employee_id, EmployeeCompetency.person_id, EmployeeCompetency.employee_id
+                    db,
+                    owner.employee_id,
+                    EmployeeCompetency.person_id,
+                    EmployeeCompetency.employee_id,
                 ),
-                EmployeeCompetency.competency_definition_id.in_(
-                    [req.competency_definition_id for req in requirements]
-                ),
+                EmployeeCompetency.competency_definition_id.in_(definition_ids),
             )
         )
-    }
+    else:
+        # person 路径（市场候选人）：没有 employee 行，直接按 person_id 读
+        owner_rows = db.scalars(
+            select(EmployeeCompetency).where(
+                EmployeeCompetency.person_id == owner.person_id,
+                EmployeeCompetency.competency_definition_id.in_(definition_ids),
+            )
+        )
+    competency_rows = {row.competency_definition_id: row for row in owner_rows}
     if position.assessment_profile_id:
         from app.models.assessment import AssessmentProfile
 
@@ -184,7 +237,7 @@ def calculate(
     _fill_classifications(result, evaluations)
     _fill_status(result, evaluations)
     result.inputs_hash = hashing.inputs_hash(
-        employee_id=employee_id,
+        **owner.hash_payload,
         position_definition_id=position_id,
         profile_version=version.version,
         requirements=[
@@ -213,9 +266,12 @@ def calculate(
     return result
 
 
-def _nonevaluable(position: PositionDefinition, *, reason: str) -> PositionFitResult:
+def _nonevaluable(
+    owner: FitOwner, position: PositionDefinition, *, reason: str
+) -> PositionFitResult:
     return PositionFitResult(
-        employee_id=0,
+        employee_id=owner.employee_id,
+        person_id=owner.person_id,
         position_definition_id=int(position.id),
         position_code=position.code,
         fit_status=FitStatus.NOT_EVALUABLE,
@@ -361,13 +417,20 @@ def calculate_many(
         version = db.get(PositionProfileVersion, profile_version_id)
         if version is None or version.position_definition_id != position_id:
             return {
-                employee_id: _nonevaluable(position, reason="profile_version_not_found")
+                employee_id: _nonevaluable(
+                    FitOwner(
+                        person_id=person_repo.resolve_person_id(db, employee_id),
+                        employee_id=employee_id,
+                    ),
+                    position,
+                    reason="profile_version_not_found",
+                )
                 for employee_id in employee_ids
             }
     else:
         version = profile_service.active_profile(db, position_id)
 
-    nonevaluable = _nonevaluable(position, reason="no_active_profile")
+    nonevaluable = _nonevaluable(FitOwner(), position, reason="no_active_profile")
     if version is None:
         return {employee_id: nonevaluable for employee_id in employee_ids}
 
@@ -455,7 +518,8 @@ def calculate_many(
         _fill_classifications(result, evaluations)
         _fill_status(result, evaluations)
         result.inputs_hash = hashing.inputs_hash(
-            employee_id=employee_id,
+            owner_person_id=person_ids.get(employee_id),
+            owner_employee_id=None if employee_id in person_ids else employee_id,
             position_definition_id=position_id,
             profile_version=version.version,
             requirements=[

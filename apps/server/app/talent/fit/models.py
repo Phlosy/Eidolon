@@ -51,6 +51,26 @@ class FitStatus:
     CRITICAL_GAP = "CRITICAL_GAP"
 
 
+@dataclass(frozen=True)
+class FitOwner:
+    """Fit 的 owner 口径（T2.5）：**person 优先**，employee 仅作回落/上下文。
+
+    市场里的候选人没有 employee 行（`person_id` only）；在册员工两条都有。
+    同一个人的两条路径必须产出同一份结果（含 `inputs_hash`）—— 哈希只吃
+    person 口径，employee 只在 person 解析不到时（legacy 行）才进入哈希。
+    """
+
+    person_id: int | None = None
+    employee_id: int | None = None
+
+    @property
+    def hash_payload(self) -> dict:
+        return {
+            "owner_person_id": self.person_id,
+            "owner_employee_id": None if self.person_id is not None else self.employee_id,
+        }
+
+
 @dataclass
 class RequirementEvaluation:
     """一个 PositionCompetencyRequirement × EmployeeCompetency 的评估（纯计算）。"""
@@ -87,9 +107,11 @@ class RequirementEvaluation:
 class PositionFitResult:
     """一对一 Fit 分析结果（只读、确定性、版本化）。"""
 
-    employee_id: int
-    position_definition_id: int
-    position_code: str
+    #: owner 口径（T2.5）：市场候选人为 person-only（employee_id=None）
+    employee_id: int | None = None
+    person_id: int | None = None
+    position_definition_id: int = 0
+    position_code: str = ""
     profile_version_id: int | None = None
     profile_version: int | None = None
     profile_status: str | None = None

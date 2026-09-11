@@ -43,7 +43,9 @@ def _evaluation_payload(evaluation) -> dict:
 
 def serialize(result: PositionFitResult) -> dict:
     return {
+        # owner：市场候选人 person-only（employee_id=None）；在册员工两者都有（T2.5）
         "employee_id": result.employee_id,
+        "person_id": result.person_id,
         "position_definition_id": result.position_definition_id,
         "position_code": result.position_code,
         "configured": result.configured,

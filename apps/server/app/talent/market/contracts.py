@@ -73,5 +73,6 @@ class MarketSearchQuery:
     origin: str | None = None
     quality_tier: str | None = None
     position_definition_id: int | None = None
-    limit: int = 50
+    #: None = 不分页（Fit 排序路径：先取全量、算分、排序，再在 service 层切片）
+    limit: int | None = 50
     offset: int = 0

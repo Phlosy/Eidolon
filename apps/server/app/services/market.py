@@ -172,11 +172,20 @@ def close_listing_for_recruitment(
     )
 
 
-def search(db: Session, query: MarketSearchQuery) -> dict:
-    """市场检索（公开投影，见 market/read_model.listing_page）。"""
+def search(
+    db: Session,
+    query: MarketSearchQuery,
+    *,
+    position=None,  # noqa: ANN001  （PositionDefinition；T2.5 Fit 排序）
+    company_id: int | None = None,
+) -> dict:
+    """市场检索（公开投影，见 market/read_model.listing_page）。
+
+    带 `position` 时为每个候选人附 Fit 摘要并按匹配度排序（不筛人 —— Unknown != Bad）。
+    """
     from app.talent.market import read_model as market_read_model
 
-    return market_read_model.listing_page(db, query)
+    return market_read_model.listing_page(db, query, position=position, company_id=company_id)
 
 
 def listing_detail(db: Session, listing_id: int, *, timeline_limit: int, evidence_limit: int):

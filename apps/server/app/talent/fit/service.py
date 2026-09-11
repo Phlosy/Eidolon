@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.organization import Employee
 from app.models.position import PositionDefinition
+from app.talent.fit import engine
 from app.talent.fit.engine import calculate
 from app.talent.fit.models import PositionFitResult
 
@@ -37,6 +38,39 @@ def calculate_fit(
     return calculate(
         db,
         employee_id=employee_id,
+        position=position,
+        profile_version_id=profile_version_id,
+    )
+
+
+def calculate_person_fit(
+    db: Session,
+    *,
+    person_id: int,
+    position_definition_id: int,
+    company_id: int | None,
+    profile_version_id: int | None = None,
+) -> PositionFitResult:
+    """Person × Position 的匹配（T2.5）：市场候选人没有 employee 行。
+
+    与员工入口**共用同一核心**（`engine.calculate_for_person` → `_calculate`），
+    同一 person 两条路径结果逐字段一致（含 inputs_hash，见 tests/test_person_fit.py）。
+
+    公司边界：职位属本公司（或全局模板 company_id IS NULL），否则 404 语义
+    （`position not found`，不泄露存在性 —— 与市场读面一致）。
+    """
+    from app.repositories import persons as person_repo
+
+    if person_repo.get_person(db, person_id) is None:
+        raise FitDomainError("person not found")
+    position = db.get(PositionDefinition, position_definition_id)
+    if position is None:
+        raise FitDomainError("position not found")
+    if position.company_id is not None and position.company_id != company_id:
+        raise FitDomainError("position not found")
+    return engine.calculate_for_person(
+        db,
+        person_id=person_id,
         position=position,
         profile_version_id=profile_version_id,
     )

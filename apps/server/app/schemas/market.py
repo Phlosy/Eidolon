@@ -31,8 +31,18 @@ class MarketListingOut(BaseModel):
     listed_by: str
 
 
+class MarketListingItemOut(MarketListingOut):
+    """列表项：在挂牌投影上追加 Fit 摘要（T2.5；仅请求带 position 时非空）。
+
+    与挂牌响应（`MarketListingOut`）分开：POST 的返回形状是 T2.3 冻结的公开契约，
+    不因 T2.5 的新字段而变化。
+    """
+
+    fit: MarketFitSummaryOut | None = None
+
+
 class MarketListingPageOut(BaseModel):
-    items: list[MarketListingOut]
+    items: list[MarketListingItemOut]
     total: int
     limit: int
     offset: int
@@ -66,6 +76,76 @@ class MarketEvidenceOut(BaseModel):
     signal: int | None = None
     quality: float | None = None
     occurred_at: datetime
+
+
+class MarketFitEvaluationOut(BaseModel):
+    """Fit 逐项评估的**公开投影**（无 requirement_id / competency_definition_id / inputs_hash）。"""
+
+    code: str
+    name: str
+    domain_code: str
+    kind: str
+    requirement_type: str
+    critical: bool
+    minimum_score: int | None = None
+    target_score: int | None = None
+    minimum_confidence: float | None = None
+    #: 候选人侧（null = 未评估，**不是 0**）
+    candidate_score: int | None = None
+    candidate_confidence: float | None = None
+    evaluation_status: str
+    reason_code: str
+    gap_type: str | None = None
+    is_unknown: bool
+    is_strength: bool
+    is_development_opportunity: bool
+    margin_to_minimum: int | None = None
+    margin_to_target: int | None = None
+
+
+class MarketFitSummaryOut(BaseModel):
+    """列表页的 Fit 摘要（详情页用 MarketFitOut）。"""
+
+    position_definition_id: int
+    fit_status: str
+    qualification_status: str
+    known_fit_score: float | None = None
+    fit_confidence: float | None = None
+    requirement_coverage: float
+    known_count: int
+    total_count: int
+
+
+class MarketFitOut(BaseModel):
+    """列表详情页的市场 Fit（public 投影：score/confidence/coverage/missing，无 inputs_hash）。"""
+
+    listing_id: int
+    position_definition_id: int
+    position_code: str
+    configured: bool
+    profile_version_id: int | None = None
+    profile_version: int | None = None
+    fit_status: str
+    qualification_status: str
+    known_fit_score: float | None = None
+    overall_fit_score: float | None = None
+    fit_confidence: float | None = None
+    requirement_coverage: float
+    required_coverage: float
+    preferred_coverage: float
+    known_count: int
+    total_count: int
+    general_fit: float | None = None
+    professional_fit: float | None = None
+    strengths: list[MarketFitEvaluationOut]
+    gaps: list[MarketFitEvaluationOut]
+    uncertainties: list[MarketFitEvaluationOut]
+    development_opportunities: list[MarketFitEvaluationOut]
+    requirement_evaluations: list[MarketFitEvaluationOut]
+    engine_version: str
+    policy_version: str
+    serializer_version: str
+    calculated_at: datetime | None = None
 
 
 class MarketListingSummaryOut(BaseModel):

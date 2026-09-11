@@ -21,6 +21,9 @@ from app.api.scope import resolve_company_id
 from app.core.database import get_db
 from app.schemas.cultivation import EducationEventOut
 from app.schemas.person import PersonEvidenceOut, PersonProfileOut
+from app.schemas.position_fit import PositionFitOut
+from app.talent.fit import serializer as fit_serializer
+from app.talent.fit import service as fit_service
 from app.talent.person import access as person_access
 from app.talent.person import read_model
 
@@ -88,3 +91,29 @@ def get_person_evidence(
         source_type=source_type,
         competency=competency,
     )
+
+
+@router.get("/{person_id}/fit", response_model=PositionFitOut)
+def get_person_fit(
+    person_id: int,
+    position_definition_id: int = Query(..., description="职位（本公司或全局模板）"),
+    profile_version_id: int | None = Query(None, description="显式画像版本（缺省 ACTIVE）"),
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Person × Position 的匹配（T2.5）：市场候选人与在册员工共用同一引擎。
+
+    公司边界：person 必须是自有的（T2.1 策略）；职位属本公司或全局模板，否则 404。
+    """
+    person = person_access.visible_person_or_404(db, person_id, company_id)
+    try:
+        result = fit_service.calculate_person_fit(
+            db,
+            person_id=int(person.id),
+            position_definition_id=position_definition_id,
+            company_id=company_id,
+            profile_version_id=profile_version_id,
+        )
+    except fit_service.FitDomainError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return fit_serializer.serialize(result)
