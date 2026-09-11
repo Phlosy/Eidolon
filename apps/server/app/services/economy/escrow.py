@@ -50,6 +50,19 @@ class EscrowError(RuntimeError):
 
 
 @dataclass(frozen=True)
+class EscrowPayoutLeg:
+    """一条拨付腿（多腿结算，设计 §24）：收款账户 + 金额 + 幂等键后缀。
+
+    收款账户可以是公司 actor 账户，也可以是**系统账户**（手续费进 Treasury/Burn）——
+    腿组合仍是 `escrow_release`（Debit 收款 / Credit escrow），不新增腿蓝图（E26）。
+    """
+
+    account_id: int
+    amount: int
+    suffix: str
+
+
+@dataclass(frozen=True)
 class EscrowView:
     """托管状态视图（读面/返回用）。"""
 
@@ -154,7 +167,169 @@ class EscrowService:
         logger.info("escrow funded order=%s escrow=%s amount=%d", order_id, escrow.id, amount)
         return funded
 
+    def fund_for_contract(
+        self,
+        *,
+        contract_id: int,
+        payer: EconomicActor,
+        amount: int,
+        expires_at: datetime | None = None,
+        metadata: dict | None = None,
+        commit: bool = False,
+    ) -> Escrow:
+        """为合同锁资（§21/§23）：与订单托管同一套机制，只是一单一托管键换成 `contract_id`。
+
+        **对价必须 fully funded**（E11 的合同形态）：发布方在合同创建时就锁资，
+        条款谈成后才允许开工；取消/过期 ⇒ 退款。
+        """
+        existing = self.get_for_contract(contract_id)
+        if existing is not None:
+            if int(existing.amount) != int(amount):
+                raise EscrowError("escrow_amount_mismatch", http_status=409)
+            return existing
+
+        payer_kind, payer_ref = economy_repo.actor_columns(payer)
+        data = {
+            "contract_id": int(contract_id),
+            "payer_actor_kind": payer_kind,
+            "payer_actor_ref": payer_ref,
+            "payee_actor_kind": None,
+            "payee_actor_ref": None,
+            "amount": int(amount),
+            "currency": Currency.credit.value,
+            "status": EscrowStatus.unfunded.value,
+            "expires_at": expires_at,
+            "metadata_json": dict(metadata or {}),
+        }
+        try:
+            escrow = economy_repo.insert_escrow(self.db, **data)
+        except IntegrityError:
+            self.db.rollback()
+            winner = self.get_for_contract(contract_id)
+            if winner is None:  # pragma: no cover - 冲突必然来自同合同
+                raise
+            return winner
+
+        account = self._ensure_account(escrow=escrow)
+        posting = LedgerService(self.db).escrow_fund(
+            escrow_account_id=int(account.id),
+            payer_account_id=self._actor_account_id(payer),
+            amount=int(amount),
+            reason=f"escrow:contract:{contract_id}",
+            reference_type="escrow",
+            reference_id=str(int(escrow.id)),
+            idempotency_key=f"escrow_fund:{int(escrow.id)}",
+            metadata={"contract_id": int(contract_id)},
+            commit=False,
+        )
+        if (
+            economy_repo.transition_escrow(
+                self.db,
+                escrow_id=int(escrow.id),
+                from_statuses=(EscrowStatus.unfunded.value,),
+                to_status=EscrowStatus.funded,
+                funded_transaction_id=int(posting.transaction.id),
+                funded_at=utcnow(),
+            )
+            == 0
+        ):  # pragma: no cover - UNFUNDED 是唯一初始态
+            raise EscrowError("escrow_not_fundable")
+        self.db.flush()
+        self.db.expire_all()
+        funded = self._require(int(escrow.id))
+        if commit:
+            self.db.commit()
+        logger.info("escrow funded contract=%s escrow=%s amount=%d", contract_id, escrow.id, amount)
+        return funded
+
     # ---------------------------------------------------------------- 放款 / 退款
+
+    def release_legs(
+        self,
+        escrow_id: int,
+        *,
+        legs: list[EscrowPayoutLeg],
+        payee: EconomicActor | None = None,
+        commit: bool = False,
+    ) -> tuple[Escrow, list[int], bool]:
+        """**多腿放款**（M1.6 合同结算）：一次 `FUNDED → RELEASED`，多条拨付腿。
+
+        - 腿金额之和必须**等于**托管金额（不多发也不留下残额）；
+        - 状态只迁移一次（CAS），腿各自有幂等键 `escrow_release:<id>:<suffix>`；
+        - 返回 `(escrow, [交易 id...], created)`：`created=False` 表示命中了既有放款（幂等重放）。
+        """
+        escrow = self._require(escrow_id)
+        if escrow.status == EscrowStatus.released.value:
+            return escrow, self._released_transaction_ids(escrow), False
+        if escrow.status != EscrowStatus.funded.value:
+            raise EscrowError(f"escrow_not_releasable:{escrow.status}")
+        if not legs:
+            raise EscrowError("escrow_payout_legs_required", http_status=422)
+        total = sum(int(leg.amount) for leg in legs)
+        if total != int(escrow.amount):
+            raise EscrowError(
+                f"escrow_payout_legs_must_sum_to_amount:{total}!={int(escrow.amount)}",
+                http_status=422,
+            )
+        if any(int(leg.amount) <= 0 for leg in legs):
+            raise EscrowError("escrow_payout_leg_amount_must_be_positive", http_status=422)
+
+        if (
+            economy_repo.transition_escrow(
+                self.db,
+                escrow_id=escrow_id,
+                from_statuses=(EscrowStatus.funded.value,),
+                to_status=EscrowStatus.released,
+                released_at=utcnow(),
+                payee_actor_kind=economy_repo.actor_columns(payee)[0] if payee else None,
+                payee_actor_ref=economy_repo.actor_columns(payee)[1] if payee else None,
+            )
+            == 0
+        ):
+            self.db.expire_all()
+            current = self._require(escrow_id)
+            if current.status == EscrowStatus.released.value:
+                return current, self._released_transaction_ids(current), False
+            raise EscrowError(f"escrow_not_releasable:{current.status}")
+
+        account = self._account(escrow)
+        transaction_ids: list[int] = []
+        ledger = LedgerService(self.db)
+        for leg in legs:
+            posting = ledger.escrow_release(
+                escrow_account_id=int(account.id),
+                payee_account_id=int(leg.account_id),
+                amount=int(leg.amount),
+                reason=f"escrow_release:{escrow.work_order_id or escrow.contract_id}",
+                reference_type="escrow",
+                reference_id=str(escrow_id),
+                idempotency_key=f"escrow_release:{escrow_id}:{leg.suffix}",
+                commit=False,
+            )
+            transaction_ids.append(int(posting.transaction.id))
+        escrow.released_transaction_id = transaction_ids[0]
+        escrow.metadata_json = {
+            **(escrow.metadata_json or {}),
+            "released_transaction_ids": transaction_ids,
+        }
+        self.db.flush()
+        self.db.expire_all()
+        released = self._require(escrow_id)
+        if commit:
+            self.db.commit()
+        logger.info(
+            "escrow released multi-leg escrow=%s legs=%d amount=%d",
+            escrow_id,
+            len(legs),
+            escrow.amount,
+        )
+        return released, transaction_ids, True
+
+    def _released_transaction_ids(self, escrow: Escrow) -> list[int]:
+        stored = (escrow.metadata_json or {}).get("released_transaction_ids")
+        if isinstance(stored, list) and stored:
+            return [int(item) for item in stored]
+        return [int(escrow.released_transaction_id)] if escrow.released_transaction_id else []
 
     def release(
         self,
@@ -170,44 +345,20 @@ class EscrowService:
         if escrow.status != EscrowStatus.funded.value:
             raise EscrowError(f"escrow_not_releasable:{escrow.status}")
 
-        # CAS 先占位：与 refund 竞争时只有一个赢家（§33）
-        if (
-            economy_repo.transition_escrow(
-                self.db,
-                escrow_id=escrow_id,
-                from_statuses=(EscrowStatus.funded.value,),
-                to_status=EscrowStatus.released,
-                released_at=utcnow(),
-                payee_actor_kind=economy_repo.actor_columns(payee)[0],
-                payee_actor_ref=economy_repo.actor_columns(payee)[1],
-            )
-            == 0
-        ):
-            self.db.expire_all()
-            current = self._require(escrow_id)
-            if current.status == EscrowStatus.released.value:
-                return current, False
-            raise EscrowError(f"escrow_not_releasable:{current.status}")
-
-        account = self._account(escrow)
-        posting = LedgerService(self.db).escrow_release(
-            escrow_account_id=int(account.id),
-            payee_account_id=self._actor_account_id(payee),
-            amount=int(escrow.amount),
-            reason=f"escrow_release:{escrow.work_order_id}",
-            reference_type="escrow",
-            reference_id=str(escrow_id),
-            idempotency_key=f"escrow_release:{escrow_id}",
-            commit=False,
+        # 单腿 = 多腿的特例（腿组合完全相同；CAS 与幂等语义一致）
+        released, _transaction_ids, created = self.release_legs(
+            escrow_id,
+            legs=[
+                EscrowPayoutLeg(
+                    account_id=self._actor_account_id(payee),
+                    amount=int(escrow.amount),
+                    suffix="payee",
+                )
+            ],
+            payee=payee,
+            commit=commit,
         )
-        escrow.released_transaction_id = int(posting.transaction.id)
-        self.db.flush()
-        self.db.expire_all()
-        released = self._require(escrow_id)
-        if commit:
-            self.db.commit()
-        logger.info("escrow released escrow=%s amount=%d", escrow_id, escrow.amount)
-        return released, True
+        return released, created
 
     def refund(self, escrow_id: int, *, commit: bool = False) -> tuple[Escrow, bool]:
         """退回原出资人（`FUNDED → REFUNDED`）。返回 `(escrow, created)`；重复调用幂等。"""
@@ -275,6 +426,9 @@ class EscrowService:
 
     def get_for_order(self, order_id: int) -> Escrow | None:
         return economy_repo.find_escrow_for_order(self.db, work_order_id=order_id)
+
+    def get_for_contract(self, contract_id: int) -> Escrow | None:
+        return economy_repo.find_escrow_for_contract(self.db, contract_id=contract_id)
 
     def view_for_order(self, order_id: int) -> EscrowView | None:
         escrow = self.get_for_order(order_id)

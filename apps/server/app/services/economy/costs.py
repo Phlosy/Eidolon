@@ -395,6 +395,22 @@ class FeeService:
             bps=self.policy.market_fee_bps,
         )
 
+    def contract_quote(self, amount: int) -> FeeQuote:
+        """合同结算的报价（§7 合同手续费）：`contract_fee_bps`，从对价里扣。"""
+        if amount < 0:
+            raise CostError("amount_must_not_be_negative", http_status=422)
+        fee = self.policy.contract_fee_for(amount) if amount > 0 else 0
+        treasury, burn = self.policy.split_fee(fee) if fee > 0 else (0, 0)
+        assert treasury + burn == fee, "fee split must be conserving"
+        return FeeQuote(
+            gross=int(amount),
+            fee=fee,
+            net=int(amount) - fee,
+            treasury=treasury,
+            burn=burn,
+            bps=self.policy.contract_fee_bps,
+        )
+
     def charge_listing_fee(
         self,
         *,

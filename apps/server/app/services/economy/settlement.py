@@ -33,7 +33,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
 from app.economy.contracts import EconomicActor
-from app.models.enums import Currency, FundingMode
+from app.models.enums import Currency, FundingMode, LedgerAccountKind
 from app.repositories import economy as economy_repo
 from app.services.economy.ledger import LedgerTransaction, PostingResult
 from app.services.economy.monetary import MonetaryAuthority
@@ -65,6 +65,11 @@ class SettlementRequest:
     currency: Currency = Currency.credit
     #: `player_escrow` 必须给出托管 id（钱从哪一笔 Escrow 放出来）
     escrow_id: int | None = None
+    #: 退款（合同取消/失效/失败结算）：钱回出资人，而不是付给受益方
+    refund: bool = False
+    #: 手续费拆分（从对价里扣，M1.6 §24 多腿）：treasury + burn + 受益方净额 = amount
+    fee_treasury: int = 0
+    fee_burn: int = 0
 
 
 @dataclass(frozen=True)
@@ -84,33 +89,87 @@ class SettlementService:
         self.db = db
 
     def _settle_from_escrow(self, request: SettlementRequest, *, commit: bool) -> SettlementResult:
-        """玩家托管放款（`player_escrow`）：钱从该笔 Escrow 账户转给收款人，**不 mint**。"""
-        from app.services.economy.escrow import EscrowError, EscrowService
+        """玩家托管结算（`player_escrow`）：**放款**（可多腿 + 手续费拆分）或**退款**，绝不 mint。
+
+        多腿（§24）：受益方净额 + Treasury 手续费 + Burn 手续费，**三腿之和 = 托管金额**
+        （不多发、不留残额）；退款时单腿回出资人、不抽手续费（Posting Core 拒绝退给第三方）。
+        """
+        from app.services.economy.accounts import AccountService
+        from app.services.economy.escrow import EscrowError, EscrowPayoutLeg, EscrowService
 
         if request.escrow_id is None:
             raise SettlementError("escrow_id_required", http_status=422)
+        if request.fee_treasury < 0 or request.fee_burn < 0:
+            raise SettlementError("fee_must_not_be_negative", http_status=422)
+        if request.refund and (request.fee_treasury or request.fee_burn):
+            raise SettlementError("refund_cannot_carry_fees", http_status=422)
+
         service = EscrowService(self.db)
+        escrow = economy_repo.get_escrow(self.db, int(request.escrow_id))
+        if escrow is None:
+            raise SettlementError("escrow_not_found", http_status=404)
+        if int(escrow.amount) != int(request.amount):
+            raise SettlementError("escrow_amount_mismatch")
+
         try:
-            released, created = service.release(
-                int(request.escrow_id), payee=request.beneficiary, commit=False
-            )
+            if request.refund:
+                # 退款：单腿回出资人（钱回原路，不抽手续费）
+                refunded, created = service.refund(int(request.escrow_id), commit=False)
+                transaction_ids = (
+                    [int(refunded.refunded_transaction_id)]
+                    if refunded.refunded_transaction_id
+                    else []
+                )
+            else:
+                fee_total = int(request.fee_treasury) + int(request.fee_burn)
+                net = int(request.amount) - fee_total
+                if net <= 0:
+                    raise SettlementError("fee_exceeds_amount", http_status=422)
+                accounts = AccountService(self.db)
+                system = accounts.ensure_system_accounts()
+                legs = [
+                    EscrowPayoutLeg(
+                        account_id=int(accounts.ensure_account(request.beneficiary).id),
+                        amount=net,
+                        suffix="beneficiary",
+                    )
+                ]
+                if request.fee_treasury:
+                    legs.append(
+                        EscrowPayoutLeg(
+                            account_id=int(system[LedgerAccountKind.treasury].id),
+                            amount=int(request.fee_treasury),
+                            suffix="fee-treasury",
+                        )
+                    )
+                if request.fee_burn:
+                    legs.append(
+                        EscrowPayoutLeg(
+                            account_id=int(system[LedgerAccountKind.burn].id),
+                            amount=int(request.fee_burn),
+                            suffix="fee-burn",
+                        )
+                    )
+                _, transaction_ids, created = service.release_legs(
+                    int(request.escrow_id), legs=legs, payee=request.beneficiary, commit=False
+                )
         except EscrowError as exc:
             raise SettlementError(exc.reason, http_status=exc.http_status) from exc
-        if int(released.amount) != int(request.amount):
-            raise SettlementError("escrow_amount_mismatch")
-        transaction_id = released.released_transaction_id
-        if transaction_id is None:  # pragma: no cover - RELEASED 必然有交易
-            raise SettlementError("escrow_release_transaction_missing")
-        transaction = economy_repo.get_transaction(self.db, int(transaction_id))
+
+        if not transaction_ids:  # pragma: no cover - 放款/退款必然有交易
+            raise SettlementError("escrow_settlement_transaction_missing")
+        transaction = economy_repo.get_transaction(self.db, int(transaction_ids[0]))
         if transaction is None:  # pragma: no cover
-            raise SettlementError("escrow_release_transaction_missing")
+            raise SettlementError("escrow_settlement_transaction_missing")
         if commit:
             self.db.commit()
         logger.info(
-            "settlement player_escrow key=%s escrow=%s amount=%d created=%s",
+            "settlement player_escrow key=%s escrow=%s amount=%d refund=%s fee=%d created=%s",
             request.settlement_key,
             request.escrow_id,
             request.amount,
+            request.refund,
+            int(request.fee_treasury) + int(request.fee_burn),
             created,
         )
         return SettlementResult(
