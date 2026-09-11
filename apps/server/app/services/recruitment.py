@@ -106,7 +106,15 @@ class RecruitmentService:
         role: str | None = None,
         reason: str = "",
         actor_user_id: int | None = None,
+        commit: bool = True,
     ) -> RecruitmentResult:
+        """招募（唯一入口）。
+
+        `commit=False`（M1.7 人才交易接入）：**事务由调用方持有** —— 本方法不 commit、
+        不 rollback、不发事件（事件由调用方在提交后补发）。这样 `TalentTradeService` 能把
+        "锁资 → 招募 → 放款"放进同一个事务：招募失败 ⇒ 整笔回滚，钱不动（E13/E14/E15）。
+        默认 `commit=True` 时行为与历史完全一致（tests/test_recruitment.py 覆盖）。
+        """
         # ---- 1. listing：未知 404 / 非 active 409（陈旧页面语义，plan §9）----
         listing = market_repo.get_listing(db, listing_id)
         if listing is None:
@@ -158,7 +166,8 @@ class RecruitmentService:
             recruited_participant_id=int(player_participant.id),
         )
         if not claimed:
-            db.rollback()
+            if commit:
+                db.rollback()
             raise RecruitmentError("listing_not_active")
 
         try:
@@ -249,10 +258,25 @@ class RecruitmentService:
                 reason=reason,
                 actor="user",
             )
-            db.commit()
+            if commit:
+                db.commit()
         except Exception:
-            db.rollback()
+            if commit:
+                db.rollback()
             raise
+
+        if not commit:
+            # 调用方持有事务 ⇒ 事件也由调用方在提交后发（与 M1.5 的 post(commit=False) 同一约定）
+            return RecruitmentResult(
+                person_id=person_id,
+                employee_id=int(employee.id),
+                employee_slug=slug,
+                identity_id=_identity_id(db, person_id),
+                company_id=int(company_id),
+                listing_id=int(listing.id),
+                position_slot_id=int(slot.id) if slot is not None else None,
+                assignment_id=int(assignment.id) if assignment is not None else None,
+            )
 
         # ---- 8. 事件（只在事务成功提交后发）----
         company_id_int = int(company_id)
