@@ -214,7 +214,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 - 事实基线：`docs/current-system-audit.md`（Repository Audit：Domain Map / 真实业务链 / Top 10 gaps / 重复真相风险）
 - 契约代码：`app/work/contracts.py`（纯契约层，**不碰 Session、不建表、不发事件**）+ 8 个枚举进 `app/models/enums.py`
 - 守卫：`tests/test_m2_contract.py`（46 个；含 AST 守卫 + 不变量锚点表；已做 4 组反例注入验证）
-- 迁移：**无**（head 仍 `64fec2d13d9b` / v39）
+- 迁移：**无**（head 仍 `64fec2d13d9b` / v39）；M2.0 commit：`366c540`
 - **M2 最重要的三条纪律**（改 M2 代码前必读）：
   1. 系统**不得**替公司决定「接什么任务 / 怎么拆 / 选谁 / 是否返工 / 是否采购 / 是否辞退」（W1/W2/W3/W14/W17）；
   2. 职位是 `Responsibility + Authority + Expectations`，**不是** prompt / workflow / skill package；

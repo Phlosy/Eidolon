@@ -518,7 +518,7 @@ CEO A 离任 → CEO B 上任
 
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
-| M2.0 Work & Role Domain Contract Freeze | **DONE**（2026-09-11） | 见 §17 | 设计 + 执行基线 + 契约代码 + 守卫测试；**无迁移**；head 仍 `64fec2d13d9b` |
+| M2.0 Work & Role Domain Contract Freeze | **DONE**（2026-09-11） | `366c540` | 设计 + 执行基线 + 契约代码 + 守卫测试；**无迁移**；head 仍 `64fec2d13d9b` |
 
 ### Progress Log
 
@@ -565,6 +565,9 @@ M2.1 之前必须先确认产品决策（设计 §11.3 与 Audit §26）：
 ---
 
 ## 17. M2.0 交付证据
+
+**Commit**：`366c54052937d349321bb2629ecafce093f14cdd`（`feat(work): M2.0 work & role domain contract freeze`，
+8 files / +4690；本文件随后补记 commit hash 与门禁实测，同属 M2.0 收尾）。
 
 ### 17.1 实际修改/新增文件
 
