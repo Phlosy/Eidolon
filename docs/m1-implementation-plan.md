@@ -343,7 +343,7 @@ cd apps/web && npm run build
 
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
-| M1.0 Economic Domain Contract Freeze | **DONE**（2026-09-11） | `见 Progress Log` | 设计 + 执行基线与契约代码；**无迁移**；pytest 798 / web 328 |
+| M1.0 Economic Domain Contract Freeze | **DONE**（2026-09-11） | `2f75590` | 设计 + 执行基线与契约代码；**无迁移**；pytest 798 / web 328 |
 | M1.1 Accounts & Double-entry Ledger | **NEXT** | — | `[migration v32]`；入口：设计 §10–§12 + plan §4/M1.1 |
 | M1.2 Monetary Authority & Reward System | PLANNED | — | `[migration v33]` |
 | M1.3 Official Work Market | PLANNED | — | `[migration v34]` |
@@ -357,7 +357,7 @@ cd apps/web && npm run build
 
 ### Progress Log
 
-- **2026-09-11 · M1.0 DONE**：commit 哈希见紧随的 `docs(m1): M1.0 进度落盘` 提交（避免自引用哈希）。
+- **2026-09-11 · M1.0 DONE**：commit **`2f75590`**（`docs/architecture: freeze M1 economy domain (M1.0)`，10 files / +2389）。
   - 交付：`docs/m1-economy-design.md`（40 节：Vision/供给模型/主体/账户/账本/货币/奖励/救援经济/
     WorkOrder/官方与玩家工作市场/Evaluation/Contract/Offer/Escrow/Settlement/公司经营/算力成本/
     人才商业化/T2 集成/Ownership 裁定/NPC/政策/观测/安全/并发/幂等/事件/可审计/状态机/E1–E25/边界/未来）、
