@@ -386,6 +386,10 @@ cd apps/web && npm run build
 ## 16. M1 Progress
 
 > 每完成一个阶段更新本表；新 Agent 从这里恢复上下文。
+>
+> **状态：M1（经济 / 金融 / 合同）已 FROZEN**（2026-09-11，M1.0–M1.10 全部 DONE）。
+> 冻结面见设计 §39b；不变量锚点见 `tests/test_m1_invariants.py`；
+> 下一步是 M2（联网市场 / 政策中心 / 股权等），不在本文件范围。
 
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
@@ -399,9 +403,25 @@ cd apps/web && npm run build
 | M1.7 Talent Commercialization | **DONE**（2026-09-11） | `aca9f1e` / `b4dd1e5` / `92fa279` / `71a1a5b` / `cfca5a3` | `[migration v38]` `862e2d3d7d8e`；T2 人才接入经济（价格 + Escrow + 招募 + 结算）；pytest 961 / web 328 |
 | M1.8 NPC Economy | **DONE**（2026-09-11） | `c31ace6` / `3aca802` / `27ea43f` / `ec670fd` | `[migration v39]` `64fec2d13d9b`；NPC 预算（注入=mint，受封顶）+ deterministic 出手；pytest 972 / web 328 |
 | M1.9 Economy UI & Analytics | **DONE**（2026-09-11） | `b3869b2` / `49cd4f9` | 无迁移；个人钱包读面 + 三个经济页面 + admin 观测/巡检/政策刷新；pytest 972 / web 351 |
-| M1.10 Golden Path / Hardening / Freeze | **NEXT** | — | E1–E31 全覆盖 + 失败注入 + 冻结 |
+| M1.10 Golden Path / Hardening / Freeze | **DONE**（2026-09-11） | `8297871` | 闭环 E2E + 失败注入矩阵 + E1–E31 锚点表；**M1 FROZEN**；pytest 1018 / web 351 |
 
 ### Progress Log
+
+- **2026-09-11 · M1.10 DONE —— M1 FROZEN**：commit **`8297871`**（`test(m1): golden path e2e +
+  failure injection + invariant anchors (M1.10)`，无迁移）。
+  - **Golden Path E2E**（`test_m1_golden_path.py`）：注册 → 启动资金 → 官方任务（mint）→
+    玩家任务（Escrow）→ 人才交易（Offer → Contract → Escrow → 多腿放款 → **T2 招募** → Employee）→
+    终局对账；证据 = 账本复式平衡 + 状态终态 + 双方余额可精确复算 + 身份/历史零破坏；
+  - **失败注入矩阵**（`test_m1_hardening.py`，11 项）：余额不足（4 条路）/ 重复领取·结算·释放 /
+    取消与过期退款 / listing 被抢（订单与挂牌各一）/ Escrow 状态竞争 / 招募失败整笔回滚 /
+    中途异常（写腿与投影两处）/ 成本扣款 SAVEPOINT 隔离 / NPC 注入封顶 / 并发消费与并发结算 /
+    收尾无孤儿实体 —— 每个场景都断言"钱逐字段不动 + 状态一致"；
+  - **不变量锚点表**（`test_m1_invariants.py`，33 项）：E1–E31 → 真实测试锚点，并与设计 §38 编号
+    做集合相等断言（锚点删了就红）；
+  - 测试：pytest **1018 passed / 6 deselected**（972 → **+46**）；T2 回归 61 项全绿；
+  - 冻结：设计新增 **§39b M1 冻结面**（Schema/不变量/钱的口径/唯一写入路径/三层 API/T2 接入缝/
+    模块边界/政策/关键裁决 + 明确留给 M2 的清单）；
+  - 未发现设计缺口（无需偏差小节）；唯一顺带修正是 M1.1 测试数据补 `reason`（与生产一致）。
 
 - **2026-09-11 · M1.9 DONE**（无迁移）：commits **`b3869b2`**（后端读面/观测/政策刷新）、
   **`49cd4f9`**（三个经济页面 + i18n + 测试）。

@@ -113,7 +113,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   ```
 - 门禁（改动后必须全绿）：
   ```bash
-  pytest apps/server/tests -q        # 期望 972 passed / 6 deselected（M1.9 起）
+  pytest apps/server/tests -q        # 期望 1018 passed / 6 deselected（M1.10 起，M1 FROZEN）
   ruff check apps/server/app apps/server/tests
   ruff format --check apps/server/app apps/server/tests   # 只允许 5 个既有 WIP 红
   cd apps/server && alembic check    # No new upgrade operations detected
@@ -141,7 +141,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   只 active 挂牌可招募/一人一 employee/市场投影白名单/培养态只存 cultivating-ready…）
 - 常用命令：`make market-issue ISSUE_ARGS="--tier rare --count 2"`、`make market-npc NPC_ARGS="--dry-run"`
 
-## 5c. M1 经济与合同系统（M1.0–M1.9 已完成：… / NPC 经济 / 经济 UI 与观测，2026-09-11）
+## 5c. M1 经济与合同系统（**M1.0–M1.10 全部完成，M1 FROZEN**，2026-09-11）
 
 - 领域设计：`m1-economy-design.md`（Vision / 货币供给与 Source-Sink / MonetaryAuthority /
   EconomicActor / Account / 复式账本 / Currency / Reward / 救援经济 / WorkOrder / 官方与玩家工作市场 /
@@ -149,9 +149,14 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   Ownership 裁定（§28）/ NPC / 政策 / 观测 / 安全三层 / 并发幂等 / 事件 / 可审计 / 状态机 / **E1–E25** / 边界）
 - 执行基线：`m1-implementation-plan.md`（M1.0–M1.10 拆解 / §5 迁移路线 v32–v39 / §6 API 三层 /
   §13 Golden Path / §14 验收 A–F / §16 Progress）
-- 现状：**M1.0–M1.9 已完成**（v32–v39）；**M1.10 = Golden Path / Hardening / Freeze** 是最后一阶段；
+- 现状：**M1 已冻结**（M1.0–M1.10 全 DONE，v32–v39，无迁移收尾）；冻结面见设计 **§39b**：
+  Schema / 不变量 E1–E31 / 钱的口径 / 唯一写入路径 / 三层 API / T2 接入缝 / 模块边界 / 政策 / 关键裁决；
   **T2 是硬门禁**：触碰人才/招募/NPC 后必跑
   `test_t2_golden_path` / `test_recruitment` / `test_market_*`
+- M1 收尾证据：`test_m1_golden_path.py`（闭环 E2E + 全库复式平衡）、`test_m1_hardening.py`
+  （失败注入/并发矩阵：钱不动 + 状态一致）、`test_m1_invariants.py`（E1–E31 锚点表）
+- **下一步（M2，不在 M1 范围）**：政策中心（表化/审计/灰度）、多币种、联合出资 Escrow、
+  争议仲裁、股权分红、NPC 出售与发布、真实 provider 成本映射
 - 经济界面（M1.9）：`/economy`（余额/收支分类/流水/我的钱包/奖励领取）、`/work-orders`（在招/我承接 +
   领取 + 提交）、`/contracts`（接受/交付并结算/取消 + 多腿结算明细）；i18n `economy`/`workOrders`/
   `contracts`（中英逐键一致，有测试）

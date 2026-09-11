@@ -929,6 +929,30 @@ M1.1 只交付**账本底座**：Escrow 的账务腿与归因已就位（有测�
 - M1 的 `MarketAdapter`/`SettlementService` 保持可替换抽象（本地实现先行）；
 - 法币/链上/外部支付永不在本仓库范围（§3 Non-goals）。
 
+## 39b. M1 冻结面（FROZEN, 2026-09-11）
+
+M1（经济 / 金融 / 合同）到此冻结。以下内容**不再改动**；要动必须走设计评审并 bump 版本：
+
+| 冻结项 | 内容 |
+| --- | --- |
+| **Schema** | v32–v39（账本 4 表 / 奖励 / 工作订单 3 表 / 托管 / 算力与类别 / 合同 2 表 / 人才商业条款 / NPC 经济档案） |
+| **不变量** | **E1–E31**（§38 + §38b 补充）；锚点表 = `tests/test_m1_invariants.py`（删锚点即红） |
+| **钱的口径** | 整数最小单位（E21）· 显式货币（E22）· `available = posted − reserved`（E24）· `supply = minted − burned` · 托管零残留（E25） |
+| **唯一写入路径** | 业务 service → `LedgerService.post()`（E27）；mint/burn/treasury 只经 `MonetaryAuthority`（E4） |
+| **三层 API** | 玩家（公司作用域）/ 内部领域（无 router）/ 系统管理（CLI + gated admin，E23） |
+| **T2 接入缝** | `RecruitmentService.recruit_existing_person(commit=)`、`NpcMarketService.take_candidate/publish_candidate_taken`（默认行为不变） |
+| **模块边界** | `app/economy/`（契约+政策，纯）· `app/services/economy/*`（账本/奖励/订单/合同/托管/成本/NPC/统计）· `app/repositories/economy.py`（持久化原语） |
+| **政策** | `EconomicPolicy` 参数集（§30）；在线刷新只覆盖 `economy_*`（`reload_policy()`） |
+| **关键裁决** | 自由培养结业显式无阈值（D1）· listing ≠ 出售（D2）· ownership 只作历史 provenance（M1-A1/§28）· 官方发行预算内（§18）· 欠费不催收（§26）· 玩家间转移绝不 mint（E8）· 手续费从对价扣（§24） |
+
+**明确留给 M2 / 后续**（不在 M1 范围，也不在 M1 里留空壳）：政策中心（表化 + 版本审计 + 灰度）、
+多币种与汇率、分布式结算/多节点共识、联合出资 Escrow 与按腿比例归因、争议仲裁与仲裁者角色、
+股权/分红（equity）、NPC 出售与 NPC 发布订单、条件触发支付、离线签名/链上锚定、真实 provider 成本映射。
+
+**M1.10 的收尾证据**：`tests/test_m1_golden_path.py`（闭环 E2E + 全库复式平衡）、
+`tests/test_m1_hardening.py`（失败注入与并发矩阵：钱不动 + 状态一致）、
+`tests/test_m1_invariants.py`（E1–E31 锚点表）。
+
 ## 40. Future Extensions（留边界，不提前实现）
 
 `salary / equity / investment / fundraising / loan / interest / valuation / bankruptcy /
