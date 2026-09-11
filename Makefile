@@ -159,6 +159,21 @@ work-order-settle: check-env
 work-order-expire: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py expire
 
+## economy-stats: 经济快照（M1.9；只读。STATS_ARGS="--json" 输出 JSON）
+.PHONY: economy-stats
+economy-stats: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_stats.py $(STATS_ARGS)
+
+## economy-check: 一致性巡检（M1.9；只读：投影对账 + 托管归零 + 余额非负 + NPC 注入封顶）
+.PHONY: economy-check
+economy-check: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_stats.py --check
+
+## economy-policy-reload: 在线刷新经济政策（M1.9；重读 .env/EIDOLON_ECONOMY_*）
+.PHONY: economy-policy-reload
+economy-policy-reload: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_stats.py --policy-reload
+
 ## npc-economy-status: NPC 经济状态（M1.8；余额/累计注入/参数）
 .PHONY: npc-economy-status
 npc-economy-status: check-env

@@ -66,6 +66,8 @@ class Settings(BaseSettings):
     economy_npc_max_price: int = 30_000  # NPC 单笔成交价上限
     economy_npc_fit_threshold_bps: int = 7_000  # fit 阈值（基点：7000 = 0.70）
     economy_npc_deals_per_round: int = 1  # 每轮每个 NPC 最多成交几单
+    # M1.9：系统/管理只读与刷新面（默认关；v1 无 admin 角色体系，按需在 .env 打开）
+    economy_admin_enabled: bool = False
 
     # v0.4 — employee lifecycle
     # Admin API token for the builtin Gitea (a fresh install has no admin account;

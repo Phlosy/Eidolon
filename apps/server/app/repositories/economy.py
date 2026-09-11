@@ -1083,3 +1083,75 @@ def insert_npc_profile(db: Session, **values: object) -> NpcEconomicProfile:
     db.add(profile)
     db.flush()
     return profile
+
+
+# --------------------------------------------------------------------------- 观测聚合（M1.9）
+
+
+def count_by_status(db: Session, model) -> dict[str, int]:
+    """按 `status` 计数（合同/托管/订单/奖励的观测口径；只读）。"""
+    rows = db.execute(select(model.status, func.count()).group_by(model.status)).all()
+    return {str(status): int(count) for status, count in rows}
+
+
+def sum_locked_by_status(db: Session, model, *, status: str, column) -> int:
+    """某状态下某列之和（例如"仍锁定的托管金额"）。"""
+    return int(
+        db.execute(
+            select(func.coalesce(func.sum(column), 0)).where(model.status == status)
+        ).scalar_one()
+    )
+
+
+def reward_grants_by_type(db: Session) -> dict[str, int]:
+    """已过账奖励的发放总额（按类型；观测口径）。"""
+    rows = db.execute(
+        select(RewardGrant.reward_type, func.coalesce(func.sum(RewardGrant.amount), 0))
+        .where(RewardGrant.status == RewardStatus.posted.value)
+        .group_by(RewardGrant.reward_type)
+    ).all()
+    return {str(reward_type): int(total) for reward_type, total in rows}
+
+
+def compute_usage_totals_all(db: Session) -> dict[str, int]:
+    """全局算力成本（paid/unpaid）——管理员看"经济里有多少欠费"。"""
+    rows = db.execute(
+        select(ComputeUsage.status, func.coalesce(func.sum(ComputeUsage.amount), 0)).group_by(
+            ComputeUsage.status
+        )
+    ).all()
+    totals = {"paid": 0, "unpaid": 0}
+    for status, total in rows:
+        totals[str(status)] = int(total)
+    return totals
+
+
+def npc_budget_totals(db: Session) -> dict[str, int]:
+    """NPC 预算注入的累计与上限（发行侧观测）。"""
+    row = db.execute(
+        select(
+            func.coalesce(func.sum(NpcEconomicProfile.budget_injected_total), 0),
+            func.coalesce(func.sum(NpcEconomicProfile.budget_cap), 0),
+            func.count(),
+        )
+    ).one()
+    return {"injected_total": int(row[0]), "cap_total": int(row[1]), "profiles": int(row[2])}
+
+
+def count_escrow_accounts_with_balance(db: Session) -> list[tuple[int, int]]:
+    """仍有钱的托管账户 `(account_id, balance)`（一致性巡检用；**只读账本**）。
+
+    注意：必须按**方向带符号**聚合（escrow 是 debit-normal，balance = Σdebit − Σcredit）。
+    只把 `amount` 求和会把"已释放/已退款"的托管算成还有钱（第一版就踩了这个坑，
+    巡检立刻报了一堆假阳性）。
+    """
+    rows = db.execute(
+        select(LedgerEntry.account_id, LedgerEntry.direction, LedgerEntry.amount)
+        .join(LedgerAccount, LedgerAccount.id == LedgerEntry.account_id)
+        .where(LedgerAccount.kind == LedgerAccountKind.escrow.value)
+    ).all()
+    totals: dict[int, int] = defaultdict(int)
+    for account_id, direction, amount in rows:
+        sign = 1 if direction == LedgerEntryDirection.debit.value else -1
+        totals[int(account_id)] += sign * int(amount)
+    return [(account_id, balance) for account_id, balance in totals.items() if balance > 0]

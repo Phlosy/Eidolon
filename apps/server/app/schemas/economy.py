@@ -383,3 +383,33 @@ class TalentOfferResultOut(BaseModel):
 
     offer: OfferOut
     purchase: TalentPurchaseOut | None = None
+
+
+class PersonalWalletOut(BaseModel):
+    """个人钱包（M1.9）：user actor 的余额 + 最近流水。
+
+    这是 M1.2 起记录的"读面缺口"的补口 —— 个人奖励（资料/教程/每日）进的是 **user 钱包**，
+    而公司作用域的 `/economy/balance` 看不到它（刻意不合并：会污染公司 P&L）。
+    """
+
+    actor_kind: str
+    actor_ref: int
+    currency: str
+    posted_balance: int
+    available_balance: int
+    reserved_balance: int
+    accounts: list[LedgerAccountOut]
+    transactions: LedgerTransactionPageOut
+
+
+class PolicySnapshotOut(BaseModel):
+    """政策快照（admin：刷新后回显，便于确认"现在到底按哪套参数算"）。"""
+
+    policy_version: str
+    starter_grant: int
+    daily_reward: int
+    market_fee_bps: int
+    contract_fee_bps: int
+    official_max_reward: int
+    npc_budget_injection: int
+    npc_budget_cap: int

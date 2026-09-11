@@ -12,9 +12,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.scope import resolve_company_id
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.request_context import get_request_identity
 from app.economy.contracts import EconomicActor
+from app.economy.policy import reload_policy
 from app.models.enums import Currency, EconomicActorKind, RewardType
 from app.repositories import economy as economy_repo
 from app.schemas.economy import (
@@ -26,6 +28,8 @@ from app.schemas.economy import (
     LedgerEntryOut,
     LedgerTransactionOut,
     LedgerTransactionPageOut,
+    PersonalWalletOut,
+    PolicySnapshotOut,
     RewardCatalogOut,
     RewardClaimIn,
     RewardClaimOut,
@@ -158,6 +162,110 @@ def list_transactions(
         "total": total,
         "limit": limit,
         "offset": offset,
+    }
+
+
+@router.get("/wallet/me", response_model=PersonalWalletOut)
+def get_my_wallet(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """**我的钱包**（个人主体）：余额 + 最近流水 —— 个人奖励不再是"看不见的钱"。
+
+    个人主体解析与奖励领取一致（请求身份优先，其次公司 OWNER）；
+    没有个人主体 → 404（不伪造钱包）。
+    """
+    actor = _company_actor(company_id)
+    service = RewardService(db)
+    user_actor = service.resolve_user_actor(company_id=int(actor.ref), user_id=_current_user_id())
+    if user_actor is None:
+        raise HTTPException(status_code=404, detail="no_user_context")
+
+    accounts = AccountService(db).accounts_for_actor(user_actor)
+    account_ids = [int(account.id) for account in accounts]
+    rows = [
+        _account_out(account, economy_repo.get_projection(db, int(account.id)))
+        for account in accounts
+    ]
+    transactions, total = economy_repo.transactions_for_accounts(
+        db, account_ids=account_ids, limit=limit, offset=offset
+    )
+    entries_by_transaction = economy_repo.list_entries_for_transactions(
+        db, transaction_ids=[int(transaction.id) for transaction in transactions]
+    )
+    items = []
+    for transaction in transactions:
+        entries = entries_by_transaction.get(int(transaction.id), [])
+        items.append(
+            {
+                "transaction_id": int(transaction.id),
+                "transaction_type": transaction.transaction_type,
+                "currency": transaction.currency,
+                "status": transaction.status,
+                "reference_type": transaction.reference_type,
+                "reference_id": transaction.reference_id,
+                "reason": transaction.reason,
+                "amount": sum(int(entry.amount) for entry in entries if entry.direction == "debit"),
+                "occurred_at": transaction.occurred_at,
+                "posted_at": transaction.posted_at,
+                "entries": [
+                    LedgerEntryOut(
+                        account_id=int(entry.account_id),
+                        direction=entry.direction,
+                        amount=int(entry.amount),
+                    )
+                    for entry in entries
+                ],
+            }
+        )
+    return {
+        "actor_kind": user_actor.kind.value,
+        "actor_ref": int(user_actor.ref),
+        "currency": Currency.credit.value,
+        "posted_balance": sum(row["posted_balance"] for row in rows),
+        "available_balance": sum(row["available_balance"] for row in rows),
+        "reserved_balance": sum(row["reserved_balance"] for row in rows),
+        "accounts": rows,
+        "transactions": LedgerTransactionPageOut(
+            items=[LedgerTransactionOut(**item) for item in items],
+            total=total,
+            limit=limit,
+            offset=offset,
+        ),
+    }
+
+
+# ---------------------------------------------------------------- 系统/管理面（M1.9）
+
+
+#: 系统/管理面开关（`EIDOLON_ECONOMY_ADMIN_ENABLED`，默认关）：
+#: v1 没有 admin 角色体系（§32），这个面默认不暴露；打开后也只提供**只读/刷新**能力。
+@router.post("/admin/policy/reload", response_model=PolicySnapshotOut)
+def reload_economic_policy(
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """**在线刷新经济政策**（admin；默认关闭时 404，不暴露面）。
+
+    重新读环境/.env 的 `EIDOLON_ECONOMY_*` → 更新进程内 Settings → 清政策缓存，
+    返回新快照供确认。完整政策中心（表化 + 版本审计）不在 M1.9。
+    """
+    del db
+    _company_actor(company_id)
+    if not settings.economy_admin_enabled:
+        raise HTTPException(status_code=404, detail="not found")
+    policy = reload_policy()
+    return {
+        "policy_version": policy.version,
+        "starter_grant": policy.starter_grant,
+        "daily_reward": policy.daily_reward,
+        "market_fee_bps": policy.market_fee_bps,
+        "contract_fee_bps": policy.contract_fee_bps,
+        "official_max_reward": policy.official_max_reward,
+        "npc_budget_injection": policy.npc_budget_injection,
+        "npc_budget_cap": policy.npc_budget_cap,
     }
 
 

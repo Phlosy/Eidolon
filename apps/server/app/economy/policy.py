@@ -180,3 +180,22 @@ def _load_policy() -> EconomicPolicy:
 def economic_policy() -> EconomicPolicy:
     """当前政策快照（进程内缓存；测试/运维改配置后调用 `economic_policy.cache_clear()`）。"""
     return _load_policy()
+
+
+def reload_policy() -> EconomicPolicy:
+    """**在线刷新政策**（M1.9 的最小入口）：重新读环境/.env → 更新进程内 Settings → 清缓存。
+
+    为什么需要它：M1.1 起政策是 `lru_cache` 快照，改配置要重启才能生效。
+    M1.9 给运维一个显式的刷新动作（admin 端点 / CLI），把"当时政策"立刻切到"当前配置"；
+    **完整政策中心**（表化 + 版本审计 + 灰度）仍属 M2 —— 这里不提前设计。
+
+    纪律：只覆盖 `economy_*` 字段（不动其它配置），刷新后返回新快照供调用方确认。
+    """
+    from app.core.config import Settings, settings
+
+    fresh = Settings()
+    for field in Settings.model_fields:
+        if field.startswith("economy_"):
+            setattr(settings, field, getattr(fresh, field))
+    economic_policy.cache_clear()
+    return economic_policy()
