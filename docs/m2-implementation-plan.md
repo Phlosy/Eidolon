@@ -665,7 +665,7 @@ CEO A 离任 → CEO B 上任
 | M2.0 Work & Role Domain Contract Freeze | **DONE**（2026-09-11） | `366c540` | 设计 + 执行基线 + 契约代码 + 守卫测试；**无迁移**；head 仍 `64fec2d13d9b` |
 | M2.1 Canonical Executable Project Spec | **DONE**（2026-09-11） | `01060ab` | 迁移 **v40**；单一立项入口 + 两轴路由 + Work Intake 责任路由 + Canonical Spec 读面；W32–W36 强制 |
 | M2.2 Role Context & Adaptive Onboarding | **DONE**（2026-09-11） | `164272c` | 迁移 **v41**；Authority Projection（default-deny / 有限作用域 / append-only 双摘要）+ RoleContext 投影 + Role Resource Index；W37–W42 强制 |
-| M2.3 Management Agent Tooling | **DONE**（2026-09-11） | 见 §17.0c | 无迁移；Read Shared / Write Internal + Tool Registry + 执行五步 + 调试口；T1–T12 强制 |
+| M2.3 Management Agent Tooling | **DONE**（2026-09-11） | `e402c06` | 无迁移；Read Shared / Write Internal + Tool Registry + 执行五步 + 调试口；T1–T12 强制 |
 
 ### Progress Log
 
@@ -786,7 +786,51 @@ Leadership Planning & Delegation：`decision_records` 表 + `DecisionService`；
 
 ## 17.0c M2.3 交付证据
 
-见本轮汇报与 §16 Progress Log（commit hash 由收尾提交补记）。
+**Commit**：`e402c06`（`feat(work): M2.3 management agent tooling (read shared / write internal)`，
+23 files / +3755 / -73）。
+
+### 文件清单
+
+| 文件 | 类型 | 说明 |
+| --- | --- | --- |
+| `app/work/tools.py` | 新增 | `ToolSpec` / `ToolRegistry` / 参数子集校验 / 自主等级表 / 身份字段禁止清单 |
+| `app/work/tool_reads.py` | 新增 | 15 个读工具（既有读面的适配器） |
+| `app/work/tool_writes.py` | 新增 | 9 个写工具（既有 service 的适配器，状态机 / DAG / 生命周期照走） |
+| `app/work/tool_executor.py` | 新增 | 注册表 + Actor 上下文注入 + 执行五步 + 审计 + 诊断 |
+| `scripts/agent_tools.py` + `Makefile` | 新增/修改 | 调试口（默认关）+ `make agent-tools` / `agent-tool-call` |
+| `app/models/enums.py` | 修改 | `ToolSideEffect` / `ToolTransport` / `AutonomyLevel` / `TaskStatus.blocked|cancelled` / `AuthorityKind` 归位 + `plan_project_work` |
+| `app/services/tasks.py` | 修改 | `ALLOWED_TRANSITIONS` 加 blocked/cancelled |
+| `app/work/{contracts,authority_seed}.py` | 修改 | T1–T12 + Authority≠Autonomy 边界 + 工具参数禁止键；种子给 CEO/PM `plan_project_work` |
+| `app/core/config.py` + `.env.example` | 修改 | `agent_tool_cli_enabled`（默认 false） |
+| 前端 4 个文件 | 修改 | `TaskStatus` 联合/变体/配色 + i18n 中英 |
+| `tests/test_m2_tools.py` | 新增 | 32 个（T1–T12 + 行为面） |
+| `tests/{test_m2_contract,test_m2_role_context,conftest}.py` | 修改 | 不变量家族分组 + 锚点跨四文件解析 + `org_snapshot` 自动还原 |
+| `docs/{m2-agent-work-runtime-design,m2-implementation-plan,handover}.md` | 修改 | §14b / ADR-22..27 / 进度 |
+
+### 门禁实测
+
+```text
+pytest apps/server/tests -q -p no:randomly   1152 passed, 6 deselected
+pytest apps/server/tests -q（默认随机序）      1152 passed, 6 deselected
+ruff check app tests                         All checks passed
+ruff format --check app tests                5 files would be reformatted（既有 WIP，未新增）
+cd apps/server && alembic check              No new upgrade operations detected
+alembic current                              b2d4f6a8c013 (head)   ← 仍 v41（M2.3 无迁移）
+cd apps/web && tsc / eslint / prettier / vitest(351) / build      全绿
+```
+
+> **既有已知 flaky**：`test_updates.py::test_managed_update_success` 在这一次全量套跑里偶发失败一次
+> （单跑必过、重跑全量也过）。它是 `docs/handover.md §4` 早已登记的 P6.1 flaky，**不是**本轮回归。
+
+### 守卫反例注入验证（5/5 转红后撤回）
+
+| 注入 | 期望转红 | 结果 |
+| --- | --- | --- |
+| 在 `router.py` 注册玩家面 `/tools` 路由 | `test_no_player_facing_tool_router_exists` | ✅ 转红 |
+| 执行面跳过 Authority 校验 | 5 个授权用例（含 transport / 审计） | ✅ 转红 |
+| 参数校验放过身份字段 | `test_actor_identity_comes_from_context_and_args_are_rejected` | ✅ 转红 |
+| 忽略自主等级门禁 | `test_autonomy_gate_refuses_actions_requiring_confirmation` | ✅ 转红 |
+| 审计不写行 | `test_every_tool_call_is_audited` | ✅ 转红 |
 
 ---
 
