@@ -60,6 +60,12 @@ class Settings(BaseSettings):
     economy_training_credit_per_session: int = 200  # 培养成本：每个培养 session 的 CREDIT
     # M1.5 成本事件消费者（培养成本）默认关；测试/dev 显式开
     economy_cost_consumers_enabled: bool = False
+    # M1.8 NPC 经济（deterministic：预算/阈值/节奏全部配置化）
+    economy_npc_budget_injection: int = 50_000  # 单次预算注入额度（属于 mint，计入发行）
+    economy_npc_budget_cap: int = 200_000  # 单个 NPC 累计注入上限
+    economy_npc_max_price: int = 30_000  # NPC 单笔成交价上限
+    economy_npc_fit_threshold_bps: int = 7_000  # fit 阈值（基点：7000 = 0.70）
+    economy_npc_deals_per_round: int = 1  # 每轮每个 NPC 最多成交几单
 
     # v0.4 — employee lifecycle
     # Admin API token for the builtin Gitea (a fresh install has no admin account;

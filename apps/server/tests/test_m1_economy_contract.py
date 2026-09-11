@@ -56,6 +56,7 @@ from app.models.enums import (
     ContractStatus,
     Currency,
     EconomicActorKind,
+    EconomicCategory,
     EscrowStatus,
     EvaluationMode,
     EvaluationVerdict,
@@ -75,6 +76,28 @@ SERVER_ROOT = Path(__file__).resolve().parents[1]
 
 
 # ---------------- 枚举值冻结 ----------------
+
+
+def test_economic_category_values_are_frozen():
+    """经营类别是报表口径（M1.5 引入、M1.8 补 NPC_BUDGET）：值集必须显式冻结。"""
+    assert {c.value for c in EconomicCategory} == {
+        "STARTER",
+        "REWARD",
+        "OFFICIAL_INCOME",
+        "PLAYER_INCOME",
+        "TALENT_SALE",
+        "SERVICE_SALE",
+        "HIRING",
+        "TALENT_PURCHASE",
+        "TRAINING",
+        "COMPUTE",
+        "MARKET_FEE",
+        "CONTRACT_FEE",
+        "TREASURY",
+        "BURN",
+        "RECOVERY",
+        "NPC_BUDGET",
+    }
 
 
 def test_economy_enum_values_are_frozen():
@@ -528,6 +551,11 @@ def test_policy_rejects_inconsistent_ratios():
             player_order_max_reward=100_000,
             training_credit_per_session=200,
             contract_fee_bps=300,
+            npc_budget_injection=1_000,
+            npc_budget_cap=10_000,
+            npc_max_price=1_000,
+            npc_fit_threshold_bps=7_000,
+            npc_deals_per_round=1,
         )
 
 

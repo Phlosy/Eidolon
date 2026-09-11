@@ -30,6 +30,7 @@ from app.models.economy import (
     LedgerAccount,
     LedgerEntry,
     LedgerTransaction,
+    NpcEconomicProfile,
     Offer,
     RewardGrant,
     TalentCommercialTerms,
@@ -1059,3 +1060,26 @@ def upsert_terms(db: Session, **values: object) -> TalentCommercialTerms:
     db.add(terms)
     db.flush()
     return terms
+
+
+# --------------------------------------------------------------------------- NPC 经济档案
+
+
+def get_npc_profile(db: Session, *, participant_id: int) -> NpcEconomicProfile | None:
+    return db.scalars(
+        select(NpcEconomicProfile).where(NpcEconomicProfile.participant_id == int(participant_id))
+    ).first()
+
+
+def list_npc_profiles(db: Session, *, enabled_only: bool = False) -> list[NpcEconomicProfile]:
+    stmt = select(NpcEconomicProfile)
+    if enabled_only:
+        stmt = stmt.where(NpcEconomicProfile.enabled.is_(True))
+    return list(db.scalars(stmt.order_by(NpcEconomicProfile.id)))
+
+
+def insert_npc_profile(db: Session, **values: object) -> NpcEconomicProfile:
+    profile = NpcEconomicProfile(**values)
+    db.add(profile)
+    db.flush()
+    return profile

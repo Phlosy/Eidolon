@@ -905,3 +905,4 @@ class EconomicCategory(StrEnum):
     treasury = "TREASURY"
     burn = "BURN"
     recovery = "RECOVERY"
+    npc_budget = "NPC_BUDGET"

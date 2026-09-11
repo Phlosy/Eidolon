@@ -139,6 +139,7 @@ __all__ = [
     "LearningPriority",
     "LearningSession",
     "Escrow",
+    "NpcEconomicProfile",
     "Offer",
     "Evaluation",
     "LedgerAccount",

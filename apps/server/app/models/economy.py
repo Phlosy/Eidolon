@@ -546,3 +546,33 @@ class TalentCommercialTerms(TimestampMixin, Base):
     sale_mode: Mapped[str] = mapped_column(String(16), default=TalentSaleMode.buyout.value)
     policy_version: Mapped[str] = mapped_column(String(40), default="")
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class NpcEconomicProfile(TimestampMixin, Base):
+    """NPC 经济档案（M1.8，设计 §29）：**参数**在这里，**钱**在账本里。
+
+    - 一行 = 一个 `market_participants(kind=npc_company)`（唯一约束）；
+    - `budget_injected_total` 只增：累计注入（审计 + 封顶；钱的真相仍是 NPC 的账本账户余额）；
+    - NPC **不会 mint**：注入由系统侧（`NpcEconomyService.inject_budget`）经
+      `MonetaryAuthority` 发行；NPC 自己出手只是**转移**（E8）；
+    - 全 deterministic：`available >= price and price <= max_price and fit >= threshold`
+      —— 不上 LLM（§29：金融底层稳定前不做 AI 经济决策）；
+    - `fit_threshold_bps` 用**基点**存（整数），避免政策里出现浮点阈值。
+    """
+
+    __tablename__ = "npc_economic_profiles"
+    __table_args__ = (UniqueConstraint("participant_id", name="uq_npc_profile_participant"),)
+
+    participant_id: Mapped[int] = mapped_column(ForeignKey("market_participants.id"))
+    enabled: Mapped[bool] = mapped_column(default=True)
+    #: 累计注入上限（防无限发行）与累计已注入（只增）
+    budget_cap: Mapped[int] = mapped_column(Integer, default=200_000)
+    budget_injected_total: Mapped[int] = mapped_column(Integer, default=0)
+    #: 单笔成交价上限
+    max_price: Mapped[int] = mapped_column(Integer, default=30_000)
+    #: fit 阈值（基点：7000 = 0.70）
+    fit_threshold_bps: Mapped[int] = mapped_column(Integer, default=7_000)
+    #: 每轮最多成交几单（节奏参数，防"一轮扫光市场"）
+    deals_per_round: Mapped[int] = mapped_column(Integer, default=1)
+    policy_version: Mapped[str] = mapped_column(String(40), default="")
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)

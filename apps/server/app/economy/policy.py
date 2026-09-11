@@ -46,6 +46,11 @@ class EconomicPolicy:
     fee_burn_ratio: float
     compute_credit_per_unit: int
     training_credit_per_session: int
+    npc_budget_injection: int
+    npc_budget_cap: int
+    npc_max_price: int
+    npc_fit_threshold_bps: int
+    npc_deals_per_round: int
 
     def __post_init__(self) -> None:
         if not self.version.strip():
@@ -61,6 +66,10 @@ class EconomicPolicy:
             "recovery_grant",
             "compute_credit_per_unit",
             "training_credit_per_session",
+            "npc_budget_injection",
+            "npc_budget_cap",
+            "npc_max_price",
+            "npc_deals_per_round",
             "official_max_reward",
             "official_outstanding_budget",
             "player_order_max_reward",
@@ -84,12 +93,26 @@ class EconomicPolicy:
             )
         if self.official_reward_multiplier <= 0:
             raise EconomyContractError("official_reward_multiplier must be > 0")
+        # M1.8 NPC 经济：阈值必须在 (0, 10000] 基点内；注入不得超过累计上限
+        if not 0 < self.npc_fit_threshold_bps <= 10_000:
+            raise EconomyContractError("npc_fit_threshold_bps must be within (0, 10000]")
+        if self.npc_budget_injection > self.npc_budget_cap:
+            raise EconomyContractError("npc_budget_injection must not exceed npc_budget_cap")
+        if self.npc_deals_per_round < 1:
+            raise EconomyContractError("npc_deals_per_round must be >= 1")
         # 比例必须守恒（拆分的整数守恒由 split_fee 保证）
         if abs((self.fee_treasury_ratio + self.fee_burn_ratio) - 1.0) > 1e-9:
             raise EconomyContractError("fee_treasury_ratio + fee_burn_ratio must equal 1")
         # 新手/兜底收益必须**远低于**官方任务：防止"靠签到比经营赚得多"（设计 §5/§16）
         if self.official_reward_multiplier <= 0:
             raise EconomyContractError("official_reward_multiplier must be > 0")
+        # M1.8 NPC 经济：阈值必须在 (0, 10000] 基点内；注入不得超过累计上限
+        if not 0 < self.npc_fit_threshold_bps <= 10_000:
+            raise EconomyContractError("npc_fit_threshold_bps must be within (0, 10000]")
+        if self.npc_budget_injection > self.npc_budget_cap:
+            raise EconomyContractError("npc_budget_injection must not exceed npc_budget_cap")
+        if self.npc_deals_per_round < 1:
+            raise EconomyContractError("npc_deals_per_round must be >= 1")
         # 救援金不是收入来源（§16）：必须显著小于启动资金与成就/教程收益，且不超过自己的阈值
         for name in ("starter_grant", "achievement_reward", "tutorial_reward"):
             if self.recovery_grant >= getattr(self, name):
@@ -142,6 +165,11 @@ def _load_policy() -> EconomicPolicy:
         fee_burn_ratio=settings.economy_fee_burn_ratio,
         compute_credit_per_unit=settings.economy_compute_credit_per_unit,
         training_credit_per_session=settings.economy_training_credit_per_session,
+        npc_budget_injection=settings.economy_npc_budget_injection,
+        npc_budget_cap=settings.economy_npc_budget_cap,
+        npc_max_price=settings.economy_npc_max_price,
+        npc_fit_threshold_bps=settings.economy_npc_fit_threshold_bps,
+        npc_deals_per_round=settings.economy_npc_deals_per_round,
         official_max_reward=settings.economy_official_max_reward,
         official_outstanding_budget=settings.economy_official_outstanding_budget,
         player_order_max_reward=settings.economy_player_order_max_reward,
