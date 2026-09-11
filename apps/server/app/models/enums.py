@@ -661,3 +661,208 @@ class MarketParticipantKind(StrEnum):
     player_company = "player_company"
     npc_company = "npc_company"
     system_issuer = "system_issuer"
+
+
+# ---------------------------------------------------------------------------
+# M1 经济域（docs/m1-economy-design.md；枚举值 = **冻结契约**，改动走设计评审）
+# ---------------------------------------------------------------------------
+
+
+class Currency(StrEnum):
+    """货币。v1 只有 CREDIT（整数最小单位，`minor_unit_scale = 1`）。
+
+    金额一律整数（E21）；货币必须显式（E22）——不做多币种兑换（设计 §13）。
+    """
+
+    credit = "CREDIT"
+
+
+class EconomicActorKind(StrEnum):
+    """经济主体类型（设计 §9）。**账户不写死 company_id** —— 用 (kind, ref) 表达。"""
+
+    system = "system"  # 系统账户（发行/财政/销毁/Escrow 托管）
+    user = "user"  # 个人钱包（users.id）
+    company = "company"  # 公司钱包（companies.id）
+    npc_company = "npc_company"  # NPC 公司（market_participants.id；不进 companies）
+
+
+class SystemAccountKind(StrEnum):
+    """系统账户（设计 §8/§23）：唯一 mint 源、财政池、永久销毁、Escrow 托管。"""
+
+    issuance = "issuance"
+    treasury = "treasury"
+    burn = "burn"
+    escrow = "escrow"
+
+
+class LedgerAccountKind(StrEnum):
+    """账户类型（设计 §10）。normal_side 由类型派生（见 economy/contracts.py）。"""
+
+    actor = "actor"
+    issuance = "issuance"
+    treasury = "treasury"
+    burn = "burn"
+    escrow = "escrow"
+
+
+class LedgerEntryDirection(StrEnum):
+    """复式记账方向（E3：Σdebit = Σcredit）。"""
+
+    debit = "debit"
+    credit = "credit"
+
+
+class TransactionKind(StrEnum):
+    """交易类型（M1.0 冻结的腿组合见 economy/contracts.py::LEG_BLUEPRINTS）。"""
+
+    mint = "mint"  # 发行：Debit 收款人 / Credit ISSUANCE
+    transfer = "transfer"  # 转移：Debit 收款人 / Credit 付款人
+    burn = "burn"  # 销毁：Debit BURN / Credit 付款人
+    treasury_transfer = "treasury_transfer"  # 财政：Debit TREASURY / Credit 付款人
+    escrow_fund = "escrow_fund"  # 锁资：Debit ESCROW / Credit 出资人
+    escrow_release = "escrow_release"  # 释放：Debit 收款人 / Credit ESCROW
+    escrow_refund = "escrow_refund"  # 退款：Debit 出资人 / Credit ESCROW
+
+
+class RewardType(StrEnum):
+    """首批奖励类型（设计 §5/§14；政策金额见 Settings）。"""
+
+    starter_grant = "STARTER_GRANT"
+    profile_completion = "PROFILE_COMPLETION"
+    company_profile_completion = "COMPANY_PROFILE_COMPLETION"
+    tutorial_completion = "TUTORIAL_COMPLETION"
+    daily_login = "DAILY_LOGIN"
+    weekly_activity = "WEEKLY_ACTIVITY"
+    achievement = "ACHIEVEMENT"
+    milestone_reward = "MILESTONE_REWARD"
+    official_bounty = "OFFICIAL_BOUNTY"
+    official_contract = "OFFICIAL_CONTRACT"
+    research_grant = "RESEARCH_GRANT"
+    system_procurement = "SYSTEM_PROCUREMENT"
+    event_reward = "EVENT_REWARD"
+    recovery_grant = "RECOVERY_GRANT"
+
+
+class RewardStatus(StrEnum):
+    """奖励状态机（设计 §37）：ELIGIBLE → CLAIMED → POSTED（可 VOID）。"""
+
+    eligible = "ELIGIBLE"
+    claimed = "CLAIMED"
+    posted = "POSTED"
+    void = "VOID"
+
+
+class WorkOrderKind(StrEnum):
+    """统一工作市场的订单类型（设计 §17/§18）。"""
+
+    official_bounty = "OFFICIAL_BOUNTY"
+    official_contract = "OFFICIAL_CONTRACT"
+    player_bounty = "PLAYER_BOUNTY"
+    player_contract = "PLAYER_CONTRACT"
+    npc_contract = "NPC_CONTRACT"
+    research_grant = "RESEARCH_GRANT"
+    system_procurement = "SYSTEM_PROCUREMENT"
+
+
+class FundingMode(StrEnum):
+    """资金模式（设计 §17）：系统发行 / 玩家锁资 / NPC 财政。"""
+
+    system_mint = "system_mint"
+    player_escrow = "player_escrow"
+    npc_treasury = "npc_treasury"
+
+
+class WorkOrderStatus(StrEnum):
+    """工作订单状态机（设计 §37）。"""
+
+    draft = "DRAFT"
+    open = "OPEN"
+    accepted = "ACCEPTED"
+    in_progress = "IN_PROGRESS"
+    submitted = "SUBMITTED"
+    reviewing = "REVIEWING"
+    approved = "APPROVED"
+    rejected = "REJECTED"
+    settled = "SETTLED"
+    cancelled = "CANCELLED"
+    expired = "EXPIRED"
+    disputed = "DISPUTED"
+
+
+class EvaluationMode(StrEnum):
+    """验收模式（设计 §20）：自动 / 人工 / 无需验收。"""
+
+    auto = "auto"
+    manual = "manual"
+    none = "none"
+
+
+class EvaluationVerdict(StrEnum):
+    approved = "approved"
+    rejected = "rejected"
+    revise = "revise"
+
+
+class ContractType(StrEnum):
+    """通用合同类型（设计 §21）：工作/人才/服务/采购/科研共用一个核心。"""
+
+    work = "work"
+    talent = "talent"
+    service = "service"
+    procurement = "procurement"
+    research = "research"
+
+
+class ContractStatus(StrEnum):
+    """合同状态机（设计 §37）。"""
+
+    draft = "DRAFT"
+    pending_acceptance = "PENDING_ACCEPTANCE"
+    active = "ACTIVE"
+    funded = "FUNDED"
+    fulfilled = "FULFILLED"
+    settling = "SETTLING"
+    settled = "SETTLED"
+    cancelled = "CANCELLED"
+    expired = "EXPIRED"
+    failed = "FAILED"
+    disputed = "DISPUTED"
+
+
+class EscrowStatus(StrEnum):
+    """Escrow 状态机（设计 §23/§37）：资金既不属于付款人也不属于收款人（E7）。"""
+
+    unfunded = "UNFUNDED"
+    funded = "FUNDED"
+    released = "RELEASED"
+    refunded = "REFUNDED"
+    expired = "EXPIRED"
+
+
+class SettlementStatus(StrEnum):
+    """结算状态机（设计 §37）：PENDING → PROCESSING → COMPLETED（可 FAILED 重试）。"""
+
+    pending = "PENDING"
+    processing = "PROCESSING"
+    completed = "COMPLETED"
+    failed = "FAILED"
+
+
+class EconomicCategory(StrEnum):
+    """经营分类（设计 §25/§31）：报表与观测用；落在账本 reference/reason 语义上。"""
+
+    starter = "STARTER"
+    reward = "REWARD"
+    official_income = "OFFICIAL_INCOME"
+    player_income = "PLAYER_INCOME"
+    talent_sale = "TALENT_SALE"
+    service_sale = "SERVICE_SALE"
+    hiring = "HIRING"
+    talent_purchase = "TALENT_PURCHASE"
+    training = "TRAINING"
+    compute = "COMPUTE"
+    market_fee = "MARKET_FEE"
+    contract_fee = "CONTRACT_FEE"
+    treasury = "TREASURY"
+    burn = "BURN"
+    recovery = "RECOVERY"

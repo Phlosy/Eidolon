@@ -36,6 +36,23 @@ class Settings(BaseSettings):
     # v0.3 phase 2 — optional builtin Gitea (manual one-click install)
     gitea_image: str = "gitea/gitea:1"
 
+    # M1 — economy（docs/m1-economy-design.md §30：金额/费用/比例全部配置化 + 政策版本）
+    economy_policy_version: str = "econ-1"
+    economy_starter_grant: int = 100_000
+    economy_profile_reward: int = 500
+    economy_company_profile_reward: int = 1_000
+    economy_tutorial_reward: int = 2_000
+    economy_daily_reward: int = 100
+    economy_weekly_activity_reward: int = 500
+    economy_recovery_grant: int = 1_000
+    economy_recovery_threshold: int = 2_000
+    economy_recovery_cooldown_hours: int = 24
+    economy_official_reward_multiplier: float = 1.0
+    economy_market_fee_bps: int = 500  # 基点：500 = 5%
+    economy_fee_treasury_ratio: float = 0.6
+    economy_fee_burn_ratio: float = 0.4
+    economy_compute_credit_per_unit: int = 1
+
     # v0.4 — employee lifecycle
     # Admin API token for the builtin Gitea (a fresh install has no admin account;
     # lifecycle git steps fail with "gitea admin not configured" until this is set).
