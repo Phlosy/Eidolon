@@ -33,7 +33,7 @@ from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
 from app.economy.contracts import EconomicActor
-from app.models.enums import Currency, FundingMode, LedgerAccountKind
+from app.models.enums import Currency, EconomicActorKind, FundingMode, LedgerAccountKind
 from app.repositories import economy as economy_repo
 from app.services.economy.ledger import LedgerTransaction, PostingResult
 from app.services.economy.monetary import MonetaryAuthority
@@ -129,7 +129,7 @@ class SettlementService:
                 system = accounts.ensure_system_accounts()
                 legs = [
                     EscrowPayoutLeg(
-                        account_id=int(accounts.ensure_account(request.beneficiary).id),
+                        account_id=self._beneficiary_account_id(request.beneficiary),
                         amount=net,
                         suffix="beneficiary",
                     )
@@ -184,6 +184,20 @@ class SettlementService:
             ),
             created=created,
         )
+
+    def _beneficiary_account_id(self, actor: EconomicActor) -> int:
+        """受益账户解析：普通主体用 actor 账户；**system 主体**用它自己的系统账户。
+
+        系统主体（Treasury/Burn/Escrow）没有 actor 账户 —— 人才交易里"系统卖方"的成交款
+        就是进 Treasury（§27/M1.7），所以这里按 `SystemAccountKind` 取对应系统账户。
+        """
+        from app.services.economy.accounts import AccountService
+
+        accounts = AccountService(self.db)
+        if actor.kind is EconomicActorKind.system:
+            system = accounts.ensure_system_accounts()
+            return int(system[LedgerAccountKind(actor.ref.value)].id)
+        return int(accounts.ensure_account(actor).id)
 
     def settle(self, request: SettlementRequest, *, commit: bool = False) -> SettlementResult:
         """执行结算。

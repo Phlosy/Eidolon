@@ -42,6 +42,7 @@ from app.models.enums import (
     EconomicActorKind,
     FundingMode,
     OfferStatus,
+    SystemAccountKind,
 )
 from app.repositories import economy as economy_repo
 from app.services.economy.costs import FeeService
@@ -126,7 +127,10 @@ class ContractService:
         if int(consideration_amount) <= 0:
             raise ContractError("consideration_must_be_positive", http_status=422)
         if contractor is not None and contractor.kind is EconomicActorKind.system:
-            raise ContractError("contractor_must_be_user_actor", http_status=422)
+            # 系统/发行方**只在人才交易**里可以当承接方（卖方）——市场发行的人才没有卖方公司，
+            # 成交款进 Treasury（§27/M1.7）；其它合同类型不接受系统承接方。
+            if contract_type is not ContractType.talent:
+                raise ContractError("contractor_must_be_user_actor", http_status=422)
 
         resolved_code = code or self._next_code(contract_type)
         existing = economy_repo.find_contract_by_code(self.db, resolved_code)
@@ -317,13 +321,11 @@ class ContractService:
             raise ContractError("escrow_missing_for_contract")
 
         contractor = (
-            EconomicActor(
-                kind=EconomicActorKind(contract.contractor_actor_kind),
-                ref=int(contract.contractor_actor_ref or 0),
-            )
-            if contract.contractor_actor_kind and contract.contractor_actor_ref
+            self._actor_of(contract.contractor_actor_kind, int(contract.contractor_actor_ref))
+            if contract.contractor_actor_kind is not None
+            and contract.contractor_actor_ref is not None
             else None
-        )
+        )  # 注意：system 承接方的 ref 是 0（合法引用），不能用真值判断
         gross = int(contract.consideration_amount)
         if not refund and contractor is None:
             raise ContractError("contract_without_contractor_cannot_release")
@@ -625,11 +627,20 @@ class ContractService:
             created=False,
         )
 
+    @staticmethod
+    def _actor_of(kind: str, ref: int) -> EconomicActor:
+        """从 `(kind, ref)` 还原主体。
+
+        **system 约定（M1.7）**：系统主体的 `actor_ref` 存 0（它没有宿主行），
+        还原时指向 **Treasury** —— 系统/发行方作为人才卖方时，成交款进国库；
+        M1.8 的 NPC 财政再按主体细分。
+        """
+        if kind == EconomicActorKind.system.value:
+            return EconomicActor.system(SystemAccountKind.treasury)
+        return EconomicActor(EconomicActorKind(kind), ref)
+
     def _issuer(self, contract: Contract) -> EconomicActor:
-        return EconomicActor(
-            kind=EconomicActorKind(contract.issuer_actor_kind),
-            ref=int(contract.issuer_actor_ref),
-        )
+        return self._actor_of(contract.issuer_actor_kind, int(contract.issuer_actor_ref))
 
     def _require(self, contract_id: int) -> Contract:
         contract = economy_repo.get_contract(self.db, contract_id)

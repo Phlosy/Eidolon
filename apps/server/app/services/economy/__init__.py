@@ -65,6 +65,11 @@ from app.services.economy.settlement import (
     SettlementResult,
     SettlementService,
 )
+from app.services.economy.talent_trade import (
+    PurchaseResult,
+    TalentTradeError,
+    TalentTradeService,
+)
 from app.services.economy.work_orders import (
     OFFICIAL_REWARD_TYPES,
     PublishResult,
@@ -94,6 +99,9 @@ __all__ = [
     "OFFICIAL_KINDS",
     "OFFICIAL_REWARD_TYPES",
     "PublishResult",
+    "PurchaseResult",
+    "TalentTradeError",
+    "TalentTradeService",
     "SettlementError",
     "SettlementRequest",
     "SettlementResult",
