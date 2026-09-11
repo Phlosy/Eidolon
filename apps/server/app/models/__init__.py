@@ -33,6 +33,12 @@ from app.models.competency import (
 )
 from app.models.cultivation import CharacterProfile, EducationEvent, TrainingProgram
 from app.models.drive import DriveCollaborator, DriveNode, DriveRevision
+from app.models.economy import (
+    LedgerAccount,
+    LedgerEntry,
+    LedgerTransaction,
+    WalletProjection,
+)
 from app.models.event import Event
 from app.models.git import GitConnection
 from app.models.knowledge import (
@@ -126,6 +132,10 @@ __all__ = [
     "KnowledgeItem",
     "LearningPriority",
     "LearningSession",
+    "LedgerAccount",
+    "LedgerEntry",
+    "LedgerTransaction",
+    "WalletProjection",
     "LearningRecord",
     "MemoryEntry",
     "Message",

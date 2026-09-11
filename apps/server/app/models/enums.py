@@ -712,6 +712,24 @@ class LedgerEntryDirection(StrEnum):
     credit = "credit"
 
 
+class LedgerAccountStatus(StrEnum):
+    """账户状态（设计 §10，M1.1）：frozen 不可过账；closed 是终态。**账户不可删除**。"""
+
+    active = "active"
+    frozen = "frozen"
+    closed = "closed"
+
+
+class LedgerTransactionStatus(StrEnum):
+    """交易状态（设计 §12）：v1 只有 posted。
+
+    reversed 由未来 reversal 流程标记 —— E17：金额与 entries 永不修改。
+    """
+
+    posted = "posted"
+    reversed = "reversed"
+
+
 class TransactionKind(StrEnum):
     """交易类型（M1.0 冻结的腿组合见 economy/contracts.py::LEG_BLUEPRINTS）。"""
 

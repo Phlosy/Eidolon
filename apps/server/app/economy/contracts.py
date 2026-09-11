@@ -111,6 +111,21 @@ class EconomicActor:
         return cls(EconomicActorKind.npc_company, int(participant_id))
 
 
+#: 系统账户类型（发行/财政/销毁 + Escrow 托管）：归 system actor，**不做资金充足性校验**
+SYSTEM_ACCOUNT_KINDS = frozenset(
+    {
+        LedgerAccountKind.issuance,
+        LedgerAccountKind.treasury,
+        LedgerAccountKind.burn,
+        LedgerAccountKind.escrow,
+    }
+)
+
+#: 需要资金充足性的账户类型（E24，设计 §10）："真实持有资金"的账户 —— debit 时 available >= amount。
+#: 系统账务侧（issuance/treasury/burn）刻意不含在内：否则 mint/burn 的第一腿在数字上无法成立。
+REQUIRES_FUNDS_KINDS = frozenset({LedgerAccountKind.actor, LedgerAccountKind.escrow})
+
+
 @dataclass(frozen=True)
 class AccountRef:
     """一个记账账户的引用（设计 §10）：主体 × 货币 × 账户类型。"""
@@ -137,15 +152,6 @@ class AccountRef:
         return cls(EconomicActor.system(SystemAccountKind(kind.value)), currency, kind)
 
 
-SYSTEM_ACCOUNT_KINDS = frozenset(
-    {
-        LedgerAccountKind.issuance,
-        LedgerAccountKind.treasury,
-        LedgerAccountKind.burn,
-        LedgerAccountKind.escrow,
-    }
-)
-
 #: 各账户类型的正常余额方向（会计口径；余额符号解释用）
 _NORMAL_SIDE: dict[LedgerAccountKind, LedgerEntryDirection] = {
     LedgerAccountKind.actor: LedgerEntryDirection.debit,
@@ -158,6 +164,36 @@ _NORMAL_SIDE: dict[LedgerAccountKind, LedgerEntryDirection] = {
 
 def normal_side(kind: LedgerAccountKind) -> LedgerEntryDirection:
     return _NORMAL_SIDE[kind]
+
+
+def requires_funds(kind: LedgerAccountKind) -> bool:
+    """该账户类型是否受「余额不可为负」约束（E24；与 AccountKind 绑定，不全局硬编码）。"""
+    return kind in REQUIRES_FUNDS_KINDS
+
+
+def balance_delta(kind: LedgerAccountKind, direction: LedgerEntryDirection, amount: int) -> int:
+    """**余额语义的唯一解释入口**（E26）：方向 × 正常余额方向 → 余额变化量。
+
+    业务代码不得自己写 `if direction == DEBIT: balance += amount`（设计 §10）。
+    调用方若要算余额，只能把 entries 依次交给本函数求和。
+    """
+    validate_amount(amount)
+    return amount if direction is normal_side(kind) else -amount
+
+
+def balance_from_totals(kind: LedgerAccountKind, *, debit_total: int, credit_total: int) -> int:
+    """按正常余额方向把 (Σdebit, Σcredit) 折算成余额（聚合查询与重建共用）。"""
+    if kind is LedgerAccountKind.issuance:
+        return int(credit_total) - int(debit_total)
+    return int(debit_total) - int(credit_total)
+
+
+def assert_balanced_totals(*, debit_total: int, credit_total: int) -> None:
+    """聚合口径的守恒校验（DB 层过账用；腿口径见 `validate_posting`）。"""
+    if debit_total != credit_total:
+        raise EconomyContractError(
+            f"posting is not balanced: debits={debit_total} credits={credit_total}"
+        )
 
 
 # ---------------------------------------------------------------------------

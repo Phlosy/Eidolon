@@ -21,13 +21,17 @@ import pytest
 
 from app.economy import (
     MAX_AMOUNT,
+    REQUIRES_FUNDS_KINDS,
     AccountRef,
     EconomicActor,
     EconomyContractError,
     PostingLeg,
     StateMachine,
+    assert_balanced_totals,
     assert_transition,
     available_balance,
+    balance_delta,
+    balance_from_totals,
     can_transition,
     circulating_supply,
     economic_policy,
@@ -35,6 +39,7 @@ from app.economy import (
     normal_side,
     parse_currency,
     posting_totals,
+    requires_funds,
     split_fee,
     supply_effect,
     total_supply,
@@ -223,6 +228,53 @@ def test_system_accounts_are_system_owned_only():
             Currency.credit,
             LedgerAccountKind.actor,
         )
+
+
+def test_balance_delta_is_the_single_interpretation_entry():
+    """E26：余额变化只能由 `balance_delta` 解释（业务代码不得自己判断借贷方向）。"""
+    debit, credit = LedgerEntryDirection.debit, LedgerEntryDirection.credit
+    assert balance_delta(LedgerAccountKind.actor, debit, 100) == 100
+    assert balance_delta(LedgerAccountKind.actor, credit, 100) == -100
+    assert balance_delta(LedgerAccountKind.escrow, debit, 100) == 100
+    assert balance_delta(LedgerAccountKind.issuance, credit, 100) == 100  # credit-normal
+    assert balance_delta(LedgerAccountKind.issuance, debit, 100) == -100
+    assert balance_delta(LedgerAccountKind.burn, debit, 7) == 7
+    with pytest.raises(EconomyContractError):
+        balance_delta(LedgerAccountKind.actor, debit, 0)
+
+    # 聚合口径与逐腿口径必须一致
+    legs = [debit, credit, credit]
+    amounts = [500, 200, 150]
+    total = sum(
+        balance_delta(LedgerAccountKind.actor, direction, amount)
+        for direction, amount in zip(legs, amounts, strict=True)
+    )
+    assert total == balance_from_totals(
+        LedgerAccountKind.actor,
+        debit_total=sum(a for d, a in zip(legs, amounts, strict=True) if d is debit),
+        credit_total=sum(a for d, a in zip(legs, amounts, strict=True) if d is credit),
+    )
+
+
+def test_requires_funds_is_bound_to_account_kind():
+    """E24：资金充足性只约束"真实持有资金"的账户 —— 系统账务侧不受限。"""
+    assert requires_funds(LedgerAccountKind.actor) is True
+    assert requires_funds(LedgerAccountKind.escrow) is True
+    assert requires_funds(LedgerAccountKind.issuance) is False
+    assert requires_funds(LedgerAccountKind.treasury) is False
+    assert requires_funds(LedgerAccountKind.burn) is False
+    assert REQUIRES_FUNDS_KINDS == {LedgerAccountKind.actor, LedgerAccountKind.escrow}
+    assert REQUIRES_FUNDS_KINDS | {
+        LedgerAccountKind.issuance,
+        LedgerAccountKind.treasury,
+        LedgerAccountKind.burn,
+    } == set(LedgerAccountKind) | {LedgerAccountKind.escrow}
+
+
+def test_assert_balanced_totals_rejects_imbalance():
+    assert_balanced_totals(debit_total=100, credit_total=100)
+    with pytest.raises(EconomyContractError, match="not balanced"):
+        assert_balanced_totals(debit_total=100, credit_total=99)
 
 
 def test_normal_side_is_frozen():
