@@ -394,14 +394,34 @@ cd apps/web && npm run build
 | M1.2 Monetary Authority & Reward System | **DONE**（2026-09-11） | `81eed9a` / `6e35963` / `7cc5541` | `[migration v33]` `691816bccb53`；7 类自助奖励全部落地（含救援经济）；pytest 874 / web 328 |
 | M1.3 Official Work Market | **DONE**（2026-09-11） | `03f47a6` / `6a479e9` / `e2f505b` / `ee958cf` | `[migration v34]` `328fbe9f3034`；官方 bounty 全生命周期 + 预算内发行；pytest 898 / web 328 |
 | M1.4 Player Work Market | **DONE**（2026-09-11） | `1f715f2` / `6f5eaeb` / `14db721` / `54ac474` | `[migration v35]` `d2a4926a21d4`；Escrow 锁资 + 玩家间转移（绝不 mint）；pytest 916 / web 328 |
-| M1.5 Company Operating Economy | **NEXT** | — | `[migration v36]` |
-| M1.6 Contract / Offer / Settlement Core | PLANNED | — | `[migration v37]` |
+| M1.5 Company Operating Economy | **DONE**（2026-09-11） | `73e07ca` / `bef7e72` / `aaee26f` / `eb7a1a5` / `f038ed5` | `[migration v36]` `d9545a745166`；算力/培养/手续费三项 Sink + 经营报表；pytest 933 / web 328 |
+| M1.6 Contract / Offer / Settlement Core | **NEXT** | — | `[migration v37]` |
 | M1.7 Talent Commercialization | PLANNED | — | `[migration v38]`；必须跑 T2 回归 |
 | M1.8 NPC Economy | PLANNED | — | `[migration v39]`（或复用 participant profile_json） |
 | M1.9 Economy UI & Analytics | PLANNED | — | 无迁移 |
 | M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E31 全覆盖 + 失败注入 |
 
 ### Progress Log
+
+- **2026-09-11 · M1.5 DONE**：`[migration v36]` `d9545a745166`（`compute_usage` +
+  `ledger_transactions.category`）；commits **`73e07ca`**（schema + 政策）、**`bef7e72`**
+  （成本服务 + 类别 plumbing）、**`aaee26f`**（三个触发点接线）、**`eb7a1a5`**（经营报表 API/CLI）、
+  **`f038ed5`**（测试硬化）。
+  - 交付：`CompanyCostService`（统一 Sink 扣款，treasury+burn 守恒、**SAVEPOINT 保护**）、
+    `ComputeCostService`（计量 + 计价 + 欠费语义）、`FeeService`（bps 报价 + 拆分 + 挂牌/合同费）、
+    培养成本事件消费者（`cultivation.completed`，T2 零改动）、`orchestrator._finalize` 算力计量、
+    挂牌手续费、经营报表读面（overview / compute-usage）+ CLI。
+  - 口径裁定：**余额不足 = 欠费**（`unpaid` 计量照记、扣款尽力而为、绝不产生负余额）；
+    手续费在**发布时**收（不是结算时）；`category` 作为账本一等列（不建同义表），
+    存量行为 NULL 不编造；1 compute unit = 1 分钟运行时。
+  - 测试：**+17**（933 passed / 6 deselected）：算力 paid/unpaid/幂等/类别落库、
+    手续费守恒与 bps 数学、挂牌费入 treasury+burn、只够锁资的欠费路径、同 key 不同类别拒绝、
+    培养成本消费者（含重放/欠费/无付款方）、报表与用量 API 的公司作用域。
+  - **修掉两个真实 bug**：(1) 成本扣款失败会残留未提交账本腿，被调用方 commit 后破坏复式守恒
+    （现用 SAVEPOINT 隔离）；(2) `derive_wallets(account_ids=[...])` 丢掉托管归因 ⇒
+    受限查询的 `reserved` 恒为 0（`GET /economy/overview` 上暴露）。
+  - 迁移：v36 up/down/up 实测 + `alembic check` 无漂移；dev 库已升到 v36。
+  - M1.4 的余额断言同步改为按政策算挂牌手续费（不写死数字）。
 
 - **2026-09-11 · M1.4 DONE**：`[migration v35]` `d2a4926a21d4`（`escrows`）；commits
   **`1f715f2`**（schema + 玩家订单护栏）、**`6f5eaeb`**（EscrowService + 玩家市场生命周期）、

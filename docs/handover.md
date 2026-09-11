@@ -85,7 +85,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 → v18 q3f5a7b9c1d2 → v19 r4a6b8c0d2e4 → v20 s5a7c9e1f3b5（users.username）
 ```
 
-- `alembic check` 无漂移；**本地开发库已升到 v35**（v32 账本 / v33 奖励 / v34 官方工作市场 / v35 托管与玩家市场）。
+- `alembic check` 无漂移；**本地开发库已升到 v36**（v32 账本 / v33 奖励 / v34 官方市场 / v35 托管与玩家市场 / v36 经营成本）。
 - 新增模型列一律遵守仓库既有约束：SQLite 不给既有表加 FK（服务层校验）；派生字段不加默认值。
 
 ---
@@ -113,7 +113,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   ```
 - 门禁（改动后必须全绿）：
   ```bash
-  pytest apps/server/tests -q        # 期望 916 passed / 6 deselected（M1.4 起）
+  pytest apps/server/tests -q        # 期望 933 passed / 6 deselected（M1.5 起）
   ruff check apps/server/app apps/server/tests
   ruff format --check apps/server/app apps/server/tests   # 只允许 5 个既有 WIP 红
   cd apps/server && alembic check    # No new upgrade operations detected
@@ -136,12 +136,12 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 - 执行基线：`t2-implementation-plan.md`（§4 T2.0–T2.8 拆解 / §5 API / §6 schema /
   §7 事件 / §13 Golden Path 26 步 / §14 验收 A–D / §16 Progress）
 - 迁移：v29 市场核心（participants + listings）、v30 培养参数（training_programs.metadata_json）、
-  v31 NPC 成交、v32 账本、v33 奖励、v34 官方工作市场、v35 托管；当前 head `d2a4926a21d4`
+  v31 NPC 成交、v32 账本、v33 奖励、v34 官方市场、v35 托管、v36 经营成本；当前 head `d9545a745166`
 - 关键不变量（均有测试）：I1–I13（身份不变/不复制人级资产/历史 provenance 不可改写/
   只 active 挂牌可招募/一人一 employee/市场投影白名单/培养态只存 cultivating-ready…）
 - 常用命令：`make market-issue ISSUE_ARGS="--tier rare --count 2"`、`make market-npc NPC_ARGS="--dry-run"`
 
-## 5c. M1 经济与合同系统（M1.0–M1.4 已完成：契约 / 账本 / 奖励 / 官方市场 / 托管与玩家市场，2026-09-11）
+## 5c. M1 经济与合同系统（M1.0–M1.5 已完成：契约 / 账本 / 奖励 / 官方市场 / 托管 / 经营成本，2026-09-11）
 
 - 领域设计：`m1-economy-design.md`（Vision / 货币供给与 Source-Sink / MonetaryAuthority /
   EconomicActor / Account / 复式账本 / Currency / Reward / 救援经济 / WorkOrder / 官方与玩家工作市场 /
@@ -149,8 +149,8 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   Ownership 裁定（§28）/ NPC / 政策 / 观测 / 安全三层 / 并发幂等 / 事件 / 可审计 / 状态机 / **E1–E25** / 边界）
 - 执行基线：`m1-implementation-plan.md`（M1.0–M1.10 拆解 / §5 迁移路线 v32–v39 / §6 API 三层 /
   §13 Golden Path / §14 验收 A–F / §16 Progress）
-- 现状：**M1.0–M1.4 已完成**（v32 账本、v33 奖励、v34 官方工作市场、v35 托管与玩家市场）；
-  **M1.5 = 公司经营经济（算力成本 / 培养支出 / 手续费）** 是下一阶段
+- 现状：**M1.0–M1.5 已完成**（v32 v33 v34 v35 v36）；
+  **M1.6 = 合同 / Offer / Settlement 核心**是下一阶段
 - 契约代码：`app/economy/{contracts,policy}.py`（枚举值、金额整数、腿蓝图、守恒校验、
   `balance_delta` 单入口、`requires_funds`、状态机、政策 DTO）+ `Settings.economy_*` / `.env.example`
 - 账本底座：`app/models/economy.py`（4 表）+ `app/repositories/economy.py`（幂等开户 / CAS / 账本聚合）
@@ -170,6 +170,11 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 - 托管与玩家市场（M1.4）：`escrows` 表 + `app/services/economy/escrow.py`；玩家订单
   `POST /work-orders`（发布前锁资，E11）/ `POST /work-orders/{id}/cancel`（退款）；
   玩家之间的钱**绝不 mint、不写 reward_grants**（E8）；release-vs-refund 竞争由 Escrow 状态 CAS 裁定
+- 经营成本（M1.5）：`compute_usage` 表 + `ledger_transactions.category`；
+  `app/services/economy/costs.py`（CompanyCostService / ComputeCostService / FeeService）、
+  `app/services/economy/consumers.py`（培养成本事件消费者，默认关）；
+  报表 `GET /economy/overview` + `GET /economy/compute-usage`；CLI `--overview` / `--compute`；
+  成本扣款用 **SAVEPOINT** 隔离（失败不留半笔账）；余额不足记 **unpaid**（不是免费）
 - 纪律：Ledger 是事实来源、钱包投影可删可重建、reserved 只能由账本归因推导（E26–E31）、
   所有资金变化只能经 `LedgerService.post()`、只有 `MonetaryAuthority` 能 mint/burn（令牌守卫）、
   奖励金额只来自政策（claim 无金额入参）

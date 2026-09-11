@@ -564,6 +564,22 @@ settlement_key (unique)      — 幂等锚点（E12）
 - `EconomicCategory`（枚举）标注每笔账的业务类别 → 报表与观测的基础；
 - **接入节奏**：M1.5 只接 3 件事（培养、算力、手续费），其余按真实业务逐步收费化，不一次性全上。
 
+**实现落点（M1.5）**
+
+| 成本 | 触发点 | 去向 | 幂等键 |
+| --- | --- | --- | --- |
+| 算力 | `orchestrator._finalize()`（会话结束） | Treasury 全额 | `work_session:<id>` |
+| 培养 | `cultivation.completed` 事件消费者（T2 不改一行） | Treasury 全额 | `training:profile:<id>` |
+| 市场手续费 | 玩家订单**发布**时（挂牌费） | treasury/burn 按政策比例拆 | `market_fee:work_order:<id>` |
+
+- 统一原语 `CompanyCostService.charge()`：`treasury + burn == amount` 整数守恒；
+  **SAVEPOINT 保护**（"尽力而为"的子操作失败只回滚自己，不留半笔账、不带走调用方的事务）；
+- 手续费在**发布时**收而不是结算时：否则发布方结算时没钱会让整个结算失败；
+  只够锁资不够手续费 ⇒ 订单照发、手续费记欠费（余额不为负）；
+- `contract_fee` 通道已就位（M1.6 的 Contract 结算调用）；
+- 报表：`GET /economy/overview`（收入/成本/净额 + 按类别 + 算力欠费）、
+  `GET /economy/compute-usage`（用量明细）；CLI `--overview` / `--compute`。
+
 ## 26. Compute Cost
 
 ```
@@ -576,6 +592,20 @@ ComputeCost（计价，按政策单价换算 CREDIT）
 - v1 不映射真实 token 价格，但 `ComputeUsage` 保留 `provider_id/model/tokens/duration` 等字段，
   未来可接 `Provider cost mapping`；
 - 它是**最重要的持续 Sink**：Agent 跑得越多，消耗越多（经营决策的核心成本）。
+
+**实现落点（M1.5，2026-09-11）**
+
+- 表：`compute_usage`（迁移 v36 `d9545a745166`）+ `ledger_transactions.category` 一等列
+  （业务类别 → 报表聚合，不另建同义表）；
+- 计量口径：**1 compute unit = 1 分钟 Agent 运行时**（`ceil`，至少 1），
+  `amount = units × compute_credit_per_unit`；`tokens/provider/model/时长` 都落库，
+  未来接 provider 真实成本映射只改 `unit_price` 的来源；
+- 触发点：`orchestrator._finalize()` 在会话结束时计量（那里才有时长这个事实）；
+  计量失败只记日志 —— **绝不阻塞任务终态**；
+- **余额不足 = 欠费**（`status=unpaid`，reason 机器可读）：计量是事实，照记；扣款尽力而为；
+  **绝不产生负余额**（E24）。v1 不做停服/催收（M1.9 决策），但 `unpaid` 在报表里单列，
+  而不是当成免费；
+- 幂等：`work_session:<id>`（唯一约束 + 重放复用），E12 同族。
 
 ## 27. Talent Commercialization（T2 集成）
 
@@ -645,6 +675,7 @@ M1 之后还会出现"谁拥有经济权利"。**不能让一个字段承担全�
 | `official_max_reward` | 官方单笔任务上限（M1.3 新增） | 50_000 |
 | `official_outstanding_budget` | 未结算官方任务总额上限（M1.3 新增） | 1_000_000 |
 | `player_order_max_reward` | 玩家订单单笔上限（M1.4 新增） | 1_000_000 |
+| `training_credit_per_session` | 培养成本单价（M1.5 新增） | 200 |
 
 **政策不变量（M1.3 强制，配置加载即校验）**：`official_outstanding_budget >= official_max_reward`
 且 `official_reward_multiplier > 0` —— 否则"单笔合法任务都发不出去"或"官方发行停摆"。
