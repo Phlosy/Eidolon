@@ -253,6 +253,7 @@ def test_unknown_account_and_unknown_options(db):
             escrow_account_id=escrow.id,
             payer_account_id=payee.id,
             amount=1,
+            reason="test",
             nonsense="x",
             commit=False,
         )
