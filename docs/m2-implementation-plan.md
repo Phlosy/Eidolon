@@ -564,7 +564,7 @@ CEO A 离任 → CEO B 上任
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
 | M2.0 Work & Role Domain Contract Freeze | **DONE**（2026-09-11） | `366c540` | 设计 + 执行基线 + 契约代码 + 守卫测试；**无迁移**；head 仍 `64fec2d13d9b` |
-| M2.1 Canonical Executable Project Spec | **DONE**（2026-09-11） | 见 §17.0 | 迁移 **v40**；单一立项入口 + 两轴路由 + Work Intake 责任路由 + Canonical Spec 读面；W32–W36 强制 |
+| M2.1 Canonical Executable Project Spec | **DONE**（2026-09-11） | `01060ab` | 迁移 **v40**；单一立项入口 + 两轴路由 + Work Intake 责任路由 + Canonical Spec 读面；W32–W36 强制 |
 
 ### Progress Log
 
@@ -633,7 +633,48 @@ Role Context & Adaptive Onboarding：派生读模型 + Authority Projection + Ro
 
 ## 17.0 M2.1 交付证据
 
-见本轮汇报与 §16 Progress Log（commit hash 由收尾提交补记）。
+**Commit**：`01060ab`（`feat(work): M2.1 canonical executable project spec`，
+39 files / +3063 / -218）。
+
+### 文件清单
+
+| 文件 | 类型 | 说明 |
+| --- | --- | --- |
+| `migrations/versions/a1c2e3f40517_v40_canonical_project.py` | 新增 | v40 纯 additive 迁移 + 事实驱动回填 |
+| `app/work/work_intake.py` | 新增 | Work Intake 责任路由（只读，4 种结果状态） |
+| `app/work/work_defaults.py` | 新增 | 公司默认工作模式 / 责任目标 / fixture 门控 / 完成点推进 |
+| `app/services/projects.py` | 修改 | 单一立项入口 + 三条创建路径 + Canonical Spec 读面 + Project Brief |
+| `app/services/project_delivery.py` | 修改 | `create_guided_project_body()`（仪式体）+ 完成点推进 |
+| `app/workflow/orchestrator.py` | 修改 | 模板更名 + fixture 门控 + `awaiting_management_action` |
+| `app/models/project.py` + `app/models/enums.py` + `app/core/config.py` | 修改 | 新列 / 两轴枚举 / `allow_planning_fixtures` |
+| `app/api/v1/{projects,company}.py` + `app/schemas/{project,organization}.py` | 修改 | `/spec`、`/company/work-policy`、请求/响应字段 |
+| `app/repositories/organization.py` | 修改 | `owner_user_id()`（无负责人时提示 Owner） |
+| `app/services/tutorial.py` | 修改 | 实战教程模板显式声明 guided |
+| 前端 7 个文件 | 修改/新增 | 工作模式面板 + 状态/i18n/类型 |
+| `tests/test_m2_project_spec.py` | 新增 | 23 个（B1–B12） |
+| `tests/test_m2_contract.py` + 6 个既有测试 + conftest | 修改 | 两轴模型 + W32–W36 + `no_work_intake` fixture + 显式 fixture/模式 |
+
+### 门禁实测
+
+```text
+pytest apps/server/tests -q          1090 passed, 6 deselected, 118 warnings
+pytest（默认随机序）                  1090 passed, 6 deselected      ← 无顺序依赖
+ruff check app tests                 All checks passed
+ruff format --check app tests        5 files would be reformatted（全部既有 WIP）
+cd apps/server && alembic check      No new upgrade operations detected
+alembic current                      a1c2e3f40517 (head)  ← v40
+alembic upgrade/downgrade -1/upgrade  实测通过
+cd apps/web && tsc / eslint / prettier / vitest(351) / build   全绿
+```
+
+### 守卫反例注入验证（4/4 转红后撤回）
+
+| 注入 | 期望转红 | 结果 |
+| --- | --- | --- |
+| 移除 orchestrator planning 分支的 `_uses_deterministic_plan` 门控 | `test_no_implicit_template_fallback_path_exists` | ✅ 转红 |
+| Work Intake 解析失败时偷选第一名员工 | `test_missing_work_intake_manager_enters_waiting_not_fallback`（+ vacant 用例） | ✅ 2 个转红 |
+| `get_project_spec()` 里加 `db.commit()` | `test_spec_read_model_never_writes` | ✅ 转红 |
+| 给 `projects.management_employee_id` 加 FK | `test_projects_migration_is_additive_only` | ✅ 转红 |
 
 ---
 
