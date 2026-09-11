@@ -395,13 +395,32 @@ cd apps/web && npm run build
 | M1.3 Official Work Market | **DONE**（2026-09-11） | `03f47a6` / `6a479e9` / `e2f505b` / `ee958cf` | `[migration v34]` `328fbe9f3034`；官方 bounty 全生命周期 + 预算内发行；pytest 898 / web 328 |
 | M1.4 Player Work Market | **DONE**（2026-09-11） | `1f715f2` / `6f5eaeb` / `14db721` / `54ac474` | `[migration v35]` `d2a4926a21d4`；Escrow 锁资 + 玩家间转移（绝不 mint）；pytest 916 / web 328 |
 | M1.5 Company Operating Economy | **DONE**（2026-09-11） | `73e07ca` / `bef7e72` / `aaee26f` / `eb7a1a5` / `f038ed5` | `[migration v36]` `d9545a745166`；算力/培养/手续费三项 Sink + 经营报表；pytest 933 / web 328 |
-| M1.6 Contract / Offer / Settlement Core | **NEXT** | — | `[migration v37]` |
-| M1.7 Talent Commercialization | PLANNED | — | `[migration v38]`；必须跑 T2 回归 |
+| M1.6 Contract / Offer / Settlement Core | **DONE**（2026-09-11） | `044825d` / `03938de` / `0281dd0` / `43ab6c2` | `[migration v37]` `0425abecc96e`；合同全生命周期 + 多腿结算（净额 + Treasury/Burn）；pytest 950 / web 328 |
+| M1.7 Talent Commercialization | **NEXT** | — | `[migration v38]`；必须跑 T2 回归 |
 | M1.8 NPC Economy | PLANNED | — | `[migration v39]`（或复用 participant profile_json） |
 | M1.9 Economy UI & Analytics | PLANNED | — | 无迁移 |
 | M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E31 全覆盖 + 失败注入 |
 
 ### Progress Log
+
+- **2026-09-11 · M1.6 DONE**：`[migration v37]` `0425abecc96e`（`contracts` / `offers` /
+  `escrows.contract_id`）；commits **`044825d`**（schema + 手续费档位）、**`03938de`**
+  （多腿放款 + 合同/Offer 服务）、**`0281dd0`**（合同 API）、**`43ab6c2`**（测试硬化）。
+  - 交付：`ContractService`（创建即锁资 → 接受 → 交付即结算 → 取消/失败/过期退款，全状态 CAS）、
+    `OfferService`（接受报价生成已锁资合同）、`EscrowService.release_legs`（一次 CAS + 多腿拨付）、
+    `SettlementService` 的放款多腿/退款分支（三腿之和 = 对价）、`contract_fee_bps` 手续费档位、
+    合同 API（当事人作用域）。
+  - 口径裁定：**托管权威指针只在 `escrows.contract_id`**（不双指针）；**创建即锁资**（E11 的合同形态）；
+    `FUNDED` 之后不能取消（冻结状态机）；手续费从对价里扣（结算不依赖任何人的额外余额）；
+    退款不抽手续费。
+  - 测试：**+17**（950 passed / 6 deselected）：锁资/无钱不留合同、work + service 全生命周期、
+    多腿守恒与 E8（不 mint、只有 burn 腿回收）、取消/过期/失败退款、重复结算幂等、并发接受唯一赢家、
+    状态机非法迁移、Offer 幂等生成合同、API 当事人作用域与 404/409 语义。
+  - 迁移：v37 up/down/up 实测（含 SQLite batch FK 与部分唯一索引）+ 两个 dev 库 `alembic check` 无漂移。
+  - **踩坑记录**：autogenerate 的 v37 用 `create_foreign_key` 在 SQLite 直接失败，而 SQLite DDL 非事务
+    ⇒ 两个 dev 库被部分写入（`contracts`/`offers`/`contracts_id` 半成品）。已手工回滚到 v36 一致状态
+    后改写为 `batch_alter_table` 版本（具名 FK 与模型侧同名，`alembic check` 才稳定）。
+    教训：**带 FK 的新列在 SQLite 上必须用 batch 模式，先写迁移再升级**。
 
 - **2026-09-11 · M1.5 DONE**：`[migration v36]` `d9545a745166`（`compute_usage` +
   `ledger_transactions.category`）；commits **`73e07ca`**（schema + 政策）、**`bef7e72`**

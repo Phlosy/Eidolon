@@ -490,6 +490,20 @@ Contract
 
 **纪律**：`terms` 只放条款细节；金额、双方、状态、期限是一等列（可查、可约束）。
 
+**实现落点（M1.6，2026-09-11）**
+
+- 表：`contracts` / `offers`（迁移 v37 `0425abecc96e`）+ `escrows.contract_id`
+  （部分唯一索引 `uq_escrow_contract` ⇒ 一合同一托管）；
+- **托管指针只有一处**：`escrows.contract_id` 是权威指针，刻意不在 `contracts` 上再放
+  `escrow_id`（两个指针会漂移；§21 的字段草图里那一项由此实现为反查）；
+- **创建即锁资**（E11 的合同形态）：`POST /contracts` 在同一事务里建合同 + 锁对价 ——
+  没钱就没有合同（不是"先签约后付款"）；有承接方 ⇒ `PENDING_ACCEPTANCE`，否则 `DRAFT`；
+- `accept`（承接方）⇒ `PENDING_ACCEPTANCE → ACTIVE → FUNDED`（两步都走冻结状态机，接受即开工授权）；
+- `fulfill`（承接方）⇒ `FUNDED → FULFILLED → SETTLING → SETTLED`，同事务结算；
+- 取消/过期/失败 ⇒ **退款给出资人**（不抽手续费）；`FUNDED` 之后不允许取消
+  （冻结状态机只允许 fulfill/fail/dispute），失败走 `FAILED → settle(refund)`；
+- `settlement_key = contract:<id>`；`settled_transaction_id` 指向终局交易（E16）。
+
 ## 22. Offer
 
 ```
@@ -556,6 +570,12 @@ settlement_key (unique)      — 幂等锚点（E12）
 在 M1.4/M1.8 接入（现在明确拒绝）。默认 `commit=False`：**业务服务持有事务**
 （`WorkOrderService.settle()` 把"官方 grant 审计行 + 订单 SETTLED + 结算交易"一起提交，
 满足 E13/E14/E15）。M1.4 起 Escrow 释放会作为新的 `funding_mode` 分支接入，签名与幂等语义不变。
+**M1.6 起 `player_escrow` 分支支持「放款（多腿 + 手续费）或退款」**：
+- 放款 = 受益方净额 + Treasury 手续费 + Burn 手续费，**三腿之和 = 托管金额**
+  （腿组合仍是冻结的 `escrow_release`：Debit 收款 / Credit escrow，E26 不新增蓝图；
+  收款方可以是系统账户 ⇒ 手续费直接进 Treasury/Burn，不需要任何人的额外余额）；
+- 手续费**从对价里扣**（`contract_fee_bps`，默认 3%）：结算不会因为谁没钱而失败；
+- 退款 = 单腿回出资人，且**不允许携带手续费**（422）。
 
 ## 25. Company Economy
 
@@ -676,6 +696,7 @@ M1 之后还会出现"谁拥有经济权利"。**不能让一个字段承担全�
 | `official_outstanding_budget` | 未结算官方任务总额上限（M1.3 新增） | 1_000_000 |
 | `player_order_max_reward` | 玩家订单单笔上限（M1.4 新增） | 1_000_000 |
 | `training_credit_per_session` | 培养成本单价（M1.5 新增） | 200 |
+| `contract_fee_bps` | 合同手续费（从对价里扣，M1.6 新增） | 300 |
 
 **政策不变量（M1.3 强制，配置加载即校验）**：`official_outstanding_budget >= official_max_reward`
 且 `official_reward_multiplier > 0` —— 否则"单笔合法任务都发不出去"或"官方发行停摆"。
