@@ -1,0 +1,41 @@
+{
+  "title": "合同",
+  "description": "通用商业合同：对价在创建时锁进托管，履约即结算（承接方净额 + 平台手续费），取消/失败退款。金额与拆分来自账本。",
+  "consideration": "对价 {{amount}}",
+  "escrow": "托管 {{amount}}（{{status}}）",
+  "empty": "暂无合同",
+  "action": {
+    "accept": "接受",
+    "fulfill": "交付并结算",
+    "cancel": "取消并退款"
+  },
+  "type": {
+    "work": "工作",
+    "talent": "人才",
+    "service": "服务",
+    "procurement": "采购",
+    "research": "科研"
+  },
+  "status": {
+    "DRAFT": "草稿",
+    "PENDING_ACCEPTANCE": "待接受",
+    "ACTIVE": "进行中",
+    "FUNDED": "资金已就位",
+    "FULFILLED": "已交付",
+    "SETTLING": "结算中",
+    "SETTLED": "已结算",
+    "CANCELLED": "已取消",
+    "EXPIRED": "已过期",
+    "FAILED": "失败",
+    "DISPUTED": "争议中"
+  },
+  "detail": {
+    "issuer": "出资方",
+    "contractor": "承接方",
+    "settlementTx": "结算交易",
+    "gross": "对价",
+    "fee": "平台手续费",
+    "net": "承接方净额",
+    "split": "财政 / 销毁"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "title": "工作订单",
+  "description": "官方与玩家发布的工作订单：领取 → 交付（auto 验收通过即结算）。发布/验收/结算属管理面，不在玩家界面。",
+  "reward": "奖励 {{amount}}",
+  "deadline": "截止 {{at}}",
+  "escrow": "托管 {{amount}}（{{status}}）",
+  "required": "必交交付物：{{keys}}",
+  "payable": "应付（含加成）{{amount}}",
+  "submitPlaceholder": "简述交付内容…",
+  "filter": {
+    "mine": "只看我承接的",
+    "all": "看全部在招"
+  },
+  "action": {
+    "accept": "领取",
+    "submit": "提交交付物"
+  },
+  "badge": {
+    "mine": "我承接的"
+  },
+  "status": {
+    "OPEN": "在招",
+    "ACCEPTED": "已领取",
+    "IN_PROGRESS": "进行中",
+    "SUBMITTED": "已提交",
+    "REVIEWING": "验收中",
+    "APPROVED": "已通过",
+    "REJECTED": "未通过",
+    "SETTLED": "已结算",
+    "CANCELLED": "已取消",
+    "EXPIRED": "已过期",
+    "DISPUTED": "争议中"
+  },
+  "empty": {
+    "market": "暂无在招订单",
+    "mine": "你还没有承接订单"
+  }
+}

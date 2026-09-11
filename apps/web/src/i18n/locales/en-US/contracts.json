@@ -1,0 +1,41 @@
+{
+  "title": "Contracts",
+  "description": "General commercial contracts: the consideration is escrowed at creation, fulfilment settles immediately (contractor net + platform fee), cancellation/failure refunds. Amounts come from the ledger.",
+  "consideration": "Consideration {{amount}}",
+  "escrow": "Escrowed {{amount}} ({{status}})",
+  "empty": "No contracts yet",
+  "action": {
+    "accept": "Accept",
+    "fulfill": "Deliver & settle",
+    "cancel": "Cancel & refund"
+  },
+  "type": {
+    "work": "Work",
+    "talent": "Talent",
+    "service": "Service",
+    "procurement": "Procurement",
+    "research": "Research"
+  },
+  "status": {
+    "DRAFT": "Draft",
+    "PENDING_ACCEPTANCE": "Pending acceptance",
+    "ACTIVE": "Active",
+    "FUNDED": "Funded",
+    "FULFILLED": "Fulfilled",
+    "SETTLING": "Settling",
+    "SETTLED": "Settled",
+    "CANCELLED": "Cancelled",
+    "EXPIRED": "Expired",
+    "FAILED": "Failed",
+    "DISPUTED": "Disputed"
+  },
+  "detail": {
+    "issuer": "Issuer",
+    "contractor": "Contractor",
+    "settlementTx": "Settlement tx",
+    "gross": "Consideration",
+    "fee": "Platform fee",
+    "net": "Contractor net",
+    "split": "Treasury / burn"
+  }
+}

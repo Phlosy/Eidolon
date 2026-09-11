@@ -22,6 +22,9 @@ import knowledgeZh from "./locales/zh-CN/knowledge.json";
 import cultivationZh from "./locales/zh-CN/cultivation.json";
 import personZh from "./locales/zh-CN/person.json";
 import marketZh from "./locales/zh-CN/market.json";
+import economyZh from "./locales/zh-CN/economy.json";
+import workOrdersZh from "./locales/zh-CN/workOrders.json";
+import contractsZh from "./locales/zh-CN/contracts.json";
 
 import commonEn from "./locales/en-US/common.json";
 import navEn from "./locales/en-US/nav.json";
@@ -43,6 +46,9 @@ import knowledgeEn from "./locales/en-US/knowledge.json";
 import cultivationEn from "./locales/en-US/cultivation.json";
 import personEn from "./locales/en-US/person.json";
 import marketEn from "./locales/en-US/market.json";
+import economyEn from "./locales/en-US/economy.json";
+import workOrdersEn from "./locales/en-US/workOrders.json";
+import contractsEn from "./locales/en-US/contracts.json";
 
 /**
  * Supported UI languages. Adding a language = create `locales/<code>/` with
@@ -79,6 +85,9 @@ export const NAMESPACES = [
   "cultivation",
   "person",
   "market",
+  "economy",
+  "workOrders",
+  "contracts",
 ] as const;
 
 const resources = {
@@ -103,6 +112,9 @@ const resources = {
     cultivation: cultivationZh,
     person: personZh,
     market: marketZh,
+    economy: economyZh,
+    workOrders: workOrdersZh,
+    contracts: contractsZh,
   },
   "en-US": {
     common: commonEn,
@@ -125,6 +137,9 @@ const resources = {
     cultivation: cultivationEn,
     person: personEn,
     market: marketEn,
+    economy: economyEn,
+    workOrders: workOrdersEn,
+    contracts: contractsEn,
   },
 };
 

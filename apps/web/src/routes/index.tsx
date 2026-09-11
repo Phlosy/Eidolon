@@ -37,6 +37,17 @@ const MarketListingPage = lazy(() =>
     default: module.MarketListingPage,
   })),
 );
+const EconomyPage = lazy(() =>
+  import("../pages/economy/economy-page").then((module) => ({ default: module.EconomyPage })),
+);
+const WorkOrdersPage = lazy(() =>
+  import("../pages/work-orders/work-orders-page").then((module) => ({
+    default: module.WorkOrdersPage,
+  })),
+);
+const ContractsPage = lazy(() =>
+  import("../pages/contracts/contracts-page").then((module) => ({ default: module.ContractsPage })),
+);
 const CultivationPage = lazy(() =>
   import("../pages/cultivation/cultivation-page").then((module) => ({
     default: module.CultivationPage,
@@ -158,6 +169,9 @@ export const router = createBrowserRouter([
           { path: "/employees/:id", element: route(<EmployeeDetailPage />) },
           { path: "/talent-roster", element: route(<TalentRosterPage />) },
           { path: "/market", element: route(<MarketPage />) },
+          { path: "/economy", element: route(<EconomyPage />) },
+          { path: "/work-orders", element: route(<WorkOrdersPage />) },
+          { path: "/contracts", element: route(<ContractsPage />) },
           { path: "/market/:listingId", element: route(<MarketListingPage />) },
           { path: "/cultivation", element: route(<CultivationPage />) },
           { path: "/cultivation/:id", element: route(<CultivationDetailPage />) },

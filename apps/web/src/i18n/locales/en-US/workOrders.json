@@ -1,0 +1,38 @@
+{
+  "title": "Work orders",
+  "description": "Official and player work orders: accept → deliver (auto evaluation settles immediately). Publishing, review and settlement stay on the admin surface.",
+  "reward": "Reward {{amount}}",
+  "deadline": "Due {{at}}",
+  "escrow": "Escrowed {{amount}} ({{status}})",
+  "required": "Required deliverables: {{keys}}",
+  "payable": "Payable (incl. bonuses) {{amount}}",
+  "submitPlaceholder": "Describe what you delivered…",
+  "filter": {
+    "mine": "Only my accepted orders",
+    "all": "All open orders"
+  },
+  "action": {
+    "accept": "Accept",
+    "submit": "Submit deliverables"
+  },
+  "badge": {
+    "mine": "Accepted by us"
+  },
+  "status": {
+    "OPEN": "Open",
+    "ACCEPTED": "Accepted",
+    "IN_PROGRESS": "In progress",
+    "SUBMITTED": "Submitted",
+    "REVIEWING": "In review",
+    "APPROVED": "Approved",
+    "REJECTED": "Rejected",
+    "SETTLED": "Settled",
+    "CANCELLED": "Cancelled",
+    "EXPIRED": "Expired",
+    "DISPUTED": "Disputed"
+  },
+  "empty": {
+    "market": "No open orders",
+    "mine": "You have no accepted orders yet"
+  }
+}

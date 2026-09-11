@@ -39,7 +39,8 @@
     "workforce": "组织",
     "work": "工作",
     "assets": "资产",
-    "infrastructure": "基础设施"
+    "infrastructure": "基础设施",
+    "economy": "经济"
   },
   "userMenu": {
     "open": "账号菜单",
@@ -57,5 +58,8 @@
   "positions": "职位标准",
   "talentRoster": "人才名册",
   "cultivation": "角色培养",
-  "market": "人才市场"
+  "market": "人才市场",
+  "economy": "经济",
+  "workOrders": "工作订单",
+  "contracts": "合同"
 }

@@ -1,0 +1,50 @@
+{
+  "title": "Economy",
+  "description": "Company wallet, income/expense categories and ledger flow, personal wallet and self-service rewards. Every number comes from the ledger (backend read models); the UI only displays, never computes.",
+  "wallet": {
+    "available": "Available",
+    "locked": "{{amount}} locked (escrow / contracts)"
+  },
+  "kpi": {
+    "income": "Total income",
+    "expense": "Total expense",
+    "net": "Net",
+    "computeUnpaid": "{{amount}} compute unpaid (not charged yet)"
+  },
+  "categories": {
+    "title": "Income / expense by category",
+    "category": "Category",
+    "income": "Income",
+    "expense": "Expense",
+    "net": "Net",
+    "empty": "No economic activity yet"
+  },
+  "rewards": {
+    "title": "Self-service rewards",
+    "claim": "Claim",
+    "claimed": "Claimed",
+    "empty": "No rewards available",
+    "reason": {
+      "already_claimed": "Already claimed",
+      "not_eligible": "Requirements not met",
+      "cooldown": "Cooling down",
+      "recovery_not_needed": "Balance is healthy (no rescue needed)",
+      "starter_not_claimed": "Claim the starter grant first",
+      "reference_required": "An achievement code is required",
+      "no_user_context": "No personal actor available"
+    }
+  },
+  "personal": {
+    "title": "My wallet",
+    "hint": "Personal rewards (profile / tutorial / daily) land here, separate from the company account",
+    "empty": "No personal wallet"
+  },
+  "transactions": {
+    "title": "Company ledger flow",
+    "kind": "Type",
+    "reference": "Reference",
+    "amount": "Amount",
+    "postedAt": "Posted at",
+    "empty": "No transactions yet"
+  }
+}

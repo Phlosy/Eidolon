@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   Bot,
   BookOpen,
+  FileSignature,
   Building2,
   ChevronLeft,
   CircleGauge,
@@ -10,6 +11,7 @@ import {
   FolderKanban,
   Store,
   Sprout,
+  Wallet,
   Users,
   X,
   type LucideIcon,
@@ -64,8 +66,13 @@ export function CompanySidebar({
     },
     {
       key: "work",
-      items: [{ to: "/projects", key: "projects", icon: FolderKanban, badge: activeProjects }],
+      items: [
+        { to: "/projects", key: "projects", icon: FolderKanban, badge: activeProjects },
+        { to: "/work-orders", key: "workOrders", icon: ClipboardList },
+        { to: "/contracts", key: "contracts", icon: FileSignature },
+      ],
     },
+    { key: "economy", items: [{ to: "/economy", key: "economy", icon: Wallet }] },
     {
       key: "assets",
       items: [

@@ -1,0 +1,50 @@
+{
+  "title": "经济",
+  "description": "公司钱包、收支分类与流水、个人钱包与自助奖励。所有数字来自账本（后端读面），前端只展示不计算。",
+  "wallet": {
+    "available": "可花余额",
+    "locked": "锁定中 {{amount}}（Escrow/合同托管）"
+  },
+  "kpi": {
+    "income": "累计收入",
+    "expense": "累计支出",
+    "net": "净额",
+    "computeUnpaid": "算力欠费 {{amount}}（未扣款）"
+  },
+  "categories": {
+    "title": "收支分类",
+    "category": "类别",
+    "income": "收入",
+    "expense": "支出",
+    "net": "净额",
+    "empty": "还没有经济活动"
+  },
+  "rewards": {
+    "title": "自助奖励",
+    "claim": "领取",
+    "claimed": "已领取",
+    "empty": "暂无奖励",
+    "reason": {
+      "already_claimed": "已领取",
+      "not_eligible": "条件未满足",
+      "cooldown": "冷却中",
+      "recovery_not_needed": "余额充足（不需要兜底）",
+      "starter_not_claimed": "需先领启动资金",
+      "reference_required": "需要指定成就",
+      "no_user_context": "缺少个人主体"
+    }
+  },
+  "personal": {
+    "title": "我的钱包",
+    "hint": "个人奖励（资料完善 / 教程 / 每日）进这里，与公司账户分开",
+    "empty": "暂无个人钱包"
+  },
+  "transactions": {
+    "title": "公司流水",
+    "kind": "类型",
+    "reference": "业务锚点",
+    "amount": "金额",
+    "postedAt": "入账时间",
+    "empty": "暂无流水"
+  }
+}

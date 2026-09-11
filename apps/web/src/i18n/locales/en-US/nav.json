@@ -39,7 +39,8 @@
     "workforce": "Workforce",
     "work": "Work",
     "assets": "Assets",
-    "infrastructure": "Infrastructure"
+    "infrastructure": "Infrastructure",
+    "economy": "Economy"
   },
   "userMenu": {
     "open": "Account menu",
@@ -57,5 +58,8 @@
   "positions": "Positions",
   "talentRoster": "Talent roster",
   "cultivation": "Cultivation",
-  "market": "Talent market"
+  "market": "Talent market",
+  "economy": "Economy",
+  "workOrders": "Work orders",
+  "contracts": "Contracts"
 }
