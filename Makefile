@@ -134,6 +134,11 @@ dev-inventory: check-env
 market-issue: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/issue_talent.py $(ISSUE_ARGS)
 
+## market-npc: 跑一轮 NPC 市场活动（T2.7c；发现 → Fit → 成交。先看：NPC_ARGS="--dry-run"）
+.PHONY: market-npc
+market-npc: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/npc_market_run.py $(NPC_ARGS)
+
 ## dev-cleanup-plan: **只读**清理规划（dry-run；必须显式传 COMPANY_IDS，如 COMPANY_IDS="1 3"；不删不改）
 .PHONY: dev-cleanup-plan
 dev-cleanup-plan: check-env

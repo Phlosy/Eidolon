@@ -144,11 +144,18 @@ class RecruitmentService:
                 raise RecruitmentError("position_slot_not_found", http_status=404)
 
         # ---- 4. CAS 抢占 listing（并发只能一个赢家；失败即回滚，不留半个员工）----
+        player_participant = market_repo.ensure_participant(
+            db,
+            kind="player_company",
+            company_id=int(company_id),
+            display_name=company.name,
+        )
         claimed = market_repo.close_active_listing(
             db,
             listing_id,
             reason="recruited",
             recruited_company_id=int(company_id),
+            recruited_participant_id=int(player_participant.id),
         )
         if not claimed:
             db.rollback()

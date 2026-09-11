@@ -126,7 +126,7 @@ stateDiagram-v2
 | 轴 | 取值 | 载体 | 写入口 |
 | --- | --- | --- | --- |
 | Cultivation | `cultivating` → `ready` | `character_profiles.lifecycle`（**只存这两值**） | T1 引擎（模板自动）/ T2.2（自由养成显式结业） |
-| Market | `unavailable` / `unlisted` / `listed` | **派生**：active listing 存在性 + cultivation + employment | T2.3（挂牌/下架） |
+| Market | `unavailable` / `unlisted` / `listed` | **派生**：active listing 存在性 + cultivation + employment + **是否已被市场消化**（T2.7c） | T2.3（挂牌/下架）/ T2.6-T2.7c（招募） |
 | Employment | `unemployed` / `employed` | **派生**：`employments` 有 `effective_to IS NULL` 的 primary 行 | 既有 `position_service.assign_position/release_position` |
 
 **废弃声明**：`character_profiles.lifecycle` 的 `listed` / `hired` 两个"预留值"**不再使用**
@@ -268,8 +268,8 @@ Protocol 由远端实现，**不修改**本契约。
 
 - `MarketListingView`：`listing_id`、`person_id`、`identity_id`、`name`、`origin`、
   `cultivation_state`、`status`、`quality_tier`、`listed_by_participant_id`、`listed_at`、`closed_at`；
-- `MarketSearchQuery`：`text`、`origin`、`quality_tier`、`position_definition_id`（为 T2.5 预留）、
-  `limit`、`offset`。
+- `MarketSearchQuery`：`text`、`origin`、`quality_tier`、`position_definition_id`（T2.5 起生效：
+  附 Fit 摘要 + 排序）、`listed_by_participant_id`（T2.7a：「我的挂牌」）、`limit`（`None` = 不分页）、`offset`。
 
 **不含** traits/competency/evidence —— 那些由 Person Read Model（T2.1）提供，避免两套聚合。
 `MarketListingView` 的字段集是**公开投影的一部分**，变更需走设计文档评审。
@@ -368,6 +368,23 @@ Protocol 由远端实现，**不修改**本契约。
   失败**不留半个员工**（显式 rollback）；
 - 不做：runtime/provider 全链开通（沿用既有员工 runtime 流程）、owner_company_id 改写
   （历史持有方保留，当前关系由 Employee/employments 表达 —— D5/I5）。
+
+## 10e. NPC 市场参与者（T2.7c 落地形态）
+
+- **身份**：`market_participants(kind=npc_company, company_id=NULL)` —— NPC **不进 `companies`**
+  （D8），也**不建 Employee**（没有公司行就不伪造员工行）；
+- **招聘标准**：每个 NPC 有一个**全局职位模板**（`position_definitions.company_id IS NULL`，
+  `template_scope=system`）+ 已发布画像版本（含能力门槛），与公司职位同构、只是不属任何公司；
+- **选拔**：复用同一个 Fit 引擎（`fit_service.calculate_person_fit`）；阈值是
+  **分数与置信度并列**达标（`min_fit_score` / `min_fit_confidence`，绝不用混合总分），
+  `Unknown != Bad`：证据不足者只是落选，不会被"当成最差"买走；
+- **成交**：CAS 关闭挂牌（`close_reason='npc_recruited'` + `recruited_participant_id`）+ 事件
+  `market.candidate_taken`（person/identity/listing/participant/分数与置信度）—— 玩家可感知
+  "某人才已经被其他公司招募"；`dry_run` 只报告不写库；
+- **派生语义**：凡存在"招募式关闭"的挂牌（`recruited_company_id` 或 `recruited_participant_id`
+  非空）⇒ 该 person 市场态 `unavailable`、`can_list` 原因 `consumed`（不可再挂牌）；
+  仅 `delist` 不算消化，仍可重新挂牌；
+- **节奏**：`make market-npc NPC_ARGS="--npc xinghai --dry-run"`（CLI 手动跑一轮；调度器属后续）。
 
 ## 11. 与 M1 / M2 的边界
 

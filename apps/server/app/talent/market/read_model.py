@@ -118,6 +118,7 @@ def listing_page(
             text=query.text,
             origin=query.origin,
             quality_tier=query.quality_tier,
+            listed_by_participant_id=query.listed_by_participant_id,
         )
     else:
         full = dataclasses.replace(query, limit=None)

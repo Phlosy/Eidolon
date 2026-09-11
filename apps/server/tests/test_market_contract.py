@@ -191,6 +191,7 @@ def test_listing_view_fields_are_frozen():
         "origin",
         "quality_tier",
         "position_definition_id",
+        "listed_by_participant_id",
         "limit",
         "offset",
     )

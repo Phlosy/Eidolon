@@ -40,6 +40,7 @@ class EligibilityReason(StrEnum):
     employed = "employed"  # 已有生效主职：不能再挂牌，也不能被招募
     already_listed = "already_listed"  # 已挂牌：不能重复挂牌
     not_listed = "not_listed"  # 未挂牌：不能通过市场招募
+    consumed = "consumed"  # T2.7c：已被市场消化（玩家公司或 NPC 招走）—— 不可再挂牌
 
 
 @dataclass(frozen=True)
@@ -73,6 +74,9 @@ def can_list_axes(axes: PersonAxes) -> EligibilityDecision:
         return EligibilityDecision(False, EligibilityReason.employed, axes)
     if axes.market_state is MarketState.listed:
         return EligibilityDecision(False, EligibilityReason.already_listed, axes)
+    if axes.market_state is MarketState.unavailable:
+        # 走到这里 = 培养已完成、无生效主职，但市场态仍不可用 ⇒ 已被招募消化（T2.7c）
+        return EligibilityDecision(False, EligibilityReason.consumed, axes)
     return EligibilityDecision(True, EligibilityReason.ok, axes)
 
 
@@ -116,9 +120,12 @@ def market_state(db: Session, person_id: int) -> MarketState:
         return MarketState.listed
     cultivation = cultivation_state(db, person_id)
     employment = employment_state(db, person_id)
-    if cultivation == CultivationState.ready.value and employment is EmploymentState.unemployed:
-        return MarketState.unlisted
-    return MarketState.unavailable
+    if cultivation != CultivationState.ready.value or employment is EmploymentState.employed:
+        return MarketState.unavailable
+    if market_repo.person_consumed_by_recruitment(db, person_id):
+        # 已被玩家公司或 NPC 招走：不再是"可挂牌"，也不是"在市"
+        return MarketState.unavailable
+    return MarketState.unlisted
 
 
 def person_axes(db: Session, person_id: int) -> PersonAxes:

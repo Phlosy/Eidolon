@@ -73,6 +73,8 @@ class MarketSearchQuery:
     origin: str | None = None
     quality_tier: str | None = None
     position_definition_id: int | None = None
+    #: 只看某个参与者挂的牌（T2.7a："我的挂牌"）；None = 全市场
+    listed_by_participant_id: int | None = None
     #: None = 不分页（Fit 排序路径：先取全量、算分、排序，再在 service 层切片）
     limit: int | None = 50
     offset: int = 0

@@ -27,9 +27,16 @@ def ensure_participant(
     display_name: str = "",
     profile_json: dict | None = None,
 ) -> MarketParticipant:
-    """幂等取用参与者（player_company 按 (kind, company_id) 唯一）。"""
+    """幂等取用参与者（player_company 按 (kind, company_id) 唯一）。
+
+    后到者可以**补名**：首个创建者若没带 `display_name`（脚本/测试/内部调用），
+    市场 UI 会一直显示一个裸 id —— 这里在拿到名字时回填，不让它永久无名。
+    """
     existing = get_participant_by_owner(db, kind=kind, company_id=company_id)
     if existing is not None:
+        if display_name and not existing.display_name:
+            existing.display_name = display_name
+            db.flush()
         return existing
 
     values = {
@@ -133,6 +140,7 @@ def close_active_listing(
     reason: str,
     recruited_company_id: int | None = None,
     recruited_employee_id: int | None = None,
+    recruited_participant_id: int | None = None,
 ) -> bool:
     """条件关闭 active 挂牌：rowcount=1 才算真的关掉了（并发/重复调用 → False）。
 
@@ -151,10 +159,31 @@ def close_active_listing(
             close_reason=reason,
             recruited_company_id=recruited_company_id,
             recruited_employee_id=recruited_employee_id,
+            recruited_participant_id=recruited_participant_id,
         )
     )
     db.flush()
     return result.rowcount == 1
+
+
+def person_consumed_by_recruitment(db: Session, person_id: int) -> bool:
+    """该 person 是否已被市场消化（被玩家公司或 NPC 招走）。
+
+    只认"招募式关闭"：仅下架（delist）不算 —— 下架后应能重新挂牌（T2.3 语义）。
+    """
+    consumed = db.scalar(
+        select(func.count())
+        .select_from(MarketListing)
+        .where(
+            MarketListing.person_id == person_id,
+            MarketListing.status == MarketListingStatus.closed.value,
+            or_(
+                MarketListing.recruited_company_id.is_not(None),
+                MarketListing.recruited_participant_id.is_not(None),
+            ),
+        )
+    )
+    return bool(consumed)
 
 
 def listing_rows(
@@ -166,6 +195,7 @@ def listing_rows(
     text: str | None = None,
     origin: str | None = None,
     quality_tier: str | None = None,
+    listed_by_participant_id: int | None = None,
     limit: int | None = None,
     offset: int = 0,
 ) -> list[tuple[MarketListing, Person, CharacterProfile | None]]:
@@ -185,6 +215,8 @@ def listing_rows(
         stmt = stmt.where(MarketListing.quality_tier == quality_tier)
     if origin:
         stmt = stmt.where(CharacterProfile.origin == origin)
+    if listed_by_participant_id is not None:
+        stmt = stmt.where(MarketListing.listed_by_participant_id == listed_by_participant_id)
     if text:
         pattern = f"%{text.strip()}%"
         stmt = stmt.where(
@@ -203,6 +235,7 @@ def count_listing_rows(
     text: str | None = None,
     origin: str | None = None,
     quality_tier: str | None = None,
+    listed_by_participant_id: int | None = None,
 ) -> int:
     stmt = (
         select(func.count())
@@ -216,6 +249,8 @@ def count_listing_rows(
         stmt = stmt.where(MarketListing.quality_tier == quality_tier)
     if origin:
         stmt = stmt.where(CharacterProfile.origin == origin)
+    if listed_by_participant_id is not None:
+        stmt = stmt.where(MarketListing.listed_by_participant_id == listed_by_participant_id)
     if text:
         pattern = f"%{text.strip()}%"
         stmt = stmt.where(

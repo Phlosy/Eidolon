@@ -78,7 +78,9 @@ class MarketListing(TimestampMixin, Base):
     listed_at: Mapped[datetime] = mapped_column(default=utcnow)
     closed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     close_reason: Mapped[str] = mapped_column(String(200), default="")
-    #: T2.6 招募回填（谁招走了）；delist 时留空
+    #: T2.6/T2.7c 招募回填（谁招走了）；delist 时留空。
+    #: 玩家路径：company + employee 两列都写；NPC 路径（无公司行/员工行）只写 participant。
     recruited_company_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     recruited_employee_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recruited_participant_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)

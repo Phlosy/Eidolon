@@ -427,3 +427,45 @@ def test_market_module_has_no_economic_surface(client):
     blob = str(market_paths).lower()
     for word in ("price", "amount", "bid", "ask", "escrow", "wallet", "ledger", "payment"):
         assert not re.search(rf"\b{word}\b", blob), f"市场 API 出现经济概念：{word}"
+
+
+def test_mine_filter_returns_only_own_listings(client, db, default_company_id):
+    """T2.7a：`mine=true` 只看本公司挂的牌（跨公司读面仍默认全市场）。"""
+    mine = _ready_character(client, name="MineFilter")
+    listing = client.post("/api/v1/market/listings", json={"person_id": mine["person_id"]}).json()
+
+    # 别家公司的挂牌（直接写库，模拟 NPC/别家供给）
+    seq = db.scalar(sa.text("SELECT count(*) FROM companies"))
+    rival = Company(name="Rival Mine Co", slug=f"rival-mine-{seq}")
+    db.add(rival)
+    db.flush()
+    person = make_person(db, slug=f"rival-mine-person-{seq}")
+    from app.models.cultivation import CharacterProfile
+
+    db.add(
+        CharacterProfile(
+            person_id=int(person.id),
+            identity_id=f"CH-RIVALMN{seq:04d}",
+            origin="trained",
+            owner_company_id=int(rival.id),
+            lifecycle="ready",
+        )
+    )
+    db.flush()
+    participant = market_repo.ensure_participant(
+        db, kind=MarketParticipantKind.player_company.value, company_id=int(rival.id)
+    )
+    market_repo.create_active_listing(
+        db, person_id=int(person.id), listed_by_participant_id=int(participant.id)
+    )
+    db.commit()
+
+    company_name = client.get("/api/v1/company").json()["name"]
+    mine_page = client.get("/api/v1/market/listings", params={"mine": "true"}).json()
+    ids = {item["listing_id"] for item in mine_page["items"]}
+    assert listing["listing_id"] in ids
+    assert all(item["listed_by"] == company_name for item in mine_page["items"]), mine_page["items"]
+    assert mine_page["total"] == len(ids)
+
+    all_page = client.get("/api/v1/market/listings", params={"limit": 200}).json()
+    assert all_page["total"] > mine_page["total"], "全市场应比我的挂牌多"

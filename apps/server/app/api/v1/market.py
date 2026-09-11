@@ -107,6 +107,7 @@ def list_listings(
     position_definition_id: int | None = Query(
         None, description="带此参数时附 Fit 摘要并按匹配度排序（不筛人：未知仍列出）"
     ),
+    mine: bool = Query(False, description="只看本公司挂的牌（T2.7a）"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     company_id: int | None = Depends(resolve_company_id),
@@ -122,11 +123,26 @@ def list_listings(
         if position_definition_id is not None
         else None
     )
+    mine_participant_id: int | None = None
+    if mine:
+        from app.models.enums import MarketParticipantKind
+        from app.repositories import market as market_repo
+
+        if company_id is None:
+            return {"items": [], "total": 0, "limit": limit, "offset": offset}
+        participant = market_repo.get_participant_by_owner(
+            db, kind=MarketParticipantKind.player_company.value, company_id=int(company_id)
+        )
+        if participant is None:
+            return {"items": [], "total": 0, "limit": limit, "offset": offset}
+        mine_participant_id = int(participant.id)
+
     query = MarketSearchQuery(
         text=text,
         origin=origin,
         quality_tier=quality_tier,
         position_definition_id=position_definition_id,
+        listed_by_participant_id=mine_participant_id,
         limit=limit,
         offset=offset,
     )
