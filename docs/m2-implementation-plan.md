@@ -615,7 +615,7 @@ CEO A 离任 → CEO B 上任
 | --- | --- | --- | --- |
 | M2.0 Work & Role Domain Contract Freeze | **DONE**（2026-09-11） | `366c540` | 设计 + 执行基线 + 契约代码 + 守卫测试；**无迁移**；head 仍 `64fec2d13d9b` |
 | M2.1 Canonical Executable Project Spec | **DONE**（2026-09-11） | `01060ab` | 迁移 **v40**；单一立项入口 + 两轴路由 + Work Intake 责任路由 + Canonical Spec 读面；W32–W36 强制 |
-| M2.2 Role Context & Adaptive Onboarding | **DONE**（2026-09-11） | 见 §17.0b | 迁移 **v41**；Authority Projection（default-deny / 有限作用域 / append-only 双摘要）+ RoleContext 投影 + Role Resource Index；W37–W42 强制 |
+| M2.2 Role Context & Adaptive Onboarding | **DONE**（2026-09-11） | `164272c` | 迁移 **v41**；Authority Projection（default-deny / 有限作用域 / append-only 双摘要）+ RoleContext 投影 + Role Resource Index；W37–W42 强制 |
 
 ### Progress Log
 
@@ -714,7 +714,52 @@ Management Agent Tooling：把「只读事实查询 + 受校验的写操作」�
 
 ## 17.0b M2.2 交付证据
 
-见本轮汇报与 §16 Progress Log（commit hash 由收尾提交补记）。
+**Commit**：`164272c`（`feat(work): M2.2 role context & authority projection`，
+28 files / +3552 / -56）。
+
+### 文件清单
+
+| 文件 | 类型 | 说明 |
+| --- | --- | --- |
+| `migrations/versions/b2d4f6a8c013_v41_position_authority.py` | 新增 | v41 纯 additive：2 新表 + 1 新列 + 3 索引 |
+| `app/work/authority.py` | 新增 | 授权解析 + 校验 + append-only 写侧 + 双摘要快照 |
+| `app/work/role_context.py` | 新增 | RoleContext 派生投影 + 资源指针解析 |
+| `app/work/authority_seed.py` | 新增 | 冷启动默认授权 / advisory_scope / 资源清单 |
+| `app/work/role_events.py` | 新增 | 任职事件 → `role.context_*` 事实通知 |
+| `app/work/contracts.py` | 修改 | `AuthorityGrant` 对齐表结构 + `AuthorityScopeKind` + `AuthorityTarget/Decision` + 双摘要 + W37–W42 |
+| `app/models/position.py` · `app/models/enums.py` | 修改 | 2 个新模型 + `advisory_scope` 列 + `AuthorityScopeKind` |
+| `app/api/v1/employees.py` · `app/schemas/work.py`（新增）· `app/schemas/position.py` | 修改/新增 | `GET /employees/{id}/role-context` + 读模型 |
+| `app/core/config.py` · `.env.example` · `app/main.py` · `tests/conftest.py` | 修改 | 2 个设置项 + seed/消费者接线 + 测试门控 |
+| `apps/web/src/components/employee/role-context-tab.tsx`（新增）+ 5 个前端文件 | 新增/修改 | 履职上下文 Tab + types/api/hook/i18n |
+| `tests/test_m2_role_context.py` | 新增 | 29 个（C1–C6 + 八条拍板） |
+| `tests/test_m2_contract.py` | 修改 | 50 个（对齐 v41 表结构 + 锚点跨三文件解析） |
+| `docs/{m2-agent-work-runtime-design,m2-implementation-plan,handover}.md` | 修改 | 决策/ADR/不变量/进度 |
+
+### 门禁实测
+
+```text
+pytest apps/server/tests -q -p no:randomly   1120 passed, 6 deselected, 118 warnings
+pytest apps/server/tests -q（默认随机序）      1120 passed, 6 deselected
+ruff check app tests                         All checks passed
+ruff format --check app tests                5 files would be reformatted（既有 WIP，未新增）
+cd apps/server && alembic check              No new upgrade operations detected
+alembic current                              b2d4f6a8c013 (head)   ← v41
+alembic upgrade → downgrade -1 → upgrade     实测通过
+cd apps/web && tsc / eslint / prettier / vitest(351) / build      全绿
+```
+
+> 收尾备注：中途一次 `ruff format apps/server/app/` 顺手把两个**既有 WIP** 文件
+> （`services/auth.py`、`services/providers.py`）格式化了；已 `git checkout` 还原，
+> 保持"不顺手清理技术债"的纪律，也让 diff 只含 M2.2。
+
+### 守卫反例注入验证（4/4 转红后撤回）
+
+| 注入 | 期望转红 | 结果 |
+| --- | --- | --- |
+| 授权层用 `employee.role == "ceo"` 当权限 | `test_authority_and_role_context_modules_never_read_role_strings_or_scores` | ✅ 转红 |
+| `revoke_authority` 改成 `db.delete(row)` | `test_revoke_closes_the_window_and_history_stays_explainable` | ✅ 转红 |
+| `authorizes` 改名为 `should_authorize` | `test_authority_layer_validates_but_never_decides` | ✅ 转红 |
+| 往 `position_definition_packages` 加 `authority_kind` 列 | `test_v41_adds_authority_tables_without_touching_packages_semantics` | ✅ 转红 |
 
 ---
 
