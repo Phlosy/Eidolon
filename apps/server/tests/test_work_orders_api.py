@@ -86,6 +86,16 @@ def _available(db, company: Company) -> int:
         return int(projection.available_balance) if projection else 0
 
 
+def _fund(db, company: Company, amount: int) -> int:
+    """给公司发启动资金（独立提交），返回其 actor 账户 id。"""
+    from app.services.economy.monetary import MonetaryAuthority
+
+    MonetaryAuthority(db).mint(
+        actor=EconomicActor.company(company.id), amount=amount, reason="test"
+    )
+    return int(AccountService(db).ensure_account(EconomicActor.company(company.id)).id)
+
+
 def _order_status(order_id: int) -> str:
     with SessionLocal() as session:
         order = economy_repo.get_work_order(session, order_id)
@@ -231,13 +241,25 @@ def test_expired_and_unknown_orders_are_rejected(client, db):
     assert _order_status(stale.id) == WorkOrderStatus.expired.value
 
 
-def test_publish_and_other_internal_actions_are_not_exposed(client, db):
+def test_official_kinds_cannot_be_published_by_players(client, db):
+    """`POST /work-orders` 只能发**玩家**订单（Escrow 锁资）；官方发行必须走 CLI（M1.3）。"""
     company = _company(db, "WoNoWrite")
+    _fund(db, company, 10_000)
+    official_before = len(economy_repo.list_work_orders(db, kinds=("OFFICIAL_BOUNTY",)))
     with _AsCompany(db, company.id):
-        assert client.post(
-            "/api/v1/work-orders", json={"title": "free money", "reward_amount": 10**6}
-        ).status_code in (404, 405)
+        response = client.post(
+            "/api/v1/work-orders",
+            json={
+                "title": "free money",
+                "reward_amount": 9_999,
+                "kind": "OFFICIAL_BOUNTY",  # 想印钱 ⇒ 明确拒绝
+            },
+        )
+        assert response.status_code == 422
+        assert response.json()["detail"] == "kind_not_player_kind"
         assert client.get("/api/v1/work-orders").status_code == 200  # 读面确实存在
+    # 也没有产生任何官方订单（共享测试库：只看增量），更没有任何 mint
+    assert len(economy_repo.list_work_orders(db, kinds=("OFFICIAL_BOUNTY",))) == official_before
 
 
 def test_market_pagination_and_status_filter(client, db):
@@ -254,3 +276,128 @@ def test_market_pagination_and_status_filter(client, db):
             "/api/v1/work-orders", params={"status": "accepted", "mine": "true"}
         ).json()
         assert {item["work_order_id"] for item in settled["items"]} == {orders[0].id}
+
+
+# ---------------------------------------------------------------- 玩家市场（M1.4）
+
+
+def test_player_publish_locks_funds_and_exposes_escrow(client, db):
+    issuer = _company(db, "PlayerApiIssuer")
+    issuer_account = _fund(db, issuer, 20_000)
+    with _AsCompany(db, issuer.id):
+        created = client.post(
+            "/api/v1/work-orders",
+            json={
+                "title": "Player task",
+                "reward_amount": 6_000,
+                "kind": "PLAYER_BOUNTY",
+                "deliverables": {"required_keys": ["readme"]},
+            },
+        )
+    assert created.status_code == 201
+    payload = created.json()
+    assert payload["funding_mode"] == "player_escrow"
+    assert payload["status"] == "OPEN"
+    assert payload["is_issuer"] is True
+    assert payload["escrow"]["status"] == "FUNDED"
+    assert payload["escrow"]["amount"] == 6_000
+    assert payload["escrow"]["account_balance"] == 6_000
+
+    # 钱已锁：可花减少、锁定增加、总资产不变
+    assert _available(db, issuer) == 14_000
+    with SessionLocal() as session:
+        account = economy_repo.get_account(session, issuer_account)
+        projection = economy_repo.get_projection(session, int(account.id))
+        assert int(projection.available_balance) == 14_000
+        assert int(projection.reserved_balance) == 6_000
+        assert int(projection.posted_balance) == 20_000
+
+
+def test_player_publish_without_funds_is_rejected(client, db):
+    issuer = _company(db, "PlayerApiPoor")
+    _fund(db, issuer, 1_000)
+    orders_before = len(economy_repo.list_work_orders(db))
+    with _AsCompany(db, issuer.id):
+        response = client.post(
+            "/api/v1/work-orders", json={"title": "too expensive", "reward_amount": 50_000}
+        )
+    assert response.status_code == 409
+    assert response.json()["detail"] == "insufficient_funds"
+    # E11：没有"已发布但没锁资"的订单，余额也没变
+    assert len(economy_repo.list_work_orders(db)) == orders_before
+    assert _available(db, issuer) == 1_000
+
+
+def test_player_order_full_flow_between_companies(client, db):
+    issuer = _company(db, "PlayerFlowIssuer")
+    contractor = _company(db, "PlayerFlowContractor")
+    _fund(db, issuer, 10_000)
+    with _AsCompany(db, issuer.id):
+        order_id = client.post(
+            "/api/v1/work-orders", json={"title": "Deliver this", "reward_amount": 4_000}
+        ).json()["work_order_id"]
+
+    with _AsCompany(db, contractor.id):
+        assert client.post(f"/api/v1/work-orders/{order_id}/accept").status_code == 200
+        detail = client.post(
+            f"/api/v1/work-orders/{order_id}/submit",
+            json={"summary": "done", "deliverables": {"readme": "x"}},
+        ).json()
+    assert detail["status"] == "SETTLED"
+    assert detail["escrow"]["status"] == "RELEASED"
+    assert detail["escrow"]["account_balance"] == 0  # E25：托管归零
+    assert _available(db, issuer) == 6_000  # 锁资时已扣
+    assert _available(db, contractor) == 4_000  # 落袋
+
+    # 发布方视角：is_issuer=True 且能取消（已结算 ⇒ 拒绝）
+    with _AsCompany(db, issuer.id):
+        mine = client.get(f"/api/v1/work-orders/{order_id}").json()
+        assert mine["is_issuer"] is True
+        cancel = client.post(f"/api/v1/work-orders/{order_id}/cancel")
+        assert cancel.status_code == 409
+        assert cancel.json()["detail"].startswith("order_not_cancellable")
+
+
+def test_player_cancel_refunds_and_is_issuer_only(client, db):
+    issuer = _company(db, "PlayerCancelIssuer")
+    stranger = _company(db, "PlayerCancelStranger")
+    _fund(db, issuer, 8_000)
+    with _AsCompany(db, issuer.id):
+        order_id = client.post(
+            "/api/v1/work-orders", json={"title": "Cancel me", "reward_amount": 3_000}
+        ).json()["work_order_id"]
+    assert _available(db, issuer) == 5_000
+
+    with _AsCompany(db, stranger.id):
+        denied = client.post(f"/api/v1/work-orders/{order_id}/cancel")
+        assert denied.status_code == 404
+        assert denied.json()["detail"] == "not_your_order"
+
+    with _AsCompany(db, issuer.id):
+        cancelled = client.post(f"/api/v1/work-orders/{order_id}/cancel").json()
+        assert cancelled["status"] == "CANCELLED"
+        assert cancelled["escrow"]["status"] == "REFUNDED"
+    assert _available(db, issuer) == 8_000  # 钱回来了
+
+
+def test_player_deadline_expiry_refunds_via_cli_scan(client, db):
+    from datetime import UTC, datetime, timedelta
+
+    issuer = _company(db, "PlayerExpiryIssuer")
+    _fund(db, issuer, 5_000)
+    with _AsCompany(db, issuer.id):
+        order_id = client.post(
+            "/api/v1/work-orders",
+            json={
+                "title": "Expiring",
+                "reward_amount": 2_000,
+                "deadline_at": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
+            },
+        ).json()["work_order_id"]
+    assert _available(db, issuer) == 3_000
+
+    with SessionLocal() as session:
+        expired = WorkOrderService(session).expire_overdue()
+    assert expired >= 1
+    assert _order_status(order_id) == WorkOrderStatus.expired.value
+    assert _available(db, issuer) == 5_000

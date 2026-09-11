@@ -296,18 +296,14 @@ def test_concurrent_accept_lets_one_company_win(db):
 # ---------------------------------------------------------------- E8 / 预算 / 状态机
 
 
-def test_player_orders_cannot_be_published_or_mint(db):
-    """E8：玩家（公司）不能 mint —— 玩家类 kind 在 Escrow 落地（M1.4）之前不可发布。"""
+def test_official_publish_path_rejects_player_kinds(db):
+    """E8：官方发行通道（`publish_official`，会 mint）只接受官方 kind。
+
+    玩家类 kind 必须走 `publish_player_order`（Escrow 锁资、绝不 mint）；
+    在官方通道里出现 ⇒ 明确拒绝，而不是"顺手 mint 给玩家市场"。
+    """
     service = WorkOrderService(db)
-    for kind in (
-        WorkOrderKind.player_bounty,
-        WorkOrderKind.player_contract,
-        WorkOrderKind.npc_contract,
-    ):
-        with pytest.raises(WorkOrderError, match="kind_not_available_yet"):
-            service.publish_official(title="Player order", reward_amount=1_000, kind=kind)
-    # 也没有产生任何玩家类订单
-    assert (
+    player_before = len(
         economy_repo.list_work_orders(
             db,
             kinds=(
@@ -316,7 +312,27 @@ def test_player_orders_cannot_be_published_or_mint(db):
                 WorkOrderKind.npc_contract.value,
             ),
         )
-        == []
+    )
+    for kind in (
+        WorkOrderKind.player_bounty,
+        WorkOrderKind.player_contract,
+        WorkOrderKind.npc_contract,
+    ):
+        with pytest.raises(WorkOrderError, match="kind_not_available_yet"):
+            service.publish_official(title="Player order", reward_amount=1_000, kind=kind)
+    # 官方通道没有产生任何玩家类订单（共享测试库：只看增量）
+    assert (
+        len(
+            economy_repo.list_work_orders(
+                db,
+                kinds=(
+                    WorkOrderKind.player_bounty.value,
+                    WorkOrderKind.player_contract.value,
+                    WorkOrderKind.npc_contract.value,
+                ),
+            )
+        )
+        == player_before
     )
 
 
@@ -430,23 +446,38 @@ def test_empty_submission_auto_rejects_and_bonus_validation(db):
 
 
 def test_settlement_service_rejects_unsupported_funding_modes(db):
-    """M1.4/M1.8 的腿组合还没实现 ⇒ 明确拒绝，而不是"退化成 mint"（E8）。"""
+    """未实现的腿组合明确拒绝，而不是"退化成 mint"（E8）。
+
+    M1.4 起 `player_escrow` 已实现（走 Escrow 放款，见 tests/test_economy_escrow.py）；
+    这里只钉住尚未实现的 `npc_treasury`，以及 player_escrow 缺 escrow_id 时必须报错。
+    """
     company = _company(db, "ModeCo")
     service = SettlementService(db)
     minted_before = _supply(db).minted
-    for mode in (FundingMode.player_escrow, FundingMode.npc_treasury):
-        with pytest.raises(SettlementError, match="funding_mode_not_supported"):
-            service.settle(
-                SettlementRequest(
-                    settlement_key=f"test:{mode.value}",
-                    amount=100,
-                    beneficiary=EconomicActor.company(company.id),
-                    reason="test",
-                    reference_type="test",
-                    reference_id="1",
-                    funding_mode=mode,
-                )
+    with pytest.raises(SettlementError, match="funding_mode_not_supported"):
+        service.settle(
+            SettlementRequest(
+                settlement_key="test:npc",
+                amount=100,
+                beneficiary=EconomicActor.company(company.id),
+                reason="test",
+                reference_type="test",
+                reference_id="1",
+                funding_mode=FundingMode.npc_treasury,
             )
+        )
+    with pytest.raises(SettlementError, match="escrow_id_required"):
+        service.settle(
+            SettlementRequest(
+                settlement_key="test:escrow",
+                amount=100,
+                beneficiary=EconomicActor.company(company.id),
+                reason="test",
+                reference_type="test",
+                reference_id="1",
+                funding_mode=FundingMode.player_escrow,
+            )
+        )
     # 也没有任何交易落库
     assert _supply(db).minted == minted_before
 
@@ -560,7 +591,9 @@ def test_player_api_never_publishes_evaluates_or_settles():
         path for path in paths if "/work-orders" in path and path.endswith(("/evaluate", "/settle"))
     ]
     assert not forbidden_paths, forbidden_paths
-    assert sorted(method for method in paths["/api/v1/work-orders"]) == ["get"]
+    # `POST /work-orders` 只能是**玩家发布**（Escrow 锁资）；官方发行仍只走 CLI —
+    # AST 守卫在下面钉住"API 层不许调用 publish_official"。
+    assert sorted(paths["/api/v1/work-orders"]) == ["get", "post"]
 
     server_root = PathLib(__file__).resolve().parents[1]
     forbidden_calls = {"publish_official", "record_external_grant"}
