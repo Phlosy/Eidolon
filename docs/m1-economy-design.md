@@ -398,6 +398,26 @@ Settlement（MonetaryAuthority.mint → 承接公司）
 - 高级任务逐步以 Contract 为主（M1.6 起）；
 - 结算必须走 Reward/Ledger，不得直接改余额（E4/E9）。
 
+**实现落点（M1.3，2026-09-11）**
+
+- 表：`work_orders` / `work_order_submissions` / `evaluations`（迁移 v34 `328fbe9f3034`）；
+- **预算内发行**（本轮新增政策参数）：单笔 `official_max_reward`（默认 50_000）、
+  未结算承诺额 `official_outstanding_budget`（默认 1_000_000，只统计未终态的官方订单）；
+  发布时金额按 `official_reward_multiplier` 缩放后受这两条约束 ——
+  发行渠道有了"额度"概念，而不是无限印钱；
+- 状态机：`OPEN → ACCEPTED → IN_PROGRESS → SUBMITTED → REVIEWING → APPROVED → SETTLED`
+  全部经 `assert_transition`（M1.0 冻结表），迁移落库走 **CAS 条件更新**（并发只有一个赢家）；
+  被拒（`REJECTED`）后的重提会真正先回到 `IN_PROGRESS`（冻结表不允许 REJECTED → SUBMITTED 跳步）；
+- **结算**：`APPROVED` 后同一事务内调用 `SettlementService`（`settlement_key = work_order:<id>`）；
+  `reward_grants` 落官方类审计行（`record_external_grant`，**不再 mint**）；
+  重复结算/并发结算不重复发钱（E12），结算完成后订单进入终态并释放预算占用；
+- **E8 边界**：玩家类 kind（`player_bounty` / `player_contract` / `npc_contract`）在 Escrow 落地
+  （M1.4/M1.8）之前一律拒绝发布；`SettlementService` 对 `player_escrow`/`npc_treasury`
+  明确报 `funding_mode_not_supported`，而不是退化成 mint；
+- **执行复用**：订单只存 `project_id` 引用既有 `Project/Task/Artifact`，不重造项目系统；
+- **管理面**：发布/验收/结算没有玩家端点（§32 三层边界），落 `scripts/work_orders.py` + make 目标；
+  有功能守卫（OpenAPI 路由表）与 AST 守卫（`app/api/**` 不得调用 publish/settle/record_external_grant）。
+
 ## 19. Player Work Market
 
 ```
@@ -427,6 +447,12 @@ Evaluation
 - 与项目既有 `assessment`/`evidence` 体系**不冲突**：Evaluation 是"工作订单验收"，
   assessment 是"员工能力评估"；M1.3 不复制 assessment，只引用 `project_id` 与产出物；
 - 奖励 = `base + Σbonus`，最终仍走 Reward/Ledger（不得在 Evaluation 里改钱）。
+
+**实现落点（M1.3）**：`EvaluationService.auto_verdict()` 是**确定性规则**（提交非空 + 满足
+`deliverables_json.required_keys` + 期限判定），**auto 模式不给 bonus**（bonus 是人工语义：
+score≥90 / 提前交付等由管理面在 `evaluate(...)` 里给出）；缺件等诊断信息进 `criteria_json`，
+**绝不混进 bonuses**（那会被当成金额解析）；`bonus` 必须是**整数**（`int(1.5)` 会静默截断金额，
+因此显式拒绝 float/bool/str）；`score` 限 0–100。验收只写 `evaluations` 一行，不动钱。
 
 ## 21. Contract
 
@@ -497,6 +523,13 @@ settlement_key (unique)      — 幂等锚点（E12）
 - **幂等**：同 `settlement_key` 重复调用不重复扣钱（唯一约束 + 状态判断）；
 - **原子**：失败不得留下半笔账（E13）；资金与业务状态同事务提交（E14/E15）；
 - 人才交易的结算**必须先完成资金→再调用 T2 招募**，或由同一事务包裹（M1.7 裁定，见 §27）。
+
+**实现落点（M1.3）**：`SettlementService.settle(SettlementRequest)`：
+`settlement_key` 直接作为 ledger `idempotency_key`（唯一约束即是幂等锚点），
+`funding_mode=system_mint` 走 `MonetaryAuthority.mint`；`player_escrow`/`npc_treasury`
+在 M1.4/M1.8 接入（现在明确拒绝）。默认 `commit=False`：**业务服务持有事务**
+（`WorkOrderService.settle()` 把"官方 grant 审计行 + 订单 SETTLED + 结算交易"一起提交，
+满足 E13/E14/E15）。M1.4 起 Escrow 释放会作为新的 `funding_mode` 分支接入，签名与幂等语义不变。
 
 ## 25. Company Economy
 
@@ -583,6 +616,11 @@ M1 之后还会出现"谁拥有经济权利"。**不能让一个字段承担全�
 | `compute_credit_per_unit` | 算力单价 | 1 |
 | `policy_version` | 政策版本（落库到 Reward/Contract） | `econ-1` |
 | `achievement_reward` | 成就奖励（M1.2 新增） | 1_500 |
+| `official_max_reward` | 官方单笔任务上限（M1.3 新增） | 50_000 |
+| `official_outstanding_budget` | 未结算官方任务总额上限（M1.3 新增） | 1_000_000 |
+
+**政策不变量（M1.3 强制，配置加载即校验）**：`official_outstanding_budget >= official_max_reward`
+且 `official_reward_multiplier > 0` —— 否则"单笔合法任务都发不出去"或"官方发行停摆"。
 
 **政策不变量（M1.2 强制，配置加载即校验）**：`recovery_grant` 必须**严格小于**
 `starter_grant` / `achievement_reward` / `tutorial_reward`，且**不超过** `recovery_threshold`

@@ -391,9 +391,9 @@ cd apps/web && npm run build
 | --- | --- | --- | --- |
 | M1.0 Economic Domain Contract Freeze | **DONE**（2026-09-11） | `2f75590` | 设计 + 执行基线与契约代码；**无迁移**；pytest 798 / web 328 |
 | M1.1 Accounts & Double-entry Ledger | **DONE**（2026-09-11） | `12fb9a7` / `2d37938` / `9cb1e06` | `[migration v32]` `8f1abef8410f`；四小阶段 M1.1a–d 全部落地；**A1–A20 全部满足**；pytest 851 / web 328 |
-| M1.2 Monetary Authority & Reward System | **DONE**（2026-09-11） | `81eed9a` / `6e35963` / `7cc5541` | `[migration v33]` `691816bccb53`；7 类自助奖励全部落地（含救援经济）；pytest 874 / web 328 |
-| M1.3 Official Work Market | **NEXT** | — | `[migration v34]` |
-| M1.4 Player Work Market | PLANNED | — | `[migration v35]` |
+| M1.2 Monetary Authority & Reward System | **DONE**（2026-09-11） | `81eed9a` / `6e35963` / `7cc5541` | `[migration v33]` `691816bccb53`；7 类自助奖励全部落地（含救援经济）；pytest 898 / web 328 |
+| M1.3 Official Work Market | **DONE**（2026-09-11） | `03f47a6` / `6a479e9` / `e2f505b` / `ee958cf` | `[migration v34]` `328fbe9f3034`；官方 bounty 全生命周期 + 预算内发行；pytest 898 / web 328 |
+| M1.4 Player Work Market | **NEXT** | — | `[migration v35]` |
 | M1.5 Company Operating Economy | PLANNED | — | `[migration v36]` |
 | M1.6 Contract / Offer / Settlement Core | PLANNED | — | `[migration v37]` |
 | M1.7 Talent Commercialization | PLANNED | — | `[migration v38]`；必须跑 T2 回归 |
@@ -402,6 +402,27 @@ cd apps/web && npm run build
 | M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E31 全覆盖 + 失败注入 |
 
 ### Progress Log
+
+- **2026-09-11 · M1.3 DONE**：`[migration v34]` `328fbe9f3034`（`work_orders` /
+  `work_order_submissions` / `evaluations`）；commits **`03f47a6`**（schema + 预算政策）、
+  **`6a479e9`**（Settlement/Evaluation/WorkOrder 服务）、**`e2f505b`**（读/写 API + 管理面 CLI）、
+  **`ee958cf`**（测试硬化）。
+  - 交付：官方 bounty 全生命周期（OPEN→ACCEPTED→IN_PROGRESS→SUBMITTED→REVIEWING→APPROVED→SETTLED）；
+    `SettlementService`（资金终局唯一入口，`settlement_key` = ledger 幂等键）；
+    `EvaluationService`（auto 确定性规则 / manual 管理面，奖励 = base + Σbonus）；
+    `WorkOrderService`（发布/领取/提交/验收/结算/过期，全部 `assert_transition` + CAS）；
+    玩家 API（`GET /work-orders`、详情、`accept`、`submit`）+ 管理面 CLI
+    （`make work-order-publish/list/evaluate/settle/expire`）。
+  - 口径裁定：官方发行**预算内**（单笔封顶 + 未结算承诺额封顶，新增两个政策参数）；
+    auto 模式**不给 bonus**（bonus 属人工语义）；玩家类 kind 在 M1.4（Escrow）前不可发布；
+    发布/验收/结算**不进玩家 router**（§32），落 CLI + 功能/AST 双守卫。
+  - 测试：**+24**（898 passed / 6 deselected）：生命周期与 mint 去向、奖励=base+bonus、
+    重复结算幂等、并发领取唯一赢家、预算封顶与释放、非法迁移/过期/空提交/非整数 bonus、
+    E8 反面校验、跨公司不可替提交与不可读交付物、无发布/验收/结算端点。
+  - 迁移：v34 up/down/up 实测 + `alembic check` 无漂移；dev 库已升到 v34。
+  - 实现中修掉的 bug：REJECTED 重提漏做真实状态迁移；`expire_overdue` 漏传 session；
+    auto 判定的"缺件诊断"被当成 bonuses 解析；**订单过期比较 naive/aware datetime 混用**；
+    `self.evaluations` 属性遮蔽同名方法；`SettlementService.settle(commit=True)` 未真正提交。
 
 - **2026-09-11 · M1.2 DONE**：`[migration v33]` `691816bccb53`（`reward_grants`，只建表）；commits
   **`81eed9a`**（schema + 政策快照）、**`6e35963`**（RewardService + 读/领 API）、**`7cc5541`**（测试硬化）。
