@@ -79,5 +79,10 @@
   "skill": {
     "created": "技能已发现",
     "validated": "技能已验证"
-  }
+  },
+  "market.listed": "角色挂牌上市",
+  "market.delisted": "角色下架",
+  "market.candidate_taken": "人才被其他公司招募",
+  "person.recruited": "人才被招募入职",
+  "cultivation.completed": "角色养成完成"
 }

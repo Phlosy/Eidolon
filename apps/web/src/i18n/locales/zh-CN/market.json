@@ -1,0 +1,99 @@
+{
+  "title": "人才市场",
+  "description": "在市人才的履历就是证据链：先读履历与能力证据，再用职位匹配度判断，最后招募。",
+  "newListing": "挂牌",
+  "summary": "{{count}} 位在市人才",
+  "filters": {
+    "searchPlaceholder": "按姓名或身份 ID 搜索",
+    "origin": "来源",
+    "originAll": "全部来源",
+    "tier": "档位",
+    "tierAll": "全部档位",
+    "position": "按职位匹配",
+    "positionAll": "不按职位排序",
+    "positionHint": "选择职位后附匹配摘要并按匹配度排序——未评估的人仍然列出（Unknown ≠ Bad）。"
+  },
+  "empty": {
+    "title": "市场暂时没有在市人才",
+    "hint": "训练一名角色并结业后，可以把他挂牌上市。"
+  },
+  "listing": {
+    "listedBy": "挂牌方 {{name}}",
+    "listedAt": "挂牌于 {{value}}",
+    "identity": "身份 ID",
+    "qualityTier": "档位",
+    "view": "查看档案"
+  },
+  "manage": {
+    "title": "我的挂牌",
+    "hint": "结业角色可以挂牌；已在市的可随时下架。质量由买方读履历判断，没有战力值。",
+    "ready": "养成完成",
+    "listed": "在市",
+    "list": "挂牌",
+    "listing": "挂牌中…",
+    "delist": "下架",
+    "delisting": "下架中…",
+    "error": "操作失败：{{error}}"
+  },
+  "fit": {
+    "title": "职位匹配",
+    "pickPosition": "选择职位查看匹配度",
+    "score": "匹配度",
+    "confidence": "置信度",
+    "coverage": "需求覆盖",
+    "known": "已评估 {{known}}/{{total}} 项要求",
+    "notEvaluated": "未评估",
+    "status": {
+      "NOT_EVALUABLE": "无法评估（职位没有画像）",
+      "INSUFFICIENT_DATA": "证据不足（未知 ≠ 不合格）",
+      "EVALUABLE": "可评估",
+      "STRONG_MATCH": "高度匹配",
+      "PARTIAL_MATCH": "部分匹配",
+      "WEAK_MATCH": "匹配较弱",
+      "CRITICAL_GAP": "关键要求未达标"
+    },
+    "gaps": "未达标",
+    "uncertainties": "证据不足（不判为不合格）",
+    "strengths": "优势",
+    "requirement": "要求",
+    "minimum": "门槛 {{value}}",
+    "target": "目标 {{value}}",
+    "candidate": "候选人",
+    "error": "匹配度计算失败"
+  },
+  "evidence": {
+    "title": "证据",
+    "hint": "每条能力都由下面这些履历证据背书，可反查来源。",
+    "sourceKind": "来源",
+    "signal": "强度 {{value}}",
+    "assessment": "阶段评估",
+    "none": "还没有证据。"
+  },
+  "recruit": {
+    "action": "招募",
+    "title": "招募 {{name}}",
+    "description": "招募后他会成为本公司员工：身份 ID、人格、能力、知识与证据链全部保留，不复制、不改写。",
+    "department": "部门",
+    "departmentNone": "暂不分配部门",
+    "slot": "编制（可选）",
+    "slotNone": "不开编制（先入册，稍后分配）",
+    "slotHint": "选择编制会在同一事务里建立任职，部门随编制走。",
+    "titleLabel": "职位名称",
+    "role": "角色",
+    "roleDerived": "按编制/默认推导",
+    "reason": "备注",
+    "submit": "确认招募",
+    "submitting": "招募中…",
+    "success": "招募成功：{{name}} 已成为本公司员工",
+    "viewEmployee": "查看员工",
+    "error": "招募失败：{{error}}",
+    "reasons": {
+      "listing_not_found": "挂牌不存在",
+      "listing_not_active": "该人才已被招募或已下架",
+      "already_employed": "该人才已有生效职位",
+      "not_recruitable": "该人才当前不可招募",
+      "department_not_found": "部门不存在或不属于本公司",
+      "position_slot_not_found": "编制不存在或不属于本公司"
+    }
+  }
+}

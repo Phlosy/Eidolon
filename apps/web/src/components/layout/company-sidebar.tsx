@@ -8,6 +8,7 @@ import {
   CircleGauge,
   Cloud,
   FolderKanban,
+  Store,
   Sprout,
   Users,
   X,
@@ -58,6 +59,7 @@ export function CompanySidebar({
         { to: "/talent-roster", key: "talentRoster", icon: Users, badge: employees.length },
         { to: "/positions", key: "positions", icon: ClipboardList },
         { to: "/cultivation", key: "cultivation", icon: Sprout },
+        { to: "/market", key: "market", icon: Store },
       ],
     },
     {

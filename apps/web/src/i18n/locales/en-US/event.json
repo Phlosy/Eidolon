@@ -79,5 +79,10 @@
   "skill": {
     "created": "Skill discovered",
     "validated": "Skill validated"
-  }
+  },
+  "market.listed": "Character listed",
+  "market.delisted": "Listing delisted",
+  "market.candidate_taken": "Talent taken by another company",
+  "person.recruited": "Talent recruited",
+  "cultivation.completed": "Cultivation completed"
 }

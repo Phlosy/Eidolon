@@ -1,0 +1,99 @@
+{
+  "title": "Talent market",
+  "description": "The record is the evidence chain: read the resume and evidence, check fit against a position, then recruit.",
+  "newListing": "List",
+  "summary": "{{count}} listed talents",
+  "filters": {
+    "searchPlaceholder": "Search by name or identity ID",
+    "origin": "Origin",
+    "originAll": "All origins",
+    "tier": "Tier",
+    "tierAll": "All tiers",
+    "position": "Rank by position",
+    "positionAll": "No position ranking",
+    "positionHint": "Pick a position to attach a fit summary and sort by match — the unevaluated stay listed (Unknown ≠ Bad)."
+  },
+  "empty": {
+    "title": "No listed talents right now",
+    "hint": "Finish cultivating a character and list them on the market."
+  },
+  "listing": {
+    "listedBy": "Listed by {{name}}",
+    "listedAt": "listed {{value}}",
+    "identity": "Identity ID",
+    "qualityTier": "Tier",
+    "view": "Open profile"
+  },
+  "manage": {
+    "title": "My listings",
+    "hint": "Ready characters can be listed; active listings can be delisted anytime. Buyers judge quality from the record — there is no power score.",
+    "ready": "Ready",
+    "listed": "Listed",
+    "list": "List",
+    "listing": "Listing…",
+    "delist": "Delist",
+    "delisting": "Delisting…",
+    "error": "Action failed: {{error}}"
+  },
+  "fit": {
+    "title": "Position fit",
+    "pickPosition": "Pick a position to see fit",
+    "score": "Fit",
+    "confidence": "Confidence",
+    "coverage": "Requirement coverage",
+    "known": "{{known}}/{{total}} requirements evaluated",
+    "notEvaluated": "Not assessed",
+    "status": {
+      "NOT_EVALUABLE": "Not evaluable (position has no profile)",
+      "INSUFFICIENT_DATA": "Insufficient evidence (unknown ≠ bad)",
+      "EVALUABLE": "Evaluable",
+      "STRONG_MATCH": "Strong match",
+      "PARTIAL_MATCH": "Partial match",
+      "WEAK_MATCH": "Weak match",
+      "CRITICAL_GAP": "Critical requirement missed"
+    },
+    "gaps": "Gaps",
+    "uncertainties": "Insufficient evidence (not failures)",
+    "strengths": "Strengths",
+    "requirement": "Requirement",
+    "minimum": "minimum {{value}}",
+    "target": "target {{value}}",
+    "candidate": "Candidate",
+    "error": "Fit calculation failed"
+  },
+  "evidence": {
+    "title": "Evidence",
+    "hint": "Every competency is backed by the record evidence below, traceable to its source.",
+    "sourceKind": "Source",
+    "signal": "signal {{value}}",
+    "assessment": "Stage assessment",
+    "none": "No evidence yet."
+  },
+  "recruit": {
+    "action": "Recruit",
+    "title": "Recruit {{name}}",
+    "description": "They become an employee of your company: identity ID, personality, competencies, knowledge and evidence stay exactly as they are — nothing is copied or rewritten.",
+    "department": "Department",
+    "departmentNone": "No department for now",
+    "slot": "Slot (optional)",
+    "slotNone": "No slot (register first, assign later)",
+    "slotHint": "Choosing a slot creates the position assignment in the same transaction; the department follows the slot.",
+    "titleLabel": "Title",
+    "role": "Role",
+    "roleDerived": "Derived from slot / default",
+    "reason": "Note",
+    "submit": "Confirm recruit",
+    "submitting": "Recruiting…",
+    "success": "Recruited: {{name}} is now an employee",
+    "viewEmployee": "View employee",
+    "error": "Recruit failed: {{error}}",
+    "reasons": {
+      "listing_not_found": "Listing not found",
+      "listing_not_active": "This talent was already recruited or delisted",
+      "already_employed": "This talent already holds an active position",
+      "not_recruitable": "This talent cannot be recruited right now",
+      "department_not_found": "Department missing or not in your company",
+      "position_slot_not_found": "Slot missing or not in your company"
+    }
+  }
+}

@@ -29,6 +29,14 @@ const TalentRosterPage = lazy(() =>
     default: module.TalentRosterPage,
   })),
 );
+const MarketPage = lazy(() =>
+  import("../pages/market/market-page").then((module) => ({ default: module.MarketPage })),
+);
+const MarketListingPage = lazy(() =>
+  import("../pages/market/market-listing-page").then((module) => ({
+    default: module.MarketListingPage,
+  })),
+);
 const CultivationPage = lazy(() =>
   import("../pages/cultivation/cultivation-page").then((module) => ({
     default: module.CultivationPage,
@@ -149,6 +157,8 @@ export const router = createBrowserRouter([
           { path: "/employees", element: route(<EmployeesPage />) },
           { path: "/employees/:id", element: route(<EmployeeDetailPage />) },
           { path: "/talent-roster", element: route(<TalentRosterPage />) },
+          { path: "/market", element: route(<MarketPage />) },
+          { path: "/market/:listingId", element: route(<MarketListingPage />) },
           { path: "/cultivation", element: route(<CultivationPage />) },
           { path: "/cultivation/:id", element: route(<CultivationDetailPage />) },
           { path: "/positions", element: route(<PositionsPage />) },
