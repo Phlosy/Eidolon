@@ -159,6 +159,21 @@ work-order-settle: check-env
 work-order-expire: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py expire
 
+## npc-economy-status: NPC 经济状态（M1.8；余额/累计注入/参数）
+.PHONY: npc-economy-status
+npc-economy-status: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/npc_economy.py status
+
+## npc-economy-inject: 给 NPC 注入预算（M1.8；mint，受 budget_cap 封顶。NPC_ARGS='--npc xinghai --amount 50000'）
+.PHONY: npc-economy-inject
+npc-economy-inject: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/npc_economy.py inject $(NPC_ARGS)
+
+## npc-economy-run: 跑一轮 NPC 活动（M1.8；在预算内成交。先看：NPC_ARGS='--dry-run'）
+.PHONY: npc-economy-run
+npc-economy-run: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/npc_economy.py run $(NPC_ARGS)
+
 ## economy-verify: **只读**对账账本 vs 钱包投影（M1.1；drift 只报告不修）
 .PHONY: economy-verify
 economy-verify: check-env

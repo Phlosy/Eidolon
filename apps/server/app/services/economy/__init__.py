@@ -45,6 +45,13 @@ from app.services.economy.ledger import (
     blueprint_entries,
 )
 from app.services.economy.monetary import MonetaryAuthority
+from app.services.economy.npc_economy import (
+    NpcDecision,
+    NpcEconomyError,
+    NpcEconomyService,
+    NpcPurchase,
+    NpcRoundOutcome,
+)
 from app.services.economy.projection import (
     ProjectionCheck,
     ProjectionDrift,
@@ -86,6 +93,11 @@ __all__ = [
     "ContractError",
     "ContractService",
     "ContractSettlement",
+    "NpcDecision",
+    "NpcEconomyError",
+    "NpcEconomyService",
+    "NpcPurchase",
+    "NpcRoundOutcome",
     "OfferService",
     "ComputeCostService",
     "CostCharge",
