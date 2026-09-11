@@ -13,6 +13,7 @@ import sqlalchemy as sa
 
 from app.api.scope import resolve_company_id
 from app.economy.contracts import EconomicActor
+from app.economy.policy import economic_policy
 from app.main import app
 from app.models.economy import LedgerTransaction
 from app.models.organization import Company
@@ -252,3 +253,145 @@ def test_transactions_for_empty_wallet_is_empty(client, db):
         page = client.get("/api/v1/economy/transactions").json()
     assert page == {"items": [], "total": 0, "limit": 50, "offset": 0}
     assert economy_repo.list_projections(db) is not None  # 读面不写任何东西
+
+
+# ---------------------------------------------------------------- 奖励（M1.2）
+
+
+def _owner(db, company: Company, *, display_name: str = "", avatar: str = "") -> object:
+    from app.models.auth import CompanyMembership, User
+
+    global _seq
+    _seq += 1
+    user = User(
+        email=f"api-reward-{_seq}@example.com",
+        username=f"api-reward-{_seq}",
+        password_hash="x",
+        display_name=display_name,
+        avatar=avatar,
+        status="active",
+        email_verified=True,
+    )
+    db.add(user)
+    db.flush()
+    db.add(CompanyMembership(user_id=user.id, company_id=company.id, role="OWNER"))
+    db.commit()
+    return user
+
+
+def test_reward_catalog_lists_self_service_rewards(client, db):
+    company = _company(db, "ApiRewards")
+    _owner(db, company)
+    with _AsCompany(company.id):
+        payload = client.get("/api/v1/economy/rewards").json()
+
+    kinds = {item["reward_type"] for item in payload["items"]}
+    assert kinds == {
+        "STARTER_GRANT",
+        "PROFILE_COMPLETION",
+        "COMPANY_PROFILE_COMPLETION",
+        "TUTORIAL_COMPLETION",
+        "DAILY_LOGIN",
+        "ACHIEVEMENT",
+        "RECOVERY_GRANT",
+    }
+    # 成就按 code 逐条展开（每条都有自己的 reference_key）
+    achievement_keys = {
+        item["reference_key"] for item in payload["items"] if item["reward_type"] == "ACHIEVEMENT"
+    }
+    assert achievement_keys == {"achievement:first_employee", "achievement:first_project"}
+    starter = next(item for item in payload["items"] if item["reward_type"] == "STARTER_GRANT")
+    assert starter["claimable"] is True
+    assert starter["amount"] > 0
+    assert starter["policy_version"]
+
+
+def test_claim_reward_endpoint_is_idempotent_and_mints_once(client, db):
+    company = _company(db, "ApiClaim")
+    _owner(db, company)
+    before = LedgerService(db).supply()
+    with _AsCompany(company.id):
+        first = client.post("/api/v1/economy/rewards/STARTER_GRANT/claim", json={})
+        second = client.post("/api/v1/economy/rewards/starter_grant/claim", json={})
+        balance = client.get("/api/v1/economy/balance").json()
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    first_payload, second_payload = first.json(), second.json()
+    assert first_payload["created"] is True
+    assert second_payload["created"] is False
+    assert first_payload["grant_id"] == second_payload["grant_id"]
+    assert first_payload["status"] == "POSTED"
+    assert first_payload["ledger_transaction_id"] is not None
+    assert balance["available_balance"] == first_payload["amount"]
+    after = LedgerService(db).supply()
+    assert after.minted - before.minted == first_payload["amount"]
+
+
+def test_claim_reward_rejects_ineligible_and_official_types(client, db):
+    company = _company(db, "ApiIneligible")
+    with _AsCompany(company.id):
+        unqualified = client.post(
+            "/api/v1/economy/rewards/COMPANY_PROFILE_COMPLETION/claim", json={}
+        )
+        official = client.post("/api/v1/economy/rewards/OFFICIAL_BOUNTY/claim", json={})
+        unknown = client.post("/api/v1/economy/rewards/NOPE/claim", json={})
+        no_code = client.post("/api/v1/economy/rewards/ACHIEVEMENT/claim", json={})
+
+    assert unqualified.status_code == 409
+    assert unqualified.json()["detail"] == "not_eligible"
+    assert official.status_code == 409
+    assert official.json()["detail"] == "not_self_service"
+    assert unknown.status_code == 404
+    assert no_code.status_code == 409
+    assert no_code.json()["detail"] == "reference_required"
+
+
+def test_claim_reward_amount_comes_from_policy_not_request(client, db):
+    """请求体不能带金额：多余字段被忽略，落库金额 = 政策值。"""
+    company = _company(db, "ApiAmount")
+    _owner(db, company)
+    policy_amount = economic_policy().starter_grant
+    with _AsCompany(company.id):
+        response = client.post(
+            "/api/v1/economy/rewards/STARTER_GRANT/claim",
+            json={"amount": 999_999_999, "reference_key": "ignored"},
+        )
+    assert response.status_code == 200
+    assert response.json()["amount"] == policy_amount
+    assert response.json()["reference_key"] == "starter"
+
+
+def test_reward_grant_is_company_scoped(client, db):
+    first = _company(db, "ApiRewardScopeA")
+    second = _company(db, "ApiRewardScopeB")
+    _owner(db, first)
+    _owner(db, second)
+    with _AsCompany(first.id):
+        assert (
+            client.post("/api/v1/economy/rewards/STARTER_GRANT/claim", json={}).status_code == 200
+        )
+    with _AsCompany(second.id):
+        catalog = client.get("/api/v1/economy/rewards").json()
+        starter = next(item for item in catalog["items"] if item["reward_type"] == "STARTER_GRANT")
+        assert starter["claimable"] is True  # 另一家公司的领取不影响本公司
+        assert starter["grant_id"] is None
+
+
+def test_reward_events_are_published_after_claim(client, db, monkeypatch):
+    company = _company(db, "ApiRewardEvent")
+    _owner(db, company)
+    published: list[dict] = []
+    monkeypatch.setattr(
+        "app.services.economy.rewards.bus.publish",
+        lambda type_, data, **kwargs: published.append({"type": type_, "data": data, **kwargs}),
+    )
+    with _AsCompany(company.id):
+        client.post("/api/v1/economy/rewards/STARTER_GRANT/claim", json={})
+        assert published and published[0]["type"] == "reward.granted"
+        assert published[0]["data"]["reward_type"] == "STARTER_GRANT"
+        assert published[0]["company_id"] == company.id
+        published.clear()
+        # 幂等重放：不发第二次事件
+        client.post("/api/v1/economy/rewards/STARTER_GRANT/claim", json={})
+        assert published == []
