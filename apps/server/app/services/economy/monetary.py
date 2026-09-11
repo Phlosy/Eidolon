@@ -20,7 +20,13 @@ from sqlalchemy.orm import Session
 
 from app.economy.contracts import EconomicActor
 from app.models.economy import LedgerAccount
-from app.models.enums import Currency, LedgerAccountKind, SystemAccountKind, TransactionKind
+from app.models.enums import (
+    Currency,
+    EconomicCategory,
+    LedgerAccountKind,
+    SystemAccountKind,
+    TransactionKind,
+)
 from app.services.economy.authority import AUTHORITY_TOKEN
 from app.services.economy.ledger import (
     LedgerService,
@@ -54,6 +60,7 @@ class MonetaryAuthority:
         reference_id: str = "",
         idempotency_key: str | None = None,
         currency: Currency = Currency.credit,
+        category: EconomicCategory | None = None,
         metadata: dict | None = None,
         commit: bool = True,
     ) -> PostingResult:
@@ -75,6 +82,7 @@ class MonetaryAuthority:
                 },
             ),
             currency=currency,
+            category=category,
             idempotency_key=idempotency_key,
             reference_type=reference_type,
             reference_id=reference_id,
@@ -96,6 +104,7 @@ class MonetaryAuthority:
         reference_id: str = "",
         idempotency_key: str | None = None,
         currency: Currency = Currency.credit,
+        category: EconomicCategory | None = None,
         metadata: dict | None = None,
         commit: bool = True,
     ) -> PostingResult:
@@ -114,6 +123,7 @@ class MonetaryAuthority:
                 },
             ),
             currency=currency,
+            category=category,
             idempotency_key=idempotency_key,
             reference_type=reference_type,
             reference_id=reference_id,
@@ -133,10 +143,11 @@ class MonetaryAuthority:
         reference_id: str = "",
         idempotency_key: str | None = None,
         currency: Currency = Currency.credit,
+        category: EconomicCategory | None = None,
         metadata: dict | None = None,
         commit: bool = True,
     ) -> PostingResult:
-        """财政划转（手续费等的财政部分；Total Supply 不变，资金进入 Treasury）。"""
+        """财政划转（手续费/算力等 Sink 的财政部分；Total Supply 不变，资金进入 Treasury）。"""
         if not reason:
             raise ValueError("treasury_transfer requires a reason（E9）")
         treasury = self.ensure_system_accounts()[LedgerAccountKind.treasury]
@@ -151,6 +162,7 @@ class MonetaryAuthority:
                 },
             ),
             currency=currency,
+            category=category,
             idempotency_key=idempotency_key,
             reference_type=reference_type,
             reference_id=reference_id,

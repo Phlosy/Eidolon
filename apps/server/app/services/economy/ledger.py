@@ -46,6 +46,7 @@ from app.models.economy import LedgerAccount, LedgerEntry, LedgerTransaction
 from app.models.enums import (
     Currency,
     EconomicActorKind,
+    EconomicCategory,
     LedgerAccountKind,
     LedgerAccountStatus,
     LedgerEntryDirection,
@@ -118,6 +119,8 @@ class Posting:
     transaction_type: TransactionKind
     entries: tuple[PostingEntry, ...]
     currency: Currency = Currency.credit
+    #: 业务类别（`EconomicCategory`；报表/观测的一等分类，M1.5）
+    category: EconomicCategory | None = None
     idempotency_key: str | None = None
     reference_type: str = ""
     reference_id: str = ""
@@ -246,6 +249,7 @@ class LedgerService:
         reason: str = "",
         reference_type: str = "",
         reference_id: str = "",
+        category: EconomicCategory | None = None,
         idempotency_key: str | None = None,
         initiated_by: EconomicActor | None = None,
         metadata: dict | None = None,
@@ -258,6 +262,7 @@ class LedgerService:
                 TransactionKind.transfer,
                 {"payer": (payer_account_id, amount), "payee": (payee_account_id, amount)},
             ),
+            category=category,
             idempotency_key=idempotency_key,
             reference_type=reference_type,
             reference_id=reference_id,
@@ -386,6 +391,7 @@ class LedgerService:
                     role: (counterparty_account_id, amount),
                 },
             ),
+            category=options.pop("category", None),  # type: ignore[arg-type]
             idempotency_key=options.pop("idempotency_key", None),  # type: ignore[arg-type]
             reference_type=str(options.pop("reference_type", "")),
             reference_id=str(options.pop("reference_id", "")),
@@ -406,6 +412,10 @@ class LedgerService:
             )
         if existing.currency != posting.currency.value:
             raise IdempotencyConflict("idempotency key reused with a different currency")
+        existing_category = existing.category
+        wanted_category = posting.category.value if posting.category is not None else None
+        if existing_category != wanted_category:
+            raise IdempotencyConflict("idempotency key reused with a different category")
         existing_entries = {
             (int(entry.account_id), entry.direction, int(entry.amount))
             for entry in economy_repo.list_entries(self.db, transaction_id=existing.id)
@@ -497,6 +507,7 @@ class LedgerService:
         transaction = economy_repo.insert_transaction(
             self.db,
             transaction_type=posting.transaction_type.value,
+            category=posting.category.value if posting.category is not None else None,
             currency=posting.currency.value,
             status=LedgerTransactionStatus.posted.value,
             idempotency_key=posting.idempotency_key,

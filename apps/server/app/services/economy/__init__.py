@@ -11,6 +11,14 @@
 
 from app.services.economy.accounts import AccountError, AccountService
 from app.services.economy.balances import DerivedWallet, derive_wallets
+from app.services.economy.costs import (
+    CompanyCostService,
+    ComputeCostService,
+    CostCharge,
+    CostError,
+    FeeQuote,
+    FeeService,
+)
 from app.services.economy.evaluations import (
     EvaluationError,
     EvaluationOutcome,
@@ -63,7 +71,13 @@ __all__ = [
     "AccountError",
     "AccountService",
     "AuthorityRequired",
+    "CompanyCostService",
+    "ComputeCostService",
+    "CostCharge",
+    "CostError",
     "DerivedWallet",
+    "FeeQuote",
+    "FeeService",
     "EvaluationError",
     "EvaluationOutcome",
     "EvaluationService",
