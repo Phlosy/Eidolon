@@ -397,11 +397,28 @@ cd apps/web && npm run build
 | M1.5 Company Operating Economy | **DONE**（2026-09-11） | `73e07ca` / `bef7e72` / `aaee26f` / `eb7a1a5` / `f038ed5` | `[migration v36]` `d9545a745166`；算力/培养/手续费三项 Sink + 经营报表；pytest 933 / web 328 |
 | M1.6 Contract / Offer / Settlement Core | **DONE**（2026-09-11） | `044825d` / `03938de` / `0281dd0` / `43ab6c2` | `[migration v37]` `0425abecc96e`；合同全生命周期 + 多腿结算（净额 + Treasury/Burn）；pytest 950 / web 328 |
 | M1.7 Talent Commercialization | **DONE**（2026-09-11） | `aca9f1e` / `b4dd1e5` / `92fa279` / `71a1a5b` / `cfca5a3` | `[migration v38]` `862e2d3d7d8e`；T2 人才接入经济（价格 + Escrow + 招募 + 结算）；pytest 961 / web 328 |
-| M1.8 NPC Economy | **NEXT** | — | `[migration v39]`（或复用 participant profile_json） |
-| M1.9 Economy UI & Analytics | PLANNED | — | 无迁移 |
+| M1.8 NPC Economy | **DONE**（2026-09-11） | `c31ace6` / `3aca802` / `27ea43f` / `ec670fd` | `[migration v39]` `64fec2d13d9b`；NPC 预算（注入=mint，受封顶）+ deterministic 出手；pytest 972 / web 328 |
+| M1.9 Economy UI & Analytics | **NEXT** | — | 无迁移；含个人钱包读面 / 政策在线刷新 / 观测面板 |
 | M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E31 全覆盖 + 失败注入 |
 
 ### Progress Log
+
+- **2026-09-11 · M1.8 DONE**：`[migration v39]` `64fec2d13d9b`（`npc_economic_profiles`）；
+  commits **`c31ace6`**（schema + 政策 + 枚举）、**`3aca802`**（T2 成交原语 seam）、
+  **`27ea43f`**（NpcEconomyService + CLI）、**`ec670fd`**（测试硬化）。
+  - 交付：NPC 经济档案（参数在档案、钱在账本）、系统预算注入（**唯一 mint 入口**：受 `budget_cap`
+    封顶 + `category=NPC_BUDGET`）、§29 判定规则（deterministic）、成交（判定 → T2 `take_candidate`
+    → **立刻付款转移** → 提交后发事件）、`run_round`（一轮可解释）、收入记录（账本按类别）、
+    CLI `make npc-economy-*`（没有玩家路由）；
+  - 口径裁定：**NPC 出手是转移不是发行**（E7/E8，实机 minted 不变）；成交走 T2 的**同一个**
+    `take_candidate`（E20，不重写"谁被拿走"）；`fit_threshold_bps` 用基点避免浮点阈值；
+    系统/发行方卖家 ⇒ 成交款进 Treasury；
+  - T2 接入缝（第二个）：`NpcMarketService.take_candidate` / `publish_candidate_taken` /
+    `ensure_system_definition` —— 行为与事件完全不变（`test_market_npc` 等回归全绿）；
+  - 测试：**+11**（972 passed / 6 deselected）：注入=mint 且封顶、判定规则逐条、不会买超、
+    人才离场（T2 consumed）、一轮至少一单（acceptance）、dry-run 不动钱、收入记录、
+    边界守卫（无玩家路由 + AST：mint 只在 inject_budget）；
+  - 迁移：v39 up/down/up 实测 + 两个 dev 库 `alembic check` 无漂移。
 
 - **2026-09-11 · M1.7 DONE**：`[migration v38]` `862e2d3d7d8e`（`talent_commercial_terms`）；
   commits **`aca9f1e`**（schema）、**`b4dd1e5`**（招募事务 seam）、**`92fa279`**（TalentTradeService）、

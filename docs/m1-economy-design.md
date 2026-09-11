@@ -699,6 +699,23 @@ M1 之后还会出现"谁拥有经济权利"。**不能让一个字段承担全�
   不给 NPC 上 LLM（金融底层稳定前不做 AI 经济决策）；
 - NPC 的 Revenue/Cost 先只记录，不做经营模拟；人才需求/工作需求用配置表达。
 
+**实现落点（M1.8，2026-09-11）**
+
+- 表：`npc_economic_profiles`（迁移 v39 `64fec2d13d9b`）——**参数在这里，钱在账本里**：
+  `budget_injected_total` 只增（审计 + 封顶），NPC 可花预算 = 它账本账户的 available；
+  `fit_threshold_bps` 用基点存阈值（政策里不出现浮点）；
+- **发行边界（本轮核心）**：系统注入是**唯一**的 mint 入口
+  （`NpcEconomyService.inject_budget` → `MonetaryAuthority`，`category=NPC_BUDGET`，
+  受 `budget_cap` 封顶，幂等键含累计注入额）；NPC 自己出手只是 **transfer**
+  （实机：注入使 `minted` 上升、成交使 `minted` 不变）；
+- `decide` 是本节规则的字面实现（`available >= price and price <= max_price and fit >= threshold`），
+  原因机器可读；**不上 LLM**；
+- 成交顺序：判定 → **T2 `take_candidate(commit=False)`**（人才离场，E20：复用同一个成交原语）
+  → **立刻付钱**（NPC 钱包 → 卖方公司；系统卖方 → Treasury）——同一事务，失败整笔回滚；
+- `run_round`：注入（按需）→ 发现（T2 adapter）→ fit（T2 fit 引擎）→ 判定 → 成交，每步可解释；
+  CLI：`make npc-economy-status|inject|run`（系统/管理面，**没有玩家路由**）；
+- 收入：`income_summary()` 从账本按类别汇总（先只记录，不做经营模拟）。
+
 ## 30. Economic Policies（配置化 + 版本化）
 
 `EconomicPolicy`（实现：`app/economy/policy.py`，值来自 `Settings`，不硬编码在 service）：
@@ -720,6 +737,8 @@ M1 之后还会出现"谁拥有经济权利"。**不能让一个字段承担全�
 | `player_order_max_reward` | 玩家订单单笔上限（M1.4 新增） | 1_000_000 |
 | `training_credit_per_session` | 培养成本单价（M1.5 新增） | 200 |
 | `contract_fee_bps` | 合同手续费（从对价里扣，M1.6 新增） | 300 |
+| `npc_budget_injection` / `npc_budget_cap` | NPC 单次注入 / 累计注入上限（M1.8） | 50_000 / 200_000 |
+| `npc_max_price` / `npc_fit_threshold_bps` / `npc_deals_per_round` | NPC 出手规则（M1.8） | 30_000 / 7_000 / 1 |
 
 **政策不变量（M1.3 强制，配置加载即校验）**：`official_outstanding_budget >= official_max_reward`
 且 `official_reward_multiplier > 0` —— 否则"单笔合法任务都发不出去"或"官方发行停摆"。
