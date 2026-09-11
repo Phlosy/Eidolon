@@ -159,6 +159,19 @@ work-order-settle: check-env
 work-order-expire: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py expire
 
+## agent-tools: 列出 Agent 工具（M2.3；调试口。AGENT_TOOLS_ARGS="describe"）
+.PHONY: agent-tools
+agent-tools: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/agent_tools.py $(or $(AGENT_TOOLS_ARGS),list)
+
+## agent-tool-call: 以某员工身份调用一个工具（M2.3；**需要 EIDOLON_AGENT_TOOL_CLI_ENABLED=true**）
+##   例：make agent-tool-call AT_EMPLOYEE=alice AT_TOOL=inspect_project AT_ARGS='{"project_id":1}'
+.PHONY: agent-tool-call
+agent-tool-call: check-env
+	@[ -n "$(AT_EMPLOYEE)" ] || { echo "ERROR: 必须给 AT_EMPLOYEE（如 AT_EMPLOYEE=alice）"; exit 2; }
+	@[ -n "$(AT_TOOL)" ] || { echo "ERROR: 必须给 AT_TOOL（如 AT_TOOL=inspect_project）"; exit 2; }
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/agent_tools.py call --employee $(AT_EMPLOYEE) --tool $(AT_TOOL) --args '$(or $(AT_ARGS),{})'
+
 ## economy-stats: 经济快照（M1.9；只读。STATS_ARGS="--json" 输出 JSON）
 .PHONY: economy-stats
 economy-stats: check-env

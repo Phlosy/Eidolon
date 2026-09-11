@@ -23,7 +23,9 @@
     "in_review": "In Review",
     "done": "Done",
     "failed": "Failed",
-    "rejected": "Rejected"
+    "rejected": "Rejected",
+    "blocked": "Blocked",
+    "cancelled": "Cancelled"
   },
   "milestoneStatus": {
     "pending": "Not started",

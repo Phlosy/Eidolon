@@ -39,9 +39,11 @@ os.environ["EIDOLON_ROLE_CONTEXT_EVENTS"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import select  # noqa: E402
 
 from app.core.database import SessionLocal  # noqa: E402
 from app.main import app  # noqa: E402
+from app.models.base import utcnow  # noqa: E402
 from app.repositories import organization as org_repo  # noqa: E402
 
 
@@ -96,6 +98,51 @@ def no_work_intake(db):
     finally:
         db.rollback()
         company.settings = original
+        db.commit()
+
+
+@pytest.fixture()
+def org_snapshot(db):
+    """快照/还原**组织事实**（任职时间轴 + 生命周期），供"会动组织"的测试使用。
+
+    为什么需要：测试共享同一份库，而任职是**时间轴** —— 分配是"关旧行 + 开新行"，
+    生命周期又是一个可变列。不还原的话，后跑的用例会看到一个被前一个用例改过的组织。
+    实测踩到过两次：M2.2/M2.3 的授权实验台把创始员工从原编制挪走、
+    把某人的 `lifecycle_status` 改成 suspended，紧随其后的 roster 用例期望 `available`
+    （`test_roster_api::test_assign_release_cycle_moves_occupancy`）就红了。
+
+    做法：记录当前所有任职行的 (effective_to, employment_status) 与全员 lifecycle_status；
+    退出时**关掉**测试期间新开的任职行、还原原有行与生命周期。刻意不删行 ——
+    任职是 append-only 的历史，测试也不该改写历史。
+    """
+    from app.models.organization import Employee as _Employee
+    from app.models.position import PositionAssignment
+
+    lifecycles = {int(row.id): row.lifecycle_status for row in db.scalars(select(_Employee))}
+    assignments = {
+        int(row.id): (row.effective_to, row.employment_status)
+        for row in db.scalars(select(PositionAssignment))
+    }
+    try:
+        yield
+    finally:
+        db.rollback()
+        rows = list(db.scalars(select(PositionAssignment)))
+        # **两阶段**：先把测试期间新开的行关掉并落盘，再还原原有行。
+        # 反过来做会撞 `uq_employment_employee_primary` —— 同一员工同时两条生效主职。
+        for row in rows:
+            if int(row.id) not in assignments and row.effective_to is None:
+                row.effective_to = utcnow()
+                row.employment_status = "released"
+        db.flush()
+        for row in rows:
+            if int(row.id) in assignments:
+                effective_to, employment_status = assignments[int(row.id)]
+                row.effective_to = effective_to
+                row.employment_status = employment_status
+        for employee in db.scalars(select(_Employee)):
+            if int(employee.id) in lifecycles:
+                employee.lifecycle_status = lifecycles[int(employee.id)]
         db.commit()
 
 

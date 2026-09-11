@@ -727,7 +727,7 @@ W11  Fit is decision-support only.
 
 ---
 
-## 14. M2 不变量（W1–W42）
+## 14. M2 不变量（W1–W42 / T1–T12）
 
 | # | 不变量 | M2.0 状态 |
 | --- | --- | --- |
@@ -773,6 +773,18 @@ W11  Fit is decision-support only.
 | **W40** | Authority grants are append-only and time-versioned; any decision can pin why it was legal. | **M2.2 强制** |
 | **W41** | Role resources are pointers into existing content; the index never stores content. | **M2.2 强制** |
 | **W42** | position_definition_packages stays resource provisioning; management authority lives only in position_authority_grants. | **M2.2 强制** |
+| **T1** | Agent tools do not own business truth. | **M2.3 强制** |
+| **T2** | HTTP APIs and Agent tools share the same application/domain services. | **M2.3 强制** |
+| **T3** | No generic player-facing write /tools API. | **M2.3 强制** |
+| **T4** | Internal tool calls never bypass Authority. | **M2.3 强制** |
+| **T5** | Actor identity is injected by runtime/system context, not trusted from model arguments. | **M2.3 强制** |
+| **T6** | Fit and other read tools provide facts, never make management decisions. | **M2.3 强制** |
+| **T7** | A successful Tool call means: Agent decided, System validated, System applied. | **M2.3 强制** |
+| **T8** | PositionAuthorityGrant is the management authorization source. | **M2.3 强制** |
+| **T9** | Resource Package is never used as a substitute for Authority. | **M2.3 强制** |
+| **T10** | Transport choice does not change domain invariants. | **M2.3 强制** |
+| **T11** | Human management APIs and Agent management tools must produce equivalent domain effects. | **M2.3 强制** |
+| **T12** | Tool execution must be auditable. | **M2.3 强制** |
 
 > **"M2.0 强制"** = M2.0 就有可执行测试锚点；
 > **"冻结"** = M2.0 冻结契约与归属，锚点在其 owner 阶段落地。
@@ -780,6 +792,95 @@ W11  Fit is decision-support only.
 > **没有任何一条不变量被静默丢弃**（M1.10 锚点表同款纪律）。
 
 ---
+
+## 14b. M2.3 管理工具面（Read Shared / Write Internal，T1–T12）
+
+### 14b.1 三个面，一个领域
+
+```text
+┌──────────────────────────────┐        ┌──────────────────────────────┐
+│  Human / Product（HTTP）     │        │  Agent Runtime（内部执行面）  │
+│  /projects /tasks /positions │        │  ToolRegistry → ToolExecutor │
+└──────────────┬───────────────┘        └──────────────┬───────────────┘
+               │                                       │
+               └──────────► Application / Domain Service ◄──────────┘
+                                   （唯一真相与规则）
+```
+
+* **读能力是共享的**：读工具与 HTTP 读面复用同一批 QueryService / ReadModel，
+  不为 Agent 再写一套查询（T2）。UI 继续走自己的领域读面，**不**新增 `/tools` 读路由。
+* **写能力只有内部面**：不存在通用玩家 `POST /api/v1/tools/*`（T3）；
+  人类管理动作走各领域自己的正式 API。
+
+### 14b.2 Tool Registry
+
+每个工具是**可枚举的自描述条目**（`app/work/tools.py::ToolSpec`）：
+
+```text
+name / description / input_schema / output_schema
+side_effect_level (READ | WRITE | HIGH_IMPACT) / required_authority
+authority_target / handler / autonomy（由副作用等级派生）
+```
+
+注册时强制（`ToolSpec.__post_init__` + `assert_registry_is_sound`）：
+
+```text
+READ  : 不得声明 required_authority / authority_target（事实不需要管理授权）
+WRITE : **必须**同时声明 required_authority 与 authority_target（T4）
+HIGH_IMPACT : M2.3 不注册任何此类工具（不为完整列表写空业务）
+参数键 : 不得出现身份字段（actor_* / company_id / …，T5）
+```
+
+### 14b.3 执行五步（顺序不可交换）
+
+```text
+① 解析 spec        未注册 → unknown_tool
+② 参数校验         含"身份字段不得出现在参数里" → invalid_arguments / not_authorized
+③ Authority 校验   default-deny；**内部面照样做**（T4）；快照随结果返回（T8/W40）
+④ Autonomy 门禁    requires_confirmation ⇒ **拒绝执行**（M2.3 没有确认通道）
+⑤ 应用 + 审计      handler 调既有 service；每次调用留一条 audit_logs（T12）
+```
+
+### 14b.4 Authority ≠ Autonomy
+
+```text
+Authority      = 这个职位**有没有**组织权力执行该动作      （v41 grant 表，default-deny）
+AutonomyPolicy = **AI** 是否允许在无人确认下执行该动作      （M2.3 只冻结边界）
+```
+
+「CEO 有 `spend_credits`」**不等于**「CEO AI 可以无限额度自主花钱」。M2.3 冻结的当前行为：
+
+| side_effect | autonomy | 含义 |
+| --- | --- | --- |
+| `read` | `auto_allowed` | 事实查询无需确认 |
+| `write` | `auto_allowed` | 授权内的组织动作可自主执行（这正是 M2.3 的目标）|
+| `high_impact` | `requires_confirmation` | 经济/招聘/解雇/合同/高风险资源 —— 没有确认通道就**拒绝** |
+
+### 14b.5 第一批工具
+
+**读（15 个）**：`inspect_project` / `list_company_projects` / `list_company_people` /
+`inspect_person` / `inspect_position` / `inspect_assignments` / `inspect_role_context` /
+`inspect_work_intake` / `get_competencies` / `get_evidence` / `calculate_task_fit` /
+`get_current_load` / `get_runtime_status` / `search_company_knowledge` / `inspect_artifact`
+
+**写（9 个）**：`create_task` / `update_task` / `create_dependency` / `assign_task` /
+`delegate_project` / `request_review` / `request_rework` / `mark_task_blocked` / `cancel_task`
+
+写工具的授权映射：工作图类（建/改/连依赖/阻塞/取消/请评审）→ `plan_project_work`（M2.3 新增）；
+派活 → `assign_task`；返工 → `request_rework`；项目委派 → `delegate_management`。
+
+**M2.3 的诚实边界**：`request_review` 只做状态推进 + 留痕 + 事件，
+持久的 `ReviewRequest` 实体是 M2.7；返回值里用 `review_entity: deferred_to_M2.7` 明说。
+
+### 14b.6 调试口（不是业务入口）
+
+`scripts/agent_tools.py` + `make agent-tools / agent-tool-call`：
+
+```text
+默认关闭（EIDOLON_AGENT_TOOL_CLI_ENABLED=false）
+不进玩家 router · 走**同一段**执行代码 · Authority / 领域校验 / 自主等级门禁 / 审计一样不少
+它只解决"谁能发起"，不解决"可以绕过什么"（T10）
+```
 
 ## 15. M2 明确不做
 
@@ -833,6 +934,12 @@ W11  Fit is decision-support only.
 | **M2-ADR-19** | 授权 **append-only + 时间窗**，并提供 `grants_hash` / `position_grants_hash` 快照，使历史 DecisionRecord 能解释「当时为什么有权」 | 用户要求 v41 同时提供审计/版本语义 |
 | **M2-ADR-20** | 作用域只支持 `company` / `department` / `direct_reports` + 金额上限；**不**建通用 ABAC 引擎 | 用户拍板：够用即可，策略语言是长期负债 |
 | **M2-ADR-21** | Role Resource Index 只存**指针**（`knowledge_items` / `drive_nodes` / `companies.settings`），目标不存在就报 `missing` | C6/W41；「给新 CEO 一份阅读清单」不能变成第二套文档系统 |
+| **M2-ADR-22** | 读能力共享、写能力只在内部执行面：**没有**玩家面 `/tools` 写路由；人类动作走各领域正式 API，二者调用**同一个** application/domain service | 用户拍板方案 3 修正版；`UI rules == Agent rules`（T2/T3/T11）|
+| **M2-ADR-23** | 工具是**自描述注册表条目**：`side_effect` / `required_authority` / `authority_target`；缺一声明在**注册时**炸 | 用户拍板 §4；让"忘了校验"在启动时暴露（T4）|
+| **M2-ADR-24** | **Transport 不代表信任**：内部面同样做完整 Authority 校验；调试口只是"谁能发起" | 用户拍板 §5；禁止 `if internal_call: bypass_permission()` |
+| **M2-ADR-25** | Actor 身份由 Runtime Session / WorkSession / 系统上下文注入，**参数里的身份字段一律拒绝** | 用户拍板 §6；身份若可被提示词指定，审计与权限同时失效（T5）|
+| **M2-ADR-26** | **Authority ≠ Autonomy**：前者是组织权力，后者是"AI 能否无人确认执行"；M2.3 只冻结边界，且对 `requires_confirmation` **拒绝执行** | 用户拍板 §11；比"先放行、以后再补确认"安全 |
+| **M2-ADR-27** | Side-effect 分三级 `READ / WRITE / HIGH_IMPACT`；M2.3 **不注册**任何 high_impact 工具 | 用户拍板 §9/§10；不为完整列表写空业务 |
 
 ---
 
@@ -859,3 +966,6 @@ W11  Fit is decision-support only.
 | **Authority Grant** | 职位被授权做什么（`position_authority_grants` 一行）；default-deny、随任职生效失效 |
 | **Authority Scope** | 授权的有限作用域：`company` / `department` / `direct_reports`（+ 金额上限）；不是 ABAC |
 | **Role Resource Index** | 建议 Agent 读/学的**指针**清单（内容住在既有表里） |
+| **Tool Registry** | 自描述的管理工具清单（含副作用等级与所需授权） |
+| **Tool Executor** | 唯一执行面：参数校验 → Authority → Autonomy 门禁 → 应用 → 审计 |
+| **TRUSTED ACTOR** | actor 身份只能来自 WorkSession / 系统上下文，不来自工具参数 |

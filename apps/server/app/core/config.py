@@ -105,6 +105,12 @@ class Settings(BaseSettings):
     autonomous_learning_enabled: bool = False
     learning_force_failure: bool = False
 
+    # M2.3 —— 内部 Agent 工具执行面。写工具**只有**这一条通道（没有玩家 /tools 路由，T3）。
+    # 调试口：允许 CLI / 测试从任意员工身份调用同一执行面（默认关；生产不开）。
+    # 注意：即便打开，Authority / 领域校验**照做不误**（T4/T10）—— 它只是"谁能发起"，
+    # 不是"可以绕过什么"。
+    agent_tool_cli_enabled: bool = False
+
     # M2.2 —— 管理授权（Authority Projection，v41）。
     # `spend_credits` 的**默认**额度上限（整数最小单位）：冷启动种子把它写进
     # CEO 的授权行。金额只来自政策，**不**在代码里硬编码；政策调高后不会自动放大

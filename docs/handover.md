@@ -282,6 +282,41 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 
 ---
 
+---
+
+## 5g. M2.3 Management Agent Tooling（**DONE**，2026-09-11）
+
+- **无迁移**（head 仍 v41）；新增 `TaskStatus.blocked` / `cancelled`（字符串列，加值不改表）
+- **用户拍板（方案 3 修正版：Read Shared / Write Internal）** → 设计 §14b + M2-ADR-22..27 + T1–T12：
+  1. **读能力共享**：读工具与 HTTP 读面复用同一批 QueryService/ReadModel；
+     **不**新增 `/tools` 读路由
+  2. **写能力只在内部执行面**；人类管理动作走各领域自己的正式 API，
+     二者调用**同一个** application/domain service（`UI rules == Agent rules`）
+  3. **禁止**通用玩家 `POST /api/v1/tools/*`（有 AST/路由守卫）
+  4. Tool Registry 自描述：`side_effect` / `required_authority` / `authority_target` / schema / handler；
+     写工具**缺任一声明就在注册时炸**
+  5. **Transport 不代表信任**：内部面照样完整 Authority 校验；调试口只解决"谁能发起"
+  6. **Actor 身份由上下文注入**（`WorkSession` / `context_for_employee`），
+     参数里出现 `actor_*` / `company_id` 等身份字段**一律拒绝**
+  7. 系统只**校验并应用** Agent 已做出的决定；Fit 只作前置读事实（无排名、未知不当 0）
+  8. Side-effect 三级 `READ / WRITE / HIGH_IMPACT`；M2.3 **不注册**任何 high_impact 工具
+  9. **Authority ≠ Autonomy**：只冻结边界；`requires_confirmation` 在 M2.3 **拒绝执行**
+ 10. 调试口默认关（`EIDOLON_AGENT_TOOL_CLI_ENABLED=false`），走同一段执行代码
+ 11. 每次工具调用都留审计（读也留，T12 字面要求）
+- **工具清单**：读 15 个 / 写 9 个（`make agent-tools` 可列全）
+- **写工具授权映射**：工作图（建/改/连依赖/阻塞/取消/请评审）→ `plan_project_work`（M2.3 新增）；
+  派活 → `assign_task`；返工 → `request_rework`；项目委派 → `delegate_management`
+- **诚实边界**：`request_review` 只做状态推进 + 留痕 + 事件，返回值明说
+  `review_entity: deferred_to_M2.7`（ReviewRequest 实体是 M2.7 的）
+- **踩坑记录（务必别重复）**：`SessionLocal(expire_on_commit=False)` 下 ORM **关系属性会保持旧值** ——
+  依赖图必须从**表**读（`repositories.project.list_dependencies`），
+  否则同一会话里第二次建边时环检测会漏（实测踩到）
+- 测试纪律：授权行为用例用 `_lab()` 开**独立职位定义**（M2.2 的同一条纪律）
+- 下一步：**M2.4 Leadership Planning & Delegation**（`decision_records` + `DecisionService`；
+  写工具的 `authority_snapshot()` 直接落进 `DecisionRecord.context_snapshot`）
+
+---
+
 ## 6. 下一步建议（按优先级）
 
 1. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。

@@ -122,6 +122,8 @@ export const TASK_STATUS_VARIANT: Record<TaskStatus, StatusVariant> = {
   done: "default",
   failed: "danger",
   rejected: "danger",
+  blocked: "warning",
+  cancelled: "muted",
 };
 
 export const MILESTONE_STATUS_VARIANT: Record<MilestoneStatus, StatusVariant> = {
@@ -193,4 +195,6 @@ export const TASK_STATUS_NODE_CLASS: Record<TaskStatus, string> = {
   done: "border-emerald-500/40 bg-card text-muted-foreground",
   failed: "border-red-500/60 bg-red-500/10 text-foreground",
   rejected: "border-red-500/60 bg-red-500/10 text-foreground",
+  blocked: "border-amber-500/60 bg-amber-500/10 text-foreground",
+  cancelled: "border-border bg-card text-muted-foreground line-through",
 };

@@ -41,7 +41,16 @@ export type ReviewDecision =
   "approved" | "conditionally_approved" | "changes_requested" | "rejected";
 
 export type TaskStatus =
-  "backlog" | "todo" | "in_progress" | "in_review" | "done" | "failed" | "rejected";
+  | "backlog"
+  | "todo"
+  | "in_progress"
+  | "in_review"
+  | "done"
+  | "failed"
+  | "rejected"
+  // M2.3：管理 Agent 需要诚实表达"卡住了"与"计划变了"（不是失败，也不是被驳回）
+  | "blocked"
+  | "cancelled";
 
 export type TaskKind =
   "order_review" | "planning" | "research" | "development" | "testing" | "final_review" | "general";

@@ -60,6 +60,13 @@ class TaskStatus(StrEnum):
     done = "done"
     failed = "failed"
     rejected = "rejected"
+    # M2.3：管理 Agent 需要能诚实表达两件在此之前**没有状态可表达**的事：
+    #   blocked   —— 卡住了（等外部输入 / 等依赖 / 等人），不是"跑失败"
+    #   cancelled —— 被管理层取消（计划变了），不是"被评审拒绝"
+    # 两者都不是终态的成功，因此不产生证据（EvidencePipeline 只消费 done/failed）。
+    # 也不需要迁移：status 是字符串列，加值不改表。
+    blocked = "blocked"
+    cancelled = "cancelled"
 
 
 class TaskKind(StrEnum):
@@ -1121,3 +1128,85 @@ class AuthorityScopeKind(StrEnum):
     department = "department"
     #: 作用域 = 自己的汇报子树（`scope_ref` 恒为 0；子树由 position_slots.manager_slot_id 派生）
     direct_reports = "direct_reports"
+
+
+# ---------------------------------------------------------------------------
+# M2.3 · 管理工具面（docs/m2-agent-work-runtime-design.md §19，T1–T12）
+# ---------------------------------------------------------------------------
+
+
+class AuthorityKind(StrEnum):
+    """**Authority**（硬边界）—— 职位被授权做什么（设计 §4.1）。
+
+    M2.2 起它有了落库载体：`position_authority_grants.authority_kind`。
+    按仓库纪律（"有宿主列的枚举住在 models/enums.py"）M2.3 把它从
+    `app/work/contracts.py` 移到这里；契约层继续 re-export，导入路径不变。
+
+    与 `ResponsibilityArea` 的区别：Authority 是**硬**的（没有它系统拒绝，W6），
+    Responsibility 是**软**的（只影响路由与展示，W5）。
+    """
+
+    create_project = "create_project"
+    delegate_management = "delegate_management"
+    assign_task = "assign_task"
+    request_rework = "request_rework"
+    accept_delivery = "accept_delivery"
+    approve_hiring = "approve_hiring"
+    spend_credits = "spend_credits"
+    assign_position = "assign_position"
+    release_position = "release_position"
+    offboard = "offboard"
+    # M2.3：组织项目内的工作图（建任务 / 改任务 / 连依赖 / 标记阻塞 / 取消 / 请评审）。
+    # 与 `assign_task` 分开是刻意的：**能不能改工作图**与**能不能把活派给某人**
+    # 是两件事，公司可以只给其一（例如 PM 能建任务但不能替别人改派）。
+    plan_project_work = "plan_project_work"
+
+
+class ToolSideEffect(StrEnum):
+    """工具副作用等级（M2.3 用户拍板 §10）。
+
+    - `read`        —— 事实查询（可同时服务 Agent / UI / CLI，复用同一查询服务）
+    - `write`       —— 普通组织工作动作（只走内部 Agent 工具执行面）
+    - `high_impact` —— 经济 / 招聘 / 解雇 / 合同 / 高风险资源；**M2.3 不实现任何此类工具**，
+                       但等级先冻结，配 `AutonomyLevel.requires_confirmation` 作为门禁
+    """
+
+    read = "read"
+    write = "write"
+    high_impact = "high_impact"
+
+
+class ToolTransport(StrEnum):
+    """工具调用的到达方式（M2.3 用户拍板 §12）。
+
+    **Transport 不代表信任**（T4）：内部面照样做完整 Authority 校验。
+    """
+
+    #: Agent Runtime 内部执行面（生产路径；没有对应的玩家 HTTP 路由）
+    internal = "internal"
+    #: 开发者/运维调试口（默认关；`EIDOLON_AGENT_TOOL_CLI_ENABLED`）
+    debug_cli = "debug_cli"
+
+
+class AutonomyLevel(StrEnum):
+    """**Autonomy Policy** —— AI 是否允许在无人确认下执行该动作（用户拍板 §11）。
+
+    必须与 Authority 分开记录：
+
+    ```text
+    Authority      = 这个职位**有没有**组织权力执行该动作
+    AutonomyPolicy = **AI** 是否允许在无人确认下执行该动作
+    ```
+
+    「CEO 有 `spend_credits` 权限」**不等于**「CEO AI 可以无限额度自主花钱」。
+    M2.3 只**冻结这个边界**（一张副作用 → 自主等级的当前行为表），
+    不实现策略引擎；未来的 `auto_allowed` / `requires_confirmation` /
+    `max_auto_amount` 都挂在这一层，而不是混进 Authority。
+    """
+
+    #: 授权内即可自主执行
+    auto_allowed = "auto_allowed"
+    #: 必须先取得人类（Owner / 管理层）确认 —— M2.3 没有确认通道，因此**拒绝执行**
+    requires_confirmation = "requires_confirmation"
+    #: 任何情况下都不允许由 AI 自主执行
+    forbidden = "forbidden"

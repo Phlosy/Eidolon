@@ -45,6 +45,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_AUTHORITY: dict[str, tuple[C.AuthorityKind, ...]] = {
     "ceo": (
         C.AuthorityKind.create_project,
+        # M2.3：组织项目内的工作图（建任务 / 连依赖 / 标记阻塞 / 请评审）
+        C.AuthorityKind.plan_project_work,
         C.AuthorityKind.delegate_management,
         C.AuthorityKind.assign_task,
         C.AuthorityKind.request_rework,
@@ -55,8 +57,17 @@ DEFAULT_AUTHORITY: dict[str, tuple[C.AuthorityKind, ...]] = {
         C.AuthorityKind.release_position,
         C.AuthorityKind.offboard,
     ),
-    "product_manager": (C.AuthorityKind.assign_task, C.AuthorityKind.request_rework),
-    "qa_engineer": (C.AuthorityKind.request_rework,),
+    "product_manager": (
+        # M2.3：PM 是**工作图的主要组织者** —— 建任务/连依赖/派活/请评审/要求返工，
+        # 但**没有** delegate_management（把整个项目交出去是 CEO 的决定）。
+        C.AuthorityKind.plan_project_work,
+        C.AuthorityKind.assign_task,
+        C.AuthorityKind.request_rework,
+    ),
+    "qa_engineer": (
+        # 质量岗只要求返工：它能**拒绝**工作，但不能组织工作图（那是 PM/管理层的活）
+        C.AuthorityKind.request_rework,
+    ),
     # 研究 / 工程：**没有管理授权**（他们执行工作，不管理组织）
     "researcher": (),
     "engineer": (),

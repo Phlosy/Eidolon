@@ -68,7 +68,7 @@ Golden Path × 3 + 冻结
 | **M2.0** | Work & Role Domain Contract Freeze | **无** | Audit | W4/W5/W6/W7/W8/W9/W10/W11/W13/W18/W20/W21/W23/W24/W25/W26/W27/W28/W29 | **DONE** |
 | **M2.1** | Canonical Executable Project Spec | 有（v40） | M2.0 | W22/W30/W32/W33/W34/W35/W36 | **DONE** |
 | **M2.2** | Role Context & Adaptive Onboarding | 有（v41） | M2.1 | W4/W5/W7/W8/W12/W27/W37–W42 | **DONE** |
-| **M2.3** | Management Agent Tooling | 无（纯读 + 受校验写） | M2.2 | W3/W6/W11 | PENDING |
+| **M2.3** | Management Agent Tooling | 无 | M2.2 | W3/W6/W11/T1–T12 | **DONE** |
 | **M2.4** | Leadership Planning & Delegation | 有（DecisionRecord） | M2.3 | W1/W2/W3/W14/W15/W28 | PENDING |
 | **M2.5** | Dynamic Task Graph Runtime | 无（收敛既有表） | M2.4 | W2/W16/W30 | PENDING |
 | **M2.6** | Artifact Handoff & Shared Work Context | 有（task 维度 + lineage） | M2.5 | W19 | PENDING |
@@ -299,44 +299,81 @@ Golden Path × 3 + 冻结
 | 金额授权"没有上限"被误读成"不限" | 契约与校验都写死：无上限 ⇒ **无法确认在授权内** ⇒ 拒绝 |
 | RoleContext 变成"任命成绩单" | 期望只给引用 + 响应键名扫描守卫 |
 
-## 6. M2.3 · Management Agent Tooling `[无迁移]`
+## 6. M2.3 · Management Agent Tooling `[无迁移]` — **DONE**
 
 ### Goal
 
 把「系统事实」与「受校验的写操作」暴露成**工具**，供管理 Agent 调用；
-工具**不得**内含决策逻辑。
+工具**不含任何决策逻辑** —— 系统只回答"在不在授权内、领域约束过不过"（T6/T7）。
 
-### 工具面（设计 §1.1 + 用户 §25）
+### 已拍板的产品决策（方案 3 修正版：Read Shared / Write Internal）
+
+| # | 决策 | 冻结为 |
+| --- | --- | --- |
+| **B1** | 读能力**共享**（Agent / UI / CLI 复用同一 QueryService），**不**新增 `/tools` 读路由 | M2-ADR-22 / T2 |
+| **B2** | 写能力**只有内部执行面**；人类动作走各领域正式 API，二者调用**同一个** service | T2 / T11 |
+| **B3** | **禁止**通用玩家 `POST /api/v1/tools/*` 写路由 | M2-ADR-22 / T3 |
+| **B4** | Tool Registry 自描述：`name/description/input_schema/output_schema/side_effect/required_authority/handler` | M2-ADR-23 |
+| **B5** | **Transport 不代表信任**：内部面照样完整 Authority 校验 | M2-ADR-24 / T4 / T10 |
+| **B6** | Actor 身份由 WorkSession / 系统上下文注入；**参数里的身份字段一律拒绝** | M2-ADR-25 / T5 |
+| **B7** | 系统只**校验并应用** Agent 已做出的决定；Fit 只作前置读事实 | T6 / T7 |
+| **B8** | Side-effect 分三级 `READ / WRITE / HIGH_IMPACT`；M2.3 **不注册** high_impact 工具 | M2-ADR-27 |
+| **B9** | **Authority ≠ Autonomy**：只冻结边界，且 `requires_confirmation` **拒绝执行** | M2-ADR-26 |
+| **B10** | 调试口默认关、不进玩家 router、走同一段代码 | §12 / T10 |
+| **B11** | 每次工具调用都留审计（读也留） | M2-ADR-23 / T12 |
+| **B12** | 新增 `TaskStatus.blocked` / `cancelled` —— 让"卡住了"与"计划变了"有状态可表达 | 诚实状态 |
+
+### 范围（已实现，**无迁移**）
+
+- `app/work/tools.py`：`ToolSpec` / `ToolRegistry` / 参数子集校验 / `AUTONOMY_BY_SIDE_EFFECT` /
+  `FORBIDDEN_TOOL_ARGUMENT_KEYS` / `assert_registry_is_sound`
+- `app/work/tool_reads.py`：**15 个读工具**，全部是既有读面的适配器
+- `app/work/tool_writes.py`：**9 个写工具**，全部调既有 service（状态机 / DAG 校验 /
+  生命周期校验照走）
+- `app/work/tool_executor.py`：注册表实例 + `context_for_work_session` /
+  `context_for_employee` + `execute_tool` 五步 + 审计 + `describe_tools`
+- `scripts/agent_tools.py`（`make agent-tools` / `make agent-tool-call`）：调试口，默认关
+- `TaskStatus` 新增 `blocked` / `cancelled` + `ALLOWED_TRANSITIONS`（无迁移：status 是字符串列）
+- `AuthorityKind.plan_project_work`（M2.3 新增；CEO 与 PM 种子授予）
+- `AuthorityKind` 从契约层**移到** `models/enums.py`（它有宿主列了 —— 按仓库纪律归位，契约层 re-export）
+- 前端：`TaskStatus` 联合类型 + 变体 + 节点配色 + i18n 中英（blocked/cancelled）
+
+### 明确不做
 
 ```text
-Organization   list_people / inspect_person / inspect_position / inspect_assignment
-               inspect_team / inspect_current_load
-Capability     get_competencies / get_evidence / get_skills / get_experience / calculate_task_fit
-Knowledge      search_company_knowledge / search_person_knowledge / inspect_artifact
-Work           create_task / update_task / create_dependency / assign_task
-               request_review / request_rework / mark_blocked / cancel_task
-Resource       runtime_status / provider_status / workspace_status / budget_snapshot
+不实现 spend_credits / offboard_employee / purchase_talent 等 high_impact 工具
+不建通用 ABAC / 策略语言 · 不建 Autonomy 策略引擎（只冻结边界）
+不为 UI 增加 /tools 读出路由（UI 继续用领域读面）
+不实现 ReviewRequest 实体（M2.7）· 不落 DecisionRecord（M2.4）
 ```
-
-### 纪律
-
-- 每个工具声明 `mode = read | write`、`authority_required`、`hard_constraints` 列表
-- **read 工具**：直接返回事实，不含推荐排序结果（排序是决策，不是事实）
-  - 例外：`calculate_task_fit` 返回**逐人 Fit 明细**，但**不得**返回"建议选谁"
-- **write 工具**：走既有 service（不绕过状态机、不绕过 Ledger、不绕过权限）
-- 工具的注册表是**数据**：`app/work/tools.py::TOOL_REGISTRY`，由测试钉住每项都有 schema + 权限声明
 
 ### Acceptance
 
-| # | 判据 |
-| --- | --- |
-| D1 | 每个工具都有 `mode` / `authority_required` / `input_schema`（注册表完备性） |
-| D2 | 不存在任何 `mode=write` 工具在**无授权 actor** 时成功（W3/W6） |
-| D3 | `calculate_task_fit` 的返回里**没有** `recommended` / `best` / `rank` 字段（W11） |
-| D4 | write 工具调用后产生一条 `DecisionRecord`（与 M2.4 同批落地） |
-| D5 | 工具层不 import `app.talent.fit` 以外的决策模块（AST 守卫） |
+| # | 判据 | 状态 |
+| --- | --- | --- |
+| T1 | 工具不拥有业务真相（不自建表、不直接写库、复用既有 service） | ✅ `test_tools_do_not_own_business_truth` |
+| T2 | HTTP 与 Tool 共用同一应用/领域服务 | ✅ `test_read_tools_reuse_the_same_query_services_as_http`（逐字段对拍） |
+| T3 | 没有玩家面 `/tools` 写路由 | ✅ `test_no_player_facing_tool_router_exists`（已注入验证） |
+| T4 | 内部调用不绕过 Authority；缺声明在注册时炸 | ✅ `test_internal_transport_still_enforces_authority` + `test_registry_is_sound_...` + `test_declaring_a_write_tool_without_authority_is_impossible` |
+| T5 | Actor 身份由上下文注入，参数里的身份被拒 | ✅ `test_actor_identity_comes_from_context_and_args_are_rejected` + `..._requires_a_running_session` |
+| T6 | 读工具只给事实（`calculate_task_fit` 无排名、未知不当 0） | ✅ `test_calculate_task_fit_returns_facts_without_ranking` |
+| T7 | 成功 = 决定 + 校验 + 应用（结果带 authority + audit_id） | ✅ `test_successful_write_is_decided_validated_and_applied` |
+| T8 | `position_authority_grants` 是授权来源（撤回即刻失效） | ✅ `test_authority_source_is_the_grant_table` |
+| T9 | 资源包不是授权替代物 | ✅ `test_resource_packages_do_not_grant_authority` |
+| T10 | Transport 不改变领域不变量 | ✅ `test_transport_does_not_change_domain_invariants` |
+| T11 | 人类 API 与 Agent 工具产出等价领域效果 | ✅ `test_human_and_agent_paths_produce_equivalent_domain_effects` + 结构守卫 |
+| T12 | 每次调用可审计（读/写/被拒） | ✅ `test_every_tool_call_is_audited` + `test_audit_never_stores_raw_arguments` |
 
----
+### Risks
+
+| 风险 | 对策 |
+| --- | --- |
+| 写工具被绕过（未来有人加 HTTP 端点） | T3 守卫扫 `app/api/**`：不得出现 `/tools` 前缀、不得 import 执行面（已注入验证） |
+| 授权被"顺手"跳过 | `ToolSpec.__post_init__` + `assert_registry_is_sound` 在**注册时**拒绝缺声明的写工具 |
+| Actor 被提示词伪造 | 参数身份字段硬拒；审计记录上下文里的 actor（已注入验证） |
+| 高影响动作被自动执行 | `AUTONOMY_BY_SIDE_EFFECT[high_impact] = requires_confirmation` ⇒ 无确认通道即拒绝（已注入验证） |
+| `expire_on_commit=False` 导致关系缓存陈旧 | 依赖图从**表**读（`list_dependencies`），不从 ORM 关系读；注释写明踩坑 |
+| 审计表增长 | 读调用也留审计（T12 是字面要求）；降噪应在观测层做聚合，而不是让某些调用不可追溯 |
 
 ## 7. M2.4 · Leadership Planning & Delegation `[有迁移]`
 
@@ -589,6 +626,18 @@ CEO A 离任 → CEO B 上任
 | W40 Authority append-only + 双摘要 | 冻结 | | ✅ | | ✅ | | | | | | 锚点 |
 | W41 资源只是指针 | 冻结 | | ✅ | | | | | | | | 锚点 |
 | W42 packages 不承载管理授权 | 冻结 | | ✅ | | | | | | | | 锚点 |
+| T1 工具不拥有业务真相 | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T2 HTTP 与 Tool 同一 service | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T3 无玩家面 /tools 写路由 | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T4 内部不绕过 Authority | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T5 Actor 身份由上下文注入 | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T6 读工具只给事实 | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T7 决定→校验→应用 | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T8 授权来源是 grant 表 | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T9 资源包≠授权 | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T10 Transport 不改不变量 | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T11 人机路径效果等价 | 冻结 | | | ✅ | | | | | | | 锚点 |
+| T12 每次调用可审计 | 冻结 | | | ✅ | | | | | | | 锚点 |
 | W31 未开通不可执行 | 冻结 | | | | | | | | ✅ | | 锚点 |
 
 ---
@@ -616,6 +665,7 @@ CEO A 离任 → CEO B 上任
 | M2.0 Work & Role Domain Contract Freeze | **DONE**（2026-09-11） | `366c540` | 设计 + 执行基线 + 契约代码 + 守卫测试；**无迁移**；head 仍 `64fec2d13d9b` |
 | M2.1 Canonical Executable Project Spec | **DONE**（2026-09-11） | `01060ab` | 迁移 **v40**；单一立项入口 + 两轴路由 + Work Intake 责任路由 + Canonical Spec 读面；W32–W36 强制 |
 | M2.2 Role Context & Adaptive Onboarding | **DONE**（2026-09-11） | `164272c` | 迁移 **v41**；Authority Projection（default-deny / 有限作用域 / append-only 双摘要）+ RoleContext 投影 + Role Resource Index；W37–W42 强制 |
+| M2.3 Management Agent Tooling | **DONE**（2026-09-11） | 见 §17.0c | 无迁移；Read Shared / Write Internal + Tool Registry + 执行五步 + 调试口；T1–T12 强制 |
 
 ### Progress Log
 
@@ -698,17 +748,45 @@ CEO A 离任 → CEO B 上任
     把 `authorizes` 改名成 `should_authorize` / 往 packages 里加授权列
   - **风险**：见 §5 Risks（测试隔离、naive/aware 时间、无上限≠不限、RoleContext 不变成成绩单）
 
-### 下一步（M2.3，不在 M2.2 范围）
+- **2026-09-11 · M2.3 DONE —— Management Agent Tooling**
+  - **拍板落地（方案 3 修正版）**：读能力共享（复用既有 QueryService，不新增 `/tools` 读路由）；
+    写能力只在**内部执行面**；人类动作走各领域正式 API 且调用**同一个** application service；
+    禁止通用玩家 `/tools` 写路由；Transport 不代表信任；Actor 身份由上下文注入；
+    系统只校验并应用；side-effect 三级分类；Authority ≠ Autonomy（只冻结边界）；
+    调试口默认关且走同一段代码；每次调用都留审计
+  - **代码**：`app/work/{tools,tool_reads,tool_writes,tool_executor}.py`（新增，共约 1900 行）、
+    `scripts/agent_tools.py`（新增调试口）+ Makefile 两个目标、`app/core/config.py`
+    （`agent_tool_cli_enabled`）、`app/models/enums.py`（`ToolSideEffect` / `ToolTransport` /
+    `AutonomyLevel` / `TaskStatus.blocked|cancelled` / `AuthorityKind` 归位 + `plan_project_work`）、
+    `app/services/tasks.py`（状态机加两个状态）、`app/work/{contracts,authority_seed}.py`
+  - **前端**：`TaskStatus` 联合类型 / 变体 / 节点配色 / i18n 中英（blocked、cancelled）
+  - **测试**：新增 `tests/test_m2_tools.py`（**32 个**，T1–T12 全覆盖 + 行为面）；
+    `test_m2_contract.py` 扩到 50 个（不变量家族 W/T 分组校验 + 锚点跨四文件解析）
+  - **门禁**：pytest **1153 passed / 6 deselected**（固定序与随机序均绿）；ruff check 全绿；
+    ruff format 仅既有 5 个 WIP 红；alembic check 无漂移（head 仍 v41，**M2.3 无迁移**）；
+    web tsc / eslint / prettier / vitest(351) / build 全绿
+  - **守卫反例注入已验证（5/5 转红后撤回）**：加玩家面 `/tools` 路由 / 授权校验放行 /
+    接受参数里的身份字段 / 忽略自主等级门禁 / 不写审计
+  - **踩坑记录**：`SessionLocal(expire_on_commit=False)` 下 ORM 关系会保持旧值 ——
+    依赖图必须从**表**读（`list_dependencies`），否则同一会话里第二次建边时环检测会漏
 
-Management Agent Tooling：把「只读事实查询 + 受校验的写操作」暴露成工具；
-每个工具声明 `mode / authority_required / hard_constraints`，写工具走
-`authority.requires()` 并把 `authority_snapshot()` 交给 M2.4 的 DecisionRecord。
+### 下一步（M2.4，不在 M2.3 范围）
+
+Leadership Planning & Delegation：`decision_records` 表 + `DecisionService`；
+写工具产出的 `authority_snapshot()`（`grants_hash` / `position_grants_hash`）直接落进
+`DecisionRecord.context_snapshot`，让"谁在什么时候以什么授权做了什么"可长期审计。
 
 ### ~~交付后暂停点~~ → **已拍板（2026-09-11，D1/D2/D3）**
 
 1. **默认 Work Intake = CEO，但公司可配**（负责路由，不是 CEO 特权）→ M2-ADR-11 / B6
 2. **新公司默认 guided**；首次真实项目完成后公司默认转 managed；`work_mode` 项目级快照 → M2-ADR-13/15 / B7/B12
 3. **确定性模板保留**，但只作 Test/Tutorial/CI Fixture，生产**永不** fallback，且必须显式请求 + 部署门控 → M2-ADR-12 / B9/B10
+
+---
+
+## 17.0c M2.3 交付证据
+
+见本轮汇报与 §16 Progress Log（commit hash 由收尾提交补记）。
 
 ---
 

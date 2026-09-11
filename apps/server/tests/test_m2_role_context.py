@@ -87,6 +87,14 @@ def _person_snapshot(db, person_id: int | None) -> dict[str, int]:
     return counts
 
 
+#: 本文件会动**组织事实**（任职时间轴 / 生命周期）—— 每个用例后自动还原，
+#: 否则会污染后续用例（实测踩到：把某人 lifecycle 改成 suspended，
+#: 后跑的 roster 用例期望 available）。
+@pytest.fixture(autouse=True)
+def _restore_org_state(org_snapshot):
+    yield org_snapshot
+
+
 def _employees(db, company_id: int) -> dict[str, object]:
     return {employee.slug: employee for employee in org_repo.list_employees(db, company_id)}
 

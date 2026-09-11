@@ -851,7 +851,12 @@ def test_every_invariant_has_a_live_anchor_or_an_owner_stage():
 
 
 #: 承载 M2 不变量锚点的测试模块（每个阶段可以有自己的文件；锚点表跨模块解析）。
-M2_TEST_MODULES = ("test_m2_contract", "test_m2_project_spec", "test_m2_role_context")
+M2_TEST_MODULES = (
+    "test_m2_contract",
+    "test_m2_project_spec",
+    "test_m2_role_context",
+    "test_m2_tools",
+)
 
 
 def test_enforced_invariants_have_existing_anchor_tests():
@@ -873,19 +878,28 @@ def test_enforced_invariants_have_existing_anchor_tests():
     assert not missing, f"不变量锚点不存在（锚点表与测试已漂移）：{missing}"
 
 
-def test_invariant_ids_are_unique_and_sequential():
+def test_invariant_ids_are_unique_and_sequential_per_family():
+    """每个前缀家族内部必须连续（W1…Wn / T1…Tm）—— 编号空洞说明有人删了却没登记。"""
     ids = [invariant.id for invariant in C.INVARIANTS]
     assert len(ids) == len(set(ids)), "不变量编号重复"
-    numbers = [int(re.sub(r"\D", "", i)) for i in ids]
-    assert numbers == list(range(1, len(numbers) + 1)), "不变量编号必须连续（W1…Wn）"
+    families: dict[str, list[int]] = {}
+    for invariant_id in ids:
+        families.setdefault(re.sub(r"\d", "", invariant_id), []).append(
+            int(re.sub(r"\D", "", invariant_id))
+        )
+    assert set(families) == {"W", "T"}, f"未知的不变量家族：{sorted(families)}"
+    for prefix, numbers in families.items():
+        assert sorted(numbers) == list(range(1, len(numbers) + 1)), (
+            f"{prefix} 家族编号不连续：{sorted(numbers)}"
+        )
 
 
 def test_invariant_ids_and_texts_match_the_design_document():
     """W 表是**设计文档与代码的同一份事实**：任一侧改动而另一侧没跟就转红。"""
     design = DESIGN_DOC.read_text(encoding="utf-8")
-    rows = re.findall(r"^\|\s*\*\*(W\d+)\*\*\s*\|\s*(.+?)\s*\|", design, flags=re.MULTILINE)
+    rows = re.findall(r"^\|\s*\*\*([WT]\d+)\*\*\s*\|\s*(.+?)\s*\|", design, flags=re.MULTILINE)
     documented = {wid: text for wid, text in rows}
-    assert documented, "设计文档里没有解析到 W 不变量表（§14 的格式可能被改了）"
+    assert documented, "设计文档里没有解析到不变量表（§14 的格式可能被改了）"
     code = {invariant.id: invariant.text for invariant in C.INVARIANTS}
     assert set(documented) == set(code), (
         f"设计文档与代码的不变量集合不一致：文档多 {sorted(set(documented) - set(code))}、"

@@ -46,7 +46,9 @@ from enum import StrEnum
 from typing import Any
 
 from app.models.enums import (
+    AuthorityKind,
     AuthorityScopeKind,
+    AutonomyLevel,
     DecisionKind,
     DecisionOutcome,
     FactKind,
@@ -57,6 +59,8 @@ from app.models.enums import (
     ResponsibilityKind,
     ReviewVerdict,
     RoleResourceKind,
+    ToolSideEffect,
+    ToolTransport,
 )
 
 __all__ = [
@@ -77,6 +81,12 @@ __all__ = [
     "WORK_INTAKE_DEFAULT_POSITION",
     "AuthorityKind",
     "AuthorityScopeKind",
+    "AutonomyLevel",
+    "ToolSideEffect",
+    "ToolTransport",
+    "AUTONOMY_BY_SIDE_EFFECT",
+    "FORBIDDEN_TOOL_ARGUMENT_KEYS",
+    "HIGH_IMPACT_AUTHORITIES_RESERVED",
     "AuthorityGrant",
     "AMOUNT_BEARING_AUTHORITIES",
     "SELF_TARGET_FORBIDDEN_AUTHORITIES",
@@ -189,33 +199,6 @@ WORK_INTAKE_DEFAULT_POSITION = "ceo"
 # ---------------------------------------------------------------------------
 
 
-class AuthorityKind(StrEnum):
-    """**Authority**（硬边界）—— 职位被授权做什么（设计 §4.1）。
-
-    与 `ResponsibilityArea` 的区别必须记住：
-      - Authority 是**硬**的：没有它，系统拒绝（W6）。
-      - Responsibility 是**软**的：只影响路由与展示（W5）。
-
-    **落库（M2.2 / v41）**：宿主是 `position_authority_grants.authority_kind`。
-    解析路径是 `employee → 生效 PRIMARY 任职 → PositionSlot → PositionDefinition → grants`
-    —— 授权**随任职生效与失效**，不是 Person 的永久资产（W38）。
-
-    **default-deny**（W37）：没有任何生效 grant ⇒ 一律拒绝；系统从不"默认允许"。
-    **绝不**读 `employee.role` 字符串判定权限（用户拍板；AST 守卫钉死）。
-    """
-
-    create_project = "create_project"
-    delegate_management = "delegate_management"
-    assign_task = "assign_task"
-    request_rework = "request_rework"
-    accept_delivery = "accept_delivery"
-    approve_hiring = "approve_hiring"
-    spend_credits = "spend_credits"
-    assign_position = "assign_position"
-    release_position = "release_position"
-    offboard = "offboard"
-
-
 @dataclass(frozen=True)
 class AuthorityGrant:
     """一项被授予的权限（Authority Projection 的元素）。
@@ -280,6 +263,53 @@ FORBIDDEN_AUTHORITY_SOURCES: frozenset[str] = frozenset(
         "access_package",
         "responsibility_area",
         "work_mode",
+    }
+)
+
+#: `ToolSideEffect` → 当前**行为**的自主等级（M2.3 冻结的 Authority/Autonomy 边界）。
+#:
+#: 这张表是"现在到底会不会在无人确认下执行"的**唯一**声明处；它不实现策略引擎，
+#: 只把边界钉下来。`requires_confirmation` 在 M2.3 **没有确认通道**，
+#: 因此执行面会**拒绝**执行该类动作 —— 这条比"先放行、以后再补确认"安全得多。
+AUTONOMY_BY_SIDE_EFFECT: dict[ToolSideEffect, AutonomyLevel] = {
+    ToolSideEffect.read: AutonomyLevel.auto_allowed,
+    # M2.3 的写工具都在授权内可自主执行（正是"让管理 Agent 自己组织工作"这一步）；
+    # 一旦某项写动作升级为 high_impact，就必须先建确认通道再打开。
+    ToolSideEffect.write: AutonomyLevel.auto_allowed,
+    ToolSideEffect.high_impact: AutonomyLevel.requires_confirmation,
+}
+
+#: **M2.3 刻意不实现**的高影响授权（用户拍板：不为完整列表写空业务）。
+#: 它们只作为"下一阶段放这里"的显式清单存在；注册表里不允许出现这类工具。
+HIGH_IMPACT_AUTHORITIES_RESERVED: frozenset[AuthorityKind] = frozenset(
+    {
+        AuthorityKind.spend_credits,
+        AuthorityKind.approve_hiring,
+        AuthorityKind.assign_position,
+        AuthorityKind.release_position,
+        AuthorityKind.offboard,
+        AuthorityKind.accept_delivery,
+        AuthorityKind.create_project,
+    }
+)
+
+#: **不允许**出现在任何工具参数里的键（T5）。
+#:
+#: 身份只能由 Runtime Session / WorkSession / 系统执行上下文注入；
+#: 一旦允许模型在参数里写 `actor_employee_id`，"谁做的这个决定"就变成提示词里的一句话，
+#: 审计与权限双双失效。执行面见到这些键一律拒绝，不做"忽略并使用上下文"的仁慈处理 ——
+#: 仁慈会让调用方以为参数生效了。
+FORBIDDEN_TOOL_ARGUMENT_KEYS: frozenset[str] = frozenset(
+    {
+        "actor_employee_id",
+        "actor_person_id",
+        "acting_employee_id",
+        "acting_person_id",
+        "acting_position_definition_id",
+        "acting_position_assignment_id",
+        "actor_company_id",
+        "company_id",
+        "granted_by_user_id",
     }
 )
 
@@ -1487,6 +1517,93 @@ INVARIANTS: tuple[Invariant, ...] = (
         enforced=True,
         owner_stage="M2.2",
         anchors=("test_v41_adds_authority_tables_without_touching_packages_semantics",),
+    ),
+    Invariant(
+        "T1",
+        "Agent tools do not own business truth.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_tools_do_not_own_business_truth",),
+    ),
+    Invariant(
+        "T2",
+        "HTTP APIs and Agent tools share the same application/domain services.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_read_tools_reuse_the_same_query_services_as_http",),
+    ),
+    Invariant(
+        "T3",
+        "No generic player-facing write /tools API.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_no_player_facing_tool_router_exists",),
+    ),
+    Invariant(
+        "T4",
+        "Internal tool calls never bypass Authority.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=(
+            "test_internal_transport_still_enforces_authority",
+            "test_registry_is_sound_and_write_specs_declare_authority_and_target",
+        ),
+    ),
+    Invariant(
+        "T5",
+        "Actor identity is injected by runtime/system context, not trusted from model arguments.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_actor_identity_comes_from_context_and_args_are_rejected",),
+    ),
+    Invariant(
+        "T6",
+        "Fit and other read tools provide facts, never make management decisions.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_calculate_task_fit_returns_facts_without_ranking",),
+    ),
+    Invariant(
+        "T7",
+        "A successful Tool call means: Agent decided, System validated, System applied.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_successful_write_is_decided_validated_and_applied",),
+    ),
+    Invariant(
+        "T8",
+        "PositionAuthorityGrant is the management authorization source.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_authority_source_is_the_grant_table",),
+    ),
+    Invariant(
+        "T9",
+        "Resource Package is never used as a substitute for Authority.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_resource_packages_do_not_grant_authority",),
+    ),
+    Invariant(
+        "T10",
+        "Transport choice does not change domain invariants.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_transport_does_not_change_domain_invariants",),
+    ),
+    Invariant(
+        "T11",
+        "Human management APIs and Agent management tools must produce equivalent domain effects.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_human_and_agent_paths_produce_equivalent_domain_effects",),
+    ),
+    Invariant(
+        "T12",
+        "Tool execution must be auditable.",
+        enforced=True,
+        owner_stage="M2.3",
+        anchors=("test_every_tool_call_is_audited",),
     ),
 )
 

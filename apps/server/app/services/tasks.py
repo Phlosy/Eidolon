@@ -14,17 +14,29 @@ from app.models.project import Task
 from app.repositories import project as project_repo
 
 ALLOWED_TRANSITIONS: dict[str, set[str]] = {
-    TaskStatus.backlog.value: {TaskStatus.todo.value},
-    TaskStatus.todo.value: {TaskStatus.in_progress.value},
-    TaskStatus.in_progress.value: {TaskStatus.in_review.value, TaskStatus.failed.value},
+    TaskStatus.backlog.value: {TaskStatus.todo.value, TaskStatus.cancelled.value},
+    TaskStatus.todo.value: {TaskStatus.in_progress.value, TaskStatus.cancelled.value},
+    TaskStatus.in_progress.value: {
+        TaskStatus.in_review.value,
+        TaskStatus.failed.value,
+        TaskStatus.blocked.value,
+        TaskStatus.cancelled.value,
+    },
     TaskStatus.in_review.value: {
         TaskStatus.done.value,
         TaskStatus.failed.value,
         TaskStatus.rejected.value,
+        TaskStatus.blocked.value,
+        TaskStatus.cancelled.value,
     },
-    TaskStatus.rejected.value: {TaskStatus.todo.value},
+    TaskStatus.rejected.value: {TaskStatus.todo.value, TaskStatus.cancelled.value},
+    # M2.3 新增：阻塞与恢复（blocked → todo 即"解除阻塞，重新排入队列"）。
+    # `done` / `failed` / `cancelled` 是终态：已经做完/已经失败的工作不该被"取消"，
+    # 管理层的正确动作是新建任务，而不是改写历史。
+    TaskStatus.blocked.value: {TaskStatus.todo.value, TaskStatus.cancelled.value},
     TaskStatus.done.value: set(),
     TaskStatus.failed.value: set(),
+    TaskStatus.cancelled.value: set(),
 }
 
 
