@@ -391,7 +391,7 @@ cd apps/web && npm run build
 | --- | --- | --- | --- |
 | M1.0 Economic Domain Contract Freeze | **DONE**（2026-09-11） | `2f75590` | 设计 + 执行基线与契约代码；**无迁移**；pytest 798 / web 328 |
 | M1.1 Accounts & Double-entry Ledger | **DONE**（2026-09-11） | `12fb9a7` / `2d37938` / `9cb1e06` | `[migration v32]` `8f1abef8410f`；四小阶段 M1.1a–d 全部落地；**A1–A20 全部满足**；pytest 851 / web 328 |
-| M1.2 Monetary Authority & Reward System | **DONE**（2026-09-11） | `81eed9a` / `6e35963` / `7cc5541` | `[migration v33]` `691816bccb53`；7 类自助奖励全部落地（含救援经济）；pytest 898 / web 328 |
+| M1.2 Monetary Authority & Reward System | **DONE**（2026-09-11） | `81eed9a` / `6e35963` / `7cc5541` | `[migration v33]` `691816bccb53`；7 类自助奖励全部落地（含救援经济）；pytest 874 / web 328 |
 | M1.3 Official Work Market | **DONE**（2026-09-11） | `03f47a6` / `6a479e9` / `e2f505b` / `ee958cf` | `[migration v34]` `328fbe9f3034`；官方 bounty 全生命周期 + 预算内发行；pytest 898 / web 328 |
 | M1.4 Player Work Market | **NEXT** | — | `[migration v35]` |
 | M1.5 Company Operating Economy | PLANNED | — | `[migration v36]` |
