@@ -218,6 +218,7 @@ CREATE UNIQUE INDEX uq_market_listing_active_person ON market_listings(person_id
 | `market.listed` | T2.3 | `listing_id`, `person_id`, `participant_id`, `quality_tier` | — | NPC 发现循环（T2.7） |
 | `market.delisted` | T2.3 | `listing_id`, `person_id`, `reason` | — | 统计 |
 | `person.recruited` | T2.6 | `person_id`, `employee_id`, `company_id`, `listing_id`, `position_slot_id` | 无（同步事务已落库） | knowledge scope refresh、NPC 反应、analytics |
+| `market.candidate_taken` | T2.7c | `person_id`, `identity_id`, `listing_id`, `participant_id`, `participant_name`, `known_fit_score`, `fit_confidence` | 无（listing 已 CAS 关闭） | 活动流（可感知"被其他公司招募"）、供给统计 |
 
 **边界**：领域事务的**不变量**全部在同步事务内保证（不依赖消费者）；事件只承载"已经发生"的事实，
 消费者必须幂等且可重放（概念架构 §4 规则 6）。不为"用了事件系统"而事件化所有代码。
@@ -370,8 +371,8 @@ cd apps/web && npm run build
 | T2.4 Issuer & Market Supply | **DONE**（2026-09-10） | `2c6236f` | 迁移 v30（training_programs.metadata_json）+ IssuerService（三档参数）+ CLI；`origin=issued` 走真实培养链；pytest 736 |
 | T2.5 Person-scoped Fit | **DONE**（2026-09-10） | `524868c` | 一套引擎两个入口（owner 口径 person 优先，hash 相等）+ 市场 Fit 读面 + 搜索标注排序；无迁移；pytest 745 |
 | T2.6 Recruitment | **DONE**（2026-09-10） | `748f0f1` | 招募事务（CAS + 同事务建人/任职）+ R5 知识读路径修复 + 验收 B 实测；无迁移；pytest 754 |
-| T2.7 Market Experience & NPC | **NEXT** | — | 入口：plan §4.8（市场 UI + NPC 参与者） |
-| T2.8 E2E / Hardening / Freeze | PLANNED | — | 本文件 §13/§14 |
+| T2.7 Market Experience & NPC | **DONE**（2026-09-11） | `9f57f0a` / `594bdad` | 市场 UI（浏览/档案/Fit/招募/我的挂牌）+ NPC 参与者（迁移 v31）；pytest 763 / web 328 |
+| T2.8 E2E / Hardening / Freeze | **NEXT** | — | 入口：本文件 §13/§14（Golden Path 26 步 + Acceptance A–D） |
 
 ### Progress Log
 
@@ -512,3 +513,26 @@ cd apps/web && npm run build
     DB：employee.person_id=10 / lifecycle=active / runtime=mock；知识行仍 `owner_person_id=10,
     owner_employee_id=NULL`（无复制）；**真实 retrieval 召回该主题**；同公司他人不可见；
     listing closed/reason=recruited/recruited_employee_id=3；career joined=1。
+- **2026-09-11 · T2.7 DONE**：commit **`9f57f0a`**（T2.7c 后端：NPC + mine 过滤）+ **`594bdad`**（T2.7a/b 前端：市场 UI）。
+  - 后端（T2.7c + UI 支撑）：迁移 **v31**（`d6e8f0a2b4c7` ← `c5d7e9f1b3a6`）
+    `market_listings.recruited_participant_id`；`talent/market/npc.py`（两个 NPC 规格 + 全局职位模板
+    + 已发布画像 + Fit 阈值选拔 + CAS 成交 + `market.candidate_taken`）；
+    `eligibility` 新增"已被市场消化"分支（`can_list` 原因 `consumed`）；
+    `MarketSearchQuery.listed_by_participant_id`（`mine=true`）与参与者 **display_name 回填**
+    （首个创建者没带名字时不再永久无名）；玩家招募同时写 `recruited_participant_id`；
+    CLI `scripts/npc_market_run.py` + `make market-npc`。
+  - 前端（T2.7a/b）：`api/market.ts` + `hooks/useMarket.ts`；`/market` 浏览页（搜索/来源/档位/按职位排序
+    + 我的挂牌 列表↔下架）；`/market/:listingId` 候选人档案（复用 `TraitsList`/`CompetencyList`/
+    `EducationTimeline` 共享组件 + 证据下钻 + Fit 面板 + 招募对话框）；路由/侧边栏/i18n（market.json 中英 +
+    nav + 事件标签）。
+  - 测试：后端 +9（`tests/test_market_npc.py` 8：幂等身份/标准、强候选成交、Unknown/弱候选落选、
+    dry-run 不写、第二轮不重复成交、未知 NPC 拒绝、D8 守卫、公司表不被污染；`test_market_core.py` +1 mine 过滤）；
+    前端 +14（market-page 5 / market-listing-page 5 / api-market 4）。
+  - 门禁：pytest **763 passed** / 6 deselected；ruff 全绿、format 仅 5 个既有 WIP 红；
+    alembic check 无漂移（head `d6e8f0a2b4c7` / v31）；web **328 passed**（78 files）+ tsc/eslint/prettier/build 全绿。
+  - 实机：`make market-npc --dry-run` → 星海科技 会买 person 9（fit 0.9775 / conf 0.5387），
+    墨丘利实验室 3 人全未达标；实跑后 listing 4 `closed/npc_recruited/participant=3`（company/employee 均为 NULL）、
+    事件 `market.candidate_taken`、person 9 `unavailable`+`can_list=consumed`、market 列表 3→2、
+    `mine=true` 只回本公司挂牌、被买走的档案 404；
+    UI 实机：/market 渲染 2 张卡片 + 我的挂牌（3 个待挂牌 + 1 个下架）、/market/3 渲染
+    8 人格 / 10 能力 / 8 履历 / 20 证据 / 8 知识主题，选职位后出现 8 条逐项 Fit，控制台 0 错误。
