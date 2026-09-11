@@ -268,3 +268,51 @@ class EconomyOverviewOut(BaseModel):
     by_category: list[CategoryFlowOut]
     compute_paid: int
     compute_unpaid: int
+
+
+class ContractCreateIn(BaseModel):
+    """创建合同（§21）：对价由发布方出资并**在创建时锁进托管**（E11）。
+
+    请求体没有 `funding_mode`/`status` —— 钱只能从发布方余额出，状态由服务层推进。
+    """
+
+    title: str
+    consideration_amount: int
+    contract_type: str = "work"
+    contractor_company_id: int | None = None
+    subject: str = ""
+    terms: dict = {}
+    expires_at: datetime | None = None
+
+
+class ContractOut(BaseModel):
+    contract_id: int
+    code: str
+    contract_type: str
+    title: str
+    subject: str = ""
+    terms: dict = {}
+    consideration_amount: int
+    currency: str
+    status: str
+    issuer_company_id: int
+    contractor_company_id: int | None = None
+    reference_type: str = ""
+    reference_id: str = ""
+    effective_at: datetime | None = None
+    expires_at: datetime | None = None
+    fulfilled_at: datetime | None = None
+    settled_at: datetime | None = None
+    settlement_transaction_id: int | None = None
+    policy_version: str = ""
+    is_issuer: bool = False
+    is_contractor: bool = False
+    escrow: EscrowOut | None = None
+    settlement: dict = {}
+
+
+class ContractPageOut(BaseModel):
+    items: list[ContractOut]
+    total: int
+    limit: int
+    offset: int
