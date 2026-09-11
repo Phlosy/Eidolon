@@ -36,6 +36,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base, TimestampMixin, utcnow
 from app.models.enums import (
     Currency,
+    EscrowStatus,
     EvaluationMode,
     EvaluationVerdict,
     FundingMode,
@@ -308,3 +309,56 @@ class Evaluation(TimestampMixin, Base):
     evaluated_by_actor_kind: Mapped[str] = mapped_column(String(20), default="system")
     evaluated_by_actor_ref: Mapped[int] = mapped_column(Integer, default=0)
     notes: Mapped[str] = mapped_column(Text, default="")
+
+
+class Escrow(TimestampMixin, Base):
+    """托管（M1.4，设计 §19/§23）：**玩家之间的钱先锁在独立账户里，条件满足才放款**。
+
+    - 每个 Escrow 一个独立的 `ledger_accounts` 行（`kind=escrow`、归 system actor、
+      `subject_ref = escrow.id`）—— 资金既不属于付款人也不属于收款人（E7）；
+    - `payer` 出资、`payee` 承接；`amount` 即订单奖励（锁资产 = 奖励额，不多不少）；
+    - `status`：`UNFUNDED → FUNDED → RELEASED | REFUNDED | EXPIRED`（M1.0 冻结表）；
+      **release 与 refund 的竞争由 CAS 裁定**（§33：只有一个能成功）；
+    - 释放/退回后 escrow 账户余额必须归零（E25），`reserved` 通过账本归因自动回落（E30）；
+    - 玩家间转移**绝不 mint**（E8）：这里的钱是 `escrow_fund` 从付款人账户移出来的。
+    """
+
+    __tablename__ = "escrows"
+    __table_args__ = (
+        # 一个订单一个 Escrow（重复发布/重试由唯一约束收敛）
+        UniqueConstraint("work_order_id", name="uq_escrow_work_order"),
+        Index("ix_escrows_status", "status"),
+        Index("ix_escrows_payer", "payer_actor_kind", "payer_actor_ref"),
+        Index("ix_escrows_status_expires", "status", "expires_at"),
+    )
+
+    #: 服务的业务对象（M1.4 只服务 WorkOrder；M1.6 的 Contract 复用同一张表）
+    work_order_id: Mapped[int | None] = mapped_column(ForeignKey("work_orders.id"), nullable=True)
+    payer_actor_kind: Mapped[str] = mapped_column(String(20))
+    payer_actor_ref: Mapped[int] = mapped_column(Integer)
+    payee_actor_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    payee_actor_ref: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    amount: Mapped[int] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String(12), default=Currency.credit.value)
+    status: Mapped[str] = mapped_column(String(12), default=EscrowStatus.unfunded.value)
+
+    #: 该笔托管自己的账本账户（subject_ref = escrow.id）
+    escrow_account_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ledger_accounts.id"), nullable=True
+    )
+    funded_transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ledger_transactions.id"), nullable=True
+    )
+    released_transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ledger_transactions.id"), nullable=True
+    )
+    refunded_transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ledger_transactions.id"), nullable=True
+    )
+
+    funded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    released_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    refunded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)

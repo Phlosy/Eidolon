@@ -34,6 +34,7 @@ from app.models.competency import (
 from app.models.cultivation import CharacterProfile, EducationEvent, TrainingProgram
 from app.models.drive import DriveCollaborator, DriveNode, DriveRevision
 from app.models.economy import (
+    Escrow,
     Evaluation,
     LedgerAccount,
     LedgerEntry,
@@ -136,6 +137,7 @@ __all__ = [
     "KnowledgeItem",
     "LearningPriority",
     "LearningSession",
+    "Escrow",
     "Evaluation",
     "LedgerAccount",
     "LedgerEntry",

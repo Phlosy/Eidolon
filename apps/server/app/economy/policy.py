@@ -38,6 +38,7 @@ class EconomicPolicy:
     official_reward_multiplier: float
     official_max_reward: int
     official_outstanding_budget: int
+    player_order_max_reward: int
     # 回收侧（Sink）
     market_fee_bps: int  # 基点（500 = 5%）
     fee_treasury_ratio: float
@@ -59,6 +60,7 @@ class EconomicPolicy:
             "compute_credit_per_unit",
             "official_max_reward",
             "official_outstanding_budget",
+            "player_order_max_reward",
         ):
             validate_amount(getattr(self, name))
         if not 0 <= self.market_fee_bps <= 10_000:
@@ -125,6 +127,7 @@ def _load_policy() -> EconomicPolicy:
         compute_credit_per_unit=settings.economy_compute_credit_per_unit,
         official_max_reward=settings.economy_official_max_reward,
         official_outstanding_budget=settings.economy_official_outstanding_budget,
+        player_order_max_reward=settings.economy_player_order_max_reward,
     )
 
 

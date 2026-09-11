@@ -525,6 +525,7 @@ def test_policy_rejects_inconsistent_ratios():
             compute_credit_per_unit=1,
             official_max_reward=1_000,
             official_outstanding_budget=10_000,
+            player_order_max_reward=100_000,
         )
 
 

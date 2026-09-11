@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.economy.contracts import EconomicActor, EconomyContractError
 from app.models.base import utcnow
 from app.models.economy import (
+    Escrow,
     Evaluation,
     LedgerAccount,
     LedgerEntry,
@@ -35,6 +36,7 @@ from app.models.economy import (
 from app.models.enums import (
     Currency,
     EconomicActorKind,
+    EscrowStatus,
     LedgerAccountKind,
     LedgerAccountStatus,
     LedgerEntryDirection,
@@ -713,4 +715,56 @@ def list_evaluations(db: Session, *, order_id: int) -> list[Evaluation]:
         db.scalars(
             select(Evaluation).where(Evaluation.order_id == order_id).order_by(Evaluation.id)
         )
+    )
+
+
+# --------------------------------------------------------------------------- escrows
+
+
+def get_escrow(db: Session, escrow_id: int) -> Escrow | None:
+    return db.get(Escrow, escrow_id)
+
+
+def find_escrow_for_order(db: Session, *, work_order_id: int) -> Escrow | None:
+    return db.scalars(select(Escrow).where(Escrow.work_order_id == work_order_id)).first()
+
+
+def insert_escrow(db: Session, **values: object) -> Escrow:
+    escrow = Escrow(**values)
+    db.add(escrow)
+    db.flush()
+    return escrow
+
+
+def list_escrows(
+    db: Session,
+    *,
+    statuses: tuple[str, ...] | None = None,
+    limit: int | None = None,
+) -> list[Escrow]:
+    stmt = select(Escrow)
+    if statuses is not None:
+        stmt = stmt.where(Escrow.status.in_(statuses))
+    stmt = stmt.order_by(Escrow.id)
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list(db.scalars(stmt))
+
+
+def transition_escrow(
+    db: Session,
+    *,
+    escrow_id: int,
+    from_statuses: tuple[str, ...],
+    to_status: EscrowStatus,
+    **fields: object,
+) -> int:
+    """**条件更新 + rowcount 判定**（§33）：release 与 refund 竞争只有一个能成功。"""
+    values = {"status": to_status.value, "updated_at": utcnow(), **fields}
+    return int(
+        db.execute(
+            update(Escrow)
+            .where(Escrow.id == escrow_id, Escrow.status.in_(from_statuses))
+            .values(**values)
+        ).rowcount
     )
