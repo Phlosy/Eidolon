@@ -430,9 +430,7 @@ class NpcEconomyService:
                     injected, _total = self.inject_budget(participant_id, commit=False)
             # fit 口径：有 spec 用它的招聘标准模板；没有 spec（临时/测试参与者）用系统模板。
             # 注意：这一步不能放进上面的 inject 分支 —— dry-run 也要能算出 fit（只是不动钱）。
-            definition = (
-                npc_service._ensure_definition(self.db, spec) if spec is not None else None
-            )
+            definition = npc_service._ensure_definition(self.db, spec) if spec is not None else None
             min_fit = float(spec.min_fit_score) if spec is not None else 0.0
             min_confidence = float(spec.min_fit_confidence) if spec is not None else 0.0
             purchased: list[NpcPurchase] = []
