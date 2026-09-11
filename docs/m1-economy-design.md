@@ -647,6 +647,29 @@ Employee
   **Escrow funded → recruit（同事务）→ release**）；
 - **T2 不变量在交易前后必须成立**（E19/E20）。
 
+**实现落点（M1.7，2026-09-11）**
+
+- 表：`talent_commercial_terms`（迁移 v38 `862e2d3d7d8e`）—— `market_listings` 的 **1:1 扩展**，
+  `price` 一等列 + `sale_mode ∈ {buyout, negotiation}`（不再单列 `negotiable`，避免两个字段说同一件事）；
+- `TalentTradeService` 是**唯一成交入口**，顺序严格按本节的默认裁定：
+
+  ```
+  Contract（type=talent，创建即锁资） → AC（FUNDED）
+    → T2 RecruitmentService.recruit_existing_person(commit=False)   ← 同一事务
+    → fulfill/结算（多腿放款：卖方净额 + 平台手续费 treasury/burn）
+  ```
+
+  任一步失败 ⇒ 整笔回滚（钱不动、挂牌仍在市、没有半个员工）——**E13/E14/E15 的跨域形态**；
+- **T2 接入缝**：`recruit_existing_person` 新增 `commit: bool = True`
+  （默认行为不变；`commit=False` 时事务与事件都归调用方）。`test_recruitment` +
+  `test_t2_golden_path` 是 M1.7 的**硬门禁**（61 项 T2 回归全绿）；
+- **E18**：T2 侧一行不改（`owner_company_id`/`identity_id` 永不因交易改写）；
+  **E19**：不复制任何 Person 拥有物（快照对拍零改写）；**E20**：只调用 `RecruitmentService`；
+- **一口价 vs 议价**：`buyout` = 按标价出价即成交（卖方无需操作）；`negotiation` = 卖方接受才成交；
+- **系统/发行方挂牌**（`seller_company_id IS NULL`）：价格由系统侧设置（玩家不能冒充卖方，404），
+  成交款**净额 + 财政手续费都进 Treasury**（M1.8 的 NPC 财政再细化）；
+- API 挂在共享 `/market` 前缀下的新 router（`app/api/v1/talent_trade.py`）——**T2 的 market.py 一行不动**。
+
 ## 28. Ownership（M1.0 重点裁定）
 
 **问题**：`character_profiles.owner_company_id` 目前同时被读成"谁持有/谁培养的/市场在哪"，

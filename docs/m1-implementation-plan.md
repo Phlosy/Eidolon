@@ -396,12 +396,28 @@ cd apps/web && npm run build
 | M1.4 Player Work Market | **DONE**（2026-09-11） | `1f715f2` / `6f5eaeb` / `14db721` / `54ac474` | `[migration v35]` `d2a4926a21d4`；Escrow 锁资 + 玩家间转移（绝不 mint）；pytest 916 / web 328 |
 | M1.5 Company Operating Economy | **DONE**（2026-09-11） | `73e07ca` / `bef7e72` / `aaee26f` / `eb7a1a5` / `f038ed5` | `[migration v36]` `d9545a745166`；算力/培养/手续费三项 Sink + 经营报表；pytest 933 / web 328 |
 | M1.6 Contract / Offer / Settlement Core | **DONE**（2026-09-11） | `044825d` / `03938de` / `0281dd0` / `43ab6c2` | `[migration v37]` `0425abecc96e`；合同全生命周期 + 多腿结算（净额 + Treasury/Burn）；pytest 950 / web 328 |
-| M1.7 Talent Commercialization | **NEXT** | — | `[migration v38]`；必须跑 T2 回归 |
-| M1.8 NPC Economy | PLANNED | — | `[migration v39]`（或复用 participant profile_json） |
+| M1.7 Talent Commercialization | **DONE**（2026-09-11） | `aca9f1e` / `b4dd1e5` / `92fa279` / `71a1a5b` / `cfca5a3` | `[migration v38]` `862e2d3d7d8e`；T2 人才接入经济（价格 + Escrow + 招募 + 结算）；pytest 961 / web 328 |
+| M1.8 NPC Economy | **NEXT** | — | `[migration v39]`（或复用 participant profile_json） |
 | M1.9 Economy UI & Analytics | PLANNED | — | 无迁移 |
 | M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E31 全覆盖 + 失败注入 |
 
 ### Progress Log
+
+- **2026-09-11 · M1.7 DONE**：`[migration v38]` `862e2d3d7d8e`（`talent_commercial_terms`）；
+  commits **`aca9f1e`**（schema）、**`b4dd1e5`**（招募事务 seam）、**`92fa279`**（TalentTradeService）、
+  **`71a1a5b`**（API）、**`cfca5a3`**（测试硬化）。
+  - 交付：`TalentTradeService`（条款 → 出价 → 合同 → 锁资 → **T2 招募** → 放款，同一事务）、
+    `talent_commercial_terms`（listing 1:1 扩展，价格一等列 + 一口价/议价模式）、
+    `/market` 前缀下的 M1 交易 API（T2 market.py 一行不动）、`talent.purchased` 事件；
+  - T2 接入缝：`RecruitmentService.recruit_existing_person(commit=True 新增)` —— 默认行为不变，
+    `commit=False` 时事务/事件归调用方；**T2 回归 61 项全绿**（硬门禁）；
+  - 口径裁定：一口价出价即成交 / 议价需卖方接受；系统挂牌价格由系统侧设置、成交款进 Treasury；
+    `sale_mode` 取代 `negotiable`（一个字段说一件事）；
+  - 测试：**+11**（961 passed / 6 deselected）：资金三腿与 E8、E18/E19/E20 快照对拍、
+    招募失败整笔回滚、余额不足不留痕、二次购买被拒、系统卖方进 Treasury、API 语义；
+  - 迁移：v38 up/down/up 实测 + 两个 dev 库 `alembic check` 无漂移；
+  - 顺带修 M1.6 两个缺口：合同允许 system 承接方（仅 talent，Treasury 收款）、
+    结算受益账户解析支持系统主体 + `actor_ref=0` 不再被真值判断误判。
 
 - **2026-09-11 · M1.6 DONE**：`[migration v37]` `0425abecc96e`（`contracts` / `offers` /
   `escrows.contract_id`）；commits **`044825d`**（schema + 手续费档位）、**`03938de`**
