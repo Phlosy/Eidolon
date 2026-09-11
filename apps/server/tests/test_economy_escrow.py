@@ -1,7 +1,8 @@
 """M1.4 玩家工作市场与托管（docs/m1-economy-design.md §19/§23/§24；plan §4/M1.4）。
 
 断言的是**玩家之间不印钱**这条不变量：
-- 锁资：发布方 `available` 减少、`reserved` 增加、**`posted` 不变**（锁资不改变净资产）；
+- 锁资：发布方 `available` 减少（奖励 + 挂牌手续费）、`reserved` 增加、
+  **`posted` 只减少手续费**（锁资本身不改变净资产；手续费是真实支出，M1.5）；
   钱进的是**这笔订单自己的**托管账户（`subject_ref = escrow.id`）；
 - **E11**：余额不足 ⇒ 整笔回滚 —— 不产生订单，也不产生 Escrow（不是"先发布后补钱"）；
 - **E7/E8**：托管 → 承接方是**转移**，`supply` / `minted` 完全不变，且**不写 reward_grants**
@@ -32,6 +33,7 @@ from app.models.enums import (
 from app.models.organization import Company
 from app.repositories import economy as economy_repo
 from app.services.economy.accounts import AccountService
+from app.services.economy.costs import FeeService
 from app.services.economy.escrow import EscrowError, EscrowService
 from app.services.economy.ledger import InsufficientFunds, LedgerService
 from app.services.economy.monetary import MonetaryAuthority
@@ -75,6 +77,11 @@ def _supply(db):
     return LedgerService(db).supply()
 
 
+def _fee(amount: int) -> int:
+    """挂牌手续费（M1.5 §7：市场手续费 Sink）—— 断言里按政策算，不写死数字。"""
+    return economic_policy().fee_for(amount)
+
+
 def _publish(db, issuer: Company, *, reward: int = 5_000, **kwargs):
     return WorkOrderService(db).publish_player_order(
         issuer=EconomicActor.company(issuer.id),
@@ -103,7 +110,11 @@ def test_funding_locks_balance_without_changing_net_worth(db):
     assert escrow.escrow_account_id is not None
 
     # 锁资：可花减少、锁定增加、总资产不变（设计 §11 的公司钱包示例）
-    assert _wallet(account_id) == {"posted": 20_000, "available": 12_000, "reserved": 8_000}
+    assert _wallet(account_id) == {
+        "posted": 20_000 - _fee(8_000),
+        "available": 20_000 - 8_000 - _fee(8_000),
+        "reserved": 8_000,
+    }
     # 钱在**这笔订单自己的**托管账户里（subject_ref = escrow.id）
     with SessionLocal() as session:
         escrow_account = economy_repo.get_account(session, int(escrow.escrow_account_id))
@@ -185,14 +196,19 @@ def test_full_player_lifecycle_transfers_money_without_minting(db):
     assert settled.status == WorkOrderStatus.settled.value
 
     # 钱：从发布方 → 承接方；发布方在锁资时就已经扣了，这里只是"锁定 → 落袋"
-    assert _wallet(issuer_account) == {"posted": 21_000, "available": 21_000, "reserved": 0}
+    # 放款后：9,000 已经不属于发布方（在承接方手里），手续费是发布方的真实支出
+    assert _wallet(issuer_account) == {
+        "posted": 30_000 - 9_000 - _fee(9_000),
+        "available": 30_000 - 9_000 - _fee(9_000),
+        "reserved": 0,
+    }
     assert _wallet(contractor_account)["available"] == 9_000
     after = _supply(db)
-    assert (after.minted, after.burned, after.supply) == (
-        supply_before.minted,
-        supply_before.burned,
-        supply_before.supply,
-    )  # E7/E8：玩家之间不印钱
+    fee_quote = FeeService(db).quote(9_000)
+    # E7/E8：玩家之间**不印钱**（minted 恒定）；供应只按设计被**手续费 burn 腿**回收（§7 Sink）
+    assert after.minted == supply_before.minted
+    assert after.burned - supply_before.burned == fee_quote.burn
+    assert after.supply == after.minted - after.burned
     # 托管账户归零（E25）
     refunded = EscrowService(db).get_for_order(int(order.id))
     assert refunded.status == EscrowStatus.released.value
@@ -220,7 +236,7 @@ def test_cancel_refunds_the_issuer(db):
 
     order = _publish(db, issuer, reward=4_000).order
     escrow = EscrowService(db).get_for_order(int(order.id))
-    assert _wallet(issuer_account)["available"] == 8_000
+    assert _wallet(issuer_account)["available"] == 12_000 - 4_000 - _fee(4_000)
 
     # 只有发布方本人能取消
     with pytest.raises(WorkOrderError, match="not_your_order"):
@@ -228,14 +244,18 @@ def test_cancel_refunds_the_issuer(db):
 
     cancelled = service.cancel(order.id, company_id=issuer.id, reason="changed my mind")
     assert cancelled.status == WorkOrderStatus.cancelled.value
-    assert _wallet(issuer_account) == {"posted": 12_000, "available": 12_000, "reserved": 0}
+    assert _wallet(issuer_account) == {
+        "posted": 12_000 - _fee(4_000),
+        "available": 12_000 - _fee(4_000),
+        "reserved": 0,
+    }
     refunded = EscrowService(db).get_for_order(int(order.id))
     assert refunded.status == EscrowStatus.refunded.value
     assert EscrowService(db).view(refunded).account_balance == 0
     # 幂等：重复取消不再转账
     again = service.cancel(order.id, company_id=issuer.id)
     assert again.status == WorkOrderStatus.cancelled.value
-    assert _wallet(issuer_account)["available"] == 12_000
+    assert _wallet(issuer_account)["available"] == 12_000 - _fee(4_000)
     del escrow
 
 
@@ -249,12 +269,12 @@ def test_expired_player_order_refunds_the_issuer(db):
         reward=3_000,
         deadline_at=datetime.now(UTC) - timedelta(hours=2),
     ).order
-    assert _wallet(issuer_account)["available"] == 7_000
+    assert _wallet(issuer_account)["available"] == 10_000 - 3_000 - _fee(3_000)
 
     expired = service.expire_overdue()
     assert expired >= 1
     assert service.detail(order.id).status == WorkOrderStatus.expired.value
-    assert _wallet(issuer_account)["available"] == 10_000  # 钱回来了
+    assert _wallet(issuer_account)["available"] == 10_000 - _fee(3_000)  # 钱回来了（手续费不退）
     assert EscrowService(db).get_for_order(int(order.id)).status == EscrowStatus.refunded.value
 
 
@@ -268,7 +288,7 @@ def test_accepted_order_can_still_be_cancelled_and_refunded(db):
 
     cancelled = service.cancel(order.id, company_id=issuer.id)
     assert cancelled.status == WorkOrderStatus.cancelled.value
-    assert _wallet(issuer_account)["available"] == 6_000
+    assert _wallet(issuer_account)["available"] == 6_000 - _fee(2_000)
     assert int(AccountService(db).ensure_account(EconomicActor.company(contractor.id)).id) > 0
 
 
@@ -337,7 +357,7 @@ def test_repeat_release_and_refund_are_idempotent(db):
     assert created_again is False
     assert again.id == released.id
     assert _wallet(contractor_account)["available"] == 3_000  # 只发一次
-    assert _wallet(issuer_account)["available"] == 5_000
+    assert _wallet(issuer_account)["available"] == 8_000 - 3_000 - _fee(3_000)
 
     # 已放款后不能退款
     with pytest.raises(EscrowError, match="escrow_not_refundable"):
@@ -415,12 +435,20 @@ def test_reserved_follows_ledger_attribution_and_rebuild(db):
 
     # 清空投影重建：reserved 依然归因正确（E30）
     rebuild_wallet_projection(db)
-    assert _wallet(issuer_account) == {"posted": 20_000, "available": 13_000, "reserved": 7_000}
+    assert _wallet(issuer_account) == {
+        "posted": 20_000 - _fee(7_000),
+        "available": 20_000 - 7_000 - _fee(7_000),
+        "reserved": 7_000,
+    }
     assert verify_wallet_projection(db).ok
 
     EscrowService(db).refund(escrow_id, commit=True)
     rebuild_wallet_projection(db)
-    assert _wallet(issuer_account) == {"posted": 20_000, "available": 20_000, "reserved": 0}
+    assert _wallet(issuer_account) == {
+        "posted": 20_000 - _fee(7_000),
+        "available": 20_000 - _fee(7_000),
+        "reserved": 0,
+    }
     assert verify_wallet_projection(db).ok
 
 
@@ -440,3 +468,19 @@ def test_escrow_rows_are_auditable(db):
     assert view.payer_actor_kind == EconomicActorKind.company.value
     assert view.work_order_id == int(order.id)
     assert escrow.metadata_json.get("kind") == WorkOrderKind.player_bounty.value
+
+
+def test_derive_wallets_reserved_survives_restricted_account_ids(db):
+    """M1.5 回归：只查"本公司账户"时，`reserved` 的托管归因不能丢（读面曾算出 0）。"""
+    from app.services.economy.balances import derive_wallets
+
+    issuer = _company(db, "RestrictedAttrCo")
+    issuer_account = _funded(db, issuer, 10_000)
+    _publish(db, issuer, reward=4_000)
+
+    full = derive_wallets(db)
+    restricted = derive_wallets(db, account_ids=[issuer_account])
+    assert restricted[issuer_account].reserved_balance == 4_000
+    assert restricted[issuer_account] == full[issuer_account]
+    # 归因用的托管账户不出现在返回值里
+    assert set(restricted) == {issuer_account}

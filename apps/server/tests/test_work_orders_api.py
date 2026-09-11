@@ -96,6 +96,13 @@ def _fund(db, company: Company, amount: int) -> int:
     return int(AccountService(db).ensure_account(EconomicActor.company(company.id)).id)
 
 
+def _fee(amount: int) -> int:
+    """挂牌手续费（M1.5 §7：市场手续费 Sink）—— 断言里按政策算，不写死数字。"""
+    from app.economy.policy import economic_policy
+
+    return economic_policy().fee_for(amount)
+
+
 def _order_status(order_id: int) -> str:
     with SessionLocal() as session:
         order = economy_repo.get_work_order(session, order_id)
@@ -303,14 +310,14 @@ def test_player_publish_locks_funds_and_exposes_escrow(client, db):
     assert payload["escrow"]["amount"] == 6_000
     assert payload["escrow"]["account_balance"] == 6_000
 
-    # 钱已锁：可花减少、锁定增加、总资产不变
-    assert _available(db, issuer) == 14_000
+    # 钱已锁：可花减少（奖励 + 挂牌手续费）、锁定增加；总资产只减少手续费（真实支出）
+    assert _available(db, issuer) == 20_000 - 6_000 - _fee(6_000)
     with SessionLocal() as session:
         account = economy_repo.get_account(session, issuer_account)
         projection = economy_repo.get_projection(session, int(account.id))
-        assert int(projection.available_balance) == 14_000
+        assert int(projection.available_balance) == 20_000 - 6_000 - _fee(6_000)
         assert int(projection.reserved_balance) == 6_000
-        assert int(projection.posted_balance) == 20_000
+        assert int(projection.posted_balance) == 20_000 - _fee(6_000)
 
 
 def test_player_publish_without_funds_is_rejected(client, db):
@@ -346,7 +353,7 @@ def test_player_order_full_flow_between_companies(client, db):
     assert detail["status"] == "SETTLED"
     assert detail["escrow"]["status"] == "RELEASED"
     assert detail["escrow"]["account_balance"] == 0  # E25：托管归零
-    assert _available(db, issuer) == 6_000  # 锁资时已扣
+    assert _available(db, issuer) == 10_000 - 4_000 - _fee(4_000)  # 锁资时已扣
     assert _available(db, contractor) == 4_000  # 落袋
 
     # 发布方视角：is_issuer=True 且能取消（已结算 ⇒ 拒绝）
@@ -366,7 +373,7 @@ def test_player_cancel_refunds_and_is_issuer_only(client, db):
         order_id = client.post(
             "/api/v1/work-orders", json={"title": "Cancel me", "reward_amount": 3_000}
         ).json()["work_order_id"]
-    assert _available(db, issuer) == 5_000
+    assert _available(db, issuer) == 8_000 - 3_000 - _fee(3_000)
 
     with _AsCompany(db, stranger.id):
         denied = client.post(f"/api/v1/work-orders/{order_id}/cancel")
@@ -377,7 +384,7 @@ def test_player_cancel_refunds_and_is_issuer_only(client, db):
         cancelled = client.post(f"/api/v1/work-orders/{order_id}/cancel").json()
         assert cancelled["status"] == "CANCELLED"
         assert cancelled["escrow"]["status"] == "REFUNDED"
-    assert _available(db, issuer) == 8_000  # 钱回来了
+    assert _available(db, issuer) == 8_000 - _fee(3_000)  # 奖励退回；手续费不退（§7）
 
 
 def test_player_deadline_expiry_refunds_via_cli_scan(client, db):
@@ -394,10 +401,10 @@ def test_player_deadline_expiry_refunds_via_cli_scan(client, db):
                 "deadline_at": (datetime.now(UTC) - timedelta(hours=1)).isoformat(),
             },
         ).json()["work_order_id"]
-    assert _available(db, issuer) == 3_000
+    assert _available(db, issuer) == 5_000 - 2_000 - _fee(2_000)
 
     with SessionLocal() as session:
         expired = WorkOrderService(session).expire_overdue()
     assert expired >= 1
     assert _order_status(order_id) == WorkOrderStatus.expired.value
-    assert _available(db, issuer) == 5_000
+    assert _available(db, issuer) == 5_000 - _fee(2_000)
