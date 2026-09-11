@@ -134,6 +134,31 @@ dev-inventory: check-env
 market-issue: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/issue_talent.py $(ISSUE_ARGS)
 
+## work-order-publish: 发布官方工作订单（M1.3；预算内发行。例：WO_ARGS='--title "写文档" --reward 5000 --require readme'）
+.PHONY: work-order-publish
+work-order-publish: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py publish $(WO_ARGS)
+
+## work-order-list: 列出工作订单（WO_ARGS='--status open --limit 50'）
+.PHONY: work-order-list
+work-order-list: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py list $(WO_ARGS)
+
+## work-order-evaluate: 验收订单（M1.3；管理面。例：WO_ARGS='--order 1 --verdict approved --score 95 --bonus early_delivery=1000'）
+.PHONY: work-order-evaluate
+work-order-evaluate: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py evaluate $(WO_ARGS)
+
+## work-order-settle: 结算订单（幂等；WO_ARGS='--order 1'）
+.PHONY: work-order-settle
+work-order-settle: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py settle $(WO_ARGS)
+
+## work-order-expire: 过期扫描（把过 deadline 的未终态订单推进到 EXPIRED/CANCELLED）
+.PHONY: work-order-expire
+work-order-expire: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py expire
+
 ## economy-verify: **只读**对账账本 vs 钱包投影（M1.1；drift 只报告不修）
 .PHONY: economy-verify
 economy-verify: check-env

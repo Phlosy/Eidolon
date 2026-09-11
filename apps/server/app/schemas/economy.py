@@ -115,3 +115,74 @@ class RewardClaimOut(BaseModel):
     claimed_at: datetime | None = None
     posted_at: datetime | None = None
     created: bool
+
+
+class WorkOrderOut(BaseModel):
+    """工作订单（公开字段：官方订单本身不含任何公司私有数据）。"""
+
+    work_order_id: int
+    code: str
+    kind: str
+    title: str
+    description: str
+    requirements: dict = {}
+    deliverables: dict = {}
+    reward_amount: int
+    currency: str
+    funding_mode: str
+    evaluation_mode: str
+    status: str
+    deadline_at: datetime | None = None
+    issuer_actor_kind: str
+    accepted_at: datetime | None = None
+    submitted_at: datetime | None = None
+    settled_at: datetime | None = None
+    assignee_company_id: int | None = None
+    is_mine: bool = False
+    submission_count: int = 0
+    payable_amount: int = 0
+    policy_version: str = ""
+
+
+class WorkOrderPageOut(BaseModel):
+    items: list[WorkOrderOut]
+    total: int
+    limit: int
+    offset: int
+
+
+class WorkOrderSubmissionOut(BaseModel):
+    submission_id: int
+    attempt: int
+    company_id: int
+    summary: str
+    deliverables: dict = {}
+    artifact_refs: list = []
+    project_id: int | None = None
+    created_at: datetime
+
+
+class WorkOrderEvaluationOut(BaseModel):
+    evaluation_id: int
+    mode: str
+    verdict: str
+    score: int | None = None
+    bonuses: dict = {}
+    notes: str = ""
+    created_at: datetime
+
+
+class WorkOrderDetailOut(WorkOrderOut):
+    """详情：仅当订单由本公司承接时附带提交/验收记录（不泄露他人交付物）。"""
+
+    submissions: list[WorkOrderSubmissionOut] = []
+    evaluations: list[WorkOrderEvaluationOut] = []
+
+
+class WorkOrderSubmitIn(BaseModel):
+    """提交交付物（金额不在请求体里 —— 奖励由订单与验收决定）。"""
+
+    summary: str = ""
+    deliverables: dict = {}
+    artifact_refs: list = []
+    project_id: int | None = None
