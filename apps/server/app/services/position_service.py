@@ -510,6 +510,10 @@ def assign_position(
     的同一约定）。默认 True 时行为与本函数历史完全一致。
     """
     slot = _target_slot(db, payload)
+    # T2.8 硬化：公司边界下沉到本函数 —— 调用方（Roster API / 招募 / 生命周期）不必各自校验，
+    # 跨公司编制一律 404（不泄露存在性）。此前只有部分调用方校验，API 直接分配可跨公司。
+    if int(slot.company_id) != int(employee.company_id):
+        raise HTTPException(status_code=404, detail=f"slot #{slot.id} not found in this company")
     definition = position_repo.get_definition(db, slot.position_definition_id)
     if definition is None:
         # 无外键的代价：坑在、定义不在 —— 这不是"没有职位"，这是数据坏了，必须报出来

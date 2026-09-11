@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import or_, select
@@ -103,6 +104,53 @@ def calculate(
     )
 
 
+@dataclass(frozen=True)
+class FitPreload:
+    """一次 Fit 计算的共享上下文（T2.8 批量硬化）：画像版本 + 需求 + 目录 + 评估档案码。
+
+    批量入口（`calculate_many_for_persons`）只解析一次上下文，然后逐人只取各自的能力行 ——
+    市场的"按职位排序"不再对每个候选人重复读同一份 Position Profile。
+    """
+
+    version: PositionProfileVersion
+    requirements: list[PositionCompetencyRequirement]
+    definitions: dict[int, CompetencyDefinition]
+    domains: dict[int, CompetencyDomain]
+    assessment_code: str | None
+
+
+def preload_fit_context(
+    db: Session, *, position: PositionDefinition, profile_version_id: int | None = None
+) -> FitPreload | None:
+    """解析一次共享上下文；None = 该职位没有可用的画像版本（NOT_EVALUABLE）。"""
+    position_id = int(position.id)
+    version = None
+    if profile_version_id is not None:
+        version = db.get(PositionProfileVersion, profile_version_id)
+        if version is not None and version.position_definition_id != position_id:
+            version = None
+    else:
+        version = profile_service.active_profile(db, position_id)
+    if version is None:
+        return None
+    requirements = _requirements(db, version)
+    definitions = _competency_map(db, {req.competency_definition_id for req in requirements})
+    domains = _domain_map(db, {definition.domain_id for definition in definitions.values()})
+    assessment_code = None
+    if position.assessment_profile_id:
+        from app.models.assessment import AssessmentProfile
+
+        assessment = db.get(AssessmentProfile, position.assessment_profile_id)
+        assessment_code = assessment.code if assessment is not None else None
+    return FitPreload(
+        version=version,
+        requirements=requirements,
+        definitions=definitions,
+        domains=domains,
+        assessment_code=assessment_code,
+    )
+
+
 def calculate_for_person(
     db: Session,
     *,
@@ -129,13 +177,21 @@ def _calculate(
     owner: FitOwner,
     position: PositionDefinition,
     profile_version_id: int | None = None,
+    preload: FitPreload | None = None,
+    preloaded_rows: dict[int, EmployeeCompetency] | None = None,
 ) -> PositionFitResult:
-    """共享核心：owner（person 或 employee）× PositionProfileVersion → 派生结果。"""
+    """共享核心：owner（person 或 employee）× PositionProfileVersion → 派生结果。
+
+    `preload` / `preloaded_rows` 是批量入口的加速通道（T2.8）：给了就不再重复解析画像
+    上下文与查询能力行；单入口调用（员工 Fit / 候选人 Fit）不传，行为与历史完全一致。
+    """
     position_id = int(position.id)
     now = datetime.now(UTC)
 
     version = None
-    if profile_version_id is not None:
+    if preload is not None:
+        version = preload.version
+    elif profile_version_id is not None:
         version = db.get(PositionProfileVersion, profile_version_id)
         if version is None or version.position_definition_id != position_id:
             return _nonevaluable(owner, position, reason="profile_version_not_found")
@@ -164,11 +220,19 @@ def _calculate(
         )
         return result
 
-    requirements = _requirements(db, version)
-    definitions = _competency_map(db, {req.competency_definition_id for req in requirements})
-    domains = _domain_map(db, {definition.domain_id for definition in definitions.values()})
+    if preload is not None:
+        requirements = preload.requirements
+        definitions = preload.definitions
+        domains = preload.domains
+    else:
+        requirements = _requirements(db, version)
+        definitions = _competency_map(db, {req.competency_definition_id for req in requirements})
+        domains = _domain_map(db, {definition.domain_id for definition in definitions.values()})
     definition_ids = [req.competency_definition_id for req in requirements]
-    if owner.employee_id is not None:
+    if preloaded_rows is not None:
+        # 批量入口已按 person 批量取过能力行（T2.8）：不再查询
+        competency_rows = preloaded_rows
+    elif owner.employee_id is not None:
         # 员工路径：逐字保持 R1.3 的读口径（person 优先 + 旧口径回落）
         owner_rows = db.scalars(
             select(EmployeeCompetency).where(
@@ -189,8 +253,11 @@ def _calculate(
                 EmployeeCompetency.competency_definition_id.in_(definition_ids),
             )
         )
-    competency_rows = {row.competency_definition_id: row for row in owner_rows}
-    if position.assessment_profile_id:
+    if preloaded_rows is None:
+        competency_rows = {row.competency_definition_id: row for row in owner_rows}
+    if preload is not None:
+        result.assessment_profile_code = preload.assessment_code
+    elif position.assessment_profile_id:
         from app.models.assessment import AssessmentProfile
 
         assessment = db.get(AssessmentProfile, position.assessment_profile_id)
@@ -400,6 +467,49 @@ def _fill_status(result: PositionFitResult, evaluations: list[RequirementEvaluat
         result.fit_status = FitStatus.PARTIAL_MATCH
     else:
         result.fit_status = FitStatus.WEAK_MATCH
+
+
+def calculate_many_for_persons(
+    db: Session,
+    *,
+    position: PositionDefinition,
+    person_ids: list[int],
+) -> dict[int, PositionFitResult]:
+    """person 口径批量 Fit（T2.8 硬化）。
+
+    市场的"按职位排序"要为**全部在市候选人**算 Fit；逐个调用单入口是 N 次画像解析 +
+    N 次能力行查询。这里只解析一次上下文、能力行一条 SQL 批量取（person_id IN …），
+    再逐人走同一核心 —— 结果与单入口逐字段一致（含 inputs_hash，有对拍测试）。
+    """
+    unique_ids = list(dict.fromkeys(int(pid) for pid in person_ids))
+    preload = preload_fit_context(db, position=position)
+    if preload is None:
+        return {
+            person_id: _nonevaluable(
+                FitOwner(person_id=person_id), position, reason="no_active_profile"
+            )
+            for person_id in unique_ids
+        }
+    definition_ids = [req.competency_definition_id for req in preload.requirements]
+    rows_by_person: dict[int, dict[int, EmployeeCompetency]] = {pid: {} for pid in unique_ids}
+    if unique_ids and definition_ids:
+        for row in db.scalars(
+            select(EmployeeCompetency).where(
+                EmployeeCompetency.person_id.in_(unique_ids),
+                EmployeeCompetency.competency_definition_id.in_(definition_ids),
+            )
+        ):
+            rows_by_person.setdefault(int(row.person_id), {})[row.competency_definition_id] = row
+    return {
+        person_id: _calculate(
+            db,
+            owner=FitOwner(person_id=person_id),
+            position=position,
+            preload=preload,
+            preloaded_rows=rows_by_person.get(person_id, {}),
+        )
+        for person_id in unique_ids
+    }
 
 
 def calculate_many(

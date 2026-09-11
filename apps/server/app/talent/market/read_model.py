@@ -21,7 +21,6 @@ from sqlalchemy.orm import Session
 
 from app.models.market import MarketListing
 from app.repositories import market as market_repo
-from app.talent.fit import service as fit_service
 from app.talent.market import eligibility
 from app.talent.market.contracts import MarketListingView, MarketSearchQuery
 from app.talent.person import read_model as person_read_model
@@ -138,14 +137,15 @@ def listing_page(
     ]
 
     if position is not None:
+        # T2.8 硬化：一次批量算完（共享画像上下文 + 一条 SQL 取全部候选人的能力行），
+        # 而不是逐个候选人单查 —— 本地市场规模可接受，但 N+1 没必要。
+        from app.talent.fit import engine as fit_engine
+
+        results = fit_engine.calculate_many_for_persons(
+            db, position=position, person_ids=[view.person_id for view in views]
+        )
         for view, item in zip(views, items, strict=True):
-            result = fit_service.calculate_person_fit(
-                db,
-                person_id=view.person_id,
-                position_definition_id=int(position.id),
-                company_id=company_id,
-            )
-            item["fit"] = fit_summary_out(result)
+            item["fit"] = fit_summary_out(results[view.person_id])
         # 有分在前（score desc），未知在后；同分看 confidence，再看挂牌时间（新在前）
         ordered = sorted(
             zip(items, views, strict=True),

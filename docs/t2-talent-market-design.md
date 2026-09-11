@@ -386,6 +386,36 @@ Protocol 由远端实现，**不修改**本契约。
   仅 `delist` 不算消化，仍可重新挂牌；
 - **节奏**：`make market-npc NPC_ARGS="--npc xinghai --dry-run"`（CLI 手动跑一轮；调度器属后续）。
 
+## 10f. T2 冻结清单与交接（T2.8，2026-09-11）
+
+**已交付且冻结**（改动需设计评审）：
+
+| 层 | 承载 | 入口 |
+| --- | --- | --- |
+| 领域契约 | `talent/market/{contracts,adapter}.py`、`eligibility.py` | 词表 / Protocol / 三轴资格 |
+| 资源 | `market_participants` + `market_listings`（迁移 v29/v31） | `LocalMarketAdapter` / `MarketService` |
+| 公开投影 | `talent/market/read_model.py` | `/market/listings`、`/market/listings/{id}` |
+| 人员读面 | `talent/person/` | `/persons/*` |
+| Fit | `talent/fit/engine.py`（单入口 + `calculate_many_for_persons` 批量） | `/persons/{id}/fit`、`/market/listings/{id}/fit` |
+| 招募 | `services/recruitment.py` | `POST /market/listings/{id}/recruit` |
+| 发行 | `talent/market/issuer.py`（三档参数） | `make market-issue` |
+| NPC | `talent/market/npc.py` | `make market-npc` |
+| 结业 | `services/cultivation.complete_cultivation`（含 `cultivation_final` 评估） | `POST /cultivation/characters/{id}/complete` |
+| UI | `pages/market/*` + `components/market/*` | `/market`、`/market/:listingId` |
+
+**已知边界（有意不做，均已在文档登记）**：
+
+- **M1（货币/合同/escrow）**：市场无价格、无报单、无结算；有代码守卫（迁移/模型/API/市场模块 AST）。
+- **M2（联网市场）**：`MarketAdapter` 已抽象但只有本地实现；异步远端需另立 `AsyncMarketAdapter`，不改本契约。
+- **NPC 成交后无回流**：被 NPC 买走的人在本部署离场（无公司/员工行，`consumed` 不再可挂牌）；
+  换公司/自由身属 M1/M2 产权模型。
+- **批量 Fit 不支持显式画像版本**（`calculate_many_for_persons` 用 ACTIVE；单入口支持任意版本）。
+- **R1 镜像列**：推迟拆除（`person-core-migration.md` §7 已记评估结论）。
+
+**交接提示**：新 Agent 从 `t2-implementation-plan.md` §16（Progress）与本文 §10a–§10f 恢复上下文；
+每条不变量都有对应测试（`test_market_contract / _core / _eligibility / _npc / _issuer / test_person_fit /
+ test_recruitment / test_t2_golden_path / test_t2_hardening`）。
+
 ## 11. 与 M1 / M2 的边界
 
 | | 内容 | 归属 |

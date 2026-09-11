@@ -85,7 +85,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 → v18 q3f5a7b9c1d2 → v19 r4a6b8c0d2e4 → v20 s5a7c9e1f3b5（users.username）
 ```
 
-- `alembic check` 无漂移；**本地开发库已升到 v20**。
+- `alembic check` 无漂移；**本地开发库已升到 v31**（T2.8 起；v29–v31 = 市场核心 / 培养参数 / NPC 成交）。
 - 新增模型列一律遵守仓库既有约束：SQLite 不给既有表加 FK（服务层校验）；派生字段不加默认值。
 
 ---
@@ -113,12 +113,12 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   ```
 - 门禁（改动后必须全绿）：
   ```bash
-  pytest apps/server/tests -q        # 期望 690 passed / 6 deselected（T2.0 起）
+  pytest apps/server/tests -q        # 期望 775 passed / 6 deselected（T2.8 起）
   ruff check apps/server/app apps/server/tests
   ruff format --check apps/server/app apps/server/tests   # 只允许 5 个既有 WIP 红
   cd apps/server && alembic check    # No new upgrade operations detected
   cd apps/web && pnpm exec tsc --noEmit && pnpm exec eslint . && pnpm exec prettier --check .
-  cd apps/web && pnpm exec vitest run    # 期望 73 files / 303 passed
+  cd apps/web && pnpm exec vitest run    # 期望 78 files / 328 passed
   cd apps/web && pnpm build
   ```
 - 数据库：`apps/server/data/eidolon.db`；快速查 job：
@@ -128,6 +128,18 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   ```
 
 ---
+
+## 5b. T2 人才市场（已完成并冻结，2026-09-11）
+
+- 领域设计：`t2-talent-market-design.md`（§2 术语 / §4 三轴 / §6 公开投影 / §8 Adapter /
+  §9 Person 读面 / §10a–§10f 各阶段落地形态与冻结清单）
+- 执行基线：`t2-implementation-plan.md`（§4 T2.0–T2.8 拆解 / §5 API / §6 schema /
+  §7 事件 / §13 Golden Path 26 步 / §14 验收 A–D / §16 Progress）
+- 迁移：v29 市场核心（participants + listings）、v30 培养参数（training_programs.metadata_json）、
+  v31 NPC 成交（market_listings.recruited_participant_id）；当前 head `d6e8f0a2b4c7`
+- 关键不变量（均有测试）：I1–I13（身份不变/不复制人级资产/历史 provenance 不可改写/
+  只 active 挂牌可招募/一人一 employee/市场投影白名单/培养态只存 cultivating-ready…）
+- 常用命令：`make market-issue ISSUE_ARGS="--tier rare --count 2"`、`make market-npc NPC_ARGS="--dry-run"`
 
 ## 6. 下一步建议（按优先级）
 

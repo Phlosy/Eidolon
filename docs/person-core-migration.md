@@ -218,3 +218,17 @@ drive_collaborators.employee_id、project_phases.owner_employee_id、
 resource_assets.owner_employee_id、employments.*、tasks.assignee_id、
 projects/milestones.owner_id、work_sessions.employee_id、career_events /
 development_plans.employee_id、audit_logs 等（成员身份/工作分派/审计语义）。
+
+### T2 稳定后的拆列评估（T2.8，2026-09-11）
+
+T2（人才市场）已冻结，按 §7 的"最终删除条件"做一次评估：**结论是暂不拆除**，理由：
+
+1. 镜像列仍在被**白名单内的读取点**使用（`role` 的 `position_compat` 回退、审计快照、
+   名册的旧口径回落分支等），且都是"撤列时随列一起删除"的登记项 —— 拆除是一次跨模块
+   的独立项目（需同步改 `persons.py` 的回落分支、架构守卫白名单与全部读取点）；
+2. T2 新增的读取路径（市场公开投影、person 读面、批量 Fit）**全部走 person 口径**，
+   没有任何新代码依赖镜像列 —— 即"无人再读"的前提正在收敛，但尚未达到；
+3. 拆除收益（磁盘/直观）与风险（迁移重建表 + 大面积回归）不成比例。
+
+建议：等 M1/M2（若开工）落地后，按域分批拆除（每批：迁移 + 读点清理 + 守卫基线收缩），
+不要一次性全拆。届时本节的评估结论需重写。

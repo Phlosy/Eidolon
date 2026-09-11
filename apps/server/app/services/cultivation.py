@@ -14,6 +14,7 @@ from app.models.enums import CultivationState, TalentOrigin
 from app.models.person import Person
 from app.repositories import cultivation as cultivation_repo
 from app.repositories import persons as person_repo
+from app.services import competency as competency_service
 from app.talent.cultivation import engine as engine_module
 
 #: T1.0 只开放玩家自训与空白养成；issued 是 T2.4 发行方生成器的事（\u89c1 T2 \u8bbe\u8ba1 §7 D11）。
@@ -116,6 +117,21 @@ def run_free_session(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+def _has_evidence(db: Session, person_id: int) -> bool:
+    """该 person 是否有教育证据（决定结业时要不要做聚合评估 —— 没证据就不编分）。"""
+    from sqlalchemy import func, select
+
+    from app.models.competency import CompetencyEvidence
+
+    return bool(
+        db.scalar(
+            select(func.count())
+            .select_from(CompetencyEvidence)
+            .where(CompetencyEvidence.person_id == person_id)
+        )
+    )
+
+
 def complete_cultivation(db: Session, profile_id: int, owner_company_id: int) -> CharacterProfile:
     """自由养成显式结业（T2.2，设计 §7 D1）→ `lifecycle=ready`。
 
@@ -139,6 +155,18 @@ def complete_cultivation(db: Session, profile_id: int, owner_company_id: int) ->
         )
 
     profile.lifecycle = CultivationState.ready.value
+    # T2.8：自由养成没有阶段评估节点 —— 结业时把教育证据聚合成能力画像（"结业评估"）。
+    # 只聚合，不做门槛：有证据才算、没证据的角色照样能结业（D1 无阈值）；
+    # 公司上下文用角色持有方（发行角色走 issuer 的评估上下文，不经过这里）。
+    if profile.owner_company_id is not None and _has_evidence(db, profile.person_id):
+        competency_service.assess_person_competencies(
+            db,
+            profile.person_id,
+            owner_company_id=int(profile.owner_company_id),
+            assessment_type="cultivation_final",
+            triggered_by="cultivation:complete",
+            commit=False,
+        )
     db.commit()
     db.refresh(profile)
 

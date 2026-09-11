@@ -372,7 +372,9 @@ cd apps/web && npm run build
 | T2.5 Person-scoped Fit | **DONE**（2026-09-10） | `524868c` | 一套引擎两个入口（owner 口径 person 优先，hash 相等）+ 市场 Fit 读面 + 搜索标注排序；无迁移；pytest 745 |
 | T2.6 Recruitment | **DONE**（2026-09-10） | `748f0f1` | 招募事务（CAS + 同事务建人/任职）+ R5 知识读路径修复 + 验收 B 实测；无迁移；pytest 754 |
 | T2.7 Market Experience & NPC | **DONE**（2026-09-11） | `9f57f0a` / `594bdad` | 市场 UI（浏览/档案/Fit/招募/我的挂牌）+ NPC 参与者（迁移 v31）；pytest 763 / web 328 |
-| T2.8 E2E / Hardening / Freeze | **NEXT** | — | 入口：本文件 §13/§14（Golden Path 26 步 + Acceptance A–D） |
+| T2.8 E2E / Hardening / Freeze | **DONE**（2026-09-11） | `见 Progress Log` | Golden Path 26 步 E2E + 验收 A–D + 并发/CAS/N+1/结业评估硬化；**T2 冻结**；pytest 775 / web 328 |
+
+> **T2 状态：FROZEN（2026-09-11）**。后续变更需走设计文档评审；M1（货币/合同/escrow）与 M2（联网市场）开工前请先读设计 §11 边界与 §10e–§10f。
 
 ### Progress Log
 
@@ -536,3 +538,26 @@ cd apps/web && npm run build
     `mine=true` 只回本公司挂牌、被买走的档案 404；
     UI 实机：/market 渲染 2 张卡片 + 我的挂牌（3 个待挂牌 + 1 个下架）、/market/3 渲染
     8 人格 / 10 能力 / 8 履历 / 20 证据 / 8 知识主题，选职位后出现 8 条逐项 Fit，控制台 0 错误。
+- **2026-09-11 · T2.8 DONE —— T2 冻结**：commit 哈希见紧随的 `docs(t2): T2.8 进度落盘` 提交。
+  - **Golden Path 26 步 E2E**（`tests/test_t2_golden_path.py`，一条测试全链走完）：建角色 → 3 轮自由学习
+    → 履历/知识/证据 → 显式结业 READY → 挂牌 → **跨公司**市场可见（别家公司挂牌可由本会话读到）
+    → 档案（时间线/10 维能力/证据下钻）→ 选职位 person Fit → 招募 → listing 关闭 → Employee
+    (`person_id` 不变、`identity_id` 不变) → traits/evidence/assessment/knowledge **前后快照逐值对拍** →
+    真实 retrieval 召回培养期主题（第 24–26 步）。
+  - **验收 A–D**：A（score/confidence → 证据 → 履历可追溯；公开投影白名单）；B（入职即携带知识，真实检索）；
+    C（issued 与 trained 同一套 Evidence/Assessment/Market/Fit，投影字段集一致、证据环境同为 education）；
+    D（市场域无任何经济列/字段，有守卫）。
+  - **硬化**（`tests/test_t2_hardening.py`，9 条）：
+    · `assign_position` **公司边界下沉**（跨公司编制 404）—— 补上 Roster API 直接分配可跨公司的口子；
+    · Fit **批量入口** `calculate_many_for_persons`（共享画像上下文 + 一条 SQL 取全员能力行），
+      市场"按职位排序"不再逐人单查；单入口/批量**逐字段（含 inputs_hash）等价**对拍；
+      **无 N+1 守卫**（候选 1→4 人，SQL 条数增量 ≤ 4）；
+    · CAS 基元（二次关闭只有一个赢家）+ 被抢单的招募 409 且**不留半个员工** +
+      多线程并发挂牌恰好一条 active（唯一索引兜底）；
+    · **结业评估语义**：自由养成在结业时聚合一次（`assessment_type=cultivation_final`，
+      仅当有教育证据时）—— 补上"自由路径永远没有能力分"的缺口；零证据角色照常结业且能力保持 unrated
+      （不编分，D1 不变）。
+  - 门禁：pytest **775 passed** / 6 deselected；ruff 全绿、format 仅 5 个既有 WIP 红；
+    alembic check 无漂移（head `d6e8f0a2b4c7` / v31）；web **328 passed**（78 files）+ tsc/eslint/prettier/build 全绿。
+  - 文档收口：设计新增 §10f（T2 冻结清单 + 交接），`handover.md` 基线更新，R1 镜像列**拆除评估**结论
+    （`person-core-migration.md` §7：T2 稳定后仍建议保留，另立项目）。
