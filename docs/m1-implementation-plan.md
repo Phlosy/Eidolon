@@ -390,8 +390,8 @@ cd apps/web && npm run build
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
 | M1.0 Economic Domain Contract Freeze | **DONE**（2026-09-11） | `2f75590` | 设计 + 执行基线与契约代码；**无迁移**；pytest 798 / web 328 |
-| M1.1 Accounts & Double-entry Ledger | **IN PROGRESS**（2026-09-11） | — | `[migration v32]`；四小阶段 M1.1a–d；验收 A1–A20；入口：设计 §10–§12b + plan §4/M1.1 |
-| M1.2 Monetary Authority & Reward System | **NEXT** | — | `[migration v33]`；Starter Grant / 资料奖励 / 教程奖励 / 签到（消费 M1.1 的 `MonetaryAuthority`） |
+| M1.1 Accounts & Double-entry Ledger | **DONE**（2026-09-11） | `12fb9a7` / `2d37938` / `9cb1e06` | `[migration v32]` `8f1abef8410f`；四小阶段 M1.1a–d 全部落地；**A1–A20 全部满足**；pytest 851 / web 328 |
+| M1.2 Monetary Authority & Reward System | **NEXT** | — | `[migration v33]`；Starter Grant / 资料奖励 / 教程奖励 / 签到（消费 M1.1 的 `MonetaryAuthority.mint` + 救援经济） |
 | M1.3 Official Work Market | PLANNED | — | `[migration v34]` |
 | M1.4 Player Work Market | PLANNED | — | `[migration v35]` |
 | M1.5 Company Operating Economy | PLANNED | — | `[migration v36]` |
@@ -402,6 +402,26 @@ cd apps/web && npm run build
 | M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E31 全覆盖 + 失败注入 |
 
 ### Progress Log
+
+- **2026-09-11 · M1.1 DONE**：`[migration v32]` `8f1abef8410f`；commits
+  **`12fb9a7`**（M1.1a schema + accounting contracts）、**`2d37938`**（M1.1b/c posting core + projection）、
+  **`9cb1e06`**（M1.1d read API + CLI）。
+  - 交付：4 张表（accounts / transactions / entries / wallet_projection）+ 唯一约束；
+    `AccountService`（开户/冻结/bootstrap 幂等）、`LedgerService.post()`（唯一 Posting Core：
+    幂等 + 守恒 + 权限令牌 + CAS + 投影同事务）、`MonetaryAuthority`（唯一 mint/burn/treasury）、
+    `derive_wallets`（余额唯一口径）、`rebuild_wallet_projection` / `verify_wallet_projection`、
+    只读 API（balance/accounts/transactions，公司作用域）、CLI + make 目标。
+  - 验收：**A1–A20 全部满足**（A1 账本即事实、A2 投影可重建、A3 余额非负、A4 CAS 防双花、
+    A5 同事务、A6 守恒、A7 整数金额、A8 append-only、A9 单入口、A10 幂等、A11–A13 供给语义、
+    A14 系统账户权限、A15 drift 可检、A16 可重建、A17 作用域、A18 无写端点、A19 未越界、A20 gates）。
+  - 测试：**+53**（851 passed / 6 deselected）；其中账本契约 25、投影与 property 8、
+    并发与失败注入 8、读 API 8，另有 M1.0 契约测试扩充 4。
+  - 迁移：v32 up/down/up 实测 + `alembic check` 无漂移；dev 库已升到 v32。
+  - 门禁：ruff 全绿、format 仅 5 个既有 WIP 红（**未顺手改**）；web 328 passed +
+    tsc/eslint/prettier/build 全绿（未改前端）。
+  - 实现中修掉的真实 bug（写测试发现）：ORM `direction` 字符串用 `is` 比较导致余额增量反号；
+    escrow release/refund 出资人 `posted` 方向写反；第二出资人未在写账前拦下；
+    流水 count 查询 cartesian product 导致 total 被放大。
 
 - **2026-09-11 · M1.0 DONE**：commit **`2f75590`**（`docs/architecture: freeze M1 economy domain (M1.0)`，10 files / +2389）。
   - 交付：`docs/m1-economy-design.md`（40 节：Vision/供给模型/主体/账户/账本/货币/奖励/救援经济/

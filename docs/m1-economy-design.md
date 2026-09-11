@@ -669,6 +669,26 @@ Settlement:    PENDING → PROCESSING → COMPLETED
 E26–E31 是 M1.1（账本底座）引入的落地性不变量；实现与测试锚点见
 `tests/test_economy_ledger.py` / `test_economy_projection.py` / `test_economy_concurrency.py`。
 
+## 38b. M1.1 实现落点（v32 已落地，2026-09-11）
+
+| 设计点 | 代码位置 | 验证 |
+| --- | --- | --- |
+| 4 张表 + 唯一约束（§10/§12） | `app/models/economy.py`、迁移 v32 `8f1abef8410f` | up/down/up + `alembic check` |
+| 余额语义单入口（E26） | `app/economy/contracts.py::balance_delta` / `balance_from_totals` | `test_m1_economy_contract.py` |
+| 资金充足性与 AccountKind 绑定（E24） | `contracts.py::REQUIRES_FUNDS_KINDS` + `ledger.py` 的 CAS 条件 | 并发/余额不足用例 |
+| 唯一 Posting Core（E27） | `app/services/economy/ledger.py::LedgerService.post()` | 单写入口守卫 + 全部过账用例 |
+| CAS 与记账同事务（E28） | `post()` 内的 `_apply_projection` + 失败回滚 | 失败注入用例（entries / projection） |
+| 投影可重建（E29） | `app/services/economy/projection.py::rebuild_wallet_projection` | 清空重建逐字段一致 |
+| reserved 可由账本推导（E30） | `balances.derive_wallets` + `repositories/economy.py::escrow_funder_map` | 重建后 reserved 归因保持 |
+| 幂等（E10/E12 同族） | `post()` 的 replay + 部分唯一索引 + `IntegrityError` 兜底 | 同 key 并发只落一笔 |
+| 供给（E5/E6/E7） | `ledger.py::LedgerService.supply()` → `SupplySnapshot` | property 每步断言 `supply = minted − burned` |
+| 系统账户权限（E4/E23） | `services/economy/authority.py` 令牌 + `monetary.py` | 令牌守卫 + 无写端点 |
+| 运维对账 | `scripts/economy_wallets.py`（`make economy-verify/-rebuild/-supply`） | CLI 在 dev 库实测 |
+
+**M1.1 不做**（留给后续）：Starter Grant / 签到 / 资料奖励（M1.2）、官方与玩家工作市场（M1.3/M1.4）、
+Contract/Escrow 业务与 Settlement（M1.6）、人才定价与交易（M1.7）、NPC 经济（M1.8）、经济 UI（M1.9）。
+M1.1 只交付**账本底座**：Escrow 的账务腿与归因已就位（有测试），但**没有**合同/托管业务入口。
+
 ## 39. M1 / M2 Boundaries
 
 - M2 = 联网市场与真实身份注册（远端撮合、反作弊、玩家间真实经济规模）；
