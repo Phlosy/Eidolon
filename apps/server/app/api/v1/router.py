@@ -33,6 +33,7 @@ from app.api.v1 import (
     providers,
     runtimes,
     talent_roster,
+    talent_trade,
     tasks,
     tutorial,
     work_orders,
@@ -69,6 +70,7 @@ protected.include_router(position_profiles.router)
 protected.include_router(position_fit.router)
 protected.include_router(position_candidates.router)
 protected.include_router(talent_roster.router)
+protected.include_router(talent_trade.router)
 protected.include_router(meta.router)
 protected.include_router(work_orders.router)
 protected.include_router(tutorial.router)

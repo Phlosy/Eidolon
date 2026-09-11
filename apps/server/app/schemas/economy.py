@@ -316,3 +316,70 @@ class ContractPageOut(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class CommercialTermsIn(BaseModel):
+    """设置商业条款（卖方）：`sale_mode ∈ {buyout, negotiation}`（不再单列 negotiable）。"""
+
+    price: int
+    sale_mode: str = "buyout"
+    metadata: dict = {}
+
+
+class CommercialTermsOut(BaseModel):
+    listing_id: int
+    seller_company_id: int | None = None
+    price: int
+    currency: str
+    sale_mode: str
+    policy_version: str = ""
+
+
+class OfferCreateIn(BaseModel):
+    """买方出价（金额是一等字段；没有 funding_mode/状态入参）。"""
+
+    amount: int
+    message: str = ""
+
+
+class OfferOut(BaseModel):
+    offer_id: int
+    contract_type: str
+    listing_id: int | None = None
+    work_order_id: int | None = None
+    from_company_id: int | None = None
+    to_company_id: int | None = None
+    amount: int
+    currency: str
+    message: str = ""
+    status: str
+    contract_id: int | None = None
+    responded_at: datetime | None = None
+    expires_at: datetime | None = None
+
+
+class TalentPurchaseOut(BaseModel):
+    """成交结果（买方/卖方都能看到金额与去向了哪一步，但**不含任何 Person 资产**）。"""
+
+    listing_id: int
+    contract_id: int
+    offer_id: int | None = None
+    buyer_company_id: int
+    seller_company_id: int | None = None
+    gross: int
+    fee: int
+    net: int
+    fee_treasury: int
+    fee_burn: int
+    employee_id: int
+    person_id: int
+    identity_id: str | None = None
+    settlement_transaction_id: int
+    created: bool
+
+
+class TalentOfferResultOut(BaseModel):
+    """出价响应：`purchase` 非空表示一口价已成交。"""
+
+    offer: OfferOut
+    purchase: TalentPurchaseOut | None = None
