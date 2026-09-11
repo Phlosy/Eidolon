@@ -18,6 +18,10 @@ from app.economy.contracts import EconomicActor
 from app.models.enums import Currency, EconomicActorKind, RewardType
 from app.repositories import economy as economy_repo
 from app.schemas.economy import (
+    CategoryFlowOut,
+    ComputeUsageOut,
+    ComputeUsagePageOut,
+    EconomyOverviewOut,
     LedgerAccountOut,
     LedgerEntryOut,
     LedgerTransactionOut,
@@ -28,6 +32,8 @@ from app.schemas.economy import (
     WalletOut,
 )
 from app.services.economy.accounts import AccountService
+from app.services.economy.balances import derive_wallets
+from app.services.economy.costs import ComputeCostService
 from app.services.economy.rewards import RewardError, RewardService
 
 router = APIRouter(prefix="/economy", tags=["economy"])
@@ -152,6 +158,126 @@ def list_transactions(
         "total": total,
         "limit": limit,
         "offset": offset,
+    }
+
+
+# ---------------------------------------------------------------- 经营报表（M1.5）
+
+#: 类别展示名（报表读面用；枚举值是契约，展示名只是文案）
+_CATEGORY_LABELS: dict[str, str] = {
+    "STARTER": "启动资金",
+    "REWARD": "奖励",
+    "OFFICIAL_INCOME": "官方收入",
+    "PLAYER_INCOME": "工作订单（收/支）",
+    "TALENT_SALE": "人才交易",
+    "SERVICE_SALE": "服务收入",
+    "HIRING": "招聘支出",
+    "TALENT_PURCHASE": "人才采购",
+    "TRAINING": "培养支出",
+    "COMPUTE": "算力成本",
+    "MARKET_FEE": "市场手续费",
+    "CONTRACT_FEE": "合同手续费",
+    "TREASURY": "财政",
+    "BURN": "销毁",
+    "RECOVERY": "破产兜底",
+}
+
+
+@router.get("/overview", response_model=EconomyOverviewOut)
+def get_overview(
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """本公司经营报表：收入 / 成本 / 净额 + 按业务类别拆分 + 算力成本（含欠费）。
+
+    口径：`category` 描述业务事件，(debit, credit) 让读面按**本公司方向**解释收支 ——
+    同一笔玩家订单，承接方看到收入、发布方看到支出。未分类的历史交易归入 `unclassified`。
+    """
+    actor = _company_actor(company_id)
+    accounts = AccountService(db).accounts_for_actor(actor)
+    account_ids = [int(account.id) for account in accounts]
+    totals = economy_repo.category_totals_for_accounts(db, account_ids=account_ids)
+
+    rows: list[dict] = []
+    income_total = 0
+    expense_total = 0
+    for category, (debits, credits) in totals.items():
+        # actor 账户是 debit-normal：debit = 进账（收入），credit = 出账（支出）
+        income, expense = int(debits), int(credits)
+        income_total += income
+        expense_total += expense
+        key = category or "unclassified"
+        rows.append(
+            {
+                "category": key,
+                "label": _CATEGORY_LABELS.get(key, "未分类" if key == "unclassified" else key),
+                "income": income,
+                "expense": expense,
+                "net": income - expense,
+            }
+        )
+    rows.sort(key=lambda row: (-(row["income"] + row["expense"]), row["category"]))
+
+    wallets = derive_wallets(db, account_ids=account_ids)
+    compute = ComputeCostService(db).totals(company_id=int(actor.ref))
+    return {
+        "actor_kind": actor.kind.value,
+        "actor_ref": int(actor.ref),
+        "currency": Currency.credit.value,
+        "posted_balance": sum(wallet.posted_balance for wallet in wallets.values()),
+        "available_balance": sum(wallet.available_balance for wallet in wallets.values()),
+        "reserved_balance": sum(wallet.reserved_balance for wallet in wallets.values()),
+        "income_total": income_total,
+        "expense_total": expense_total,
+        "net_total": income_total - expense_total,
+        "by_category": [CategoryFlowOut(**row) for row in rows],
+        "compute_paid": int(compute.get("paid", 0)),
+        "compute_unpaid": int(compute.get("unpaid", 0)),
+    }
+
+
+@router.get("/compute-usage", response_model=ComputeUsagePageOut)
+def list_compute_usage(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    status: str | None = Query(default=None, description="paid / unpaid"),
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """本公司算力用量明细（含未扣款记录 —— 欠费要看得见，不能当免费）。"""
+    actor = _company_actor(company_id)
+    service = ComputeCostService(db)
+    rows = economy_repo.list_compute_usage(
+        db,
+        company_id=int(actor.ref),
+        statuses=(status.lower(),) if status else None,
+        limit=limit,
+        offset=offset,
+    )
+    totals = service.totals(company_id=int(actor.ref))
+    return {
+        "items": [
+            ComputeUsageOut(
+                usage_id=int(row.id),
+                employee_id=row.employee_id,
+                work_session_id=row.work_session_id,
+                model=row.model,
+                units=int(row.units),
+                unit_price=int(row.unit_price),
+                amount=int(row.amount),
+                tokens=int(row.tokens),
+                duration_seconds=row.duration_seconds,
+                status=row.status,
+                unpaid_reason=row.unpaid_reason,
+                occurred_at=row.occurred_at,
+            )
+            for row in rows
+        ],
+        "total": economy_repo.count_compute_usage(db, company_id=int(actor.ref)),
+        "limit": limit,
+        "offset": offset,
+        "paid_total": int(totals.get("paid", 0)),
+        "unpaid_total": int(totals.get("unpaid", 0)),
     }
 
 

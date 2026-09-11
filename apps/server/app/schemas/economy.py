@@ -217,3 +217,54 @@ class WorkOrderSubmitIn(BaseModel):
     deliverables: dict = {}
     artifact_refs: list = []
     project_id: int | None = None
+
+
+class CategoryFlowOut(BaseModel):
+    """一个业务类别的资金流（公司视角：收入 / 支出 / 净额）。"""
+
+    category: str
+    label: str
+    income: int
+    expense: int
+    net: int
+
+
+class ComputeUsageOut(BaseModel):
+    usage_id: int
+    employee_id: int | None = None
+    work_session_id: int | None = None
+    model: str = ""
+    units: int
+    unit_price: int
+    amount: int
+    tokens: int = 0
+    duration_seconds: float | None = None
+    status: str
+    unpaid_reason: str = ""
+    occurred_at: datetime
+
+
+class ComputeUsagePageOut(BaseModel):
+    items: list[ComputeUsageOut]
+    total: int
+    limit: int
+    offset: int
+    paid_total: int
+    unpaid_total: int
+
+
+class EconomyOverviewOut(BaseModel):
+    """公司经营报表（M1.5）：收入 / 成本 / 净额 + 分类 + 算力欠费。"""
+
+    actor_kind: str
+    actor_ref: int
+    currency: str
+    posted_balance: int
+    available_balance: int
+    reserved_balance: int
+    income_total: int
+    expense_total: int
+    net_total: int
+    by_category: list[CategoryFlowOut]
+    compute_paid: int
+    compute_unpaid: int

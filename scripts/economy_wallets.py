@@ -37,10 +37,67 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--verify", action="store_true", help="只读对账（默认动作）")
     parser.add_argument("--rebuild", action="store_true", help="由账本重建投影（破坏性）")
     parser.add_argument("--supply", action="store_true", help="打印货币供给快照")
+    parser.add_argument("--overview", action="store_true", help="打印公司经营报表（收入/成本/分类）")
+    parser.add_argument("--company", type=int, default=None, help="--overview 的公司 id（默认全部公司）")
+    parser.add_argument("--compute", action="store_true", help="打印算力用量与欠费")
     parser.add_argument("--yes", action="store_true", help="确认重建（--rebuild 需要）")
     args = parser.parse_args(argv)
 
     with SessionLocal() as db:
+        if args.compute:
+            from app.services.economy.costs import ComputeCostService
+
+            totals = ComputeCostService(db).totals(company_id=int(args.company)) if args.company else {}
+            if args.company:
+                print(f"company={args.company} compute paid={totals.get('paid', 0)} unpaid={totals.get('unpaid', 0)}")
+            else:
+                from sqlalchemy import select
+
+                from app.models.economy import ComputeUsage
+
+                rows = db.execute(
+                    select(ComputeUsage.company_id, ComputeUsage.status)
+                    .distinct()
+                ).all()
+                print(f"compute_usage rows: {len(rows)} (company,status) pairs; 用 --company N 看汇总")
+            return 0
+
+        if args.overview:
+            from sqlalchemy import select
+
+            from app.models.organization import Company
+            from app.repositories import economy as economy_repo
+            from app.services.economy.costs import ComputeCostService
+
+            company_ids = (
+                [int(args.company)]
+                if args.company
+                else [int(row.id) for row in db.scalars(select(Company).order_by(Company.id))]
+            )
+            for company_id in company_ids:
+                accounts = [
+                    int(account.id)
+                    for account in economy_repo.list_accounts_for_actor(
+                        db, actor_kind="company", actor_ref=company_id, kinds=("actor",)
+                    )
+                ]
+                totals = economy_repo.category_totals_for_accounts(db, account_ids=accounts)
+                compute = ComputeCostService(db).totals(company_id=company_id)
+                income = sum(debits for debits, _ in totals.values())
+                expense = sum(credits for _, credits in totals.values())
+                print(
+                    f"company={company_id} income={income} expense={expense} "
+                    f"net={income - expense} compute_paid={compute.get('paid', 0)} "
+                    f"compute_unpaid={compute.get('unpaid', 0)}"
+                )
+                for category, (debits, credits) in sorted(
+                    totals.items(), key=lambda item: -(item[1][0] + item[1][1])
+                ):
+                    print(
+                        f"   {(category or 'unclassified'):<18} income={debits:<10} expense={credits}"
+                    )
+            return 0
+
         if args.supply:
             snapshot = LedgerService(db).supply()
             print(
