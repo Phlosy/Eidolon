@@ -204,6 +204,26 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   所有资金变化只能经 `LedgerService.post()`、只有 `MonetaryAuthority` 能 mint/burn（令牌守卫）、
   奖励金额只来自政策（claim 无金额入参）
 
+## 5d. M2 工作与组织运行域（**M2.0 已完成**，2026-09-11）
+
+- 领域设计：`docs/m2-agent-work-runtime-design.md`（最高原则 `System provides facts. Agent makes decisions.` /
+  Position = Responsibility + Authority + Expectations / RoleContext / Role Resource Index /
+  Institutional vs Personal Memory / DecisionRecord / Project-Task-WorkOrder 边界 /
+  **W1–W31 不变量** / M2-ADR-1..10）
+- 执行基线：`docs/m2-implementation-plan.md`（M2.0–M2.10 拆解 / §14 验收矩阵 / §15 横切要求 / §16 Progress / §17 交付证据 / §18 风险）
+- 事实基线：`docs/current-system-audit.md`（Repository Audit：Domain Map / 真实业务链 / Top 10 gaps / 重复真相风险）
+- 契约代码：`app/work/contracts.py`（纯契约层，**不碰 Session、不建表、不发事件**）+ 8 个枚举进 `app/models/enums.py`
+- 守卫：`tests/test_m2_contract.py`（46 个；含 AST 守卫 + 不变量锚点表；已做 4 组反例注入验证）
+- 迁移：**无**（head 仍 `64fec2d13d9b` / v39）
+- **M2 最重要的三条纪律**（改 M2 代码前必读）：
+  1. 系统**不得**替公司决定「接什么任务 / 怎么拆 / 选谁 / 是否返工 / 是否采购 / 是否辞退」（W1/W2/W3/W14/W17）；
+  2. 职位是 `Responsibility + Authority + Expectations`，**不是** prompt / workflow / skill package；
+     任命**永不**授予能力、**永不**复制前任的人级资产（W4/W7/W8/W26）；
+  3. 不新建 Mission / Agent SoT；`Project` 是唯一执行根，`WorkOrder` 只是商业包装（W20/W21/W22/W23）。
+- 下一步：**M2.1 Canonical Executable Project Spec**（见 plan §4；开工前需先拍板 plan §16 的三个默认值问题）。
+
+---
+
 ## 6. 下一步建议（按优先级）
 
 1. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。

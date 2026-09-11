@@ -1,0 +1,1123 @@
+"""M2 工作与组织运行域契约（M2.0 Work & Role Domain Contract Freeze）。
+
+docs/m2-agent-work-runtime-design.md 的代码化。**本模块是纯契约层**——不碰 Session、
+不建表、不发事件、不改任何业务行为。
+
+最高原则（设计 §1）：
+
+    System provides facts.   Agent makes decisions.
+    System validates.        System executes.        System records.
+
+本模块把这句话变成**可执行、可测试**的边界：
+
+| 契约 | 内容 | owner 阶段 |
+| --- | --- | --- |
+| 决策边界 | `SYSTEM_FACTS` / `AGENT_DECISIONS`（互斥） | M2.0 |
+| 职责面与路由建议 | `ResponsibilityArea` + `DEFAULT_DECISION_AUTHORITY` | M2.0 |
+| Position 三段式 | `PositionContract` = Responsibility + Authority + Expectations | M2.2 |
+| 硬/软约束 | `HARD_CONSTRAINTS` / `SOFT_CONSTRAINTS` | M2.0 |
+| 履职上下文 | `RoleContext` / `RoleResource`（派生读模型，不落表） | M2.2 |
+| 自适应上岗 | `ROLE_ONBOARDING_PATH` / `FORBIDDEN_ONBOARDING_ACTIONS` | M2.2 |
+| 记忆平面 | `MEMORY_PLANE_SURFACES`（制度 vs 个人，逐表声明） | M2.0 |
+| 决策记录 | `DecisionRecord` / `validate_decision_record()` | M2.4 |
+| 评审归属 | `ReviewVerdict` + `verdict_boundaries()` | M2.7 |
+| 工作根 | `ProjectWorkMode` / `CANONICAL_PROJECT_FIELDS` | M2.1 |
+| DAG 正确性 | `validate_task_graph()` / `resolve_ready_tasks()` | M2.5 |
+| 不变量 | `INVARIANTS`（W1–W31） | M2.0–M2.10 |
+
+纪律：
+
+1. **枚举的唯一家是 `app/models/enums.py`**（模型与迁移要 import 它们）；本模块按 T2 契约层的
+   先例做 re-export，保证 `app.work.contracts` 的导入路径稳定。
+2. 这里**不允许**出现任何"替 Agent 做决定"的函数 —— 没有 `pick_best_engineer`、
+   没有 `auto_decompose`、没有 `should_rework`、没有 `evaluate_decision_quality`。
+   由 `tests/test_m2_contract.py` 用 AST + 命名守卫钉住。
+3. 改动本模块 = 改 M2 契约：必须走设计文档评审，并同步 `tests/test_m2_contract.py`。
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import StrEnum
+from typing import Any
+
+from app.models.enums import (
+    DecisionKind,
+    DecisionOutcome,
+    FactKind,
+    MemoryPlane,
+    ProjectWorkMode,
+    ResponsibilityArea,
+    ReviewVerdict,
+    RoleResourceKind,
+)
+
+__all__ = [
+    "WorkContractError",
+    "FactKind",
+    "DecisionKind",
+    "DecisionOutcome",
+    "ReviewVerdict",
+    "ProjectWorkMode",
+    "RoleResourceKind",
+    "MemoryPlane",
+    "ResponsibilityArea",
+    "SYSTEM_FACTS",
+    "AGENT_DECISIONS",
+    "DEFAULT_DECISION_AUTHORITY",
+    "WORK_INTAKE_DEFAULT_POSITION",
+    "AuthorityKind",
+    "AuthorityGrant",
+    "PositionExpectation",
+    "PositionContract",
+    "HARD_CONSTRAINTS",
+    "SOFT_CONSTRAINTS",
+    "ConstraintName",
+    "RoleResource",
+    "RoleContext",
+    "ROLE_CONTEXT_SOURCES",
+    "RoleOnboardingStep",
+    "ROLE_ONBOARDING_PATH",
+    "FORBIDDEN_ONBOARDING_ACTIONS",
+    "MemorySurface",
+    "MEMORY_PLANE_SURFACES",
+    "SPLIT_MEMORY_SURFACES",
+    "DecisionAction",
+    "DecisionRecord",
+    "validate_decision_record",
+    "VerdictBoundary",
+    "verdict_boundaries",
+    "CANONICAL_PROJECT_FIELDS",
+    "PROJECT_FIELD_SOURCES",
+    "PROJECT_WORK_MODE_TARGET",
+    "PROJECT_WORK_MODE_CONVERGENCE",
+    "TaskGraphNode",
+    "TaskGraphReport",
+    "validate_task_graph",
+    "resolve_ready_tasks",
+    "DagValidationError",
+    "Invariant",
+    "INVARIANTS",
+]
+
+
+class WorkContractError(ValueError):
+    """工作域契约被违反（结构非法 / 边界被越过）。**只表达结构问题，不表达判断。**"""
+
+
+# ---------------------------------------------------------------------------
+# 1. 决策边界：System provides facts. Agent makes decisions.
+# ---------------------------------------------------------------------------
+
+#: 系统必须能回答的**事实**（设计 §1.1）。每一条都是"是什么"，不是"该怎么办"。
+SYSTEM_FACTS: frozenset[FactKind] = frozenset(FactKind)
+
+#: 只能由**已授权 Agent/User actor** 做出的**决策**（设计 §1.2）。
+AGENT_DECISIONS: frozenset[DecisionKind] = frozenset(DecisionKind)
+
+#: 决策面的**默认**归属（soft，供路由与 UI 分组；**不是门禁** —— W5 / W12）。
+#:
+#: 一条决策可以同时属于多个职责面（例如 `recruit` 既属 people 也属 strategic），
+#: 因此值是 frozenset。系统用它决定"先通知谁"，不决定"谁准做"（那由 Authority 判定）。
+_STRATEGIC = ResponsibilityArea.strategic
+_DELIVERY = ResponsibilityArea.delivery
+_QUALITY = ResponsibilityArea.quality
+_PEOPLE = ResponsibilityArea.people
+_EXECUTION = ResponsibilityArea.execution
+
+DEFAULT_DECISION_AUTHORITY: dict[DecisionKind, frozenset[ResponsibilityArea]] = {
+    # 战略与经营
+    DecisionKind.accept_project: frozenset({_STRATEGIC, _DELIVERY}),
+    DecisionKind.decline_project: frozenset({_STRATEGIC, _DELIVERY}),
+    DecisionKind.delegate_management: frozenset({_STRATEGIC}),
+    DecisionKind.replan: frozenset({_DELIVERY, _STRATEGIC}),
+    DecisionKind.accept_delivery: frozenset({_STRATEGIC, _QUALITY}),
+    DecisionKind.offboard: frozenset({_STRATEGIC, _PEOPLE}),
+    # 交付与技术组织
+    DecisionKind.decompose_project: frozenset({_DELIVERY}),
+    DecisionKind.assign_task: frozenset({_DELIVERY}),
+    DecisionKind.reassign_task: frozenset({_DELIVERY}),
+    DecisionKind.create_dependency: frozenset({_DELIVERY}),
+    DecisionKind.mark_blocked: frozenset({_EXECUTION, _DELIVERY}),
+    DecisionKind.request_review: frozenset({_DELIVERY, _EXECUTION}),
+    # 质量
+    DecisionKind.request_rework: frozenset({_QUALITY, _DELIVERY}),
+    # 人员
+    DecisionKind.recruit: frozenset({_PEOPLE, _STRATEGIC}),
+    DecisionKind.purchase_agent: frozenset({_PEOPLE, _STRATEGIC}),
+    DecisionKind.assign_position: frozenset({_PEOPLE, _STRATEGIC}),
+    DecisionKind.release_position: frozenset({_PEOPLE, _STRATEGIC}),
+    DecisionKind.enroll_learning: frozenset({_PEOPLE, _EXECUTION}),
+}
+
+#: 默认的 **Work Intake 路由目标职位 code**（M2-ADR-9：这是公司的**可配置规则**，
+#: 不是系统硬编码 —— 公司可在 `Company.settings["work_routing"]` 覆盖）。
+WORK_INTAKE_DEFAULT_POSITION = "ceo"
+
+
+# ---------------------------------------------------------------------------
+# 2. Position = Responsibility + Authority + Expectations（设计 §3）
+# ---------------------------------------------------------------------------
+
+
+class AuthorityKind(StrEnum):
+    """**Authority**（硬边界）—— 职位被授权做什么（设计 §4.1）。
+
+    与 `ResponsibilityArea` 的区别必须记住：
+      - Authority 是**硬**的：没有它，系统拒绝（W6）。
+      - Responsibility 是**软**的：只影响路由与展示（W5）。
+
+    刻意定义在契约层而非 `app/models/enums.py`：Authority 目前**没有落库载体**
+    （M2.2 才落地声明/表），所以在 `models/enums.py` 建一个"没有宿主列"的枚举
+    只会误导人以为它已经落库。M2.2 若需要迁移，再提升到 `models/enums.py`。
+    """
+
+    create_project = "create_project"
+    delegate_management = "delegate_management"
+    assign_task = "assign_task"
+    request_rework = "request_rework"
+    accept_delivery = "accept_delivery"
+    approve_hiring = "approve_hiring"
+    spend_credits = "spend_credits"
+    assign_position = "assign_position"
+    release_position = "release_position"
+    offboard = "offboard"
+
+
+@dataclass(frozen=True)
+class AuthorityGrant:
+    """一项被授予的权限（Authority Projection 的元素，M2.2 落地）。
+
+    `limit` 只对经济类权限有意义（`spend_credits` 的额度上限，整数最小单位）。
+    `None` 表示"该权限本身不设额度上限"，**不表示无限权力** —— 其它硬约束
+    （经济权威、资源可用性、公司隔离）依然生效。
+    """
+
+    kind: AuthorityKind
+    limit: int | None = None
+    scope: str = "company"  # company | department | project | self
+
+    def __post_init__(self) -> None:
+        if self.limit is not None:
+            if isinstance(self.limit, bool) or not isinstance(self.limit, int):
+                raise WorkContractError("authority limit must be an int (minor units) or None")
+            if self.limit <= 0:
+                raise WorkContractError(f"authority limit must be > 0, got {self.limit}")
+        if not self.scope.strip():
+            raise WorkContractError("authority scope must not be empty")
+
+
+@dataclass(frozen=True)
+class PositionExpectation:
+    """**Expectations**（设计 §3.4）—— `PositionCompetencyRequirement` 的只读投影。
+
+    只声明公司**希望**什么水平；**不是任命门禁**（W4 的推论：期望不拒绝任命）。
+    字段名与 `position_competency_requirements` 列一一对应（由契约测试核对），
+    本类**不新增任何字段**，避免出现第二套岗位要求。
+    """
+
+    competency_code: str
+    requirement_type: str = "required"  # required | preferred
+    minimum_score: int | None = None
+    target_score: int | None = None
+    minimum_confidence: float | None = None
+    critical: bool = False
+    weight: float = 1.0
+
+
+@dataclass(frozen=True)
+class PositionContract:
+    """Position 的三段式契约（设计 §3.1，W4 / W26）。
+
+    **不是** workflow / SOP / prompt / skill package。它只回答：
+
+        「公司希望你负责什么，并授权你做什么。」
+
+    至于「你具体怎么把它做好」——由 Agent 根据自身能力、人格、经验、公司知识、
+    历史决策、当前任务与其他成员自主决定。
+    """
+
+    #: 通常负责什么（`position_definitions.responsibilities` 的投影）
+    responsibilities: tuple[str, ...] = ()
+    #: 被授权做什么（硬边界；M2.2 落 Authority Projection）
+    authority: tuple[AuthorityGrant, ...] = ()
+    #: 希望具备什么能力（soft；soft）
+    expectations: tuple[PositionExpectation, ...] = ()
+    #: 通常做什么工作（**advisory**：只用于路由建议与展示，W5/W12）
+    advisory_scope: tuple[str, ...] = ()
+
+
+# ---------------------------------------------------------------------------
+# 3. Hard vs Soft Constraints（设计 §4）
+# ---------------------------------------------------------------------------
+
+
+class ConstraintName(StrEnum):
+    """约束的**唯一命名**：两类集合必须互斥且覆盖（契约测试钉住）。"""
+
+    # ---- Hard（系统强制，可拒绝）----
+    security = "security"
+    permission = "permission"
+    company_isolation = "company_isolation"
+    economic_authority = "economic_authority"
+    runtime_capability = "runtime_capability"
+    resource_availability = "resource_availability"
+    task_lifecycle = "task_lifecycle"
+    concurrency_invariant = "concurrency_invariant"
+    database_invariant = "database_invariant"
+    # ---- Soft（系统只报告，不拒绝）----
+    position_scope = "position_scope"
+    competency_expectation = "competency_expectation"
+    fit_score = "fit_score"
+    experience_match = "experience_match"
+    specialization = "specialization"
+    work_habit = "work_habit"
+    advisory_load = "advisory_load"
+
+
+#: 系统**强制并可拒绝**的约束（设计 §4.1）。
+HARD_CONSTRAINTS: frozenset[ConstraintName] = frozenset(
+    {
+        ConstraintName.security,
+        ConstraintName.permission,
+        ConstraintName.company_isolation,
+        ConstraintName.economic_authority,
+        ConstraintName.runtime_capability,
+        ConstraintName.resource_availability,
+        ConstraintName.task_lifecycle,
+        ConstraintName.concurrency_invariant,
+        ConstraintName.database_invariant,
+    }
+)
+
+#: 系统**只报告、不拒绝**的约束（设计 §4.2）。
+#:
+#: Backend Engineer 被分配 Research Task，即使 Fit 很低，系统也**不能**拒绝 ——
+#: 它可以回答"Fit 42% / research experience low"，但决定权在 Manager Agent。
+SOFT_CONSTRAINTS: frozenset[ConstraintName] = frozenset(
+    {
+        ConstraintName.position_scope,
+        ConstraintName.competency_expectation,
+        ConstraintName.fit_score,
+        ConstraintName.experience_match,
+        ConstraintName.specialization,
+        ConstraintName.work_habit,
+        ConstraintName.advisory_load,
+    }
+)
+
+
+# ---------------------------------------------------------------------------
+# 4. RoleContext + Role Resource Index（设计 §5 / §6）
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RoleResource:
+    """Role Resource Index 的一项：**建议** Agent 去读/学（设计 §6）。
+
+    表达的是「建议你学习 / 使用这些资源」，
+    **不是**「任命之后你自动拥有这些能力」。
+
+    刻意**不携带任何数值**（score / level / weight）—— 「资源」一旦带分值就会演化成
+    「注入」。由 `tests/test_m2_contract.py` 做**字段扫描**钉死。
+    """
+
+    kind: RoleResourceKind
+    ref: str  # drive path / knowledge topic / handbook key / policy key
+    note: str = ""
+    #: 即使 required 也只表示"建议优先阅读"，不表示"读完后获得能力"。
+    required: bool = False
+
+    def __post_init__(self) -> None:
+        if not self.ref.strip():
+            raise WorkContractError("role resource ref must not be empty")
+
+
+@dataclass(frozen=True)
+class RoleContext:
+    """履职上下文（设计 §5）—— **派生读模型 / Context Projection**。
+
+    M2-ADR-4：**不落表**。理由与 P4d ADR-2/ADR-4 同源 —— 派生态一旦落库必然与
+    任职时间轴漂移；`WorkforceStatusResolver` 已经证明"读时派生"是可行且更诚实的口径。
+
+    字段纪律：每个字段都能从**现有表**推导（`ROLE_CONTEXT_SOURCES` 是机器可核对的映射）。
+    这里**不含**任何分数、评级、"你应该怎么做"、或写能力。
+    """
+
+    person_id: int
+    employee_id: int
+    position_definition_id: int | None = None
+    position_code: str | None = None
+    department_id: int | None = None
+    responsibilities: tuple[str, ...] = ()
+    authority: tuple[AuthorityGrant, ...] = ()
+    expectations: tuple[PositionExpectation, ...] = ()
+    advisory_scope: tuple[str, ...] = ()
+    resource_index: tuple[RoleResource, ...] = ()
+    direct_reports: tuple[int, ...] = ()  # employee ids
+    company_policy_keys: tuple[str, ...] = ()
+    current_project_ids: tuple[int, ...] = ()
+    knowledge_scopes: tuple[str, ...] = ()
+
+
+#: RoleContext 字段 → 推导来源。**机器可核对**：测试会检查
+#:   (a) 每个字段都被登记；
+#:   (b) 来源里写出的 `table.column` 真实存在（`(M2.x)` 标记的规划项跳过）。
+ROLE_CONTEXT_SOURCES: dict[str, str] = {
+    "person_id": "persons.id",
+    "employee_id": "employees.id",
+    "position_definition_id": "position_definitions.id",
+    "position_code": "position_definitions.code",
+    "department_id": "position_slots.department_id",
+    "responsibilities": "position_definitions.responsibilities",
+    "authority": "position_authority_grants (M2.2) ← position_definition_packages",
+    "expectations": "position_competency_requirements + position_profile_versions.status",
+    "advisory_scope": "position_contracts.advisory_scope (M2.2)",
+    "resource_index": "position_definition_resources (M2.2)",
+    "direct_reports": "position_slots.manager_slot_id",
+    "company_policy_keys": "companies.settings",
+    "current_project_ids": "projects.status",
+    "knowledge_scopes": "knowledge_items.scope",
+}
+
+
+# ---------------------------------------------------------------------------
+# 5. Adaptive Role Onboarding（设计 §8）
+# ---------------------------------------------------------------------------
+
+
+class RoleOnboardingStep(StrEnum):
+    """上任后的**自适应**上岗路径（Agent 自己走，系统只提供能力）。"""
+
+    read_role_context = "read_role_context"
+    inspect_expectations = "inspect_expectations"
+    inspect_own_competencies = "inspect_own_competencies"
+    find_gaps = "find_gaps"
+    search_company_knowledge = "search_company_knowledge"
+    create_learning_priorities = "create_learning_priorities"
+    learn = "learn"
+    work = "work"
+
+
+#: 路径是**契约顺序**，不是系统流程 —— 系统不驱动它，Agent 自己决定怎么走。
+ROLE_ONBOARDING_PATH: tuple[RoleOnboardingStep, ...] = (
+    RoleOnboardingStep.read_role_context,
+    RoleOnboardingStep.inspect_expectations,
+    RoleOnboardingStep.inspect_own_competencies,
+    RoleOnboardingStep.find_gaps,
+    RoleOnboardingStep.search_company_knowledge,
+    RoleOnboardingStep.create_learning_priorities,
+    RoleOnboardingStep.learn,
+    RoleOnboardingStep.work,
+)
+
+#: 被**明确禁止**的上岗动作（设计 §8 / 不变量 W4 / W7 / W8）。
+#:
+#: `tests/test_m2_contract.py` 扫描 `app/` 全仓：**没有任何函数可以叫这些名字**。
+#: 这条守卫防的是"某天有人觉得注入一下更方便"。
+FORBIDDEN_ONBOARDING_ACTIONS: frozenset[str] = frozenset(
+    {
+        "inject_role_skills",
+        "inject_role_knowledge",
+        "inject_role_competency",
+        "grant_role_competency",
+        "grant_role_skills",
+        "copy_personal_assets_from_previous_holder",
+        "inherit_predecessor_skills",
+        "inherit_predecessor_knowledge",
+        "inherit_predecessor_memory",
+        "seed_role_competency_scores",
+    }
+)
+
+
+# ---------------------------------------------------------------------------
+# 6. Institutional vs Personal Memory（设计 §7，W9 / W10）
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class MemorySurface:
+    """一张承载记忆的表 + 它属于哪个平面。
+
+    `person_scoped` 声明该表是否带 **person 口径列**；契约测试会**核对模型**，
+    所以它不是注释而是断言（有人删了 `person_id` 会转红）。
+    """
+
+    table: str
+    plane: MemoryPlane
+    person_scoped: bool = False
+    note: str = ""
+
+
+_MEMORY_SURFACES: tuple[MemorySurface, ...] = (
+    # ---- Institutional：随公司存续 ----
+    MemorySurface("companies", MemoryPlane.institutional, note="政策与制度（settings）"),
+    MemorySurface("departments", MemoryPlane.institutional),
+    MemorySurface("projects", MemoryPlane.institutional, note="项目史"),
+    MemorySurface("project_requirements", MemoryPlane.institutional),
+    MemorySurface("project_phases", MemoryPlane.institutional),
+    MemorySurface("baselines", MemoryPlane.institutional),
+    MemorySurface("change_requests", MemoryPlane.institutional),
+    MemorySurface("review_meetings", MemoryPlane.institutional),
+    MemorySurface("delivery_packages", MemoryPlane.institutional),
+    MemorySurface("document_artifacts", MemoryPlane.institutional),
+    MemorySurface("drive_nodes", MemoryPlane.institutional, note="Playbook/Handbook/Artifact 载体"),
+    MemorySurface("drive_revisions", MemoryPlane.institutional),
+    MemorySurface("work_orders", MemoryPlane.institutional, note="商业记录"),
+    MemorySurface("work_order_submissions", MemoryPlane.institutional),
+    MemorySurface("contracts", MemoryPlane.institutional),
+    MemorySurface("offers", MemoryPlane.institutional),
+    MemorySurface("escrows", MemoryPlane.institutional),
+    MemorySurface("evaluations", MemoryPlane.institutional),
+    MemorySurface("ledger_transactions", MemoryPlane.institutional),
+    MemorySurface("events", MemoryPlane.institutional),
+    MemorySurface("audit_logs", MemoryPlane.institutional),
+    # ---- Personal：随 Person 存续 ----
+    MemorySurface("persons", MemoryPlane.personal, note="身份根（本人）"),
+    MemorySurface("character_profiles", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("employee_brains", MemoryPlane.personal, person_scoped=True, note="人格 traits"),
+    MemorySurface("memory_entries", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("learning_records", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("learning_priorities", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("learning_sessions", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("skills", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("skill_usages", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("competency_evidence", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("employee_competencies", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("assessment_runs", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("assessment_results", MemoryPlane.personal, note="经 assessment_runs 关联"),
+    MemorySurface("career_events", MemoryPlane.personal, note="工作履历（employee 口径历史）"),
+    MemorySurface("education_events", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("training_programs", MemoryPlane.personal, person_scoped=True),
+    MemorySurface("development_plans", MemoryPlane.personal, note="发展计划（employee 口径历史）"),
+    MemorySurface("development_plan_items", MemoryPlane.personal, note="经 plan 关联"),
+)
+
+#: 表级切开、需要两边都声明的载体（同一张表同时承载两个平面）。
+#:
+#: `knowledge_items` 是唯一形态：`scope=private` 属个人（候选人不属于任何公司的私有知识
+#: 也在这里），`scope=department|company` 属制度。审计已明确这套 scope 分层是 K1 的地基，
+#: M2 不去改动它，只在契约里把**两个平面**都声明清楚。
+SPLIT_MEMORY_SURFACES: dict[str, tuple[MemorySurface, ...]] = {
+    "knowledge_items": (
+        MemorySurface(
+            "knowledge_items", MemoryPlane.institutional, note="scope=company|department"
+        ),
+        MemorySurface(
+            "knowledge_items",
+            MemoryPlane.personal,
+            person_scoped=True,
+            note="scope=private（owner_person_id）",
+        ),
+    ),
+}
+
+MEMORY_PLANE_SURFACES: tuple[MemorySurface, ...] = _MEMORY_SURFACES
+
+
+# ---------------------------------------------------------------------------
+# 7. DecisionRecord（设计 §10，W3 / W15 / W28）
+# ---------------------------------------------------------------------------
+
+#: `DecisionRecord.scope` 允许的载体前缀（"kind:id"）。
+DECISION_SCOPE_KINDS: frozenset[str] = frozenset(
+    {"company", "project", "task", "person", "employee", "position", "listing", "workorder"}
+)
+
+
+@dataclass(frozen=True)
+class DecisionAction:
+    """决策落成一个**动作**（经 M2.3 的 write tool 应用）。"""
+
+    tool: str
+    args: Mapping[str, Any] = field(default_factory=dict)
+    result_ref: str = ""  # 应用后产生/影响的实体引用，如 "task:34"
+
+
+@dataclass(frozen=True)
+class DecisionRecord:
+    """管理决策的**可审计**记录（设计 §10.1，M2.4 落表，W28 append-only）。
+
+    这里只冻结字段契约与**结构**校验。系统**不评价**决策内容 ——
+    它只记录「做了什么决定、依据是什么、结果是什么」，由真实结果形成 Evidence。
+    (`validate_decision_record` 甚至会接受 `reason="I felt like it"` —— 这是特性，不是疏漏。)
+    """
+
+    actor_person_id: int
+    acting_employee_id: int
+    decision: DecisionKind
+    scope: str
+    reason: str
+    context_snapshot: Mapping[str, Any] = field(default_factory=dict)
+    actions: tuple[DecisionAction, ...] = ()
+    acting_position_definition_id: int | None = None
+    #: 结果**事后回填**（append-only 的追加，不是对决策的重写）
+    outcome: DecisionOutcome | None = None
+    outcome_ref: str = ""
+    created_at: datetime | None = None
+
+
+def _positive_id(value: object, field_name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise WorkContractError(f"{field_name} must be a positive int id")
+    return value
+
+
+def validate_decision_record(record: DecisionRecord) -> DecisionRecord:
+    """校验 **结构**（不是内容）。W18：系统不做管理判断。
+
+    只检查：actor 身份齐全、决策类型合法、scope 形式正确、理由**已被陈述**（非空）、
+    上下文是映射、动作是已知工具名形状。
+
+    **刻意不做**：评价 reason 是否合理、判断 context 是否完备、推断 outcome 好坏。
+    """
+    _positive_id(record.actor_person_id, "actor_person_id")
+    _positive_id(record.acting_employee_id, "acting_employee_id")
+    if record.acting_position_definition_id is not None:
+        _positive_id(record.acting_position_definition_id, "acting_position_definition_id")
+    if not isinstance(record.decision, DecisionKind):
+        raise WorkContractError(f"unknown decision kind: {record.decision!r}")
+    scope = record.scope.strip()
+    if ":" not in scope:
+        raise WorkContractError("scope must be 'kind:id' (e.g. 'project:12')")
+    kind, _, raw_id = scope.partition(":")
+    if kind not in DECISION_SCOPE_KINDS:
+        raise WorkContractError(f"unknown scope kind: {kind!r}")
+    _positive_id(int(raw_id) if raw_id.isdigit() else raw_id, "scope id")
+    if not record.reason.strip():
+        raise WorkContractError("a management decision must state a reason (content is not judged)")
+    if not isinstance(record.context_snapshot, Mapping):
+        raise WorkContractError("context_snapshot must be a mapping")
+    for action in record.actions:
+        if not isinstance(action, DecisionAction) or not action.tool.strip():
+            raise WorkContractError("each action must name a tool")
+    if record.outcome is not None and not isinstance(record.outcome, DecisionOutcome):
+        raise WorkContractError(f"unknown decision outcome: {record.outcome!r}")
+    return record
+
+
+# ---------------------------------------------------------------------------
+# 8. 评审归属：四个面不得互相替代（设计 §12.1，W17 / W29）
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class VerdictBoundary:
+    """一个"评价面"的归属声明。四者**对象不同、判定者不同**，不得互相替代。"""
+
+    surface: str
+    enum_name: str
+    values: frozenset[str]
+    decider: str
+    object_of: str  # 判定对象
+    effect: str  # 判定的作用
+    module_prefix: str  # 该面唯一允许被谁引用（模块前缀，用于交叉引用守卫）
+
+
+def verdict_boundaries() -> tuple[VerdictBoundary, ...]:
+    """四个 verdict/assessment 面的边界表（W29）。
+
+    审计已指出系统里存在 4 套"评价"，M2 把它变成**显式契约**而不是隐含风险：
+
+    | 面 | 枚举 | 判定者 | 对象 | 作用 |
+    | --- | --- | --- | --- | --- |
+    | 任务级技术评审 | `ReviewVerdict` | Reviewer Agent | Task 产出 | 决定 Task 下一步 |
+    | 交付阶段门 | `ReviewDecision` | 人类 | 阶段产出 | Baseline / 阶段推进 |
+    | 商业验收 | `EvaluationVerdict` | 管理面 / 确定性规则 | WorkOrder 提交 | 决定结算 |
+    | 能力考核 | `AssessmentResult`（数值） | 统计聚合 | 人的能力 | 只影响能力，不是 gate |
+    """
+    return (
+        VerdictBoundary(
+            surface="task_review",
+            enum_name="ReviewVerdict",
+            values=frozenset(v.value for v in ReviewVerdict),
+            decider="reviewer_agent",
+            object_of="task_output",
+            effect="advance_task_status",
+            module_prefix="app.work",
+        ),
+        VerdictBoundary(
+            surface="phase_gate",
+            enum_name="ReviewDecision",
+            values=frozenset(
+                {"approved", "conditionally_approved", "changes_requested", "rejected"}
+            ),
+            decider="human_user",
+            object_of="phase_output",
+            effect="baseline_and_phase_advance",
+            module_prefix="app.services.project_delivery",
+        ),
+        VerdictBoundary(
+            surface="commercial_acceptance",
+            enum_name="EvaluationVerdict",
+            values=frozenset({"approved", "rejected", "revise"}),
+            decider="system_admin_or_deterministic_rule",
+            object_of="work_order_submission",
+            effect="settlement",
+            module_prefix="app.services.economy",
+        ),
+        VerdictBoundary(
+            surface="competency_assessment",
+            enum_name="AssessmentResult",
+            values=frozenset({"numeric"}),
+            decider="statistical_aggregation",
+            object_of="person_competency",
+            effect="competency_only_not_a_gate",
+            module_prefix="app.services",
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# 9. 工作根：Canonical Executable Project（设计 §11，W20 / W22 / W23 / W30）
+# ---------------------------------------------------------------------------
+
+#: Canonical Project Spec 的必需字段（**Facts / Requirements**，不是 Execution Plan）。
+CANONICAL_PROJECT_FIELDS: tuple[str, ...] = (
+    "background",
+    "goal",
+    "requirements",
+    "constraints",
+    "deliverables",
+    "acceptance_criteria",
+    "priority",
+    "deadline",
+    "context",
+)
+
+#: 契约字段 → 现有承载（M2.0 只冻结；M2.1 让 managed 模式也读它们）。
+#: 结论：**全部有现有承载，M2 不需要新表**。
+PROJECT_FIELD_SOURCES: dict[str, str] = {
+    "background": "projects.background",
+    "goal": "projects.goal",
+    "requirements": "project_requirements (+ projects.source_order_text 兜底)",
+    "constraints": "projects.constraints",
+    "deliverables": "projects.deliverables",
+    "acceptance_criteria": "project_requirements.acceptance_criteria",
+    "priority": "projects.priority",
+    "deadline": "projects.planned_end_at",
+    "context": "projects.description",
+}
+
+#: M2 的目标形态：`managed` 是唯一权威执行形态（M2.5 起默认）。
+PROJECT_WORK_MODE_TARGET = ProjectWorkMode.managed
+
+#: 历史形态 → M2 目标形态的收敛映射（M2.0 只冻结表，不改行为）。
+#: 目标形态**自映射**（写出来比“隐含”更难被误改）。
+PROJECT_WORK_MODE_CONVERGENCE: dict[ProjectWorkMode, ProjectWorkMode] = {
+    ProjectWorkMode.managed: ProjectWorkMode.managed,
+    ProjectWorkMode.guided: ProjectWorkMode.managed,
+    ProjectWorkMode.template_graph: ProjectWorkMode.managed,
+}
+
+#: 每个历史形态的收敛 owner 阶段（避免"冻结了但没人负责"）。
+PROJECT_WORK_MODE_OWNER_STAGE: dict[ProjectWorkMode, str] = {
+    ProjectWorkMode.guided: "M2.1",
+    ProjectWorkMode.template_graph: "M2.5",
+}
+
+
+# ---------------------------------------------------------------------------
+# 10. Task DAG 正确性（设计 §12.2，W2 / W16）
+# ---------------------------------------------------------------------------
+
+
+class DagValidationError(WorkContractError):
+    """DAG 结构非法（自环 / 环 / 悬空依赖 / 重复边）。"""
+
+
+@dataclass(frozen=True)
+class TaskGraphNode:
+    """DAG 节点的最小事实（系统眼里只有 status 与依赖关系）。"""
+
+    task_id: int
+    status: str
+    depends_on: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True)
+class TaskGraphReport:
+    """DAG 校验结果。**只描述结构事实，不给建议。**"""
+
+    is_valid: bool
+    self_loops: tuple[int, ...] = ()
+    dangling: tuple[tuple[int, int], ...] = ()  # (task_id, missing_dep)
+    duplicates: tuple[tuple[int, int], ...] = ()  # (task_id, repeated_dep)
+    cycles: tuple[tuple[int, ...], ...] = ()
+    ready: tuple[int, ...] = ()
+
+    @property
+    def error(self) -> str:
+        if self.is_valid:
+            return ""
+        parts = []
+        if self.self_loops:
+            parts.append(f"self_loops={list(self.self_loops)}")
+        if self.dangling:
+            parts.append(f"dangling={[list(p) for p in self.dangling]}")
+        if self.duplicates:
+            parts.append(f"duplicates={[list(p) for p in self.duplicates]}")
+        if self.cycles:
+            parts.append(f"cycles={[list(c) for c in self.cycles]}")
+        return "; ".join(parts)
+
+
+#: 未开始、且可以被系统判定就绪的 Task 状态（系统回答"哪些可以执行"的前置）。
+READY_CANDIDATE_STATUSES: frozenset[str] = frozenset({"backlog", "todo", "failed"})
+
+
+def _adjacency(nodes: Sequence[TaskGraphNode]) -> dict[int, tuple[int, ...]]:
+    return {node.task_id: tuple(node.depends_on) for node in nodes}
+
+
+def _find_cycles(adjacency: Mapping[int, tuple[int, ...]]) -> tuple[tuple[int, ...], ...]:
+    """迭代式 Tarjan 强连通分量；返回长度 > 1 的 SCC（+ 自环单独处理）。"""
+    index_of: dict[int, int] = {}
+    low: dict[int, int] = {}
+    on_stack: dict[int, bool] = {}
+    stack: list[int] = []
+    counter = 0
+    cycles: list[tuple[int, ...]] = []
+
+    for root in sorted(adjacency):
+        if root in index_of:
+            continue
+        work: list[tuple[int, int]] = [(root, 0)]
+        while work:
+            node, child_index = work.pop()
+            if child_index == 0:
+                index_of[node] = low[node] = counter
+                counter += 1
+                stack.append(node)
+                on_stack[node] = True
+            children = [d for d in adjacency.get(node, ()) if d in adjacency]
+            if child_index < len(children):
+                work.append((node, child_index + 1))
+                child = children[child_index]
+                if child not in index_of:
+                    work.append((child, 0))
+                elif on_stack.get(child):
+                    low[node] = min(low[node], index_of[child])
+            else:
+                if low[node] == index_of[node]:
+                    component: list[int] = []
+                    while True:
+                        member = stack.pop()
+                        on_stack[member] = False
+                        component.append(member)
+                        if member == node:
+                            break
+                    if len(component) > 1:
+                        cycles.append(tuple(sorted(component)))
+                if work:
+                    parent = work[-1][0]
+                    low[parent] = min(low[parent], low[node])
+    return tuple(cycles)
+
+
+def validate_task_graph(nodes: Iterable[TaskGraphNode]) -> TaskGraphReport:
+    """校验 Task DAG 的**结构正确性**（系统职责，W16）。
+
+    系统回答的是「这张图是否可执行」，**不是**「下一步应该创建什么 Task」（管理职责）。
+
+    检出：自环、悬空依赖（指向不存在的 Task）、重复边、环（含多节点环）。
+    不检出（刻意）：不判断拆解是否合理、粒度是否合适、人手是否够 —— 那些是管理判断。
+    """
+    materialized = list(nodes)
+    ids = {node.task_id for node in materialized}
+    self_loops: list[int] = []
+    dangling: list[tuple[int, int]] = []
+    duplicates: list[tuple[int, int]] = []
+    adjacency: dict[int, tuple[int, ...]] = {}
+
+    for node in materialized:
+        deps = tuple(node.depends_on)
+        if node.task_id in deps:
+            self_loops.append(node.task_id)
+        seen: set[int] = set()
+        for dep in deps:
+            if dep in seen:
+                duplicates.append((node.task_id, dep))
+            seen.add(dep)
+            if dep not in ids:
+                dangling.append((node.task_id, dep))
+        adjacency[node.task_id] = deps
+
+    cycles = _find_cycles(adjacency)
+    is_valid = not (self_loops or dangling or duplicates or cycles)
+    return TaskGraphReport(
+        is_valid=is_valid,
+        self_loops=tuple(self_loops),
+        dangling=tuple(dangling),
+        duplicates=tuple(duplicates),
+        cycles=cycles,
+        ready=resolve_ready_tasks(materialized) if is_valid else (),
+    )
+
+
+def resolve_ready_tasks(nodes: Iterable[TaskGraphNode]) -> tuple[int, ...]:
+    """系统对「哪些 Task 现在可以执行」的**唯一契约定义**（W16）。
+
+    规则（纯函数，只看 status 与依赖终态）：
+
+    1. 候选 = status ∈ `READY_CANDIDATE_STATUSES`（backlog / todo / failed，即未开始或待重做）；
+    2. 依赖**全部**为终态成功（`done`）⇒ 就绪；
+    3. 运行中 / 已完成 / 已驳回的 Task 不在就绪集合里。
+
+    **所有权**：系统只回答就绪集合；**是否执行、要不要新开 Task 由 Manager Agent 决定**
+    （W2）。M2.0 只冻结该定义 —— `workflow/orchestrator.py` 仍走旧路径，切换是 M2.5 的
+    交付项（`docs/m2-implementation-plan.md` §8 F1/F2）。
+    """
+    materialized = list(nodes)
+    done = {node.task_id for node in materialized if node.status == "done"}
+    ready: list[int] = []
+    for node in materialized:
+        if node.status not in READY_CANDIDATE_STATUSES:
+            continue
+        if all(dep in done for dep in node.depends_on):
+            ready.append(node.task_id)
+    return tuple(sorted(ready))
+
+
+# ---------------------------------------------------------------------------
+# 11. 不变量注册表（W1–W31，设计 §14）
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Invariant:
+    """一条 M2 不变量。
+
+    `enforced=True`：M2.0 就有**现存测试锚点**（`anchors` 必须非空且真实存在）。
+    `enforced=False`：M2.0 只冻结归属，`owner_stage` 是它的落地阶段。
+
+    双态设计的理由（M1.10 锚点表同款纪律）：不变量是跨阶段的，把「已强制」与
+    「已冻结待落地」区分开，比假装全部完成诚实，也比什么都不写好 ——
+    `tests/test_m2_contract.py` 断言**没有任何一条被静默丢弃**。
+    """
+
+    id: str
+    text: str
+    enforced: bool
+    owner_stage: str = ""
+    anchors: tuple[str, ...] = ()
+
+
+INVARIANTS: tuple[Invariant, ...] = (
+    Invariant(
+        "W1",
+        "Eidolon system does not choose team members.",
+        enforced=False,
+        owner_stage="M2.4",
+    ),
+    Invariant(
+        "W2",
+        "Eidolon system does not make project decomposition decisions.",
+        enforced=False,
+        owner_stage="M2.4",
+    ),
+    Invariant(
+        "W3",
+        "Management decisions must originate from an authorized Agent/User actor.",
+        enforced=False,
+        owner_stage="M2.3",
+    ),
+    Invariant(
+        "W4",
+        "Position defines responsibility/authority/expectations, not fixed workflow.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=(
+            "test_position_contract_is_responsibility_authority_expectations",
+            "test_forbidden_onboarding_actions_do_not_exist_anywhere",
+        ),
+    ),
+    Invariant(
+        "W5",
+        "Position scope is advisory, not a hard work boundary.",
+        enforced=True,
+        anchors=("test_position_scope_is_a_soft_constraint",),
+    ),
+    Invariant(
+        "W6",
+        "Permissions and security remain hard boundaries.",
+        enforced=True,
+        anchors=("test_constraint_classes_are_disjoint_and_complete",),
+    ),
+    Invariant(
+        "W7",
+        "Position assignment never grants competency score.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=(
+            "test_position_contract_carries_no_derived_capability",
+            "test_role_context_fields_are_all_derivable",
+        ),
+    ),
+    Invariant(
+        "W8",
+        "Position assignment never copies Person knowledge/skill/evidence.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=(
+            "test_memory_planes_are_disjoint_and_resolve_to_real_tables",
+            "test_forbidden_onboarding_actions_do_not_exist_anywhere",
+        ),
+    ),
+    Invariant(
+        "W9",
+        "Company knowledge remains institutional after personnel replacement.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=("test_memory_planes_are_disjoint_and_resolve_to_real_tables",),
+    ),
+    Invariant(
+        "W10",
+        "Personal memory remains with Person.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=("test_personal_memory_surfaces_are_person_scoped_where_claimed",),
+    ),
+    Invariant(
+        "W11",
+        "Fit is decision-support only.",
+        enforced=True,
+        anchors=("test_fit_module_is_not_imported_by_execution_paths",),
+    ),
+    Invariant(
+        "W12",
+        "An Agent may work outside its normal role scope if authorized.",
+        enforced=False,
+        owner_stage="M2.4",
+    ),
+    Invariant(
+        "W13",
+        "Failure to satisfy role expectations does not automatically offboard an Agent.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_no_automatic_offboarding_path_exists",),
+    ),
+    Invariant(
+        "W14",
+        "Reassign/replace decisions belong to authorized management Agents or Owner.",
+        enforced=False,
+        owner_stage="M2.4",
+    ),
+    Invariant(
+        "W15",
+        "All management decisions are auditable.",
+        enforced=False,
+        owner_stage="M2.4",
+    ),
+    Invariant(
+        "W16",
+        "Task DAG execution is system responsibility; DAG design is management responsibility.",
+        enforced=False,
+        owner_stage="M2.5",
+    ),
+    Invariant(
+        "W17",
+        "Task review acceptance is not automatically decided by system heuristics.",
+        enforced=False,
+        owner_stage="M2.7",
+    ),
+    Invariant(
+        "W18",
+        "Deterministic tests provide facts, not management judgment.",
+        enforced=True,
+        owner_stage="M2.7",
+        anchors=("test_decision_validation_never_judges_intent",),
+    ),
+    Invariant(
+        "W19",
+        "Artifact lineage must be preserved.",
+        enforced=False,
+        owner_stage="M2.6",
+    ),
+    Invariant(
+        "W20",
+        "No new Mission source-of-truth table.",
+        enforced=True,
+        anchors=("test_no_mission_or_agent_source_of_truth_table_exists",),
+    ),
+    Invariant(
+        "W21",
+        "No new Agent source-of-truth table without explicit future ADR.",
+        enforced=True,
+        anchors=("test_no_mission_or_agent_source_of_truth_table_exists",),
+    ),
+    Invariant(
+        "W22",
+        "Project becomes the canonical executable work root.",
+        enforced=False,
+        owner_stage="M2.1",
+    ),
+    Invariant(
+        "W23",
+        "WorkOrder remains economic/commercial wrapper, not execution truth.",
+        enforced=True,
+        anchors=("test_work_order_is_not_an_execution_or_graph_container",),
+    ),
+    Invariant(
+        "W24",
+        "Task completion must produce real work facts before Evidence is created.",
+        enforced=True,
+        anchors=("test_system_facts_and_agent_decisions_are_disjoint",),
+    ),
+    Invariant(
+        "W25",
+        "Mock completion must never masquerade as real production success.",
+        enforced=True,
+        anchors=("test_system_facts_and_agent_decisions_are_disjoint",),
+    ),
+    Invariant(
+        "W26",
+        "Position never derives a per-person workflow, prompt, or SOP.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=(
+            "test_position_contract_exposes_no_prompt_or_workflow_surface",
+            "test_forbidden_onboarding_actions_do_not_exist_anywhere",
+        ),
+    ),
+    Invariant(
+        "W27",
+        "Role resources are advisory references; they never carry scores or grants.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=("test_role_resource_carries_no_numeric_field",),
+    ),
+    Invariant(
+        "W28",
+        "DecisionRecord is append-only; outcomes are appended, decisions are never rewritten.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_decision_record_is_frozen_as_append_only",),
+    ),
+    Invariant(
+        "W29",
+        "The four verdict/assessment surfaces must not be substituted for each other.",
+        enforced=True,
+        owner_stage="M2.7",
+        anchors=("test_verdict_surfaces_are_distinct_and_owned",),
+    ),
+    Invariant(
+        "W30",
+        "`guided` and `managed` project modes share one Task/Assignment/Review substrate.",
+        enforced=False,
+        owner_stage="M2.1",
+    ),
+    Invariant(
+        "W31",
+        "A recruited Agent is not READY_TO_WORK until provisioning completes.",
+        enforced=False,
+        owner_stage="M2.8",
+    ),
+)
+
+#: 允许 `owner_stage` 出现的阶段 id（防止填错阶段名）。
+M2_STAGES: frozenset[str] = frozenset(f"M2.{i}" for i in range(1, 11))

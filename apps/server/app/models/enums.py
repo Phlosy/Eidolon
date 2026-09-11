@@ -906,3 +906,151 @@ class EconomicCategory(StrEnum):
     burn = "BURN"
     recovery = "RECOVERY"
     npc_budget = "NPC_BUDGET"
+
+
+# ---------------------------------------------------------------------------
+# M2 工作与组织运行域（docs/m2-agent-work-runtime-design.md；不变量 W1–W31）
+#
+# 这一节的枚举**不代表任何新表**：它们是 M2 全部阶段共享的词汇表（决策边界、
+# 职责面、评审结论、工作根形态、资源索引、记忆平面）。加在这里的理由与 T2
+# 契约层注释一致 —— 模型与迁移要 import 它们，枚举必须有唯一家。
+# ---------------------------------------------------------------------------
+
+
+class ResponsibilityArea(StrEnum):
+    """职责面（设计 §3.1）—— 只用于**路由建议**与默认授权归组。
+
+    这是 **soft** 语义：它描述"公司通常把这类决策交给哪一面"，
+    **不是**"只有这一面的人才能做这类决策"（W5 / W12）。
+    """
+
+    strategic = "strategic"  # 战略与经营（CEO）
+    delivery = "delivery"  # 交付与技术组织（CTO / PM / Team Lead）
+    quality = "quality"  # 质量与验收（QA / Reviewer）
+    people = "people"  # 人员与培养（HR / 管理层）
+    research = "research"  # 研究与探索
+    execution = "execution"  # 一线执行
+
+
+class DecisionKind(StrEnum):
+    """只能由**已授权 Agent/User actor** 做出的管理决策（W3 / W15）。
+
+    系统**不产生**这些值，只校验、落账（DecisionRecord）、执行结果。
+    `SYSTEM_FACTS`（contracts）与本节值集必须互斥 —— 由契约测试钉住。
+    """
+
+    accept_project = "accept_project"
+    decline_project = "decline_project"
+    decompose_project = "decompose_project"
+    delegate_management = "delegate_management"
+    assign_task = "assign_task"
+    reassign_task = "reassign_task"
+    create_dependency = "create_dependency"
+    request_review = "request_review"
+    request_rework = "request_rework"
+    mark_blocked = "mark_blocked"
+    replan = "replan"
+    accept_delivery = "accept_delivery"
+    recruit = "recruit"
+    purchase_agent = "purchase_agent"
+    assign_position = "assign_position"
+    release_position = "release_position"
+    enroll_learning = "enroll_learning"
+    offboard = "offboard"
+
+
+class DecisionOutcome(StrEnum):
+    """决策的**结果**（事后回填，不是事前判定；W18 / W28）。
+
+    `pending` 是默认态：决策作出时还不知道结果，这是常态而非缺陷。
+    系统**不定义**"好/坏结果"的标准 —— 它只记录业务事实的终态。
+    """
+
+    pending = "pending"
+    succeeded = "succeeded"
+    failed = "failed"
+    superseded = "superseded"  # 被后续决策取代（例如 replan）
+    withdrawn = "withdrawn"  # 决策者自己撤回
+
+
+class ReviewVerdict(StrEnum):
+    """**任务级技术评审**结论（M2.7，W17 / W29）。
+
+    与另外三个面**不得互相替代**（设计 §12.1）：
+      - `ReviewDecision`（阶段门，人类）
+      - `EvaluationVerdict`（商业验收，管理面/确定性规则）
+      - `AssessmentResult`（能力考核，统计聚合）
+    四个面各有自己的对象与判定者；跨面引用必须经显式映射。
+    """
+
+    passed = "PASS"
+    rework = "REWORK"
+    rejected = "REJECT"
+    escalated = "ESCALATE"
+
+
+class ProjectWorkMode(StrEnum):
+    """工作根的执行形态（设计 §11.3，W22 / W30）。
+
+    三种形态**共用同一 `projects` 行、同一 Task 表、同一评审底座**；
+    它们不是三套代码路径，而是同一个 Project 上的执行方式。
+    """
+
+    #: M2 目标：Task DAG 由 Manager Agent 决定（W2 / W16）
+    managed = "managed"
+    #: 现有结构化交付：11 阶段 + 人工评审门（v0.5 正式交付域）
+    guided = "guided"
+    #: 现有 legacy：固定 GRAPH_TEMPLATE（M2.5 退役，历史数据保留可读）
+    template_graph = "template_graph"
+
+
+class RoleResourceKind(StrEnum):
+    """Role Resource Index 的条目类型（设计 §6）。
+
+    全部是**建议读取/学习的引用**，不携带分值、不授予能力（W27）。
+    """
+
+    knowledge_topic = "knowledge_topic"
+    playbook = "playbook"
+    policy = "policy"
+    handbook = "handbook"
+    skill_hint = "skill_hint"
+
+
+class MemoryPlane(StrEnum):
+    """记忆平面（设计 §7，W9 / W10）。
+
+    - `institutional`：随**公司**存续；换人不迁移、不丢失、不复制；
+    - `personal`：随 **Person** 存续；换职位不迁移、不重置。
+    """
+
+    institutional = "institutional"
+    personal = "personal"
+
+
+class FactKind(StrEnum):
+    """系统拥有的**事实**类别（设计 §1.1）。
+
+    这些是系统必须能回答的问题；它们**不是决策**，也不含"应该怎么做"。
+    `SYSTEM_FACTS`（contracts）是它的显式清单，与 `DecisionKind` 互斥。
+    """
+
+    position_definition = "position_definition"
+    position_assignment = "position_assignment"
+    person_competency = "person_competency"
+    person_evidence = "person_evidence"
+    person_experience = "person_experience"
+    fit_result = "fit_result"
+    current_load = "current_load"
+    runtime_status = "runtime_status"
+    provider_status = "provider_status"
+    workspace_status = "workspace_status"
+    budget_snapshot = "budget_snapshot"
+    artifact_index = "artifact_index"
+    knowledge_index = "knowledge_index"
+    task_graph_state = "task_graph_state"
+    task_readiness = "task_readiness"
+    review_facts = "review_facts"
+    workorder_state = "workorder_state"
+    validation_result = "validation_result"
+    decision_history = "decision_history"
