@@ -393,8 +393,8 @@ cd apps/web && npm run build
 | M1.1 Accounts & Double-entry Ledger | **DONE**（2026-09-11） | `12fb9a7` / `2d37938` / `9cb1e06` | `[migration v32]` `8f1abef8410f`；四小阶段 M1.1a–d 全部落地；**A1–A20 全部满足**；pytest 851 / web 328 |
 | M1.2 Monetary Authority & Reward System | **DONE**（2026-09-11） | `81eed9a` / `6e35963` / `7cc5541` | `[migration v33]` `691816bccb53`；7 类自助奖励全部落地（含救援经济）；pytest 874 / web 328 |
 | M1.3 Official Work Market | **DONE**（2026-09-11） | `03f47a6` / `6a479e9` / `e2f505b` / `ee958cf` | `[migration v34]` `328fbe9f3034`；官方 bounty 全生命周期 + 预算内发行；pytest 898 / web 328 |
-| M1.4 Player Work Market | **NEXT** | — | `[migration v35]` |
-| M1.5 Company Operating Economy | PLANNED | — | `[migration v36]` |
+| M1.4 Player Work Market | **DONE**（2026-09-11） | `1f715f2` / `6f5eaeb` / `14db721` / `54ac474` | `[migration v35]` `d2a4926a21d4`；Escrow 锁资 + 玩家间转移（绝不 mint）；pytest 916 / web 328 |
+| M1.5 Company Operating Economy | **NEXT** | — | `[migration v36]` |
 | M1.6 Contract / Offer / Settlement Core | PLANNED | — | `[migration v37]` |
 | M1.7 Talent Commercialization | PLANNED | — | `[migration v38]`；必须跑 T2 回归 |
 | M1.8 NPC Economy | PLANNED | — | `[migration v39]`（或复用 participant profile_json） |
@@ -402,6 +402,25 @@ cd apps/web && npm run build
 | M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E31 全覆盖 + 失败注入 |
 
 ### Progress Log
+
+- **2026-09-11 · M1.4 DONE**：`[migration v35]` `d2a4926a21d4`（`escrows`）；commits
+  **`1f715f2`**（schema + 玩家订单护栏）、**`6f5eaeb`**（EscrowService + 玩家市场生命周期）、
+  **`14db721`**（发布/取消 API）、**`54ac474`**（测试硬化）。
+  - 交付：`EscrowService`（fund/release/refund/expire，CAS 裁定 release-vs-refund 竞争）；
+    `SettlementService` 的 `player_escrow` 分支（放款而非发行）；
+    `WorkOrderService.publish_player_order`（**E11 发布前锁资**）/`cancel`（退款）/
+    `settle`（玩家订单走托管放款、**不写 reward_grants**）/`expire_overdue`（过期退款）；
+    玩家 API `POST /work-orders` + `POST /work-orders/{id}/cancel`；订单载荷带 `escrow` 与 `is_issuer`。
+  - 口径裁定：玩家订单**不受官方预算约束**（花自己的钱）但受 `player_order_max_reward` 护栏；
+    **玩家之间的转移不写 `reward_grants`**（`reward_grants` 只表达"发行/奖励"，E8）；
+    Escrow 行 + 账本交易承担全部来源追溯（E16）。
+  - 测试：**+18**（916 passed / 6 deselected）：锁资语义（posted 不变 / reserved 增加）、
+    E11 余额不足不留订单、A→B 全流程 supply 恒定、取消与过期退款、release-vs-refund 竞争唯一赢家、
+    幂等重放、E25/E30 归零与归因重建、玩家订单无 grant/无 mint、官方 kind 经玩家通道被拒。
+  - 迁移：v35 up/down/up 实测 + `alembic check` 无漂移；dev 库已升到 v35。
+  - 实现中注意到的坑：并发竞争必须落在**已提交**的 CAS 上（测试里用 `commit=False` 会让两边
+    都"成功"然后各自回滚 —— 那是测试假象，不是竞态）；`ruff format tests` 会连带格式化 3 个
+    既有 WIP 文件（已回滚，未扩大改动面）。
 
 - **2026-09-11 · M1.3 DONE**：`[migration v34]` `328fbe9f3034`（`work_orders` /
   `work_order_submissions` / `evaluations`）；commits **`03f47a6`**（schema + 预算政策）、

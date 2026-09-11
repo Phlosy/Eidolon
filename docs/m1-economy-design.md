@@ -431,6 +431,24 @@ Escrow 释放（Debit B / Credit escrow）        ← 玩家之间转移，**不
 - 失败/取消/过期：`Escrow → Refund → Issuer`；
 - **玩家 WorkOrder 绝不 mint**（E8）；资金不足时**不能发布**（不是"先发布后补钱"）。
 
+**实现落点（M1.4，2026-09-11）**
+
+- 表：`escrows`（迁移 v35 `d2a4926a21d4`）；一个订单一个 Escrow（`uq_escrow_work_order`）；
+- `publish_player_order()`：只接受 `player_bounty` / `player_contract`（官方 kind → 422），
+  发布方必须是公司；**锁资与建订单在同一事务** —— 锁资失败整笔回滚，
+  **不产生"已发布但没锁资"的订单**（E11 的落地形态：不是"先发布后补钱"）；
+- 金额花的是发布方自己的钱：不受官方预算约束，但受 `player_order_max_reward` 护栏与余额约束
+  （E24：可花余额不可为负）；
+- `cancel()`：只有发布方本人（否则 404，不泄露存在性），`OPEN`/`ACCEPTED` → `CANCELLED`
+  并**退款**；重复取消幂等；
+- `settle()`：玩家订单走 Escrow 放款（`funding_mode=player_escrow` → `SettlementService` →
+  `EscrowService.release()`），**不 mint、不写 `reward_grants`** —— 玩家之间的转移既不是发行
+  也不是奖励；来源由 `escrows` 行 + `escrow_release` 交易承载（E16）；
+- 过期：`expire_overdue()` 把订单推进到 EXPIRED 时**一并退款**（钱不能卡在托管里）；
+- 事件：`escrow.funded` / `escrow.refunded`（放款复用 `settlement.completed`）；
+- API：`POST /work-orders`（玩家发布，需资金）+ `POST /work-orders/{id}/cancel`；
+  `/evaluate` 与 `/settle` 依然不可达（官方发行与验收只在 CLI）。
+
 ## 20. Evaluation
 
 ```
@@ -500,6 +518,14 @@ Offer 是"出价/申请"的通用表达：人才出价、合同申请、报价�
   多出资人 Escrow（联合投资）留到 M2，届时按出资腿比例归因 —— 不提前实现；
 - 释放/退回后 escrow 账户余额必须归零（E25），该 actor 的 `reserved` 同步归零；
 - 支持：`fund / release / refund / expire`；竞争情形（release vs refund）由 CAS + 唯一约束裁定（§33）；
+
+**实现落点（M1.4）**：`EscrowService`（`app/services/economy/escrow.py`）：
+`fund_for_order` / `release` / `refund` / `expire`，全部只经 `LedgerService` 的
+`escrow_fund` / `escrow_release` / `escrow_refund` 三条腿组合（本模块不自己写账，E27）。
+**先 CAS 占位再动钱**：`transition_escrow(from_statuses=(FUNDED,))` 的 rowcount 决定
+release / refund 谁赢（§33）；重复调用返回既有状态（幂等，不重复转账）；
+`refund` 只能退回原出资人（Posting Core 拒绝第三方）；M1.6 的 Contract 复用同一张表
+（`work_order_id` 可空，届时加 `contract_id`）。
 - Escrow 余额必须能归零（结算完成后不允许残留）。
 
 ## 24. Settlement
@@ -618,6 +644,7 @@ M1 之后还会出现"谁拥有经济权利"。**不能让一个字段承担全�
 | `achievement_reward` | 成就奖励（M1.2 新增） | 1_500 |
 | `official_max_reward` | 官方单笔任务上限（M1.3 新增） | 50_000 |
 | `official_outstanding_budget` | 未结算官方任务总额上限（M1.3 新增） | 1_000_000 |
+| `player_order_max_reward` | 玩家订单单笔上限（M1.4 新增） | 1_000_000 |
 
 **政策不变量（M1.3 强制，配置加载即校验）**：`official_outstanding_budget >= official_max_reward`
 且 `official_reward_multiplier > 0` —— 否则"单笔合法任务都发不出去"或"官方发行停摆"。
