@@ -42,6 +42,7 @@ class Settings(BaseSettings):
     economy_profile_reward: int = 500
     economy_company_profile_reward: int = 1_000
     economy_tutorial_reward: int = 2_000
+    economy_achievement_reward: int = 1_500
     economy_daily_reward: int = 100
     economy_weekly_activity_reward: int = 500
     economy_recovery_grant: int = 1_000

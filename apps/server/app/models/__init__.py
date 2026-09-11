@@ -37,6 +37,7 @@ from app.models.economy import (
     LedgerAccount,
     LedgerEntry,
     LedgerTransaction,
+    RewardGrant,
     WalletProjection,
 )
 from app.models.event import Event
@@ -135,6 +136,7 @@ __all__ = [
     "LedgerAccount",
     "LedgerEntry",
     "LedgerTransaction",
+    "RewardGrant",
     "WalletProjection",
     "LearningRecord",
     "MemoryEntry",

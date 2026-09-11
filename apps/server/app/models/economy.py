@@ -156,3 +156,48 @@ class WalletProjection(Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     last_entry_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class RewardGrant(TimestampMixin, Base):
+    """一次奖励的资格/发放记录（M1.2，设计 §14）。
+
+    - `unique(reward_type, actor_kind, actor_ref, reference_key)` 是**幂等的地基**（E10）：
+      重复领取由约束收敛，服务层命中即返回既有 grant（绝不二次 mint）；
+    - `reference_key`：同一 actor 在同一奖励类型下的"这一次"（例如 `daily:2026-09-11`、
+      `achievement:first_employee`、`tutorial:company-founding`）；不同类型/不同主体互不干扰；
+    - `amount` + `policy_version`：金额是**发放时的政策快照**，日后调政策不改历史（可解释性）；
+    - `company_id`：奖励总是发生在某个公司上下文里（v1 单公司部署；个人奖励也记公司归属，
+      便于公司作用域查询与审计）；
+    - `status`：`ELIGIBLE → CLAIMED → POSTED`（VOID 留给未来人工冲正，见 §37 冻结状态机）；
+    - `ledger_transaction_id`：指向真正把钱发出去的那笔账（reference 可追溯，E16）。
+    """
+
+    __tablename__ = "reward_grants"
+    __table_args__ = (
+        UniqueConstraint(
+            "reward_type",
+            "actor_kind",
+            "actor_ref",
+            "reference_key",
+            name="uq_reward_grant_identity",
+        ),
+        Index("ix_reward_grants_company", "company_id", "id"),
+        Index("ix_reward_grants_actor", "actor_kind", "actor_ref", "reward_type"),
+    )
+
+    reward_type: Mapped[str] = mapped_column(String(32), index=True)
+    actor_kind: Mapped[str] = mapped_column(String(20))
+    actor_ref: Mapped[int] = mapped_column(Integer)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"))
+    amount: Mapped[int] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String(12), default=Currency.credit.value)
+    reference_key: Mapped[str] = mapped_column(String(120), default="")
+    reason: Mapped[str] = mapped_column(String(200), default="")
+    policy_version: Mapped[str] = mapped_column(String(40), default="")
+    status: Mapped[str] = mapped_column(String(12), default="ELIGIBLE", index=True)
+    ledger_transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ledger_transactions.id"), nullable=True
+    )
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)

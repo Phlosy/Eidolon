@@ -29,6 +29,7 @@ class EconomicPolicy:
     profile_reward: int
     company_profile_reward: int
     tutorial_reward: int
+    achievement_reward: int
     daily_reward: int
     weekly_activity_reward: int
     recovery_grant: int
@@ -49,6 +50,7 @@ class EconomicPolicy:
             "profile_reward",
             "company_profile_reward",
             "tutorial_reward",
+            "achievement_reward",
             "daily_reward",
             "weekly_activity_reward",
             "recovery_grant",
@@ -69,6 +71,16 @@ class EconomicPolicy:
         # 新手/兜底收益必须**远低于**官方任务：防止"靠签到比经营赚得多"（设计 §5/§16）
         if self.official_reward_multiplier <= 0:
             raise EconomyContractError("official_reward_multiplier must be > 0")
+        # 救援金不是收入来源（§16）：必须显著小于启动资金与成就/教程收益，且不超过自己的阈值
+        for name in ("starter_grant", "achievement_reward", "tutorial_reward"):
+            if self.recovery_grant >= getattr(self, name):
+                raise EconomyContractError(
+                    f"recovery_grant must stay below {name}（救援金不是收入来源，设计 §16）"
+                )
+        if self.recovery_threshold <= 0 or self.recovery_grant > self.recovery_threshold:
+            raise EconomyContractError(
+                "recovery_grant must not exceed recovery_threshold（§16：兜底不能一步跨过阈值）"
+            )
 
     def fee_for(self, amount: int) -> int:
         """按基点计算手续费（向下取整；0 手续费即 0）。"""
@@ -88,6 +100,7 @@ def _load_policy() -> EconomicPolicy:
         profile_reward=settings.economy_profile_reward,
         company_profile_reward=settings.economy_company_profile_reward,
         tutorial_reward=settings.economy_tutorial_reward,
+        achievement_reward=settings.economy_achievement_reward,
         daily_reward=settings.economy_daily_reward,
         weekly_activity_reward=settings.economy_weekly_activity_reward,
         recovery_grant=settings.economy_recovery_grant,

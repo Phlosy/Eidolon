@@ -22,7 +22,13 @@ from sqlalchemy.orm import Session
 
 from app.economy.contracts import EconomicActor, EconomyContractError
 from app.models.base import utcnow
-from app.models.economy import LedgerAccount, LedgerEntry, LedgerTransaction, WalletProjection
+from app.models.economy import (
+    LedgerAccount,
+    LedgerEntry,
+    LedgerTransaction,
+    RewardGrant,
+    WalletProjection,
+)
 from app.models.enums import (
     Currency,
     EconomicActorKind,
@@ -30,6 +36,7 @@ from app.models.enums import (
     LedgerAccountStatus,
     LedgerEntryDirection,
     LedgerTransactionStatus,
+    RewardStatus,
     TransactionKind,
 )
 
@@ -469,3 +476,82 @@ def insert_projection_rows(db: Session, rows: list[dict]) -> int:
 
 def projection_currency(account: LedgerAccount) -> str:
     return account.currency or Currency.credit.value
+
+
+# --------------------------------------------------------------------------- reward grants
+
+
+def get_reward_grant(db: Session, grant_id: int) -> RewardGrant | None:
+    return db.get(RewardGrant, grant_id)
+
+
+def find_reward_grant(
+    db: Session,
+    *,
+    reward_type: str,
+    actor_kind: str,
+    actor_ref: int,
+    reference_key: str,
+) -> RewardGrant | None:
+    return db.scalars(
+        select(RewardGrant).where(
+            RewardGrant.reward_type == reward_type,
+            RewardGrant.actor_kind == actor_kind,
+            RewardGrant.actor_ref == actor_ref,
+            RewardGrant.reference_key == reference_key,
+        )
+    ).first()
+
+
+def insert_reward_grant(db: Session, **values: object) -> RewardGrant:
+    grant = RewardGrant(**values)
+    db.add(grant)
+    db.flush()
+    return grant
+
+
+def list_reward_grants(
+    db: Session,
+    *,
+    company_id: int | None = None,
+    actor_kind: str | None = None,
+    actor_ref: int | None = None,
+    reward_type: str | None = None,
+    statuses: tuple[str, ...] | None = None,
+    limit: int | None = None,
+) -> list[RewardGrant]:
+    stmt = select(RewardGrant)
+    if company_id is not None:
+        stmt = stmt.where(RewardGrant.company_id == company_id)
+    if actor_kind is not None:
+        stmt = stmt.where(RewardGrant.actor_kind == actor_kind)
+    if actor_ref is not None:
+        stmt = stmt.where(RewardGrant.actor_ref == actor_ref)
+    if reward_type is not None:
+        stmt = stmt.where(RewardGrant.reward_type == reward_type)
+    if statuses is not None:
+        stmt = stmt.where(RewardGrant.status.in_(statuses))
+    stmt = stmt.order_by(RewardGrant.id.desc())
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list(db.scalars(stmt))
+
+
+def latest_posted_reward_grant(
+    db: Session,
+    *,
+    reward_type: str,
+    actor_kind: str,
+    actor_ref: int,
+) -> RewardGrant | None:
+    """最近一次**已过账**的某类奖励（救援金冷却判定用；只认 POSTED，作废/失败不算）。"""
+    return db.scalars(
+        select(RewardGrant)
+        .where(
+            RewardGrant.reward_type == reward_type,
+            RewardGrant.actor_kind == actor_kind,
+            RewardGrant.actor_ref == actor_ref,
+            RewardGrant.status == RewardStatus.posted.value,
+        )
+        .order_by(RewardGrant.id.desc())
+    ).first()
