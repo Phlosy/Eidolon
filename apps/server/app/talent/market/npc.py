@@ -214,6 +214,21 @@ class NpcMarketService:
         profile_service.publish_profile(db, version, note=f"{spec.display_name} 招聘标准（T2.7c）")
 
     @staticmethod
+    def ensure_system_definition(db: Session):
+        """任意**系统模板**职位（给"没有 NPC spec"的调用方做 fit 口径）。
+
+        M1.8 的 NPC 经济允许直接指定参与者（测试/运维补充的 NPC）—— 那些参与者没有
+        自己的招聘标准模板，用系统模板做统一口径即可（不新增模板、不改 NPC spec）。
+        """
+        from app.repositories import position as position_repo
+
+        definitions = position_repo.list_definitions(db)
+        system_defs = [row for row in definitions if row.company_id is None]
+        if not system_defs:  # pragma: no cover - 仓库 seed 必然有系统模板
+            return None
+        return sorted(system_defs, key=lambda row: int(row.id))[0]
+
+    @staticmethod
     def _definition_id(db: Session, code: str) -> int:
         value = db.scalar(
             sa.select(CompetencyDefinition.id)
@@ -225,6 +240,85 @@ class NpcMarketService:
         return int(value)
 
     # ---- 一轮市场活动 ----
+
+    def take_candidate(
+        self,
+        db: Session,
+        *,
+        listing_id: int,
+        person_id: int,
+        identity_id: str,
+        participant_id: int,
+        npc_name: str,
+        fit_score: float | None,
+        fit_confidence: float | None,
+        company_context_id: int,
+        reason: str = "npc_recruited",
+        commit: bool = True,
+    ) -> bool:
+        """把某个候选人"拿走"（CAS 关闭挂牌 + 事件）；返回是否真的关掉了这一行。
+
+        - **CAS 语义不变**：并发/重复调用只有一个赢家（与玩家招募同一纪律）；
+        - `commit=False`（M1.8）：事务与事件都归调用方 —— M1 的
+          `NpcEconomyService` 要在同一事务里先付钱再落这一笔（§29）；
+        - 抽出来的理由：T2 的 NPC 活动（无资金）与 M1 的 NPC 经济（有资金）
+          必须共用**同一个**成交原语，避免两套"谁被拿走了"的写法。
+        """
+        claimed = market_repo.close_active_listing(
+            db,
+            int(listing_id),
+            reason=reason,
+            recruited_participant_id=int(participant_id),
+        )
+        if not claimed:
+            return False
+        if commit:
+            db.commit()
+            bus.publish(
+                "market.candidate_taken",
+                {
+                    "person_id": int(person_id),
+                    "identity_id": identity_id,
+                    "listing_id": int(listing_id),
+                    "participant_id": int(participant_id),
+                    "participant_name": npc_name,
+                    "known_fit_score": round(fit_score, 4) if fit_score is not None else None,
+                    "fit_confidence": (
+                        round(fit_confidence, 4) if fit_confidence is not None else None
+                    ),
+                },
+                company_id=company_context_id,
+            )
+        return True
+
+    def publish_candidate_taken(
+        self,
+        *,
+        listing_id: int,
+        person_id: int,
+        identity_id: str,
+        participant_id: int,
+        npc_name: str,
+        fit_score: float | None,
+        fit_confidence: float | None,
+        company_context_id: int,
+    ) -> None:
+        """事件单独暴露：`commit=False` 的调用方在自己的事务提交后补发（与 T2/M1 约定一致）。"""
+        bus.publish(
+            "market.candidate_taken",
+            {
+                "person_id": int(person_id),
+                "identity_id": identity_id,
+                "listing_id": int(listing_id),
+                "participant_id": int(participant_id),
+                "participant_name": npc_name,
+                "known_fit_score": round(fit_score, 4) if fit_score is not None else None,
+                "fit_confidence": (
+                    round(fit_confidence, 4) if fit_confidence is not None else None
+                ),
+            },
+            company_id=company_context_id,
+        )
 
     def run_once(
         self,
@@ -289,29 +383,21 @@ class NpcMarketService:
                         )
                     )
                     continue
-                # CAS 关闭：并发/重复调用只有一个赢家（同一语义与玩家招募一致）
-                claimed = market_repo.close_active_listing(
+                # CAS 关闭 + 事件（M1.8 起抽成 `take_candidate`：M1 的 NPC 经济要在
+                # 同一事务里加"付钱"这一步，见 docs/m1-economy-design.md §29）
+                claimed = self.take_candidate(
                     db,
-                    view.listing_id,
-                    reason="npc_recruited",
-                    recruited_participant_id=int(participant.id),
+                    listing_id=view.listing_id,
+                    person_id=view.person_id,
+                    identity_id=view.identity_id,
+                    participant_id=int(participant.id),
+                    npc_name=spec.display_name,
+                    fit_score=score,
+                    fit_confidence=confidence,
+                    company_context_id=company_context_id,
                 )
                 if not claimed:
                     continue
-                db.commit()
-                bus.publish(
-                    "market.candidate_taken",
-                    {
-                        "person_id": view.person_id,
-                        "identity_id": view.identity_id,
-                        "listing_id": view.listing_id,
-                        "participant_id": int(participant.id),
-                        "participant_name": spec.display_name,
-                        "known_fit_score": round(score, 4),
-                        "fit_confidence": round(confidence, 4),
-                    },
-                    company_id=company_context_id,
-                )
                 acquired.append(
                     NpcAcquisition(
                         listing_id=view.listing_id,
