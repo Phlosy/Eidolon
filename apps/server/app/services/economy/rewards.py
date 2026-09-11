@@ -80,6 +80,21 @@ ACHIEVEMENT_CODES: dict[str, str] = {
 #: 公司档案补全的等价信号（见模块 docstring）：公司自建岗位编制数阈值
 COMPANY_PROFILE_MIN_POSITIONS = 1
 
+#: **官方类**奖励（由业务流发放，不走自助领取）：工作市场结算、资助、采购、活动等。
+#: M1.3 起由 `WorkOrderService.settle()` 经 `SettlementService` 发钱后调用
+#: `record_external_grant()` 落审计行；**永远不可从玩家 API 自助领取**。
+OFFICIAL_KINDS = frozenset(
+    {
+        RewardType.official_bounty,
+        RewardType.official_contract,
+        RewardType.research_grant,
+        RewardType.system_procurement,
+        RewardType.milestone_reward,
+        RewardType.event_reward,
+        RewardType.weekly_activity,
+    }
+)
+
 
 class RewardError(RuntimeError):
     """奖励领域错误（reason code 机器可读；API 层转 HTTP）。"""
@@ -510,6 +525,74 @@ class RewardService:
                 self, actor=actor, company_id=company_id, reference_key=reference
             ),
         )
+
+    # ---------------------------------------------------------------- 官方类（业务流）
+
+    def record_external_grant(
+        self,
+        *,
+        reward_type: RewardType,
+        actor: EconomicActor,
+        company_id: int,
+        amount: int,
+        reference_key: str,
+        ledger_transaction_id: int,
+        reason: str = "",
+        metadata: dict | None = None,
+        commit: bool = False,
+    ) -> tuple[RewardGrant, bool]:
+        """记录**官方类**奖励的发放（钱已由 `SettlementService` 走完，本方法只落审计行）。
+
+        - 只接受 `OFFICIAL_KINDS`：自助类型必须走 `claim()`（那条路才负责 mint）——
+          否则会出现"用 record 造出无对应账本交易的 grant"；
+        - 幂等语义与 `claim()` 一致：同 `(reward_type, actor, reference_key)` 返回既有行，
+          **绝不重复发钱**（钱那一侧由结算幂等负责，这里是奖励视图的一致性）；
+        - `status` 直接落 POSTED（钱已完成），携带 `ledger_transaction_id`（E16 可追溯）。
+        """
+        if reward_type not in OFFICIAL_KINDS:
+            raise RewardError("not_official_kind", http_status=422)
+        actor_kind, actor_ref = economy_repo.actor_columns(actor)
+        existing = economy_repo.find_reward_grant(
+            self.db,
+            reward_type=reward_type.value,
+            actor_kind=actor_kind,
+            actor_ref=actor_ref,
+            reference_key=reference_key,
+        )
+        if existing is not None:
+            return existing, False
+        try:
+            grant = economy_repo.insert_reward_grant(
+                self.db,
+                reward_type=reward_type.value,
+                actor_kind=actor_kind,
+                actor_ref=actor_ref,
+                company_id=company_id,
+                amount=int(amount),
+                currency=Currency.credit.value,
+                reference_key=reference_key,
+                reason=reason or reward_type.value.lower(),
+                policy_version=self.policy.version,
+                status=RewardStatus.posted.value,
+                ledger_transaction_id=int(ledger_transaction_id),
+                claimed_at=utcnow(),
+                posted_at=utcnow(),
+                metadata_json=dict(metadata or {}),
+            )
+        except IntegrityError:
+            # 并发结算同一订单：唯一约束裁定赢家，输家复用（钱那侧同样幂等）
+            self.db.rollback()
+            existing = economy_repo.find_reward_grant(
+                self.db,
+                reward_type=reward_type.value,
+                actor_kind=actor_kind,
+                actor_ref=actor_ref,
+                reference_key=reference_key,
+            )
+            if existing is None:  # pragma: no cover - 唯一冲突必然来自同 key
+                raise
+            return existing, False
+        return grant, True
 
     # ---------------------------------------------------------------- 领取
 

@@ -11,6 +11,11 @@
 
 from app.services.economy.accounts import AccountError, AccountService
 from app.services.economy.balances import DerivedWallet, derive_wallets
+from app.services.economy.evaluations import (
+    EvaluationError,
+    EvaluationOutcome,
+    EvaluationService,
+)
 from app.services.economy.ledger import (
     AUTHORITY_KINDS,
     AuthorityRequired,
@@ -34,10 +39,23 @@ from app.services.economy.projection import (
 )
 from app.services.economy.rewards import (
     ACHIEVEMENT_CODES,
+    OFFICIAL_KINDS,
     SELF_SERVICE_KINDS,
     RewardError,
     RewardEvaluation,
     RewardService,
+)
+from app.services.economy.settlement import (
+    SettlementError,
+    SettlementRequest,
+    SettlementResult,
+    SettlementService,
+)
+from app.services.economy.work_orders import (
+    OFFICIAL_REWARD_TYPES,
+    PublishResult,
+    WorkOrderError,
+    WorkOrderService,
 )
 
 __all__ = [
@@ -46,6 +64,18 @@ __all__ = [
     "AccountService",
     "AuthorityRequired",
     "DerivedWallet",
+    "EvaluationError",
+    "EvaluationOutcome",
+    "EvaluationService",
+    "OFFICIAL_KINDS",
+    "OFFICIAL_REWARD_TYPES",
+    "PublishResult",
+    "SettlementError",
+    "SettlementRequest",
+    "SettlementResult",
+    "SettlementService",
+    "WorkOrderError",
+    "WorkOrderService",
     "IdempotencyConflict",
     "InsufficientFunds",
     "LedgerError",
