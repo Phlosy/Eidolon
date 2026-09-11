@@ -372,7 +372,7 @@ cd apps/web && npm run build
 | T2.5 Person-scoped Fit | **DONE**（2026-09-10） | `524868c` | 一套引擎两个入口（owner 口径 person 优先，hash 相等）+ 市场 Fit 读面 + 搜索标注排序；无迁移；pytest 745 |
 | T2.6 Recruitment | **DONE**（2026-09-10） | `748f0f1` | 招募事务（CAS + 同事务建人/任职）+ R5 知识读路径修复 + 验收 B 实测；无迁移；pytest 754 |
 | T2.7 Market Experience & NPC | **DONE**（2026-09-11） | `9f57f0a` / `594bdad` | 市场 UI（浏览/档案/Fit/招募/我的挂牌）+ NPC 参与者（迁移 v31）；pytest 763 / web 328 |
-| T2.8 E2E / Hardening / Freeze | **DONE**（2026-09-11） | `见 Progress Log` | Golden Path 26 步 E2E + 验收 A–D + 并发/CAS/N+1/结业评估硬化；**T2 冻结**；pytest 775 / web 328 |
+| T2.8 E2E / Hardening / Freeze | **DONE**（2026-09-11） | `cd2e887` | Golden Path 26 步 E2E + 验收 A–D + 并发/CAS/N+1/结业评估硬化；**T2 冻结**；pytest 775 / web 328 |
 
 > **T2 状态：FROZEN（2026-09-11）**。后续变更需走设计文档评审；M1（货币/合同/escrow）与 M2（联网市场）开工前请先读设计 §11 边界与 §10e–§10f。
 
@@ -538,7 +538,7 @@ cd apps/web && npm run build
     `mine=true` 只回本公司挂牌、被买走的档案 404；
     UI 实机：/market 渲染 2 张卡片 + 我的挂牌（3 个待挂牌 + 1 个下架）、/market/3 渲染
     8 人格 / 10 能力 / 8 履历 / 20 证据 / 8 知识主题，选职位后出现 8 条逐项 Fit，控制台 0 错误。
-- **2026-09-11 · T2.8 DONE —— T2 冻结**：commit 哈希见紧随的 `docs(t2): T2.8 进度落盘` 提交。
+- **2026-09-11 · T2.8 DONE —— T2 冻结**：commit **`cd2e887`**（`test(t2): golden path e2e + hardening + T2 freeze (T2.8)`，10 files / +921）。
   - **Golden Path 26 步 E2E**（`tests/test_t2_golden_path.py`，一条测试全链走完）：建角色 → 3 轮自由学习
     → 履历/知识/证据 → 显式结业 READY → 挂牌 → **跨公司**市场可见（别家公司挂牌可由本会话读到）
     → 档案（时间线/10 维能力/证据下钻）→ 选职位 person Fit → 招募 → listing 关闭 → Employee
