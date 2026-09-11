@@ -295,6 +295,18 @@ class Orchestrator:
                 ws.summary = error or f"产出 {len(produced)} 个交付物"
                 ws.error = error
                 ws.cost = {**(ws.cost or {}), "duration_sec": round(duration, 3), "tokens": 0}
+                # M1.5：算力成本（Sink）—— **计量总是发生**，扣款尽力而为（余额不足记 unpaid）。
+                # 放在这里的原因：会话结束才有时长这个事实；计量失败绝不能影响任务终态，
+                # 所以只记录日志（unpaid/异常都会在成本报表与日志里暴露）。
+                try:
+                    from app.services.economy.costs import ComputeCostService
+
+                    if company_id is not None:
+                        ComputeCostService(db).record_for_session(
+                            ws, company_id=company_id, model=ws.model or ""
+                        )
+                except Exception:
+                    logger.exception("compute cost recording failed for work_session=%s", ws.id)
                 # §10.2：success 是客观事实，与"人是否评价过"无关，都必须落库
                 for usage in knowledge_repo.list_skill_usages_for_task(db, task_id):
                     usage.success = success

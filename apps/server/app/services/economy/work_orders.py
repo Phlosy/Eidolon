@@ -44,6 +44,7 @@ from app.models.enums import (
     WorkOrderStatus,
 )
 from app.repositories import economy as economy_repo
+from app.services.economy.costs import FeeService
 from app.services.economy.escrow import EscrowService
 from app.services.economy.evaluations import EvaluationError, EvaluationService, bonus_total
 from app.services.economy.rewards import RewardService
@@ -239,12 +240,28 @@ class WorkOrderService:
                 metadata={"kind": kind.value},
                 commit=False,
             )
+            # 挂牌手续费（§7 市场手续费 Sink）：treasury/burn 按政策拆分；
+            # 收费在**发布时**而不是结算时 —— 否则发布方结算时没钱会让整个结算失败。
+            # 余额不足时 `charge` 返回 paid=False（记欠费），订单照常发布（钱已锁在托管里）。
+            fee_quote, fee_charge = FeeService(self.db, policy=self.policy).charge_listing_fee(
+                actor=issuer,
+                gross=int(reward_amount),
+                reference_type="work_order",
+                reference_id=str(int(order.id)),
+                idempotency_key=f"market_fee:work_order:{int(order.id)}",
+                commit=False,
+            )
         except Exception:
             # 锁资失败（余额不足/账户冻结/…)⇒ 整笔回滚：不留下未锁资的订单（E11）
             if commit:
                 self.db.rollback()
             raise
-        order.metadata_json = {**(order.metadata_json or {}), "escrow_id": int(escrow.id)}
+        order.metadata_json = {
+            **(order.metadata_json or {}),
+            "escrow_id": int(escrow.id),
+            "listing_fee": fee_quote.fee,
+            "listing_fee_paid": bool(fee_charge.paid),
+        }
         self.db.flush()
         if commit:
             self.db.commit()

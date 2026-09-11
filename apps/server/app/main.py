@@ -59,6 +59,11 @@ async def lifespan(app: FastAPI):
     # P6：真实工作 → Evidence → Assessment 的事件处理器（settings 门控，测试默认关）
     if settings.evidence_pipeline_enabled:
         evidence_pipeline.register(engine_module.engine)
+    # M1.5：经营成本消费者（培养成本 → Treasury）；默认关，按需在 .env 打开
+    if settings.economy_cost_consumers_enabled:
+        from app.services.economy import consumers as economy_cost_consumers
+
+        economy_cost_consumers.register(engine_module.engine)
     await engine_module.engine.start()
     manager = get_manager()
     await manager.start_healthcheck_loop()
