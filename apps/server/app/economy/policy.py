@@ -44,6 +44,7 @@ class EconomicPolicy:
     fee_treasury_ratio: float
     fee_burn_ratio: float
     compute_credit_per_unit: int
+    training_credit_per_session: int
 
     def __post_init__(self) -> None:
         if not self.version.strip():
@@ -58,6 +59,7 @@ class EconomicPolicy:
             "weekly_activity_reward",
             "recovery_grant",
             "compute_credit_per_unit",
+            "training_credit_per_session",
             "official_max_reward",
             "official_outstanding_budget",
             "player_order_max_reward",
@@ -125,6 +127,7 @@ def _load_policy() -> EconomicPolicy:
         fee_treasury_ratio=settings.economy_fee_treasury_ratio,
         fee_burn_ratio=settings.economy_fee_burn_ratio,
         compute_credit_per_unit=settings.economy_compute_credit_per_unit,
+        training_credit_per_session=settings.economy_training_credit_per_session,
         official_max_reward=settings.economy_official_max_reward,
         official_outstanding_budget=settings.economy_official_outstanding_budget,
         player_order_max_reward=settings.economy_player_order_max_reward,

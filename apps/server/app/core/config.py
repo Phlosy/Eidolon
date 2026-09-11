@@ -55,7 +55,10 @@ class Settings(BaseSettings):
     economy_market_fee_bps: int = 500  # 基点：500 = 5%
     economy_fee_treasury_ratio: float = 0.6
     economy_fee_burn_ratio: float = 0.4
-    economy_compute_credit_per_unit: int = 1
+    economy_compute_credit_per_unit: int = 1  # 1 compute unit = 1 分钟 Agent 运行时长
+    economy_training_credit_per_session: int = 200  # 培养成本：每个培养 session 的 CREDIT
+    # M1.5 成本事件消费者（培养成本）默认关；测试/dev 显式开
+    economy_cost_consumers_enabled: bool = False
 
     # v0.4 — employee lifecycle
     # Admin API token for the builtin Gitea (a fresh install has no admin account;

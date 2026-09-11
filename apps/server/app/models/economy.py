@@ -23,6 +23,7 @@ from datetime import datetime
 from sqlalchemy import (
     JSON,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -114,6 +115,8 @@ class LedgerTransaction(TimestampMixin, Base):
     )
 
     transaction_type: Mapped[str] = mapped_column(String(24), index=True)
+    #: 业务类别（`EconomicCategory`，M1.5）：报表/观测的一等分类（NULL = 未分类）
+    category: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     currency: Mapped[str] = mapped_column(String(12), default=Currency.credit.value)
     status: Mapped[str] = mapped_column(
         String(12), default=LedgerTransactionStatus.posted.value, index=True
@@ -361,4 +364,51 @@ class Escrow(TimestampMixin, Base):
     released_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     refunded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class ComputeUsage(TimestampMixin, Base):
+    """算力计量（M1.5，设计 §26）：**持续型 Sink** 的事实来源。
+
+    - 计量总是发生（Agent 跑过就是事实），扣款尽力而为：`status ∈ {paid, unpaid}`；
+    - `unpaid` 不是"免费"：它是一笔未清的成本（M1.9 的欠费/停服策略据此决策），
+      而且**绝不产生负余额**（E24）；
+    - `units` × `unit_price` = `amount`（整数最小单位；v1 的 1 unit = 1 分钟运行时），
+      未来接 provider 真实成本映射时只改 `unit_price` 的来源（§26）；
+    - `idempotency_key` 唯一：同一 session/任务重放不会重复扣款（E12 同族）。
+    """
+
+    __tablename__ = "compute_usage"
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_compute_usage_idempotency"),
+        Index("ix_compute_usage_company", "company_id", "id"),
+        Index("ix_compute_usage_status", "status"),
+    )
+
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"), index=True)
+    employee_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: 关联的运行时/会话（只存引用，不复制内容）
+    work_session_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    runtime_instance_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    provider_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    model: Mapped[str] = mapped_column(String(120), default="")
+
+    units: Mapped[int] = mapped_column(Integer, default=1)
+    unit_price: Mapped[int] = mapped_column(Integer, default=1)
+    amount: Mapped[int] = mapped_column(Integer, default=0)
+    currency: Mapped[str] = mapped_column(String(12), default=Currency.credit.value)
+    tokens: Mapped[int] = mapped_column(Integer, default=0)
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    status: Mapped[str] = mapped_column(String(12), default="paid")
+    unpaid_reason: Mapped[str] = mapped_column(String(60), default="")
+    #: 扣款交易（treasury / burn 两条腿各自的交易；未扣款时为空）
+    treasury_transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ledger_transactions.id"), nullable=True
+    )
+    burn_transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ledger_transactions.id"), nullable=True
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)

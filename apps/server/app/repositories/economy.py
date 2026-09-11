@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.economy.contracts import EconomicActor, EconomyContractError
 from app.models.base import utcnow
 from app.models.economy import (
+    ComputeUsage,
     Escrow,
     Evaluation,
     LedgerAccount,
@@ -768,3 +769,99 @@ def transition_escrow(
             .values(**values)
         ).rowcount
     )
+
+
+# --------------------------------------------------------------------------- compute usage
+
+
+def insert_compute_usage(db: Session, **values: object) -> ComputeUsage:
+    usage = ComputeUsage(**values)
+    db.add(usage)
+    db.flush()
+    return usage
+
+
+def find_compute_usage_by_key(db: Session, key: str) -> ComputeUsage | None:
+    return db.scalars(select(ComputeUsage).where(ComputeUsage.idempotency_key == key)).first()
+
+
+def get_compute_usage(db: Session, usage_id: int) -> ComputeUsage | None:
+    return db.get(ComputeUsage, usage_id)
+
+
+def list_compute_usage(
+    db: Session,
+    *,
+    company_id: int | None = None,
+    statuses: tuple[str, ...] | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[ComputeUsage]:
+    stmt = select(ComputeUsage)
+    if company_id is not None:
+        stmt = stmt.where(ComputeUsage.company_id == company_id)
+    if statuses is not None:
+        stmt = stmt.where(ComputeUsage.status.in_(statuses))
+    stmt = stmt.order_by(ComputeUsage.id.desc())
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    if offset:
+        stmt = stmt.offset(offset)
+    return list(db.scalars(stmt))
+
+
+def count_compute_usage(db: Session, *, company_id: int | None = None) -> int:
+    stmt = select(func.count()).select_from(ComputeUsage)
+    if company_id is not None:
+        stmt = stmt.where(ComputeUsage.company_id == company_id)
+    return int(db.execute(stmt).scalar_one())
+
+
+def compute_usage_totals(db: Session, *, company_id: int) -> dict[str, int]:
+    """本公司算力成本汇总（paid / unpaid 分开 —— `unpaid` 是未清成本，不能当作免费）。"""
+    rows = db.execute(
+        select(ComputeUsage.status, func.coalesce(func.sum(ComputeUsage.amount), 0))
+        .where(ComputeUsage.company_id == company_id)
+        .group_by(ComputeUsage.status)
+    ).all()
+    totals = {"paid": 0, "unpaid": 0}
+    for status, amount in rows:
+        totals[str(status)] = int(amount)
+    return totals
+
+
+# --------------------------------------------------------------------------- 经营报表
+
+
+def category_totals_for_accounts(
+    db: Session, *, account_ids: list[int]
+) -> dict[str | None, tuple[int, int]]:
+    """按 `category` 聚合本公司账户的资金流（(debit, credit) 两侧都返回）。
+
+    报表的口径：`category` 描述**业务事件**，(debit, credit) 让读面按公司方向解释收/支
+    （同一笔玩家订单：承接方是收入、发布方是支出）。
+    """
+    if not account_ids:
+        return {}
+    rows = db.execute(
+        select(
+            LedgerTransaction.category,
+            LedgerEntry.direction,
+            func.coalesce(func.sum(LedgerEntry.amount), 0),
+        )
+        .join(LedgerEntry, LedgerEntry.transaction_id == LedgerTransaction.id)
+        .where(
+            LedgerEntry.account_id.in_(account_ids),
+            LedgerTransaction.status == LedgerTransactionStatus.posted.value,
+        )
+        .group_by(LedgerTransaction.category, LedgerEntry.direction)
+    ).all()
+    totals: dict[str | None, tuple[int, int]] = {}
+    for category, direction, amount in rows:
+        debits, credits = totals.get(category, (0, 0))
+        if direction == LedgerEntryDirection.debit.value:
+            debits += int(amount)
+        else:
+            credits += int(amount)
+        totals[category] = (debits, credits)
+    return totals
