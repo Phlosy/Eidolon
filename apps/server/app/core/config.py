@@ -52,7 +52,8 @@ class Settings(BaseSettings):
     economy_official_max_reward: int = 50_000  # 单笔官方任务上限（预算内发行）
     economy_official_outstanding_budget: int = 1_000_000  # 未结算官方任务总额上限
     economy_player_order_max_reward: int = 1_000_000  # 玩家订单单笔上限（花自己的钱，仍设护栏）
-    economy_market_fee_bps: int = 500  # 基点：500 = 5%
+    economy_market_fee_bps: int = 500  # 基点：500 = 5%（挂牌/市场交易）
+    economy_contract_fee_bps: int = 300  # 基点：300 = 3%（合同结算，从对价里扣）
     economy_fee_treasury_ratio: float = 0.6
     economy_fee_burn_ratio: float = 0.4
     economy_compute_credit_per_unit: int = 1  # 1 compute unit = 1 分钟 Agent 运行时长

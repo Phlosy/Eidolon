@@ -821,6 +821,16 @@ class EvaluationVerdict(StrEnum):
     revise = "revise"
 
 
+class OfferStatus(StrEnum):
+    """Offer 状态机（设计 §22，M1.6 冻结）：被接受后**生成合同**，Offer 本身不产生资金流。"""
+
+    open = "OPEN"
+    accepted = "ACCEPTED"
+    rejected = "REJECTED"
+    withdrawn = "WITHDRAWN"
+    expired = "EXPIRED"
+
+
 class ContractType(StrEnum):
     """通用合同类型（设计 §21）：工作/人才/服务/采购/科研共用一个核心。"""
 

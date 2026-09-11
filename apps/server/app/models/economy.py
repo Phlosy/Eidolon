@@ -36,6 +36,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, utcnow
 from app.models.enums import (
+    ContractStatus,
+    ContractType,
     Currency,
     EscrowStatus,
     EvaluationMode,
@@ -44,6 +46,7 @@ from app.models.enums import (
     LedgerAccountKind,
     LedgerAccountStatus,
     LedgerTransactionStatus,
+    OfferStatus,
     WorkOrderKind,
     WorkOrderStatus,
 )
@@ -328,8 +331,15 @@ class Escrow(TimestampMixin, Base):
 
     __tablename__ = "escrows"
     __table_args__ = (
-        # 一个订单一个 Escrow（重复发布/重试由唯一约束收敛）
+        # 一个订单/一个合同一个 Escrow（重复发布/重试由唯一约束收敛）
         UniqueConstraint("work_order_id", name="uq_escrow_work_order"),
+        Index(
+            "uq_escrow_contract",
+            "contract_id",
+            unique=True,
+            sqlite_where=text("contract_id IS NOT NULL"),
+            postgresql_where=text("contract_id IS NOT NULL"),
+        ),
         Index("ix_escrows_status", "status"),
         Index("ix_escrows_payer", "payer_actor_kind", "payer_actor_ref"),
         Index("ix_escrows_status_expires", "status", "expires_at"),
@@ -337,6 +347,11 @@ class Escrow(TimestampMixin, Base):
 
     #: 服务的业务对象（M1.4 只服务 WorkOrder；M1.6 的 Contract 复用同一张表）
     work_order_id: Mapped[int | None] = mapped_column(ForeignKey("work_orders.id"), nullable=True)
+    #: 合同托管（M1.6）：**权威指针在这里**（合同读面通过它反查）；刻意不在 contracts 上
+    #: 再放一个 escrow_id —— 两个指针会漂移
+    contract_id: Mapped[int | None] = mapped_column(
+        ForeignKey("contracts.id", name="fk_escrows_contract_id"), nullable=True
+    )
     payer_actor_kind: Mapped[str] = mapped_column(String(20))
     payer_actor_ref: Mapped[int] = mapped_column(Integer)
     payee_actor_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -411,4 +426,94 @@ class ComputeUsage(TimestampMixin, Base):
     )
     idempotency_key: Mapped[str] = mapped_column(String(120))
     occurred_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class Contract(TimestampMixin, Base):
+    """通用商业合同（M1.6，设计 §21）：工作/人才/服务/采购/科研共享一个核心。
+
+    - **对价 `consideration_amount` 是一等列**（不塞 `terms_json`）：可查、可约束、可结算；
+    - `parties` 用 actor 列表达（issuer/contractor）：`issuer` 必填，`contractor` 接受后回填；
+    - 托管资金不从合同行上指 `escrow_id`（权威指针在 `escrows.contract_id`，避免两个指针漂移）；
+    - `status` 走 M1.0 冻结状态机（§37）：
+      `DRAFT → PENDING_ACCEPTANCE → ACTIVE → FUNDED → FULFILLED → SETTLING → SETTLED`
+      （另有 CANCELLED / EXPIRED / FAILED / DISPUTED）；
+    - `settled_transaction_id` 指向终局交易（E16）；结算幂等靠
+      `settlement_key = contract:<id>`（E12）。
+    """
+
+    __tablename__ = "contracts"
+    __table_args__ = (
+        Index("ix_contracts_status_expires", "status", "expires_at"),
+        Index("ix_contracts_issuer", "issuer_actor_kind", "issuer_actor_ref"),
+        Index("ix_contracts_contractor", "contractor_actor_kind", "contractor_actor_ref"),
+    )
+
+    code: Mapped[str] = mapped_column(String(60), unique=True)
+    contract_type: Mapped[str] = mapped_column(String(20), default=ContractType.work.value)
+    title: Mapped[str] = mapped_column(String(300))
+    subject: Mapped[str] = mapped_column(Text, default="")
+    #: 条款细节（自由结构）；金额/双方/状态/期限都是一等列（§21）
+    terms_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    consideration_amount: Mapped[int] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String(12), default=Currency.credit.value)
+    policy_version: Mapped[str] = mapped_column(String(40), default="")
+
+    issuer_actor_kind: Mapped[str] = mapped_column(String(20))
+    issuer_actor_ref: Mapped[int] = mapped_column(Integer)
+    contractor_actor_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    contractor_actor_ref: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    status: Mapped[str] = mapped_column(String(24), default=ContractStatus.draft.value, index=True)
+    #: 业务锚点（订单/Offer/自定义）
+    reference_type: Mapped[str] = mapped_column(String(40), default="")
+    reference_id: Mapped[str] = mapped_column(String(64), default="")
+
+    effective_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    settlement_transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ledger_transactions.id"), nullable=True
+    )
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class Offer(TimestampMixin, Base):
+    """出价/申请（M1.6，设计 §22）：人才出价、合同申请、报价都用它。
+
+    **Offer 本身不产生资金流**：被接受后生成 `Contract`（`contract_id` 回填）。
+    锚点三选一（`work_order_id` / `listing_id` / 无锚点 = 直接报价给某主体）。
+    """
+
+    __tablename__ = "offers"
+    __table_args__ = (
+        Index("ix_offers_work_order", "work_order_id", "id"),
+        Index("ix_offers_listing", "listing_id", "id"),
+        Index("ix_offers_from", "from_actor_kind", "from_actor_ref"),
+    )
+
+    contract_type: Mapped[str] = mapped_column(String(20), default=ContractType.work.value)
+    work_order_id: Mapped[int | None] = mapped_column(ForeignKey("work_orders.id"), nullable=True)
+    #: T2 挂牌（人才出价，M1.7 使用）；刻意不加 FK（跨域引用，T2 纪律）
+    listing_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    from_actor_kind: Mapped[str] = mapped_column(String(20))
+    from_actor_ref: Mapped[int] = mapped_column(Integer)
+    to_actor_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    to_actor_ref: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    amount: Mapped[int] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String(12), default=Currency.credit.value)
+    message: Mapped[str] = mapped_column(Text, default="")
+    terms_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    status: Mapped[str] = mapped_column(String(12), default=OfferStatus.open.value, index=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    #: 被接受后生成的合同（Offer 自己不产生资金流，§22）
+    contract_id: Mapped[int | None] = mapped_column(
+        ForeignKey("contracts.id", name="fk_escrows_contract_id"), nullable=True
+    )
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)

@@ -527,6 +527,7 @@ def test_policy_rejects_inconsistent_ratios():
             official_outstanding_budget=10_000,
             player_order_max_reward=100_000,
             training_credit_per_session=200,
+            contract_fee_bps=300,
         )
 
 

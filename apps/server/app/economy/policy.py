@@ -40,7 +40,8 @@ class EconomicPolicy:
     official_outstanding_budget: int
     player_order_max_reward: int
     # 回收侧（Sink）
-    market_fee_bps: int  # 基点（500 = 5%）
+    market_fee_bps: int  # 基点（500 = 5%）：挂牌/市场交易
+    contract_fee_bps: int  # 基点（300 = 3%）：合同结算
     fee_treasury_ratio: float
     fee_burn_ratio: float
     compute_credit_per_unit: int
@@ -67,6 +68,8 @@ class EconomicPolicy:
             validate_amount(getattr(self, name))
         if not 0 <= self.market_fee_bps <= 10_000:
             raise EconomyContractError("market_fee_bps must be within [0, 10000]")
+        if not 0 <= self.contract_fee_bps <= 10_000:
+            raise EconomyContractError("contract_fee_bps must be within [0, 10000]")
         if not 0 <= self.recovery_threshold <= MAX_AMOUNT:
             raise EconomyContractError("recovery_threshold out of range")
         if self.recovery_cooldown_hours < 0:
@@ -99,9 +102,19 @@ class EconomicPolicy:
             )
 
     def fee_for(self, amount: int) -> int:
-        """按基点计算手续费（向下取整；0 手续费即 0）。"""
+        """按基点计算市场手续费（向下取整；0 手续费即 0）。"""
         validate_amount(amount)
         return amount * self.market_fee_bps // 10_000
+
+    def fee_with_bps(self, amount: int, bps: int) -> int:
+        """按任意基点算手续费（合同手续费用；整数向下取整）。"""
+        validate_amount(amount)
+        if not 0 <= bps <= 10_000:
+            raise EconomyContractError("bps must be within [0, 10000]")
+        return amount * bps // 10_000
+
+    def contract_fee_for(self, amount: int) -> int:
+        return self.fee_with_bps(amount, self.contract_fee_bps)
 
     def split_fee(self, amount: int) -> tuple[int, int]:
         return split_fee(
@@ -124,6 +137,7 @@ def _load_policy() -> EconomicPolicy:
         recovery_cooldown_hours=settings.economy_recovery_cooldown_hours,
         official_reward_multiplier=settings.economy_official_reward_multiplier,
         market_fee_bps=settings.economy_market_fee_bps,
+        contract_fee_bps=settings.economy_contract_fee_bps,
         fee_treasury_ratio=settings.economy_fee_treasury_ratio,
         fee_burn_ratio=settings.economy_fee_burn_ratio,
         compute_credit_per_unit=settings.economy_compute_credit_per_unit,

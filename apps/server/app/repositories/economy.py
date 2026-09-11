@@ -17,24 +17,27 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from sqlalchemy import func, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.orm import Session
 
 from app.economy.contracts import EconomicActor, EconomyContractError
 from app.models.base import utcnow
 from app.models.economy import (
     ComputeUsage,
+    Contract,
     Escrow,
     Evaluation,
     LedgerAccount,
     LedgerEntry,
     LedgerTransaction,
+    Offer,
     RewardGrant,
     WalletProjection,
     WorkOrder,
     WorkOrderSubmission,
 )
 from app.models.enums import (
+    ContractStatus,
     Currency,
     EconomicActorKind,
     EscrowStatus,
@@ -730,6 +733,10 @@ def find_escrow_for_order(db: Session, *, work_order_id: int) -> Escrow | None:
     return db.scalars(select(Escrow).where(Escrow.work_order_id == work_order_id)).first()
 
 
+def find_escrow_for_contract(db: Session, *, contract_id: int) -> Escrow | None:
+    return db.scalars(select(Escrow).where(Escrow.contract_id == contract_id)).first()
+
+
 def insert_escrow(db: Session, **values: object) -> Escrow:
     escrow = Escrow(**values)
     db.add(escrow)
@@ -865,3 +872,165 @@ def category_totals_for_accounts(
             credits += int(amount)
         totals[category] = (debits, credits)
     return totals
+
+
+# --------------------------------------------------------------------------- contracts
+
+
+def get_contract(db: Session, contract_id: int) -> Contract | None:
+    return db.get(Contract, contract_id)
+
+
+def find_contract_by_code(db: Session, code: str) -> Contract | None:
+    return db.scalars(select(Contract).where(Contract.code == code)).first()
+
+
+def insert_contract(db: Session, **values: object) -> Contract:
+    contract = Contract(**values)
+    db.add(contract)
+    db.flush()
+    return contract
+
+
+def list_contracts(
+    db: Session,
+    *,
+    party: tuple[str, int] | None = None,
+    issuer: tuple[str, int] | None = None,
+    contractor: tuple[str, int] | None = None,
+    statuses: tuple[str, ...] | None = None,
+    contract_type: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[Contract]:
+    stmt = select(Contract)
+    if party is not None:
+        # 「本公司参与的」= 我是发布方或承接方（读面作用域，设计 §32）
+        stmt = stmt.where(
+            or_(
+                and_(
+                    Contract.issuer_actor_kind == party[0],
+                    Contract.issuer_actor_ref == party[1],
+                ),
+                and_(
+                    Contract.contractor_actor_kind == party[0],
+                    Contract.contractor_actor_ref == party[1],
+                ),
+            )
+        )
+    if issuer is not None:
+        stmt = stmt.where(
+            Contract.issuer_actor_kind == issuer[0], Contract.issuer_actor_ref == issuer[1]
+        )
+    if contractor is not None:
+        stmt = stmt.where(
+            Contract.contractor_actor_kind == contractor[0],
+            Contract.contractor_actor_ref == contractor[1],
+        )
+    if statuses is not None:
+        stmt = stmt.where(Contract.status.in_(statuses))
+    if contract_type is not None:
+        stmt = stmt.where(Contract.contract_type == contract_type)
+    stmt = stmt.order_by(Contract.id.desc())
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    if offset:
+        stmt = stmt.offset(offset)
+    return list(db.scalars(stmt))
+
+
+def count_contracts(
+    db: Session, *, party: tuple[str, int] | None = None, statuses: tuple[str, ...] | None = None
+) -> int:
+    stmt = select(func.count()).select_from(Contract)
+    if party is not None:
+        stmt = stmt.where(
+            or_(
+                and_(
+                    Contract.issuer_actor_kind == party[0],
+                    Contract.issuer_actor_ref == party[1],
+                ),
+                and_(
+                    Contract.contractor_actor_kind == party[0],
+                    Contract.contractor_actor_ref == party[1],
+                ),
+            )
+        )
+    if statuses is not None:
+        stmt = stmt.where(Contract.status.in_(statuses))
+    return int(db.execute(stmt).scalar_one())
+
+
+def transition_contract(
+    db: Session,
+    *,
+    contract_id: int,
+    from_statuses: tuple[str, ...],
+    to_status: ContractStatus,
+    **fields: object,
+) -> int:
+    """**条件更新 + rowcount 判定**：与订单/托管同一纪律（并发只有一个调用者能推进状态）。"""
+    values = {"status": to_status.value, "updated_at": utcnow(), **fields}
+    return int(
+        db.execute(
+            update(Contract)
+            .where(Contract.id == contract_id, Contract.status.in_(from_statuses))
+            .values(**values)
+        ).rowcount
+    )
+
+
+# --------------------------------------------------------------------------- offers
+
+
+def get_offer(db: Session, offer_id: int) -> Offer | None:
+    return db.get(Offer, offer_id)
+
+
+def insert_offer(db: Session, **values: object) -> Offer:
+    offer = Offer(**values)
+    db.add(offer)
+    db.flush()
+    return offer
+
+
+def list_offers(
+    db: Session,
+    *,
+    work_order_id: int | None = None,
+    listing_id: int | None = None,
+    to_actor: tuple[str, int] | None = None,
+    from_actor: tuple[str, int] | None = None,
+    statuses: tuple[str, ...] | None = None,
+    limit: int | None = None,
+) -> list[Offer]:
+    stmt = select(Offer)
+    if work_order_id is not None:
+        stmt = stmt.where(Offer.work_order_id == work_order_id)
+    if listing_id is not None:
+        stmt = stmt.where(Offer.listing_id == listing_id)
+    if to_actor is not None:
+        stmt = stmt.where(Offer.to_actor_kind == to_actor[0], Offer.to_actor_ref == to_actor[1])
+    if from_actor is not None:
+        stmt = stmt.where(
+            Offer.from_actor_kind == from_actor[0], Offer.from_actor_ref == from_actor[1]
+        )
+    if statuses is not None:
+        stmt = stmt.where(Offer.status.in_(statuses))
+    stmt = stmt.order_by(Offer.id.desc())
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    return list(db.scalars(stmt))
+
+
+def transition_offer(
+    db: Session, *, offer_id: int, from_statuses: tuple[str, ...], **fields: object
+) -> int:
+    values = {"updated_at": utcnow(), **fields}
+    return int(
+        db.execute(
+            update(Offer)
+            .where(Offer.id == offer_id, Offer.status.in_(from_statuses))
+            .values(**values)
+        ).rowcount
+    )
