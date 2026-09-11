@@ -369,7 +369,7 @@ cd apps/web && npm run build
 | T2.3 Market Core & MarketAdapter | **DONE**（2026-09-10） | `18e1bcb` | 迁移 v29（两张表 + 部分唯一索引）+ LocalMarketAdapter + MarketService + 公开投影读面；pytest 723 |
 | T2.4 Issuer & Market Supply | **DONE**（2026-09-10） | `2c6236f` | 迁移 v30（training_programs.metadata_json）+ IssuerService（三档参数）+ CLI；`origin=issued` 走真实培养链；pytest 736 |
 | T2.5 Person-scoped Fit | **DONE**（2026-09-10） | `524868c` | 一套引擎两个入口（owner 口径 person 优先，hash 相等）+ 市场 Fit 读面 + 搜索标注排序；无迁移；pytest 745 |
-| T2.6 Recruitment | **DONE**（2026-09-10） | `见 Progress Log` | 招募事务（CAS + 同事务建人/任职）+ R5 知识读路径修复 + 验收 B 实测；无迁移；pytest 754 |
+| T2.6 Recruitment | **DONE**（2026-09-10） | `748f0f1` | 招募事务（CAS + 同事务建人/任职）+ R5 知识读路径修复 + 验收 B 实测；无迁移；pytest 754 |
 | T2.7 Market Experience & NPC | **NEXT** | — | 入口：plan §4.8（市场 UI + NPC 参与者） |
 | T2.8 E2E / Hardening / Freeze | PLANNED | — | 本文件 §13/§14 |
 
@@ -492,7 +492,7 @@ cd apps/web && npm run build
     **对拍**：`/persons/1/fit` 与 `/employees/1/position-fit/4` 八项字段全等、hash 相等
     （owner 分别为 person-only 与 person+employee）；未知 listing/职位 → 404。
 
-- **2026-09-10 · T2.6 DONE**：commit 哈希见紧随的 `docs(t2): T2.6 进度落盘` 提交（避免自引用哈希）。
+- **2026-09-10 · T2.6 DONE**：commit **`748f0f1`**（`feat(recruitment): recruit existing person without copying assets (T2.6)`，10 files / +922）。
   - 后端：`services/recruitment.py`（RecruitmentService：CAS 关闭 listing → 建 Employee(person_id=既有)
     → 回填 recruited_* → 可选 `assign_position(commit=False)` → career_events(joined) + audit →
     单次 COMMIT → 提交后发 `person.recruited` 与 `employee.position_assigned`）；
