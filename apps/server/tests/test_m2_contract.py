@@ -274,15 +274,31 @@ def test_position_contract_carries_no_derived_capability():
         )
 
 
-def test_authority_grant_rejects_invalid_limits():
-    with pytest.raises(C.WorkContractError):
-        C.AuthorityGrant(kind=C.AuthorityKind.spend_credits, limit=0)
-    with pytest.raises(C.WorkContractError):
-        C.AuthorityGrant(kind=C.AuthorityKind.spend_credits, limit=True)  # bool 不是金额
-    with pytest.raises(C.WorkContractError):
-        C.AuthorityGrant(kind=C.AuthorityKind.assign_task, scope="  ")
-    assert C.AuthorityGrant(kind=C.AuthorityKind.spend_credits, limit=100).limit == 100
-    assert C.AuthorityGrant(kind=C.AuthorityKind.assign_task).limit is None
+def test_authority_grant_mirrors_the_v41_table():
+    """M2.2：`AuthorityGrant` 与 `position_authority_grants` 一一对应（契约即表）。"""
+    from app.models import Base
+
+    fields = {field.name for field in dataclasses.fields(C.AuthorityGrant)}
+    assert fields == {"kind", "scope_kind", "scope_ref", "max_amount", "grant_id"}
+    columns = set(Base.metadata.tables["position_authority_grants"].columns.keys())
+    for field_name in ("scope_kind", "scope_ref", "max_amount"):
+        assert field_name in columns, f"{field_name} 在契约里存在但表里没有"
+    # 作用域只有三种；金额只在金额类授权上
+    assert {scope.value for scope in C.AuthorityScopeKind} == {
+        "company",
+        "department",
+        "direct_reports",
+    }
+    assert C.AMOUNT_BEARING_AUTHORITIES == {C.AuthorityKind.spend_credits}
+    assert C.AuthorityKind.offboard in C.SELF_TARGET_FORBIDDEN_AUTHORITIES
+
+
+def test_authority_scope_is_not_a_general_abac_engine():
+    """M2-ADR-20 / 用户拍板：作用域只有三个值，不做策略语言。"""
+    assert len(list(C.AuthorityScopeKind)) == 3
+    source = _read("work/authority.py")
+    for forbidden in ("eval(", "jsonpath", "cel", "policy_expression", "attribute_"):
+        assert forbidden not in source, f"出现了通用策略引擎的迹象：{forbidden}"
 
 
 # ---------------------------------------------------------------------------
@@ -835,7 +851,7 @@ def test_every_invariant_has_a_live_anchor_or_an_owner_stage():
 
 
 #: 承载 M2 不变量锚点的测试模块（每个阶段可以有自己的文件；锚点表跨模块解析）。
-M2_TEST_MODULES = ("test_m2_contract", "test_m2_project_spec")
+M2_TEST_MODULES = ("test_m2_contract", "test_m2_project_spec", "test_m2_role_context")
 
 
 def test_enforced_invariants_have_existing_anchor_tests():

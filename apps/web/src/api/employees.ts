@@ -1,5 +1,6 @@
 import { del, get, patch, post } from "./client";
 import type {
+  EmployeeRoleContextPage,
   CompanyEvent,
   CreateEmployeeProviderInput,
   Employee,
@@ -104,4 +105,12 @@ export function setPrimaryBinding(id: number, bindingId: number): Promise<ModelB
 
 export function deleteEmployeeBinding(id: number, bindingId: number): Promise<void> {
   return del<void>(`/employees/${id}/bindings/${bindingId}`);
+}
+
+/**
+ * M2.2 履职上下文（只读）：职责 / 生效管理授权 / 期望引用 / 资源指针 / 在办项目。
+ * 响应里没有能力分数，也没有"该做什么"的建议 —— 那些不属于履职上下文。
+ */
+export function getEmployeeRoleContext(employeeId: number): Promise<EmployeeRoleContextPage> {
+  return get<EmployeeRoleContextPage>(`/employees/${employeeId}/role-context`);
 }

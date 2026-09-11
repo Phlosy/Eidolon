@@ -32,6 +32,10 @@ os.environ["EIDOLON_EVIDENCE_PIPELINE_ENABLED"] = "false"
 # 用 `planning_fixture="deterministic_template"` 请求确定性链条，
 # 而不是依赖"Manager 没反应就偷偷用模板"（那条路径已按 D3/W33 删除）。
 os.environ["EIDOLON_ALLOW_PLANNING_FIXTURES"] = "true"
+# M2.2：任职变化 → role.context_* 通知的消费者默认不起（与 position_access_sync 同款
+# 理由：lifespan 一跑起来后台消费者就会和测试抢同一份状态）。消费者本体由
+# tests/test_m2_role_context.py 直接调用 handle() 覆盖。
+os.environ["EIDOLON_ROLE_CONTEXT_EVENTS"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

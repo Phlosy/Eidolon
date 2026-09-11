@@ -204,6 +204,7 @@ def definitions_out(db: Session, company_id: int | None) -> list[dict]:
                 "description",
                 "legacy_role",
                 "built_in",
+                "advisory_scope",
             )
         }
         payload["slot_count"] = counts.get(definition.id, 0)

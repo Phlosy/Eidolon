@@ -153,6 +153,24 @@ Database invariant       唯一约束、复式守恒、append-only
 
 例：**普通 Engineer 没有 100000 Credits 的采购权限** → 系统拒绝。
 
+### 4.1b Authority 的落点与校验语义（M2.2 / v41）
+
+```text
+employee → 生效 PRIMARY 任职 → PositionSlot → PositionDefinition → position_authority_grants
+```
+
+| 项 | 结论 |
+| --- | --- |
+| 载体 | **新薄表** `position_authority_grants`（M2-ADR-16）；`position_definition_packages` 保持资源开通语义 |
+| 默认 | **default-deny**：无任职 / 无该授权 / 作用域说不清 / 金额缺失或超限 ⇒ 拒绝，并给出机器可读原因码 |
+| 生效范围 | 随 Active PositionAssignment 生效与失效；**不是** Person 的永久资产（W38） |
+| 禁止来源 | `employee.role` 字符串、`legacy_role`、Fit 分数、能力分、访问包、职责面、工作模式（W37） |
+| 作用域 | `company`（且被指向的部门/员工必须真在本公司）/ `department`（`scope_ref`=部门）/ `direct_reports`（汇报子树，**不含自己**） |
+| 金额 | `spend_credits` 必须给金额且不超上限；**没有上限 ≠ 不限**，而是「无法确认在授权内」⇒ 拒绝 |
+| 硬安全约束 | `offboard` / `release_position` 不允许作用于自己（`self_target`）—— 这是安全规则，不是管理判断 |
+| 只校验 | 授权层**不**选人、不排序、不给建议（W39） |
+| 版本/审计 | append-only + 时间窗；`grants_hash`（这次凭什么）+ `position_grants_hash`（当时手里有什么）双摘要，历史 DecisionRecord 可解释（W40） |
+
 ### 4.2 Soft Constraints（系统只报告，不强制）
 
 ```text
@@ -230,6 +248,20 @@ RoleResource(kind, ref, note="", required=False)
 - **不携带任何数值（score / level / weight）** —— 由 `tests/test_m2_contract.py` 用
   字段扫描钉死（AST 级），防止「资源」演化成「注入」。
 
+### 6.1b 解析语义（M2.2 / v41）
+
+每条资源**必须**解析到既有内容或既有配置（C6 / W41），三种结果：
+
+| `resolution` | 含义 | 允许出现吗 |
+| --- | --- | --- |
+| `resolved` | `pointer` 指向既有内容/配置：`knowledge_item:{id}` / `drive_node:{id}` / `company_setting:{key}` | ✅ |
+| `advisory` | 按设计不指向内容（`skill_hint` 只是一个"建议学的技能名"） | ✅ |
+| `missing` | 指针目标**尚不存在**（公司还没发布对应知识/手册） | ✅ —— 如实报告，**不**造假内容 |
+
+载体是薄表 `position_definition_resources(position_definition_id, kind, ref, note, required)`；
+内容永远住在 `knowledge_items` / `drive_nodes` / `companies.settings` 里 ——
+「给新 CEO 一份阅读清单」不能变成第二套文档系统。
+
 ### 6.2 Starter Playbook
 
 官方可以提供 `CEO / CTO / PM / QA Starter Playbook`，用途仅限：
@@ -279,6 +311,10 @@ W7   职位任命从不授予 competency score
 ```
 
 ### 7.3 契约落点
+
+> **Authority 不属于任何记忆平面**：`position_authority_grants` 挂的是**职位**，
+> 既不随人走（不是个人资产），也不是制度知识（不是内容）。人一卸任就失效 ——
+> 这正是 M2-ADR-17（W38）要表达的东西。
 
 `app/work/contracts.py::MEMORY_PLANE_SURFACES` 把**每一张表**声明到所在平面；
 `tests/test_m2_contract.py` 校验：表名真实存在于模型注册表、两平面**不相交**、
@@ -691,7 +727,7 @@ W11  Fit is decision-support only.
 
 ---
 
-## 14. M2 不变量（W1–W36）
+## 14. M2 不变量（W1–W42）
 
 | # | 不变量 | M2.0 状态 |
 | --- | --- | --- |
@@ -731,6 +767,12 @@ W11  Fit is decision-support only.
 | **W34** | When the responsible manager is absent or fails, the project waits or escalates; the system never takes over planning. | **M2.1 强制** |
 | **W35** | work_mode is snapshotted per project at creation; later company-default changes never rewrite it. | **M2.1 强制** |
 | **W36** | guided and managed differ only in human involvement level, never in decision ownership. | **M2.1 强制** |
+| **W37** | Authority is default-deny and resolved from the active PositionAssignment, never from role strings or scores. | **M2.2 强制** |
+| **W38** | Authority follows the assignment and never becomes a permanent Person asset. | **M2.2 强制** |
+| **W39** | Authority validation only validates; it never selects, ranks, or judges management actions. | **M2.2 强制** |
+| **W40** | Authority grants are append-only and time-versioned; any decision can pin why it was legal. | **M2.2 强制** |
+| **W41** | Role resources are pointers into existing content; the index never stores content. | **M2.2 强制** |
+| **W42** | position_definition_packages stays resource provisioning; management authority lives only in position_authority_grants. | **M2.2 强制** |
 
 > **"M2.0 强制"** = M2.0 就有可执行测试锚点；
 > **"冻结"** = M2.0 冻结契约与归属，锚点在其 owner 阶段落地。
@@ -785,6 +827,12 @@ W11  Fit is decision-support only.
 | **M2-ADR-13** | `work_mode` 与责任目标都是**项目级快照**；公司默认值的变化不改写既有项目 | 用户拍板 D2/B12；避免执行中语义漂移 |
 | **M2-ADR-14** | 管理 actor 在项目上只存**当前指针**，权威是责任路由、历史归 DecisionRecord | 用户拍板"Project 不要保存 CEO 决定"；换人不丢历史 |
 | **M2-ADR-15** | guided 是**教学/协助**层：Manager 仍自主决策，人类只在关键动作上确认 | 用户拍板 D2/B8；防止 guided 变成"系统替 CEO 规划" |
+| **M2-ADR-16** | 管理授权落在**新薄表** `position_authority_grants`（v41）；`position_definition_packages` **保持**资源开通语义 | 用户拍板方案 A：管理权与「能访问什么资源」是两件事，混在一张表里必然互相污染 |
+| **M2-ADR-17** | Authority **default-deny**，随 Active PositionAssignment 生效/失效；**永不**读 `employee.role` 字符串（也不读 Fit/分数/访问包） | 用户拍板；`role` 是 deprecated 镜像，用它判权限等于让镜像变成真相 |
+| **M2-ADR-18** | Authority **只校验**（在不在授权内），**不**替 Agent 选人/排序/判断该不该做 | W39；`Agent makes decisions.` 的直接推论 |
+| **M2-ADR-19** | 授权 **append-only + 时间窗**，并提供 `grants_hash` / `position_grants_hash` 快照，使历史 DecisionRecord 能解释「当时为什么有权」 | 用户要求 v41 同时提供审计/版本语义 |
+| **M2-ADR-20** | 作用域只支持 `company` / `department` / `direct_reports` + 金额上限；**不**建通用 ABAC 引擎 | 用户拍板：够用即可，策略语言是长期负债 |
+| **M2-ADR-21** | Role Resource Index 只存**指针**（`knowledge_items` / `drive_nodes` / `companies.settings`），目标不存在就报 `missing` | C6/W41；「给新 CEO 一份阅读清单」不能变成第二套文档系统 |
 
 ---
 
@@ -808,3 +856,6 @@ W11  Fit is decision-support only.
 | **Work Intake** | 组织责任：谁负责接收工作、做高层判断与委派（默认 CEO，公司可配） |
 | **Planning Fixture** | 确定性规划替身（CI/教程/测试/演示基础设施，不是产品模式） |
 | **Human Involvement** | guided 与 managed 的**唯一**差别：关键动作是否需要人类确认与讲解 |
+| **Authority Grant** | 职位被授权做什么（`position_authority_grants` 一行）；default-deny、随任职生效失效 |
+| **Authority Scope** | 授权的有限作用域：`company` / `department` / `direct_reports`（+ 金额上限）；不是 ABAC |
+| **Role Resource Index** | 建议 Agent 读/学的**指针**清单（内容住在既有表里） |

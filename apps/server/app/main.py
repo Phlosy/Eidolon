@@ -23,6 +23,8 @@ from app.services import auth as auth_service
 from app.services import lifecycle as lifecycle_service
 from app.services.drive_migration import migrate_artifacts_to_drive
 from app.services.seed import seed_default_company
+from app.work import authority_seed
+from app.work import role_events as role_context_events
 from app.workflow.orchestrator import orchestrator
 from app.workforce import access as workforce_access
 
@@ -37,6 +39,8 @@ async def lifespan(app: FastAPI):
         seed_default_company(db)
         migrate_artifacts_to_drive(db)  # v0.3: legacy artifacts -> drive_nodes
         lifecycle_service.seed_lifecycle(db)  # v0.4: lifecycle seed + legacy backfill (§12)
+        # M2.2：冷启动默认管理授权 / 职责范围 / 资源清单（幂等；default-deny 需要默认声明）
+        authority_seed.seed_default_authority(db)
         get_secret_store().register_existing(db)  # arm log/event redaction
     bus.attach_loop()
     orchestrator.start()
@@ -56,6 +60,10 @@ async def lifespan(app: FastAPI):
     healed_jobs = await workforce_access.rerun_stale_provisioning_jobs()
     if healed_jobs:
         logger.info("启动补收敛重跑了 %d 个中断的 provisioning job", healed_jobs)
+    # M2.2：任职变化 → `role.context_available` / `role.context_withdrawn`
+    # （纯事实通知；不发"请去学习"的系统指令 —— 学什么由 Agent 自己判断）
+    if role_context_events.enabled():
+        role_context_events.register(engine_module.engine)
     # P6：真实工作 → Evidence → Assessment 的事件处理器（settings 门控，测试默认关）
     if settings.evidence_pipeline_enabled:
         evidence_pipeline.register(engine_module.engine)

@@ -249,6 +249,39 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 
 ---
 
+---
+
+## 5f. M2.2 Role Context & Adaptive Onboarding（**DONE**，2026-09-11）
+
+- 迁移 **v41** `b2d4f6a8c013`（纯 additive）；`upgrade -> downgrade -> upgrade` 实测；head = v41
+- **用户拍板（方案 A，八条）** → 设计 §17 M2-ADR-16..21 + W37–W42：
+  1. 新增薄表 **`position_authority_grants`** 承载管理授权；
+     `position_definition_packages` **保持**资源开通语义（不许混）
+  2. Authority **default-deny**，随 Active PositionAssignment 生效/失效，**不是** Person 资产
+  3. 权限检查**绝不**读 `employee.role`（也不读 Fit / 分数 / 访问包）—— AST 守卫钉死
+  4. 作用域只有 `company` / `department` / `direct_reports` + `spend max_amount`；**不建 ABAC**
+  5. 系统只**校验**「在不在授权内」，**不**替 Agent 选人/排序/判断该不该做
+  6. **append-only + 时间窗**，双摘要 `grants_hash`（这次凭什么）/ `position_grants_hash`
+     （当时手里有什么）—— 历史 DecisionRecord 可解释「当时为什么有权」
+  7. `offboard` / `release_position` 不允许作用于自己（硬安全约束，不是管理判断）
+  8. 金额授权**没有上限不等于不限**，而是「无法确认在授权内」⇒ 拒绝
+- **Role Resource Index** 只存**指针**（`knowledge_items` / `drive_nodes` / `companies.settings`）；
+  解析结果三态 `resolved` / `advisory`（skill_hint 按设计无内容）/ `missing`（如实报告，不造假）
+- 新读面：`GET /employees/{id}/role-context`（只读；**不含**任何 score/level/rank）
+- 事件：任职变化 → `role.context_available` / `role.context_withdrawn`（**只带事实**，
+  不发「请去学习」的系统指令）；受 `EIDOLON_ROLE_CONTEXT_EVENTS` 门控（测试默认关）
+- 冷启动种子 `app/work/authority_seed.py`：CEO 10 项授权 / PM 2 / QA 1 / 研究·工程 **0**；
+  金额上限来自政策 `EIDOLON_AUTHORITY_DEFAULT_SPEND_LIMIT`
+- **踩过的坑（务必别重复）**：迁移里的 `server_default` 必须写成 `sa.text("'company'")`；
+  普通字符串会被再包一层引号，SQLite 里存成带引号的字面量，读回来 JSON 解析直接炸
+- **测试纪律**：授权测试必须用 `_authority_lab()` 开**独立职位定义** ——
+  否则 append-only 的 grant 会被别的用例「合法地」兜住，结果依赖执行顺序
+- 下一步：**M2.3 Management Agent Tooling**（工具面声明 `mode / authority_required /
+  hard_constraints`；写工具走 `authority.requires()` 并把 `authority_snapshot()` 交给
+  M2.4 的 DecisionRecord）
+
+---
+
 ## 6. 下一步建议（按优先级）
 
 1. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。

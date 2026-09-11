@@ -67,7 +67,7 @@ Golden Path × 3 + 冻结
 | --- | --- | --- | --- | --- | --- |
 | **M2.0** | Work & Role Domain Contract Freeze | **无** | Audit | W4/W5/W6/W7/W8/W9/W10/W11/W13/W18/W20/W21/W23/W24/W25/W26/W27/W28/W29 | **DONE** |
 | **M2.1** | Canonical Executable Project Spec | 有（v40） | M2.0 | W22/W30/W32/W33/W34/W35/W36 | **DONE** |
-| **M2.2** | Role Context & Adaptive Onboarding | 有（Authority Projection） | M2.1 | W4/W5/W7/W8/W12/W27 | PENDING |
+| **M2.2** | Role Context & Adaptive Onboarding | 有（v41） | M2.1 | W4/W5/W7/W8/W12/W27/W37–W42 | **DONE** |
 | **M2.3** | Management Agent Tooling | 无（纯读 + 受校验写） | M2.2 | W3/W6/W11 | PENDING |
 | **M2.4** | Leadership Planning & Delegation | 有（DecisionRecord） | M2.3 | W1/W2/W3/W14/W15/W28 | PENDING |
 | **M2.5** | Dynamic Task Graph Runtime | 无（收敛既有表） | M2.4 | W2/W16/W30 | PENDING |
@@ -227,33 +227,77 @@ Golden Path × 3 + 冻结
 | 既有"一键立项即跑 Agent"的用法消失 | 这是 D3 的**有意**行为变更：基础设施用法改走 `planning_fixture`（测试/CI 已改）；生产改走 managed 路由 |
 | `work_mode` 留 NULL 的历史项目读面缺值 | 读面如实显示"历史项目（未分类）"；不做猜测性回填 |
 
-## 5. M2.2 · Role Context & Adaptive Onboarding `[有迁移]`
+## 5. M2.2 · Role Context & Adaptive Onboarding `[有迁移 v41]` — **DONE**
 
 ### Goal
 
-Position Assignment 之后，Agent 拿到的是 **RoleContext**，不是注入的能力。
+让 Agent 上任后拿到的是 **RoleContext（履职上下文投影）**，而不是被注入的能力；
+并把「职位被授权做什么」落成**可校验、可审计、default-deny** 的硬边界。
 
-### 范围
+### 已拍板的产品决策（方案 A，本轮落地）
 
-- `app/work/role_context.py`：从现有表**派生** `RoleContext`（只读，不落表 —— M2-ADR-4）
-- **Authority Projection**：`position_definitions` → `AuthorityKind` 声明的落地点
-  （新表 `position_authority_grants` 或复用 `position_definition_packages`，M2.2 决定）
-- **Role Resource Index**：`position_definition_resources`（薄表：kind/ref/note/required）
-- `GET /employees/{id}/role-context`（只读）
-- 上任事件 → `role.context_available`（**不发"请去学习"的系统指令**）
+| # | 决策 | 冻结为 |
+| --- | --- | --- |
+| **A1** | 新增**薄表** `position_authority_grants`（migration v41）承载管理授权 | M2-ADR-16 / W42 |
+| **A2** | `position_definition_packages` **保持**纯 Resource Provisioning / Entitlement 语义，不承载管理授权 | W42 |
+| **A3** | Position 的职责与能力要求仍是 **Soft**；`AuthorityGrant` 是 **Hard Constraint** | W4 / W6 |
+| **A4** | Authority 随 **Active PositionAssignment** 生效与失效，**不成为 Person 永久资产** | M2-ADR-17 / W38 |
+| **A5** | **default-deny**；权限检查**不得**依赖 `employee.role` 字符串 | W37 |
+| **A6** | 有限 scope/constraint：`company` / `department` / `direct_reports` + `spend max_amount`；**不建通用 ABAC 引擎** | M2-ADR-20 |
+| **A7** | 系统只**校验** Agent 提交的管理动作是否合法，**不**利用 Authority 替 Agent 做任何管理决策 | M2-ADR-18 / W39 |
+| **A8** | v41 提供**审计/版本语义**：append-only + 时间窗 + 双摘要，历史 DecisionRecord 可解释「当时为什么有权」 | M2-ADR-19 / W40 |
+
+### 范围（已实现）
+
+- **迁移 v41**（`b2d4f6a8c013`，纯 additive）：
+  - `position_authority_grants`（新表）：`authority_kind` / `scope_kind` / `scope_ref`（**0 哨兵**，不用 NULL）
+    / `max_amount` / `effective_from` / `effective_to` / `supersedes_grant_id` / 部分唯一索引
+    `uq_position_authority_active`（同职位同授权同作用域至多一条生效行）
+  - `position_definition_resources`（新表）：Role Resource Index 的**指针**
+  - `position_definitions.advisory_scope`（新列）：advisory，不是工作边界
+- **`app/work/authority.py`**：`resolve_actor_authority()` / `effective_grants()` / `authorizes()` /
+  `requires()` / `grant_authority()`（幂等 append）/ `revoke_authority()`（关窗不删行）/
+  `authority_snapshot_for()` / `direct_report_employee_ids()`（汇报子树，不含自己）
+- **`app/work/role_context.py`**：`build_role_context()`（派生、现算、**不含分值**）+
+  `resolve_role_resources()`（解析到 `knowledge_items` / `drive_nodes` / `companies.settings`，
+  不命中如实报 `missing`）+ `declare_role_resource()`（幂等声明）
+- **`app/work/authority_seed.py`**：冷启动默认授权（CEO 10 项 / PM 2 项 / QA 1 项 / 研究·工程 0 项）+
+  默认 `advisory_scope` + 默认资源清单；**金额来自政策**（`settings.authority_default_spend_limit`）
+- **`app/work/role_events.py`**：任职变化 → `role.context_available` / `role.context_withdrawn`
+  （**只带事实**；不发"请去学习"的系统指令），受 `settings.role_context_events` 门控
+- **API**：`GET /employees/{id}/role-context`（只读）
+- **前端**：员工详情新增「履职上下文」Tab（职责 / 生效授权 / 期望引用 / 资源指针 / 履职事实）+ 中英文案
+
+### 明确不做
+
+```text
+不建通用 ABAC / 策略语言（作用域只有三个值 + 金额上限）
+不给玩家面的授权写端点（服务层入口 authority.grant_authority / revoke_authority）
+不实现管理 Agent 的 Tool 面（M2.3）· 不落 DecisionRecord（M2.4）
+不改 M1/T2 任何冻结契约
+```
 
 ### Acceptance
 
-| # | 判据 |
-| --- | --- |
-| C1 | 任命一个 Leadership 52 的人当 CTO **成功**（W15: 期望不是门禁） |
-| C2 | 任命前后 `employee_competencies` / `skills` / `knowledge_items` **逐行不变**（W7/W8） |
-| C3 | 该 CTO 能读到公司允许的 CEO/CTO Handbook 与历史决策（W9） |
-| C4 | 前任的 `memory_entries` / `learning_records` / `traits` **不迁移**（W10） |
-| C5 | RoleContext 响应**不含**任何 score/level/rank；只含事实引用 |
-| C6 | RoleResource 只能通过既有 `knowledge_items` / `drive_nodes` 解析（不造第二套内容） |
+| # | 判据 | 状态 |
+| --- | --- | --- |
+| C1 | 任命一个 Leadership 52 的人当 CTO **成功**（期望不是门禁） | ✅ `test_c1_expectation_shortfall_never_blocks_appointment` |
+| C2 | 任命前后 `employee_competencies` / `skills` / `knowledge_items` **逐行不变**（W7/W8） | ✅ `test_c2_c4_appointment_never_touches_person_level_assets`（10 张人级表对拍） |
+| C3 | 该 CTO 能读到公司允许的 Handbook 与公司知识（W9） | ✅ `test_c3_company_knowledge_stays_institutional_after_replacement` |
+| C4 | 前任的 `memory_entries` / `learning_records` / `traits` **不迁移**（W10） | ✅ 同上（前任与新人两次对拍） |
+| C5 | RoleContext 响应**不含**任何 score/level/rank；只含事实引用 | ✅ `test_c5_role_context_response_carries_no_capability_numbers`（递归键名扫描） |
+| C6 | RoleResource 只能通过既有 `knowledge_items` / `drive_nodes` 解析（不造第二套内容） | ✅ `test_c6_role_resource_reports_missing_and_advisory_instead_of_inventing` + 列集扫描 |
+| A1–A8 | 上述八条拍板 | ✅ 见 `tests/test_m2_role_context.py`（29 个用例） |
 
----
+### Risks
+
+| 风险 | 对策 |
+| --- | --- |
+| 授权表与资源包语义再次混在一起 | W42 结构守卫：packages 不允许出现授权列（已注入验证） |
+| 测试共享库导致"别的用例的授权兜住断言" | `_authority_lab()` 给每个授权行为用例**独立职位定义**，隔离 grant 状态 |
+| `DateTime` 列 naive/aware 混用崩溃（本仓已踩过） | `_naive()` 统一在比较前抹平时区；写入也用 naive |
+| 金额授权"没有上限"被误读成"不限" | 契约与校验都写死：无上限 ⇒ **无法确认在授权内** ⇒ 拒绝 |
+| RoleContext 变成"任命成绩单" | 期望只给引用 + 响应键名扫描守卫 |
 
 ## 6. M2.3 · Management Agent Tooling `[无迁移]`
 
@@ -539,6 +583,12 @@ CEO A 离任 → CEO B 上任
 | W34 负责人缺失⇒等待不接管 | 冻结 | ✅ | | | ✅ | | | | | | 锚点 |
 | W35 work_mode 快照 | 冻结 | ✅ | | | | | | | | | 锚点 |
 | W36 模式差别只有人类参与 | 冻结 | ✅ | | | ✅ | | ✅ | | | | 锚点 |
+| W37 Authority default-deny、不读 role | 冻结 | | ✅ | | ✅ | | | | | | 锚点 |
+| W38 Authority 随任职生效失效 | 冻结 | | ✅ | | ✅ | | | | | | 锚点 |
+| W39 Authority 只校验不决策 | 冻结 | | ✅ | | ✅ | | | | | | 锚点 |
+| W40 Authority append-only + 双摘要 | 冻结 | | ✅ | | ✅ | | | | | | 锚点 |
+| W41 资源只是指针 | 冻结 | | ✅ | | | | | | | | 锚点 |
+| W42 packages 不承载管理授权 | 冻结 | | ✅ | | | | | | | | 锚点 |
 | W31 未开通不可执行 | 冻结 | | | | | | | | ✅ | | 锚点 |
 
 ---
@@ -565,6 +615,7 @@ CEO A 离任 → CEO B 上任
 | --- | --- | --- | --- |
 | M2.0 Work & Role Domain Contract Freeze | **DONE**（2026-09-11） | `366c540` | 设计 + 执行基线 + 契约代码 + 守卫测试；**无迁移**；head 仍 `64fec2d13d9b` |
 | M2.1 Canonical Executable Project Spec | **DONE**（2026-09-11） | `01060ab` | 迁移 **v40**；单一立项入口 + 两轴路由 + Work Intake 责任路由 + Canonical Spec 读面；W32–W36 强制 |
+| M2.2 Role Context & Adaptive Onboarding | **DONE**（2026-09-11） | 见 §17.0b | 迁移 **v41**；Authority Projection（default-deny / 有限作用域 / append-only 双摘要）+ RoleContext 投影 + Role Resource Index；W37–W42 强制 |
 
 ### Progress Log
 
@@ -619,15 +670,51 @@ CEO A 离任 → CEO B 上任
     依赖公司阶段/策略的用例显式设置并还原；R12（"一键立项即跑 Agent"消失）— 这是 D3 的**有意**
     行为变更，CI/测试改用显式 fixture，生产改走 managed 路由
 
-### 下一步（M2.2，不在 M2.1 范围）
+- **2026-09-11 · M2.2 DONE —— Role Context & Adaptive Onboarding**
+  - **拍板落地（方案 A）**：新薄表 `position_authority_grants`（v41）承载管理授权；
+    `position_definition_packages` 保持资源开通语义；Position 职责/期望仍是 Soft、
+    `AuthorityGrant` 是 Hard；Authority 随 Active PositionAssignment 生效/失效（不是人级资产）；
+    **default-deny**、不读 `employee.role`；有限作用域（company/department/direct_reports +
+    spend max_amount，**不建 ABAC**）；系统只**校验**不替 Agent 决策；
+    append-only + 时间窗 + 双摘要（`grants_hash` / `position_grants_hash`）使历史可解释
+  - **迁移**：**v41** `b2d4f6a8c013`（纯 additive：2 张新表 + 1 新列 + 3 索引）；
+    `upgrade → downgrade -1 → upgrade` 实测；`alembic check` 无漂移
+  - **踩坑记录**：迁移里的 `server_default` 必须用 `sa.text("'company'")`，
+    普通字符串会被再包一层引号（SQLite 里存成 `'''company'''`，读回来 JSON 直接炸）——
+    已写进迁移 docstring 防复用
+  - **代码**：`app/work/{authority,role_context,authority_seed,role_events}.py`（新增）、
+    `app/models/position.py`（2 模型 + `advisory_scope` 列）、`app/models/enums.py`（`AuthorityScopeKind`）、
+    `app/api/v1/employees.py`（`GET /employees/{id}/role-context`）、
+    `app/schemas/{work.py,position.py}`、`app/services/position_service.py`（advisory_scope 出口）、
+    `app/main.py`（seed + 消费者注册）、`app/core/config.py`（2 个设置项）
+  - **前端**：员工详情新增「履职上下文」Tab（职责 / 生效授权 / 期望引用 / 资源指针 / 履职事实）；
+    `types` + `api` + `hook` + i18n 中英逐键
+  - **测试**：新增 `tests/test_m2_role_context.py`（**29 个**，C1–C6 + 八条拍板全覆盖）；
+    `test_m2_contract.py` 扩到 50 个（`AuthorityGrant` 对齐表结构 + 锚点跨三文件解析）
+  - **门禁**：pytest **1120 passed / 6 deselected**（随机序与固定序均绿）；
+    ruff check 全绿；ruff format 仅既有 5 个 WIP 红；alembic check 无漂移（head = v41）；
+    web tsc / eslint / prettier / vitest(351) / build 全绿
+  - **守卫反例注入已验证（4/4 转红后撤回）**：授权层读 `employee.role` / revoke 改成删行 /
+    把 `authorizes` 改名成 `should_authorize` / 往 packages 里加授权列
+  - **风险**：见 §5 Risks（测试隔离、naive/aware 时间、无上限≠不限、RoleContext 不变成成绩单）
 
-Role Context & Adaptive Onboarding：派生读模型 + Authority Projection + Role Resource Index。
+### 下一步（M2.3，不在 M2.2 范围）
+
+Management Agent Tooling：把「只读事实查询 + 受校验的写操作」暴露成工具；
+每个工具声明 `mode / authority_required / hard_constraints`，写工具走
+`authority.requires()` 并把 `authority_snapshot()` 交给 M2.4 的 DecisionRecord。
 
 ### ~~交付后暂停点~~ → **已拍板（2026-09-11，D1/D2/D3）**
 
 1. **默认 Work Intake = CEO，但公司可配**（负责路由，不是 CEO 特权）→ M2-ADR-11 / B6
 2. **新公司默认 guided**；首次真实项目完成后公司默认转 managed；`work_mode` 项目级快照 → M2-ADR-13/15 / B7/B12
 3. **确定性模板保留**，但只作 Test/Tutorial/CI Fixture，生产**永不** fallback，且必须显式请求 + 部署门控 → M2-ADR-12 / B9/B10
+
+---
+
+## 17.0b M2.2 交付证据
+
+见本轮汇报与 §16 Progress Log（commit hash 由收尾提交补记）。
 
 ---
 

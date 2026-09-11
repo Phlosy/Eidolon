@@ -67,6 +67,8 @@ class PositionDefinitionOut(PositionORMModel):
     description: str
     legacy_role: str | None
     built_in: bool
+    #: M2.2：这个职位**通常**做什么工作（TaskKind 值；advisory only，不是工作边界，W5/W12）
+    advisory_scope: list[str] = Field(default_factory=list)
     # 三个派生字段**不得带默认值**（ADR-12）：默认 0/[] 会让“忘了算”与“真的为 0”
     # 在响应体里长得一模一样。只能由 definitions_out() 显式填入后交给 schema 校验。
     slot_count: int

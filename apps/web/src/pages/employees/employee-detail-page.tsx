@@ -31,6 +31,7 @@ import { LifecycleActions } from "../../components/lifecycle/lifecycle-actions";
 import { ProvisioningJobPanel } from "../../components/lifecycle/provisioning-job-panel";
 import { LifecycleTimeline } from "../../components/lifecycle/lifecycle-timeline";
 import { EmploymentTab } from "../../components/lifecycle/employment-tab";
+import { RoleContextTab } from "../../components/employee/role-context-tab";
 import { AccountsTab } from "../../components/lifecycle/accounts-tab";
 import { AccessTab } from "../../components/lifecycle/access-tab";
 import { AssetsTab } from "../../components/lifecycle/assets-tab";
@@ -42,6 +43,7 @@ import { cn } from "../../utils/cn";
 type Tab =
   | "overview"
   | "employment"
+  | "roleContext"
   | "runtime"
   | "activity"
   | "accounts"
@@ -184,6 +186,7 @@ export function EmployeeDetailPage() {
           </div>
         ) : null}
         {tab === "employment" ? <EmploymentTab employeeId={employeeId} /> : null}
+        {tab === "roleContext" ? <RoleContextTab employeeId={employeeId} /> : null}
         {tab === "runtime" ? <RuntimeTab employeeId={employeeId} /> : null}
         {tab === "activity" ? <EmployeeActivity employeeId={employeeId} /> : null}
         {tab === "accounts" ? <AccountsTab employeeId={employeeId} /> : null}

@@ -6,6 +6,7 @@ import {
   getEmployeeLearningRecords,
   getEmployeeMemory,
   getEmployeePerformance,
+  getEmployeeRoleContext,
   getEmployeeSkillUsageBenchmarks,
   getEmployeeSkillUsages,
   getEmployeeSkills,
@@ -115,5 +116,14 @@ export function useTask(id: number | null | undefined) {
     queryKey: ["tasks", id],
     queryFn: () => getTask(id!),
     enabled: id != null,
+  });
+}
+
+/** M2.2：履职上下文（读面；不轮询 —— 只在任职变化后才有意义）。 */
+export function useEmployeeRoleContext(employeeId: number) {
+  return useQuery({
+    queryKey: ["employees", employeeId, "role-context"],
+    queryFn: () => getEmployeeRoleContext(employeeId),
+    enabled: Number.isFinite(employeeId),
   });
 }

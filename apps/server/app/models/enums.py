@@ -1098,3 +1098,26 @@ class FactKind(StrEnum):
     workorder_state = "workorder_state"
     validation_result = "validation_result"
     decision_history = "decision_history"
+
+
+# ---------------------------------------------------------------------------
+# M2.2 · 管理授权（Authority Projection，设计 §4.1/§4.2，W37–W42）
+# ---------------------------------------------------------------------------
+
+
+class AuthorityScopeKind(StrEnum):
+    """管理授权的**作用域**（M2.2）。
+
+    刻意只有三个值 —— 用户拍板：「Authority 支持有限 scope/constraint，例如
+    company、department、direct_reports 及 spend max_amount，但 M2.2 **不建设
+    通用 ABAC 引擎**」。
+
+    作用域之外的一切（时间、地点、属性表达式、策略语言）**不在 M2.2 范围**。
+    """
+
+    #: 作用域 = 自己公司内的一切（最常见；`scope_ref` 恒为 0）
+    company = "company"
+    #: 作用域 = 某个部门（`scope_ref` = departments.id）
+    department = "department"
+    #: 作用域 = 自己的汇报子树（`scope_ref` 恒为 0；子树由 position_slots.manager_slot_id 派生）
+    direct_reports = "direct_reports"

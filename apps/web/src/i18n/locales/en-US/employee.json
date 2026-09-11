@@ -50,7 +50,8 @@
     "career": "Career",
     "capabilities": "Capabilities",
     "positionFit": "Fit",
-    "careerDev": "Growth"
+    "careerDev": "Growth",
+    "roleContext": "Role context"
   },
   "profile": {
     "id": "ID",
@@ -270,5 +271,60 @@
     "assessmentHistory": "Assessment history (traceable)",
     "sources": "Source distribution",
     "recentEvidence": "Recent evidence"
+  },
+  "roleContext": {
+    "roleContext": "Role context",
+    "responsibilities": "Position responsibilities",
+    "noPosition": "No active assignment (AVAILABLE)",
+    "noResponsibilities": "This position declares no responsibilities yet",
+    "advisoryScopeHint": "Usually works on these — advisory only, never a work boundary. Authority decides.",
+    "authority": "Effective management authority",
+    "authorityHint": "default-deny: anything not listed here is not permitted",
+    "noAuthority": "This position holds no management authority (execution roles should not)",
+    "defaultDenyHint": "Authority follows the assignment: it is revoked the moment the holder steps down.",
+    "expectations": "What the company expects from this position",
+    "expectationsHint": "References only, no scores (scores live on the position profile / capability pages)",
+    "noExpectations": "No published profile for this position yet",
+    "critical": "critical",
+    "resources": "Suggested reading",
+    "resourcesHint": "Pointers only: content lives in the knowledge base / drive, never duplicated per role",
+    "noResources": "No resource list declared yet",
+    "contextFacts": "Context facts",
+    "contextFactsHint": "Facts only — no 'what you should do next'",
+    "directReports": "Direct reports",
+    "knowledgeScopes": "Readable knowledge scopes",
+    "policyKeys": "Company policy keys",
+    "liveProjects": "Live projects",
+    "noLiveProjects": "No active projects",
+    "readOnlyHint": "Read-only: positions define authority, profiles describe expectations; the system never decides how you work."
+  },
+  "authority": {
+    "create_project": "Create project",
+    "delegate_management": "Delegate management",
+    "assign_task": "Assign task",
+    "request_rework": "Request rework",
+    "accept_delivery": "Accept delivery",
+    "approve_hiring": "Approve hiring",
+    "spend_credits": "Spend credits",
+    "assign_position": "Assign position",
+    "release_position": "Release position",
+    "offboard": "Offboard"
+  },
+  "scope": {
+    "company": "Company",
+    "department": "Department",
+    "direct_reports": "Direct reports"
+  },
+  "resourceKind": {
+    "knowledge_topic": "Knowledge topic",
+    "playbook": "Playbook",
+    "policy": "Policy",
+    "handbook": "Handbook",
+    "skill_hint": "Skill hint"
+  },
+  "resolution": {
+    "resolved": "Resolved",
+    "advisory": "Advisory",
+    "missing": "Missing"
   }
 }

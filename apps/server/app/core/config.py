@@ -105,6 +105,16 @@ class Settings(BaseSettings):
     autonomous_learning_enabled: bool = False
     learning_force_failure: bool = False
 
+    # M2.2 —— 管理授权（Authority Projection，v41）。
+    # `spend_credits` 的**默认**额度上限（整数最小单位）：冷启动种子把它写进
+    # CEO 的授权行。金额只来自政策，**不**在代码里硬编码；政策调高后不会自动放大
+    # 已存在的授权（改授权必须显式 revoke + grant —— 授权不该悄悄扩张）。
+    authority_default_spend_limit: int = 50_000
+    # M2.2 —— 任职变化时广播 `role.context_available` / `role.context_withdrawn`
+    # （纯事实通知，不含"请去学习"的系统指令）。测试默认关（conftest），
+    # 由专门测试直接调用 handle() 覆盖。
+    role_context_events: bool = True
+
     # M2.1 —— 规划 fixture（D3/M2-ADR-12，W33）：**测试/教程/CI/演示基础设施**，
     # 不是产品模式。开启后，项目可以**显式**请求 `planning_fixture=deterministic_template`，
     # 用固定模板生成确定性执行图（让 CI/golden path 不依赖 LLM Manager Agent）。

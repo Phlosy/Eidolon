@@ -37,6 +37,8 @@ docs/m2-agent-work-runtime-design.md 的代码化。**本模块是纯契约层**
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -44,6 +46,7 @@ from enum import StrEnum
 from typing import Any
 
 from app.models.enums import (
+    AuthorityScopeKind,
     DecisionKind,
     DecisionOutcome,
     FactKind,
@@ -73,8 +76,18 @@ __all__ = [
     "DEFAULT_DECISION_AUTHORITY",
     "WORK_INTAKE_DEFAULT_POSITION",
     "AuthorityKind",
+    "AuthorityScopeKind",
     "AuthorityGrant",
+    "AMOUNT_BEARING_AUTHORITIES",
+    "SELF_TARGET_FORBIDDEN_AUTHORITIES",
+    "FORBIDDEN_AUTHORITY_SOURCES",
+    "AUTHORITY_SNAPSHOT_VERSION",
+    "AuthorityTarget",
+    "AuthorityDecision",
+    "authority_snapshot",
+    "hash_effective_grants",
     "PositionExpectation",
+    "PositionExpectationRef",
     "PositionContract",
     "HARD_CONSTRAINTS",
     "SOFT_CONSTRAINTS",
@@ -183,9 +196,12 @@ class AuthorityKind(StrEnum):
       - Authority 是**硬**的：没有它，系统拒绝（W6）。
       - Responsibility 是**软**的：只影响路由与展示（W5）。
 
-    刻意定义在契约层而非 `app/models/enums.py`：Authority 目前**没有落库载体**
-    （M2.2 才落地声明/表），所以在 `models/enums.py` 建一个"没有宿主列"的枚举
-    只会误导人以为它已经落库。M2.2 若需要迁移，再提升到 `models/enums.py`。
+    **落库（M2.2 / v41）**：宿主是 `position_authority_grants.authority_kind`。
+    解析路径是 `employee → 生效 PRIMARY 任职 → PositionSlot → PositionDefinition → grants`
+    —— 授权**随任职生效与失效**，不是 Person 的永久资产（W38）。
+
+    **default-deny**（W37）：没有任何生效 grant ⇒ 一律拒绝；系统从不"默认允许"。
+    **绝不**读 `employee.role` 字符串判定权限（用户拍板；AST 守卫钉死）。
     """
 
     create_project = "create_project"
@@ -202,25 +218,165 @@ class AuthorityKind(StrEnum):
 
 @dataclass(frozen=True)
 class AuthorityGrant:
-    """一项被授予的权限（Authority Projection 的元素，M2.2 落地）。
+    """一项被授予的权限（Authority Projection 的元素）。
 
-    `limit` 只对经济类权限有意义（`spend_credits` 的额度上限，整数最小单位）。
-    `None` 表示"该权限本身不设额度上限"，**不表示无限权力** —— 其它硬约束
-    （经济权威、资源可用性、公司隔离）依然生效。
+    **字段与 `position_authority_grants` 一一对应**（M2.2 / v41）—— 「契约即表」，
+    不在这里加表里没有的字段，避免出现第二套授权真相。
+
+    额度语义（`max_amount`）：`None` = **该授权没有声明额度上限**。
+    对金额类授权（`spend_credits`）而言这等价于"无法确认在授权内" ⇒ **拒绝**
+    （default-deny）。想表达"不限"就给一个大数，而不是留空。
     """
 
     kind: AuthorityKind
-    limit: int | None = None
-    scope: str = "company"  # company | department | project | self
+    scope_kind: AuthorityScopeKind = AuthorityScopeKind.company
+    #: 部门作用域 = departments.id；company / direct_reports 恒为 0（哨兵，不是 NULL）
+    scope_ref: int = 0
+    max_amount: int | None = None
+    #: 应用这一步时命中的 grant 行 id（审计：这一分钱/这次动作是哪一条授权批的）
+    grant_id: int | None = None
 
     def __post_init__(self) -> None:
-        if self.limit is not None:
-            if isinstance(self.limit, bool) or not isinstance(self.limit, int):
-                raise WorkContractError("authority limit must be an int (minor units) or None")
-            if self.limit <= 0:
-                raise WorkContractError(f"authority limit must be > 0, got {self.limit}")
-        if not self.scope.strip():
-            raise WorkContractError("authority scope must not be empty")
+        if self.max_amount is not None:
+            if isinstance(self.max_amount, bool) or not isinstance(self.max_amount, int):
+                raise WorkContractError("authority max_amount must be an int (minor units)")
+            if self.max_amount <= 0:
+                raise WorkContractError(f"authority max_amount must be > 0, got {self.max_amount}")
+        if isinstance(self.scope_ref, bool) or not isinstance(self.scope_ref, int):
+            raise WorkContractError("authority scope_ref must be an int (0 = no specific ref)")
+        if self.scope_ref < 0:
+            raise WorkContractError("authority scope_ref must be >= 0")
+        if self.scope_kind is AuthorityScopeKind.department and self.scope_ref <= 0:
+            raise WorkContractError("department scope requires a positive scope_ref")
+        if self.scope_kind is not AuthorityScopeKind.department and self.scope_ref != 0:
+            raise WorkContractError(
+                f"{self.scope_kind.value} scope must use scope_ref=0 (nothing to point at)"
+            )
+        if self.max_amount is not None and self.kind is not AuthorityKind.spend_credits:
+            raise WorkContractError(
+                f"{self.kind.value} is not an amount-bearing authority; "
+                "max_amount must stay None (额度只对金额类授权有意义)"
+            )
+
+
+#: 金额类授权：校验时必须**同时**给出 action 的金额，否则拒绝（default-deny）。
+AMOUNT_BEARING_AUTHORITIES: frozenset[AuthorityKind] = frozenset({AuthorityKind.spend_credits})
+
+#: 禁止作用于自己的授权（硬安全约束，不是管理判断）：
+#: 「谁能辞退/解任谁」是管理决策，但"能对自己执行"在任何公司里都不成立 ——
+#: 所以系统在这里拒绝，而不是替管理层判断该不该。
+SELF_TARGET_FORBIDDEN_AUTHORITIES: frozenset[AuthorityKind] = frozenset(
+    {AuthorityKind.offboard, AuthorityKind.release_position}
+)
+
+#: 授权校验**绝不允许**读取的来源（用户拍板 + 设计 §4.1）。
+#: 这些是"用角色名/推荐分数当权限"的典型形态，全部由 AST 守卫钉死。
+FORBIDDEN_AUTHORITY_SOURCES: frozenset[str] = frozenset(
+    {
+        "employee_role_string",
+        "legacy_role",
+        "fit_score",
+        "competency_score",
+        "access_package",
+        "responsibility_area",
+        "work_mode",
+    }
+)
+
+#: 授权快照版本：DecisionRecord 用它 + `grants_hash` 解释"当时为什么有权"（W40）。
+AUTHORITY_SNAPSHOT_VERSION = 1
+
+
+@dataclass(frozen=True)
+class AuthorityTarget:
+    """一次管理动作**作用到谁 / 多少**（校验的输入）。
+
+    刻意只是一组事实：`company_id` / `department_id` / `employee_id` / `amount`。
+    系统拿它回答「在不在授权范围内」；**不**拿它回答「该不该做这件事」——
+    后者永远是 Manager Agent 或 Owner 的判断（W39）。
+    """
+
+    company_id: int | None = None
+    department_id: int | None = None
+    employee_id: int | None = None
+    amount: int | None = None
+
+
+@dataclass(frozen=True)
+class AuthorityDecision:
+    """授权校验的**结果**（W39：只回答"在不在授权内"）。
+
+    `reason` 是一台**机器可读的**拒绝原因码（`no_active_assignment` / `no_grant` /
+    `scope_mismatch` / `amount_required` / `amount_exceeds_grant` / `self_target` …），
+    不是"我觉得这个决定不好"。系统永远不产生后一种东西。
+    """
+
+    allowed: bool
+    kind: AuthorityKind
+    reason: str
+    actor_employee_id: int
+    position_definition_id: int | None = None
+    #: 被**考察**的授权（按 kind 命中的那些；一个都没命中时=该职位全部授权）。
+    #: 目的只有一个：让"当时凭什么"可以从 `grant_ids` 重算对拍。
+    grants: tuple[AuthorityGrant, ...] = ()
+    evaluated_at: datetime | None = None
+    #: `grants` 的摘要（可以从 `grant_ids` 重算 ⇒ 这就是可校验的授权证据）
+    grants_hash: str = ""
+    #: 该职位在那一刻**持有**的全部授权摘要（岗位状态而非某次动作）。
+    #: 两个摘要刻意分开：一个是"这次凭什么"，一个是"当时手里有什么"，
+    #: 混成一个字段会让历史解释时说不清在解释哪一层。
+    position_grants_hash: str = ""
+
+    @property
+    def grant_ids(self) -> tuple[int, ...]:
+        return tuple(grant.grant_id for grant in self.grants if grant.grant_id is not None)
+
+
+def _canonical_grants(grants: tuple[AuthorityGrant, ...]) -> list[list[str]]:
+    """授权的**规范化表示**（跨进程稳定、与时间无关 ⇒ 可重算、可对拍）。"""
+    rows = [
+        [
+            grant.kind.value,
+            grant.scope_kind.value,
+            str(grant.scope_ref),
+            "" if grant.max_amount is None else str(grant.max_amount),
+        ]
+        for grant in grants
+    ]
+    return sorted(rows)
+
+
+def hash_effective_grants(grants: tuple[AuthorityGrant, ...]) -> str:
+    """生效授权的摘要（W40）。
+
+    `DecisionRecord` 存它 + `grant_ids`：日后有人问
+    「当年 CTO 为什么有权委派这个任务」，拿着当时的 grant 行重算一次即可对拍 ——
+    不需要重放整个系统的状态。
+    """
+    payload = json.dumps(_canonical_grants(grants), ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def authority_snapshot(decision: AuthorityDecision, *, action_ref: str = "") -> dict:
+    """把一次授权校验压成**可长期保存**的快照，交给 `DecisionRecord.context_snapshot`（M2.4）。
+
+    只含事实：谁、以哪个职位的哪些授权、在什么作用域与额度内、判成了什么、何时判的。
+    **不含**任何"这个动作对不对"的评语（W18/W39）。
+    """
+    return {
+        "snapshot_version": AUTHORITY_SNAPSHOT_VERSION,
+        "authority_kind": decision.kind.value,
+        "allowed": bool(decision.allowed),
+        "reason": decision.reason,
+        "actor_employee_id": decision.actor_employee_id,
+        "position_definition_id": decision.position_definition_id,
+        "action_ref": action_ref,
+        "grant_ids": list(decision.grant_ids),
+        "grant_scopes": _canonical_grants(decision.grants),
+        "grants_hash": decision.grants_hash or hash_effective_grants(decision.grants),
+        "position_grants_hash": decision.position_grants_hash,
+        "evaluated_at": decision.evaluated_at.isoformat() if decision.evaluated_at else None,
+    }
 
 
 @dataclass(frozen=True)
@@ -242,6 +398,22 @@ class PositionExpectation:
 
 
 @dataclass(frozen=True)
+class PositionExpectationRef:
+    """期望的**引用**（不含分值）—— `RoleContext` 里用的就是它（C5）。
+
+    为什么 RoleContext 只带引用、不带分值：分值属于**岗位画像**
+    （`position_competency_requirements`），按需另读即可；而 RoleContext 是
+    "履职上下文投影"，把它塞满数字就会变成"任命时给你一张成绩单" ——
+    正是 W7 要防的东西。用户拍板 C5：「RoleContext 响应不含任何 score/level/rank，
+    只含事实引用」。
+    """
+
+    competency_code: str
+    requirement_type: str = "required"  # required | preferred
+    critical: bool = False
+
+
+@dataclass(frozen=True)
 class PositionContract:
     """Position 的三段式契约（设计 §3.1，W4 / W26）。
 
@@ -258,7 +430,7 @@ class PositionContract:
     #: 被授权做什么（硬边界；M2.2 落 Authority Projection）
     authority: tuple[AuthorityGrant, ...] = ()
     #: 希望具备什么能力（soft；soft）
-    expectations: tuple[PositionExpectation, ...] = ()
+    expectations: tuple[PositionExpectationRef, ...] = ()
     #: 通常做什么工作（**advisory**：只用于路由建议与展示，W5/W12）
     advisory_scope: tuple[str, ...] = ()
 
@@ -361,7 +533,8 @@ class RoleContext:
     这里**不含**任何分数、评级、"你应该怎么做"、或写能力。
     """
 
-    person_id: int
+    #: 人级口径（R1）；legacy 行可能还没有 person_id，那是 NULL 而不是 0 —— 不编一个号
+    person_id: int | None
     employee_id: int
     position_definition_id: int | None = None
     position_code: str | None = None
@@ -387,10 +560,10 @@ ROLE_CONTEXT_SOURCES: dict[str, str] = {
     "position_code": "position_definitions.code",
     "department_id": "position_slots.department_id",
     "responsibilities": "position_definitions.responsibilities",
-    "authority": "position_authority_grants (M2.2) ← position_definition_packages",
+    "authority": "position_authority_grants",
     "expectations": "position_competency_requirements + position_profile_versions.status",
-    "advisory_scope": "position_contracts.advisory_scope (M2.2)",
-    "resource_index": "position_definition_resources (M2.2)",
+    "advisory_scope": "position_definitions.advisory_scope",
+    "resource_index": "position_definition_resources",
     "direct_reports": "position_slots.manager_slot_id",
     "company_policy_keys": "companies.settings",
     "current_project_ids": "projects.status",
@@ -1251,6 +1424,69 @@ INVARIANTS: tuple[Invariant, ...] = (
             "test_guided_and_managed_share_one_substrate",
             "test_work_mode_never_encodes_decision_ownership",
         ),
+    ),
+    Invariant(
+        "W37",
+        "Authority is default-deny and resolved from the active PositionAssignment, "
+        "never from role strings or scores.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=(
+            "test_authority_is_default_deny_and_reports_a_reason_code",
+            "test_authority_follows_assignment_not_role_string",
+            "test_authority_and_role_context_modules_never_read_role_strings_or_scores",
+        ),
+    ),
+    Invariant(
+        "W38",
+        "Authority follows the assignment and never becomes a permanent Person asset.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=(
+            "test_authority_follows_assignment_not_role_string",
+            "test_c2_c4_appointment_never_touches_person_level_assets",
+        ),
+    ),
+    Invariant(
+        "W39",
+        "Authority validation only validates; "
+        "it never selects, ranks, or judges management actions.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=(
+            "test_authority_layer_validates_but_never_decides",
+            "test_authority_snapshot_is_pinnable_recomputable_and_judgement_free",
+        ),
+    ),
+    Invariant(
+        "W40",
+        "Authority grants are append-only and time-versioned; "
+        "any decision can pin why it was legal.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=(
+            "test_revoke_closes_the_window_and_history_stays_explainable",
+            "test_authority_snapshot_is_pinnable_recomputable_and_judgement_free",
+            "test_grants_hash_is_deterministic_and_order_independent",
+        ),
+    ),
+    Invariant(
+        "W41",
+        "Role resources are pointers into existing content; the index never stores content.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=(
+            "test_authority_tables_have_no_content_or_ranking_columns",
+            "test_c6_role_resource_reports_missing_and_advisory_instead_of_inventing",
+        ),
+    ),
+    Invariant(
+        "W42",
+        "position_definition_packages stays resource provisioning; "
+        "management authority lives only in position_authority_grants.",
+        enforced=True,
+        owner_stage="M2.2",
+        anchors=("test_v41_adds_authority_tables_without_touching_packages_semantics",),
     ),
 )
 

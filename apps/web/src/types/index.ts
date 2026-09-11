@@ -2067,3 +2067,68 @@ export interface ProjectSpec {
   execution: ProjectSpecExecution;
   questions: Record<string, string>;
 }
+
+/* -------------------------------------------------------------------------
+ * M2.2 · Role Context（GET /employees/{id}/role-context）
+ *
+ * 履职上下文是**派生读模型**：只陈述事实（职责 / 生效授权 / 期望引用 / 资源指针），
+ * 既不含已获得的能力数值，也不含"你应该先做什么"的系统指令。
+ * ---------------------------------------------------------------------- */
+
+export interface RoleAuthorityGrant {
+  kind: string;
+  scope_kind: "company" | "department" | "direct_reports";
+  scope_ref: number;
+  max_amount: number | null;
+  grant_id: number | null;
+}
+
+export interface RoleExpectationRef {
+  competency_code: string;
+  requirement_type: "required" | "preferred" | string;
+  critical: boolean;
+}
+
+export interface RoleResourceView {
+  kind: "knowledge_topic" | "playbook" | "policy" | "handbook" | "skill_hint" | string;
+  ref: string;
+  note: string;
+  required: boolean;
+  /** resolved = 指向既有内容；advisory = 按设计不指向内容；missing = 目标尚不存在 */
+  resolution: "resolved" | "advisory" | "missing" | string;
+  pointer: string;
+}
+
+export interface EmployeeRoleContext {
+  person_id: number | null;
+  employee_id: number;
+  position_definition_id: number | null;
+  position_code: string | null;
+  department_id: number | null;
+  responsibilities: string[];
+  authority: RoleAuthorityGrant[];
+  expectations: RoleExpectationRef[];
+  advisory_scope: string[];
+  resource_index: RoleResourceView[];
+  direct_reports: number[];
+  company_policy_keys: string[];
+  current_project_ids: number[];
+  knowledge_scopes: string[];
+  context_version: number;
+}
+
+export interface RoleProjectBrief {
+  project_id: number;
+  name: string;
+  status: string;
+  work_mode: string | null;
+  requirement_count: number;
+}
+
+export interface EmployeeRoleContextPage {
+  context: EmployeeRoleContext;
+  resources: RoleResourceView[];
+  live_projects: RoleProjectBrief[];
+  has_management_authority: boolean;
+  authority_grant_count: number;
+}

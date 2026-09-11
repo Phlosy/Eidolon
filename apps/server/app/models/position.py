@@ -27,6 +27,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base, TimestampMixin, utcnow
 from app.models.enums import (
     AssignmentType,
+    AuthorityScopeKind,
     OccupancyStatus,
     SlotAdministrativeStatus,
     TemplateScope,
@@ -51,6 +52,10 @@ class PositionDefinition(TimestampMixin, Base):
     level: Mapped[int] = mapped_column(Integer, default=1)
     responsibilities: Mapped[list] = mapped_column(JSON, default=list)
     career_path_metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    #: M2.2（设计 §6）：这个职位**通常做什么工作**（TaskKind 值列表，advisory only）。
+    #: 只用于路由建议与展示，**不是**工作边界（W5/W12）—— 越界工作由 Authority 判定，
+    #: 而不是由这个列表判定。v41 新增，必须带 server_default，否则 alembic check 报漂移。
+    advisory_scope: Mapped[list] = mapped_column(JSON, default=list, server_default=text("'[]'"))
     built_in: Mapped[bool] = mapped_column(Boolean, default=False)
     # 仅用于迁移与兼容镜像（映射到旧 EmployeeRole）；新业务禁止读（ADR-5 守卫锁死）。
     legacy_role: Mapped[str | None] = mapped_column(String(50), nullable=True)
@@ -230,3 +235,102 @@ def derive_occupancy(
         and assignment.position_slot_id == slot.id
     ]
     return occupancy_from_count(slot, len(heads))
+
+
+class PositionAuthorityGrant(TimestampMixin, Base):
+    """职位**管理授权**（M2.2 / v41，设计 §4.1，W37–W40）。
+
+    这张表回答一个问题：**这个职位被公司授权做什么**。它与
+    `position_definition_packages` **是两件事**，用户已拍板不许混：
+
+    | 表 | 语义 | 性质 |
+    | --- | --- | --- |
+    | `position_definition_packages` | 资源开通 / Entitlement（能访问什么资源） | Provisioning |
+    | `position_authority_grants`（本表） | 管理授权（能对组织发起什么动作） | Authority（硬边界） |
+
+    三条不变量：
+
+    * **default-deny**：没有任何生效 grant ⇒ 一律拒绝。系统从不"默认允许"。
+    * **随任职生效/失效**（W38）：解析路径是
+      `employee → 生效 PRIMARY 任职 → PositionSlot → PositionDefinition → 本表`。
+      人一卸任，任职关闭 ⇒ 授权立即失效；**授权不是 Person 的永久资产**。
+    * **append-only + 时间窗**（W40）：改授权 = 关旧行的 `effective_to` + 插新行；
+      **语义字段永不 UPDATE**。这样历史 `DecisionRecord` 能回答
+      "当时这个职位为什么有权执行该动作"（按 `evaluated_at` 回溯即可）。
+
+    `scope_ref` 用 **0 哨兵**而不是 NULL（沿用 `ledger_accounts.subject_ref` 的惯例）：
+    SQLite 的唯一索引把 NULL 当互不相等，用 NULL 会让"一个定义一种授权只能有一条生效行"
+    这条约束静默失效。
+    """
+
+    __tablename__ = "position_authority_grants"
+    __table_args__ = (
+        # 同一职位 + 同一授权 + 同一作用域，**至多一条生效行**（并发/重试由唯一索引收敛）。
+        Index(
+            "uq_position_authority_active",
+            "position_definition_id",
+            "authority_kind",
+            "scope_kind",
+            "scope_ref",
+            unique=True,
+            sqlite_where=text("effective_to IS NULL"),
+            postgresql_where=text("effective_to IS NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    position_definition_id: Mapped[int] = mapped_column(
+        ForeignKey("position_definitions.id"), index=True
+    )
+    #: `AuthorityKind` 的值（create_project / assign_task / spend_credits / …）
+    authority_kind: Mapped[str] = mapped_column(String(40), index=True)
+    #: `AuthorityScopeKind` 的值；作用域之外的维度不在 M2.2 范围
+    scope_kind: Mapped[str] = mapped_column(
+        String(20), default=AuthorityScopeKind.company.value, server_default=text("'company'")
+    )
+    #: 部门作用域 = departments.id；company / direct_reports 恒为 0（哨兵，见 docstring）
+    scope_ref: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
+    #: 额度上限（整数最小单位，M1 E21）。只对金额类授权有意义。
+    #: **NULL = 该授权没有声明额度上限**，对金额类授权而言等价于"无法确认在授权内" ⇒ 拒绝
+    #: （default-deny；想表达"不限"就给一个大数，而不是留空）。
+    max_amount: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    effective_from: Mapped[datetime] = mapped_column(default=utcnow)
+    effective_to: Mapped[datetime | None] = mapped_column(nullable=True, index=True)
+    #: 授权链：本条取代哪一条（append-only，不删行）
+    supersedes_grant_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: 谁授权的（user id；系统种子留空）
+    granted_by_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    note: Mapped[str] = mapped_column(String(500), default="", server_default=text("''"))
+
+    @property
+    def is_active(self) -> bool:
+        return self.effective_to is None
+
+
+class PositionDefinitionResource(Base):
+    """Role Resource Index 的一项（M2.2 / v41，设计 §6，W27 / W41）。
+
+    **它是指针，不是内容**：`ref` 必须能解析到既有内容表
+    （`knowledge_items` / `drive_nodes` / `companies.settings`），
+    或明确报告"尚未创建"。这样"给新 CEO 一份阅读清单"不会变成第二套文档系统。
+
+    刻意**不携带任何数值**（score / level / weight）——
+    资源一旦带分值就会演化成"任命即加分"（W27）。
+    """
+
+    __tablename__ = "position_definition_resources"
+    __table_args__ = (
+        UniqueConstraint("position_definition_id", "kind", "ref", name="uq_position_resource_ref"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    position_definition_id: Mapped[int] = mapped_column(
+        ForeignKey("position_definitions.id"), index=True
+    )
+    #: `RoleResourceKind` 的值（knowledge_topic / playbook / policy / handbook / skill_hint）
+    kind: Mapped[str] = mapped_column(String(20))
+    ref: Mapped[str] = mapped_column(String(300))
+    note: Mapped[str] = mapped_column(String(500), default="")
+    #: 即使 required 也只表示"建议优先阅读"，**不表示读完后获得能力**。
+    required: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)

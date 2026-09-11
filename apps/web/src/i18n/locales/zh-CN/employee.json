@@ -50,7 +50,8 @@
     "career": "职业",
     "capabilities": "能力",
     "positionFit": "匹配",
-    "careerDev": "发展"
+    "careerDev": "发展",
+    "roleContext": "履职上下文"
   },
   "profile": {
     "id": "ID",
@@ -270,5 +271,60 @@
     "assessmentHistory": "考核历史（可追溯）",
     "sources": "来源分布",
     "recentEvidence": "最近证据"
+  },
+  "roleContext": {
+    "roleContext": "履职上下文",
+    "responsibilities": "职位职责",
+    "noPosition": "当前没有生效任职（AVAILABLE）",
+    "noResponsibilities": "这个职位还没有声明职责",
+    "advisoryScopeHint": "通常做这些工作 —— 仅供参考，不是工作边界：有权与否看授权。",
+    "authority": "生效的管理授权",
+    "authorityHint": "default-deny：没有列在这里的动作一律不允许",
+    "noAuthority": "该职位没有任何管理授权（执行岗本来就不该有）",
+    "defaultDenyHint": "授权随任职生效与失效：人一卸任就立刻收回，不会挂在个人名下。",
+    "expectations": "公司对这个职位的期望",
+    "expectationsHint": "只给引用，不给分数（分数属于岗位画像与能力页）",
+    "noExpectations": "这个职位还没有发布岗位画像",
+    "critical": "关键能力",
+    "resources": "建议阅读的资源",
+    "resourcesHint": "这些只是指针：内容住在知识库 / 云文档里，不会为职位另建一份",
+    "noResources": "还没有声明资源清单",
+    "contextFacts": "履职事实",
+    "contextFactsHint": "上下文里只有事实，没有『你该做什么』",
+    "directReports": "汇报下线",
+    "knowledgeScopes": "可检索知识范围",
+    "policyKeys": "公司策略键",
+    "liveProjects": "在办项目",
+    "noLiveProjects": "当前没有进行中的项目",
+    "readOnlyHint": "本页只读：授权由职位定义，期望由岗位画像描述；系统不替你决定怎么工作。"
+  },
+  "authority": {
+    "create_project": "创建项目",
+    "delegate_management": "委派管理工作",
+    "assign_task": "分配任务",
+    "request_rework": "要求返工",
+    "accept_delivery": "接受交付",
+    "approve_hiring": "批准招聘",
+    "spend_credits": "支出额度",
+    "assign_position": "任命职位",
+    "release_position": "解任职位",
+    "offboard": "办理离职"
+  },
+  "scope": {
+    "company": "全公司",
+    "department": "本部门",
+    "direct_reports": "汇报子树"
+  },
+  "resourceKind": {
+    "knowledge_topic": "知识主题",
+    "playbook": "手册",
+    "policy": "政策",
+    "handbook": "公司手册",
+    "skill_hint": "技能提示"
+  },
+  "resolution": {
+    "resolved": "已就绪",
+    "advisory": "参考项",
+    "missing": "尚未发布"
   }
 }

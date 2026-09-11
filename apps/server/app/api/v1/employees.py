@@ -42,9 +42,18 @@ from app.schemas.runtime import (
     EmployeeRuntimeProviderPatch,
     RuntimeInstanceOut,
 )
+from app.schemas.work import (
+    AuthorityGrantOut,
+    PositionExpectationRefOut,
+    RoleContextOut,
+    RoleContextPageOut,
+    RoleProjectBriefOut,
+    RoleResourceOut,
+)
 from app.services import employees as employee_service
 from app.services import runtimes as runtime_service
 from app.services.providers import provider_service
+from app.work import role_context as role_context_service
 
 router = APIRouter(prefix="/employees", tags=["employees"])
 
@@ -323,3 +332,88 @@ def update_employee_brain(
 ) -> EmployeeBrainOut:
     employee = _get_employee_or_404(db, employee_id)
     return runtime_service.patch_brain(db, employee, payload)
+
+
+@router.get("/{employee_id}/role-context", response_model=RoleContextPageOut)
+def get_employee_role_context(
+    employee_id: int, db: Session = Depends(get_db)
+) -> RoleContextPageOut:
+    """履职上下文（M2.2，设计 §5/§6）—— **派生读模型，不落表**。
+
+    回答「这个人现在以什么职位、被授权做什么、期望是什么、该关心哪些项目、
+    公司给了他哪些建议阅读的资源」。
+
+    三件它**不做**的事：
+
+    * 不含任何**已获得的能力**数值（期望只给引用；分值请读岗位画像）；
+    * 不含任何"你应该先做什么"的系统指令 —— 学什么、怎么组织工作由 Agent 自己判断
+      （Adaptive Onboarding，W4）；
+    * 不判定权限结果：它列出**持有**哪些授权；某次动作在不在授权内由
+      `authority.authorizes()` 逐次校验（default-deny，W37/W39）。
+    """
+    employee = _get_employee_or_404(db, employee_id)
+    context = role_context_service.build_role_context(db, employee)
+    resources = role_context_service.resolve_role_resources(db, employee)
+    return RoleContextPageOut(
+        context=RoleContextOut(
+            person_id=context.person_id,
+            employee_id=context.employee_id,
+            position_definition_id=context.position_definition_id,
+            position_code=context.position_code,
+            department_id=context.department_id,
+            responsibilities=list(context.responsibilities),
+            authority=[
+                AuthorityGrantOut(
+                    kind=grant.kind.value,
+                    scope_kind=grant.scope_kind.value,
+                    scope_ref=grant.scope_ref,
+                    max_amount=grant.max_amount,
+                    grant_id=grant.grant_id,
+                )
+                for grant in context.authority
+            ],
+            expectations=[
+                PositionExpectationRefOut(
+                    competency_code=item.competency_code,
+                    requirement_type=item.requirement_type,
+                    critical=item.critical,
+                )
+                for item in context.expectations
+            ],
+            advisory_scope=list(context.advisory_scope),
+            # 用**已解析**的那一份（同一批数据）；`context.resource_index` 是契约里的
+            # 纯引用视图，读面要的是"这个指针落到哪了"，所以两处保持同源同序。
+            resource_index=[
+                RoleResourceOut(
+                    kind=item.kind.value,
+                    ref=item.ref,
+                    note=item.note,
+                    required=item.required,
+                    resolution=item.resolution.value,
+                    pointer=item.pointer,
+                )
+                for item in resources
+            ],
+            direct_reports=list(context.direct_reports),
+            company_policy_keys=list(context.company_policy_keys),
+            current_project_ids=list(context.current_project_ids),
+            knowledge_scopes=list(context.knowledge_scopes),
+        ),
+        resources=[
+            RoleResourceOut(
+                kind=item.kind.value,
+                ref=item.ref,
+                note=item.note,
+                required=item.required,
+                resolution=item.resolution.value,
+                pointer=item.pointer,
+            )
+            for item in resources
+        ],
+        live_projects=[
+            RoleProjectBriefOut(**brief)
+            for brief in role_context_service.live_projects_for_role(db, employee)
+        ],
+        has_management_authority=bool(context.authority),
+        authority_grant_count=len(context.authority),
+    )
