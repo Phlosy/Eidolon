@@ -36,6 +36,8 @@ class EconomicPolicy:
     recovery_threshold: int
     recovery_cooldown_hours: int
     official_reward_multiplier: float
+    official_max_reward: int
+    official_outstanding_budget: int
     # 回收侧（Sink）
     market_fee_bps: int  # 基点（500 = 5%）
     fee_treasury_ratio: float
@@ -55,6 +57,8 @@ class EconomicPolicy:
             "weekly_activity_reward",
             "recovery_grant",
             "compute_credit_per_unit",
+            "official_max_reward",
+            "official_outstanding_budget",
         ):
             validate_amount(getattr(self, name))
         if not 0 <= self.market_fee_bps <= 10_000:
@@ -65,6 +69,14 @@ class EconomicPolicy:
             raise EconomyContractError("recovery_cooldown_hours must be >= 0")
         if not 0.0 <= self.official_reward_multiplier <= 100.0:
             raise EconomyContractError("official_reward_multiplier must be within [0, 100]")
+        # 官方任务"预算内发行"（§18）：单笔封顶 + 未结算总额封顶
+        if self.official_outstanding_budget < self.official_max_reward:
+            raise EconomyContractError(
+                "official_outstanding_budget must be >= official_max_reward"
+                "（否则单笔合法任务都发布不出来）"
+            )
+        if self.official_reward_multiplier <= 0:
+            raise EconomyContractError("official_reward_multiplier must be > 0")
         # 比例必须守恒（拆分的整数守恒由 split_fee 保证）
         if abs((self.fee_treasury_ratio + self.fee_burn_ratio) - 1.0) > 1e-9:
             raise EconomyContractError("fee_treasury_ratio + fee_burn_ratio must equal 1")
@@ -111,6 +123,8 @@ def _load_policy() -> EconomicPolicy:
         fee_treasury_ratio=settings.economy_fee_treasury_ratio,
         fee_burn_ratio=settings.economy_fee_burn_ratio,
         compute_credit_per_unit=settings.economy_compute_credit_per_unit,
+        official_max_reward=settings.economy_official_max_reward,
+        official_outstanding_budget=settings.economy_official_outstanding_budget,
     )
 
 

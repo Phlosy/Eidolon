@@ -23,11 +23,14 @@ from sqlalchemy.orm import Session
 from app.economy.contracts import EconomicActor, EconomyContractError
 from app.models.base import utcnow
 from app.models.economy import (
+    Evaluation,
     LedgerAccount,
     LedgerEntry,
     LedgerTransaction,
     RewardGrant,
     WalletProjection,
+    WorkOrder,
+    WorkOrderSubmission,
 )
 from app.models.enums import (
     Currency,
@@ -38,6 +41,7 @@ from app.models.enums import (
     LedgerTransactionStatus,
     RewardStatus,
     TransactionKind,
+    WorkOrderStatus,
 )
 
 
@@ -555,3 +559,158 @@ def latest_posted_reward_grant(
         )
         .order_by(RewardGrant.id.desc())
     ).first()
+
+
+# --------------------------------------------------------------------------- work orders
+
+
+def get_work_order(db: Session, order_id: int) -> WorkOrder | None:
+    return db.get(WorkOrder, order_id)
+
+
+def find_work_order_by_code(db: Session, code: str) -> WorkOrder | None:
+    return db.scalars(select(WorkOrder).where(WorkOrder.code == code)).first()
+
+
+def insert_work_order(db: Session, **values: object) -> WorkOrder:
+    order = WorkOrder(**values)
+    db.add(order)
+    db.flush()
+    return order
+
+
+def list_work_orders(
+    db: Session,
+    *,
+    statuses: tuple[str, ...] | None = None,
+    kinds: tuple[str, ...] | None = None,
+    assignee: tuple[str, int] | None = None,
+    issuer: tuple[str, int] | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[WorkOrder]:
+    stmt = select(WorkOrder)
+    if statuses is not None:
+        stmt = stmt.where(WorkOrder.status.in_(statuses))
+    if kinds is not None:
+        stmt = stmt.where(WorkOrder.kind.in_(kinds))
+    if assignee is not None:
+        stmt = stmt.where(
+            WorkOrder.assignee_actor_kind == assignee[0],
+            WorkOrder.assignee_actor_ref == assignee[1],
+        )
+    if issuer is not None:
+        stmt = stmt.where(
+            WorkOrder.issuer_actor_kind == issuer[0], WorkOrder.issuer_actor_ref == issuer[1]
+        )
+    stmt = stmt.order_by(WorkOrder.id.desc())
+    if limit is not None:
+        stmt = stmt.limit(limit)
+    if offset:
+        stmt = stmt.offset(offset)
+    return list(db.scalars(stmt))
+
+
+def count_work_orders(
+    db: Session,
+    *,
+    statuses: tuple[str, ...] | None = None,
+    assignee: tuple[str, int] | None = None,
+) -> int:
+    stmt = select(func.count()).select_from(WorkOrder)
+    if statuses is not None:
+        stmt = stmt.where(WorkOrder.status.in_(statuses))
+    if assignee is not None:
+        stmt = stmt.where(
+            WorkOrder.assignee_actor_kind == assignee[0],
+            WorkOrder.assignee_actor_ref == assignee[1],
+        )
+    return int(db.execute(stmt).scalar_one())
+
+
+def outstanding_official_commitment(db: Session) -> int:
+    """**未结算**官方任务承诺额（预算内发行的分母，§18）。
+
+    只统计官方（system_mint）且未进入终态（SETTLED/CANCELLED/EXPIRED）的订单 —— 终态不再占用预算。
+    """
+    released = (
+        WorkOrderStatus.settled.value,
+        WorkOrderStatus.cancelled.value,
+        WorkOrderStatus.expired.value,
+    )
+    return int(
+        db.execute(
+            select(func.coalesce(func.sum(WorkOrder.reward_amount), 0)).where(
+                WorkOrder.funding_mode == "system_mint",
+                WorkOrder.status.not_in(released),
+            )
+        ).scalar_one()
+    )
+
+
+def transition_work_order(
+    db: Session,
+    *,
+    order_id: int,
+    from_statuses: tuple[str, ...],
+    to_status: str,
+    **fields: object,
+) -> int:
+    """**条件更新**（CAS）：`UPDATE … WHERE id = ? AND status IN (…)`，rowcount 判定。
+
+    并发下只有一个调用者能完成这次迁移（与 T2 招募关闭挂牌、M1.1 资金 CAS 同一纪律）。
+    """
+    values = {"status": to_status, "updated_at": utcnow(), **fields}
+    return int(
+        db.execute(
+            update(WorkOrder)
+            .where(WorkOrder.id == order_id, WorkOrder.status.in_(from_statuses))
+            .values(**values)
+        ).rowcount
+    )
+
+
+def list_submissions(db: Session, *, order_id: int) -> list[WorkOrderSubmission]:
+    return list(
+        db.scalars(
+            select(WorkOrderSubmission)
+            .where(WorkOrderSubmission.order_id == order_id)
+            .order_by(WorkOrderSubmission.id)
+        )
+    )
+
+
+def latest_submission(db: Session, *, order_id: int) -> WorkOrderSubmission | None:
+    return db.scalars(
+        select(WorkOrderSubmission)
+        .where(WorkOrderSubmission.order_id == order_id)
+        .order_by(WorkOrderSubmission.id.desc())
+    ).first()
+
+
+def insert_submission(db: Session, **values: object) -> WorkOrderSubmission:
+    submission = WorkOrderSubmission(**values)
+    db.add(submission)
+    db.flush()
+    return submission
+
+
+def insert_evaluation(db: Session, **values: object) -> Evaluation:
+    evaluation = Evaluation(**values)
+    db.add(evaluation)
+    db.flush()
+    return evaluation
+
+
+def latest_evaluation(db: Session, *, order_id: int) -> Evaluation | None:
+    return db.scalars(
+        select(Evaluation).where(Evaluation.order_id == order_id).order_by(Evaluation.id.desc())
+    ).first()
+
+
+def list_evaluations(db: Session, *, order_id: int) -> list[Evaluation]:
+    return list(
+        db.scalars(
+            select(Evaluation).where(Evaluation.order_id == order_id).order_by(Evaluation.id)
+        )
+    )

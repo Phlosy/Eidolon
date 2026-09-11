@@ -523,6 +523,8 @@ def test_policy_rejects_inconsistent_ratios():
             fee_treasury_ratio=0.5,
             fee_burn_ratio=0.6,
             compute_credit_per_unit=1,
+            official_max_reward=1_000,
+            official_outstanding_budget=10_000,
         )
 
 

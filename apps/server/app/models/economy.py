@@ -20,15 +20,30 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, text
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, utcnow
 from app.models.enums import (
     Currency,
+    EvaluationMode,
+    EvaluationVerdict,
+    FundingMode,
     LedgerAccountKind,
     LedgerAccountStatus,
     LedgerTransactionStatus,
+    WorkOrderKind,
+    WorkOrderStatus,
 )
 
 
@@ -201,3 +216,95 @@ class RewardGrant(TimestampMixin, Base):
     claimed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class WorkOrder(TimestampMixin, Base):
+    """统一工作订单（M1.3 官方工作市场；设计 §17/§18）。
+
+    **一个模型承载官方/玩家/NPC 的任务**，靠 `kind` / `funding_mode` / `evaluation_mode` 区分；
+    M1.3 只开放官方（`issuer=system`、`funding_mode=system_mint`、结算时 mint）——
+    玩家市场（Escrow 锁资、绝不 mint，E8/E11）在 M1.4 落地。
+
+    纪律（设计 §17）：**金额、状态、双方、期限、资助模式是一等列，绝不塞进 JSON**；
+    JSON 只放"需求/交付物"这类自由结构。
+    """
+
+    __tablename__ = "work_orders"
+    __table_args__ = (
+        Index("ix_work_orders_status_deadline", "status", "deadline_at"),
+        Index("ix_work_orders_kind_status", "kind", "status"),
+        Index("ix_work_orders_assignee", "assignee_actor_kind", "assignee_actor_ref"),
+    )
+
+    code: Mapped[str] = mapped_column(String(60), unique=True)
+    kind: Mapped[str] = mapped_column(String(32), default=WorkOrderKind.official_bounty.value)
+    title: Mapped[str] = mapped_column(String(300))
+    description: Mapped[str] = mapped_column(Text, default="")
+    #: 需求/交付物（自由结构；金额与状态不在这里）
+    requirements_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    deliverables_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    reward_amount: Mapped[int] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String(12), default=Currency.credit.value)
+    #: 官方发行上限快照（发布时的政策值，便于事后解释"为什么当时能发"）
+    policy_version: Mapped[str] = mapped_column(String(40), default="")
+
+    issuer_actor_kind: Mapped[str] = mapped_column(String(20), default="system")
+    issuer_actor_ref: Mapped[int] = mapped_column(Integer, default=0)
+    funding_mode: Mapped[str] = mapped_column(String(20), default=FundingMode.system_mint.value)
+    evaluation_mode: Mapped[str] = mapped_column(String(12), default=EvaluationMode.auto.value)
+
+    status: Mapped[str] = mapped_column(String(16), default=WorkOrderStatus.open.value, index=True)
+    deadline_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    assignee_actor_kind: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    assignee_actor_ref: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: 承接方关联的项目（复用既有 Project/Task/Artifact 体系；刻意不加 FK，保持域解耦）
+    project_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    submitted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    #: 结算交易（一次性；结算幂等由 settlement_key = ledger idempotency_key 保证，E12）
+    settlement_transaction_id: Mapped[int | None] = mapped_column(
+        ForeignKey("ledger_transactions.id"), nullable=True
+    )
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class WorkOrderSubmission(TimestampMixin, Base):
+    """提交（一次尝试一条；被拒后可再提，attempt 递增）。"""
+
+    __tablename__ = "work_order_submissions"
+    __table_args__ = (Index("ix_work_order_submissions_order", "order_id", "id"),)
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.id"), index=True)
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"))
+    #: 第几次提交（1 起；被拒后重提递增，便于审计"改了几版"）
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    deliverables_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    #: 产出物引用（artifact / 文件 / 链接；只存引用，不复制内容）
+    artifact_refs: Mapped[list] = mapped_column(JSON, default=list)
+    project_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    submitted_by_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class Evaluation(TimestampMixin, Base):
+    """验收（设计 §20）：**只记录判定，绝不改钱**（奖励发放走 Settlement/Reward/Ledger）。"""
+
+    __tablename__ = "evaluations"
+    __table_args__ = (Index("ix_evaluations_order", "order_id", "id"),)
+
+    order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.id"), index=True)
+    submission_id: Mapped[int] = mapped_column(ForeignKey("work_order_submissions.id"))
+    mode: Mapped[str] = mapped_column(String(12), default=EvaluationMode.auto.value)
+    criteria_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    verdict: Mapped[str] = mapped_column(String(12), default=EvaluationVerdict.approved.value)
+    #: 奖励加成（如 {"early_delivery": 1000}）；最终奖励 = base + Σbonus（设计 §20）
+    bonuses_json: Mapped[dict] = mapped_column(JSON, default=dict)
+    evaluated_by_actor_kind: Mapped[str] = mapped_column(String(20), default="system")
+    evaluated_by_actor_ref: Mapped[int] = mapped_column(Integer, default=0)
+    notes: Mapped[str] = mapped_column(Text, default="")

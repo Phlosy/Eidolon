@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     economy_recovery_threshold: int = 2_000
     economy_recovery_cooldown_hours: int = 24
     economy_official_reward_multiplier: float = 1.0
+    economy_official_max_reward: int = 50_000  # 单笔官方任务上限（预算内发行）
+    economy_official_outstanding_budget: int = 1_000_000  # 未结算官方任务总额上限
     economy_market_fee_bps: int = 500  # 基点：500 = 5%
     economy_fee_treasury_ratio: float = 0.6
     economy_fee_burn_ratio: float = 0.4
