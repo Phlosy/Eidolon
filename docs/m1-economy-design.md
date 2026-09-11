@@ -295,6 +295,35 @@ ledger_transaction_id`。
 - 状态机：`ELIGIBLE → CLAIMED → POSTED`（失败可 `VOID`，见 §37）；
 - 结算：`RewardService.claim` → `MonetaryAuthority.mint`（官方类）或 `Treasury` 划转（财政类）→ Ledger。
 
+**实现落点（M1.2，2026-09-11）**
+
+- **政策的真相在 `Settings` + `policy_version` 快照，不建 `reward_policies` 表**（§30 配置化；
+  与 plan §5 迁移路线一致 —— v33 只有 `reward_grants`）。表化的政策版本留给 M1.9 政策中心（若需要）；
+- `reward_grants`：`unique(reward_type, actor_kind, actor_ref, reference_key)`（E10 的地基）、
+  `amount` + `policy_version`（发放时快照，日后调政策不改历史）、`status`（ELIGIBLE→CLAIMED→POSTED，
+  VOID 留给人工冲正）、`ledger_transaction_id`（E16 可追溯）、`company_id`（公司作用域 + 审计）；
+- **自助可领只有 7 类**（`SELF_SERVICE_KINDS`）：`STARTER_GRANT` / `PROFILE_COMPLETION` /
+  `COMPANY_PROFILE_COMPLETION` / `TUTORIAL_COMPLETION` / `DAILY_LOGIN` / `ACHIEVEMENT` / `RECOVERY_GRANT`；
+  官方悬赏/合同/资助/采购/里程碑/活动/周活跃**不可自助领取**（在各自业务流里发，M1.3+）——
+  否则这个端点就成了"随便领钱"（有测试钉住）；
+- 资格判定**先有事实后有奖励**（读既有业务事实，不做"点击即得"）：
+
+  | 类型 | 主体 | 判定事实 | reference_key |
+  | --- | --- | --- | --- |
+  | `STARTER_GRANT` | company | 公司存在（一次性） | `starter` |
+  | `PROFILE_COMPLETION` | user | `display_name` 与 `avatar` 均非空（两者都有可写入口） | `profile` |
+  | `COMPANY_PROFILE_COMPLETION` | company | 公司自建岗位定义 ≥1（v1 公司资料字段注册后不可编辑，故以"自建编制"为可达信号） | `profile` |
+  | `TUTORIAL_COMPLETION` | user | `user_tutorial_progress.status = completed`（逐教程各一次） | `tutorial:<id>` |
+  | `DAILY_LOGIN` | user | 每个 UTC 自然日一次 | `daily:<date>` |
+  | `ACHIEVEMENT` | company | 成就 code 绑定既有事实：`first_employee` / `first_project`（**必须指定 code**） | `achievement:<code>` |
+  | `RECOVERY_GRANT` | company | `available < recovery_threshold` 且距上次 POSTED ≥ 冷却期 | `recovery:<date>` |
+
+- 个人奖励的主体解析：请求身份 `user_id` 优先，其次公司 OWNER 成员（与 `resolve_company_id` 同一 seam；
+  不新增鉴权模型）；公司无 OWNER 且无会话时该类型不列出（不猜）；
+- 原子性：**grant(CLAIMED) → mint → grant(POSTED) + 回填 `ledger_transaction_id` 在同一事务**（E13/E28），
+  失败整笔回滚；并发重复领取由唯一约束裁定赢家、输家复用赢家（绝不再 mint，E10）；
+- 事件：`reward.granted`（设计表里的 `RewardGranted`，仓库约定用小写点分名，与 `market.listed` 一致）。
+
 ## 15. Starter Economy
 
 注册 → 创建第一家公司 → `STARTER_GRANT`（默认 100,000 CREDIT，**配置化**）：
@@ -317,6 +346,12 @@ Ledger（Debit company.actor 100000 / Credit ISSUANCE 100000）
 - `RECOVERY_GRANT`：当 `available < policy.recovery_threshold` 时可领取**非常小**的额度；
 - 约束：冷却期（`recovery_cooldown_hours`）、期间上限、**必须低于任意官方任务收益**；
 - 定位：`破产兜底 + 新手引导`，不是收入来源（政策参数 + 测试约束，见 §30/§43）。
+
+**实现落点（M1.2）**：`RECOVERY_GRANT` 的"不是收入来源"由三层约束保证 ——
+(1) 政策校验 `EconomicPolicy.__post_init__` 强制 `recovery_grant < starter_grant / achievement_reward /
+tutorial_reward` 且 `recovery_grant <= recovery_threshold`（加载配置时就报错，而不是等玩家刷）；
+(2) 资格硬条件：`available < recovery_threshold`（余额够就不发）；
+(3) 冷却 + 每日 key：`recovery_cooldown_hours` 与 `recovery:<UTC date>` 双保险（同日只能一次）。
 
 ## 17. WorkOrder（统一工作市场）
 
@@ -540,6 +575,11 @@ M1 之后还会出现"谁拥有经济权利"。**不能让一个字段承担全�
 | `official_reward_multiplier` | 官方奖励系数（调控用） | 1.0 |
 | `compute_credit_per_unit` | 算力单价 | 1 |
 | `policy_version` | 政策版本（落库到 Reward/Contract） | `econ-1` |
+| `achievement_reward` | 成就奖励（M1.2 新增） | 1_500 |
+
+**政策不变量（M1.2 强制，配置加载即校验）**：`recovery_grant` 必须**严格小于**
+`starter_grant` / `achievement_reward` / `tutorial_reward`，且**不超过** `recovery_threshold`
+—— "靠兜底过日子"在配置层就不可能（§16）。
 
 **运维口径（M1.1 记录）**：政策快照是**进程内 `lru_cache`** —— 改配置需要**重启服务**
 或显式 `cache_clear()` 才能生效；在线调参 / 政策中心属于 **M1.9**，本阶段不提前设计 Admin Policy Center。

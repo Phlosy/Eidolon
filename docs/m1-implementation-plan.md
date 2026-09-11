@@ -391,8 +391,8 @@ cd apps/web && npm run build
 | --- | --- | --- | --- |
 | M1.0 Economic Domain Contract Freeze | **DONE**（2026-09-11） | `2f75590` | 设计 + 执行基线与契约代码；**无迁移**；pytest 798 / web 328 |
 | M1.1 Accounts & Double-entry Ledger | **DONE**（2026-09-11） | `12fb9a7` / `2d37938` / `9cb1e06` | `[migration v32]` `8f1abef8410f`；四小阶段 M1.1a–d 全部落地；**A1–A20 全部满足**；pytest 851 / web 328 |
-| M1.2 Monetary Authority & Reward System | **NEXT** | — | `[migration v33]`；Starter Grant / 资料奖励 / 教程奖励 / 签到（消费 M1.1 的 `MonetaryAuthority.mint` + 救援经济） |
-| M1.3 Official Work Market | PLANNED | — | `[migration v34]` |
+| M1.2 Monetary Authority & Reward System | **DONE**（2026-09-11） | `81eed9a` / `6e35963` / `7cc5541` | `[migration v33]` `691816bccb53`；7 类自助奖励全部落地（含救援经济）；pytest 873 / web 328 |
+| M1.3 Official Work Market | **NEXT** | — | `[migration v34]` |
 | M1.4 Player Work Market | PLANNED | — | `[migration v35]` |
 | M1.5 Company Operating Economy | PLANNED | — | `[migration v36]` |
 | M1.6 Contract / Offer / Settlement Core | PLANNED | — | `[migration v37]` |
@@ -402,6 +402,23 @@ cd apps/web && npm run build
 | M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E31 全覆盖 + 失败注入 |
 
 ### Progress Log
+
+- **2026-09-11 · M1.2 DONE**：`[migration v33]` `691816bccb53`（`reward_grants`，只建表）；commits
+  **`81eed9a`**（schema + 政策快照）、**`6e35963`**（RewardService + 读/领 API）、**`7cc5541`**（测试硬化）。
+  - 交付：`RewardGrant` 模型 + 仓储原语；`RewardService`（判定/领取，**唯一自助发放入口**）：
+    7 类自助奖励（Starter / Profile / Company Profile / Tutorial / Daily / Achievement / Recovery）、
+    幂等（唯一约束 + 重放 + IntegrityError 兜底）、状态机 ELIGIBLE→CLAIMED→POSTED、
+    政策快照（`amount` + `policy_version`）、`ledger_transaction_id` 可追溯；
+    `GET /economy/rewards` + `POST /economy/rewards/{type}/claim`（金额无入参）；
+    事件 `reward.granted`；政策新增 `achievement_reward` 并加入救援金硬约束。
+  - 口径裁定：**政策不建表**（真相在 `Settings` + `policy_version` 快照，plan §5 v33 只有 `reward_grants`）；
+    自助可领类型白名单（官方类必须走各自业务流，M1.3+）；资格全部读既有业务事实。
+  - 测试：**+22**（873 passed / 6 deselected）；奖励 16（启动资金幂等/并发一次、资料与教程资格、
+    每日按 UTC 日、成就按 code、公司编制、救援阈值+冷却+政策约束、官方类拒绝、金额不可被调用方影响、
+    混合奖励后 supply 恒等与投影一致），API 6（目录、幂等领取、409/404 语义、金额来自政策、
+    公司作用域、事件只发一次）。
+  - 迁移：v33 up/down/up 实测 + `alembic check` 无漂移；dev 库已升到 v33。
+  - 实现中修掉的 bug：教程奖励的 reference_key 丢失"未领过"过滤（第二次领取会命中同一 key）。
 
 - **2026-09-11 · M1.1 DONE**：`[migration v32]` `8f1abef8410f`；commits
   **`12fb9a7`**（M1.1a schema + accounting contracts）、**`2d37938`**（M1.1b/c posting core + projection）、
