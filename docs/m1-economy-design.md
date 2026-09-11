@@ -762,6 +762,34 @@ Player↔Player Volume（Work + Talent）/ Fees / Compute Spend / Training Spend
 公司分布（Top holders / Gini 类指标，M1.9 视需要）
 ```
 
+## 31b. Economy UI & Analytics 实现落点（M1.9，2026-09-11）
+
+**玩家面**（前端只读纪律：余额/流水/拆分全部来自后端读面，**前端不计算钱**）：
+
+| 页面 | 读面 | 写动作（服务层授权） |
+| --- | --- | --- |
+| `/economy` | `/economy/overview`（收支/分类/欠费）、`/economy/balance`、`/economy/transactions`、`/economy/wallet/me`（个人钱包）、`/economy/rewards` | 领奖（幂等） |
+| `/work-orders` | `GET /work-orders`（在招/我承接） | 领取、提交交付物 |
+| `/contracts` | `GET /contracts`、`GET /contracts/{id}` | 接受、交付并结算、取消退款 |
+
+- **个人钱包读面补齐**：`GET /economy/wallet/me` —— 个人奖励（资料/教程/每日）进的是 user 钱包，
+  与公司账户**刻意分开**（合并会污染公司 P&L）；
+- 合同详情展示**多腿结算明细**（对价 / 平台手续费 / 承接方净额 / 财政与销毁）——结算时写下的账本快照；
+- i18n：`economy` / `workOrders` / `contracts` 三个命名空间，中英**逐键一致**
+  （有测试钉住，含订单/合同**全部状态文案**：新增状态必须补两种语言）。
+
+**管理员面**（无玩家路由，§32）：
+
+- `EconomyStatsService.snapshot()` + `make economy-stats [STATS_ARGS="--json"]`：
+  supply（minted/burned/supply/treasury/escrow/circulating）、奖励按类型、官方未结算承诺额、
+  算力 paid/unpaid、NPC 注入/上限、托管/合同/订单状态计数；
+- `make economy-check`：一致性巡检（投影对账 + 托管该归零却有钱 + 余额不该为负 + NPC 注入不超上限）；
+- `make economy-policy-reload` + `POST /economy/admin/policy/reload`（`EIDOLON_ECONOMY_ADMIN_ENABLED`，
+  默认 404）：重读配置 → 更新进程内 Settings → 清政策缓存 → 返回新快照。
+  **完整政策中心（表化 + 版本审计 + 灰度）仍属 M2**。
+
+**只读纪律**：观测/巡检/UI 都不产生交易（运维与展示不能改钱）；唯一的写入口仍是各业务 service。
+
 ## 32. Security（三层 API）
 
 | 层 | 例子 | 权限 |

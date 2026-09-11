@@ -398,10 +398,24 @@ cd apps/web && npm run build
 | M1.6 Contract / Offer / Settlement Core | **DONE**（2026-09-11） | `044825d` / `03938de` / `0281dd0` / `43ab6c2` | `[migration v37]` `0425abecc96e`；合同全生命周期 + 多腿结算（净额 + Treasury/Burn）；pytest 950 / web 328 |
 | M1.7 Talent Commercialization | **DONE**（2026-09-11） | `aca9f1e` / `b4dd1e5` / `92fa279` / `71a1a5b` / `cfca5a3` | `[migration v38]` `862e2d3d7d8e`；T2 人才接入经济（价格 + Escrow + 招募 + 结算）；pytest 961 / web 328 |
 | M1.8 NPC Economy | **DONE**（2026-09-11） | `c31ace6` / `3aca802` / `27ea43f` / `ec670fd` | `[migration v39]` `64fec2d13d9b`；NPC 预算（注入=mint，受封顶）+ deterministic 出手；pytest 972 / web 328 |
-| M1.9 Economy UI & Analytics | **NEXT** | — | 无迁移；含个人钱包读面 / 政策在线刷新 / 观测面板 |
-| M1.10 Golden Path / Hardening / Freeze | PLANNED | — | E1–E31 全覆盖 + 失败注入 |
+| M1.9 Economy UI & Analytics | **DONE**（2026-09-11） | `b3869b2` / `49cd4f9` | 无迁移；个人钱包读面 + 三个经济页面 + admin 观测/巡检/政策刷新；pytest 972 / web 351 |
+| M1.10 Golden Path / Hardening / Freeze | **NEXT** | — | E1–E31 全覆盖 + 失败注入 + 冻结 |
 
 ### Progress Log
+
+- **2026-09-11 · M1.9 DONE**（无迁移）：commits **`b3869b2`**（后端读面/观测/政策刷新）、
+  **`49cd4f9`**（三个经济页面 + i18n + 测试）。
+  - 交付：`GET /economy/wallet/me`（个人钱包，补 M1.2 缺口）、`EconomyStatsService` 经济快照 +
+  一致性巡检（`make economy-stats|economy-check`）、`reload_policy()` + `make economy-policy-reload`
+  + gated admin 端点；前端 `/economy`、`/work-orders`、`/contracts` 三页 + 导航 + 中英 i18n；
+  - 口径裁定：**前端只读**（数字全来自后端读面）；个人钱包与公司账户分开；admin 面默认关
+  （v1 无 admin 角色体系）；政策在线刷新是最小入口（政策中心属 M2）；
+  - 测试：后端 **972 passed / 6 deselected**（含 T2 回归）；前端 **351 passed / 83 files**（+23 用例）：
+  API 契约 5、经济页 4、工作订单页 3、合同页 4、i18n 契约 7；
+  - **修掉一个假阳性 bug**：托管余额聚合必须按方向带符号（escrow 是 debit-normal），
+  否则"已释放/已退款"的托管会被巡检误报（首版报 4 条假阳性，修完 `--check` 立即 OK）；
+  - 门禁：ruff 全绿、format 仅 5 个既有 WIP 红、`alembic check` 无漂移（无迁移）、
+  web tsc/eslint/prettier/build 全绿。
 
 - **2026-09-11 · M1.8 DONE**：`[migration v39]` `64fec2d13d9b`（`npc_economic_profiles`）；
   commits **`c31ace6`**（schema + 政策 + 枚举）、**`3aca802`**（T2 成交原语 seam）、

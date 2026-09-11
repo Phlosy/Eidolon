@@ -113,7 +113,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   ```
 - 门禁（改动后必须全绿）：
   ```bash
-  pytest apps/server/tests -q        # 期望 972 passed / 6 deselected（M1.8 起）
+  pytest apps/server/tests -q        # 期望 972 passed / 6 deselected（M1.9 起）
   ruff check apps/server/app apps/server/tests
   ruff format --check apps/server/app apps/server/tests   # 只允许 5 个既有 WIP 红
   cd apps/server && alembic check    # No new upgrade operations detected
@@ -141,7 +141,7 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   只 active 挂牌可招募/一人一 employee/市场投影白名单/培养态只存 cultivating-ready…）
 - 常用命令：`make market-issue ISSUE_ARGS="--tier rare --count 2"`、`make market-npc NPC_ARGS="--dry-run"`
 
-## 5c. M1 经济与合同系统（M1.0–M1.8 已完成：… / 人才商业化 / NPC 经济，2026-09-11）
+## 5c. M1 经济与合同系统（M1.0–M1.9 已完成：… / NPC 经济 / 经济 UI 与观测，2026-09-11）
 
 - 领域设计：`m1-economy-design.md`（Vision / 货币供给与 Source-Sink / MonetaryAuthority /
   EconomicActor / Account / 复式账本 / Currency / Reward / 救援经济 / WorkOrder / 官方与玩家工作市场 /
@@ -149,9 +149,15 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
   Ownership 裁定（§28）/ NPC / 政策 / 观测 / 安全三层 / 并发幂等 / 事件 / 可审计 / 状态机 / **E1–E25** / 边界）
 - 执行基线：`m1-implementation-plan.md`（M1.0–M1.10 拆解 / §5 迁移路线 v32–v39 / §6 API 三层 /
   §13 Golden Path / §14 验收 A–F / §16 Progress）
-- 现状：**M1.0–M1.8 已完成**（v32–v39）；**M1.9 = 经济 UI 与观测**（无迁移）是下一阶段；
+- 现状：**M1.0–M1.9 已完成**（v32–v39）；**M1.10 = Golden Path / Hardening / Freeze** 是最后一阶段；
   **T2 是硬门禁**：触碰人才/招募/NPC 后必跑
   `test_t2_golden_path` / `test_recruitment` / `test_market_*`
+- 经济界面（M1.9）：`/economy`（余额/收支分类/流水/我的钱包/奖励领取）、`/work-orders`（在招/我承接 +
+  领取 + 提交）、`/contracts`（接受/交付并结算/取消 + 多腿结算明细）；i18n `economy`/`workOrders`/
+  `contracts`（中英逐键一致，有测试）
+- 管理员观测（M1.9）：`make economy-stats`（supply/奖励/算力/NPC/状态计数）、
+  `make economy-check`（一致性巡检）、`make economy-policy-reload`
+  （+`POST /economy/admin/policy/reload`，需 `EIDOLON_ECONOMY_ADMIN_ENABLED=true`）
 - 契约代码：`app/economy/{contracts,policy}.py`（枚举值、金额整数、腿蓝图、守恒校验、
   `balance_delta` 单入口、`requires_funds`、状态机、政策 DTO）+ `Settings.economy_*` / `.env.example`
 - 账本底座：`app/models/economy.py`（4 表）+ `app/repositories/economy.py`（幂等开户 / CAS / 账本聚合）
