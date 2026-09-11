@@ -831,6 +831,17 @@ class OfferStatus(StrEnum):
     expired = "EXPIRED"
 
 
+class TalentSaleMode(StrEnum):
+    """人才出售模式（M1.7，设计 §27）：**表达"能不能还价"**，不重复 `negotiable` 字段。
+
+    - `buyout`：一口价 —— 买方按标价出价即**立即成交**（卖方无需再操作）；
+    - `negotiation`：可议价 —— 买方出价后等卖方接受/拒绝。
+    """
+
+    buyout = "buyout"
+    negotiation = "negotiation"
+
+
 class ContractType(StrEnum):
     """通用合同类型（设计 §21）：工作/人才/服务/采购/科研共用一个核心。"""
 

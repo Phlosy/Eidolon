@@ -32,6 +32,7 @@ from app.models.economy import (
     LedgerTransaction,
     Offer,
     RewardGrant,
+    TalentCommercialTerms,
     WalletProjection,
     WorkOrder,
     WorkOrderSubmission,
@@ -1034,3 +1035,27 @@ def transition_offer(
             .values(**values)
         ).rowcount
     )
+
+
+# --------------------------------------------------------------------------- 人才商业条款
+
+
+def get_terms_by_listing(db: Session, *, listing_id: int) -> TalentCommercialTerms | None:
+    return db.scalars(
+        select(TalentCommercialTerms).where(TalentCommercialTerms.listing_id == listing_id)
+    ).first()
+
+
+def upsert_terms(db: Session, **values: object) -> TalentCommercialTerms:
+    """写条款（一条挂牌一套；改价是 UPDATE —— 不保留历史版本，成交价由合同承载）。"""
+    listing_id = int(values["listing_id"])
+    existing = get_terms_by_listing(db, listing_id=listing_id)
+    if existing is not None:
+        for key, value in values.items():
+            setattr(existing, key, value)
+        db.flush()
+        return existing
+    terms = TalentCommercialTerms(**values)
+    db.add(terms)
+    db.flush()
+    return terms

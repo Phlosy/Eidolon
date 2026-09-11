@@ -47,6 +47,7 @@ from app.models.enums import (
     LedgerAccountStatus,
     LedgerTransactionStatus,
     OfferStatus,
+    TalentSaleMode,
     WorkOrderKind,
     WorkOrderStatus,
 )
@@ -516,4 +517,32 @@ class Offer(TimestampMixin, Base):
     contract_id: Mapped[int | None] = mapped_column(
         ForeignKey("contracts.id", name="fk_escrows_contract_id"), nullable=True
     )
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class TalentCommercialTerms(TimestampMixin, Base):
+    """人才商业条款（M1.7，设计 §27）：`market_listings` 的 **1:1 扩展**。
+
+    - **不改造 `MarketListing`**（T2 冻结）：价格/模式是 M1 的附加事实，独立成表；
+    - `listing_id` 唯一 ⇒ 一条挂牌一套条款（改价是 UPDATE，不是新增版本）；
+    - `price` 是**一等列**（可查、可约束、可结算）；`sale_mode` 表达"一口价 / 可议价"；
+    - `seller_company_id` 记录**收款方**（挂牌公司）；NULL = 系统/发行方挂牌 ⇒ 成交款进 Treasury
+      （M1.8 的 NPC 财政再细化）。
+    - **E18**：本表不存任何「所有权」语义 —— `owner_company_id`/`identity_id` 等 T2 字段
+      永不因交易改写。
+    """
+
+    __tablename__ = "talent_commercial_terms"
+    __table_args__ = (
+        UniqueConstraint("listing_id", name="uq_talent_terms_listing"),
+        Index("ix_talent_terms_seller", "seller_company_id"),
+    )
+
+    listing_id: Mapped[int] = mapped_column(ForeignKey("market_listings.id"))
+    #: 收款方（挂牌公司）；NULL ⇒ 系统/发行方挂牌
+    seller_company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id"), nullable=True)
+    price: Mapped[int] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String(12), default=Currency.credit.value)
+    sale_mode: Mapped[str] = mapped_column(String(16), default=TalentSaleMode.buyout.value)
+    policy_version: Mapped[str] = mapped_column(String(40), default="")
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
