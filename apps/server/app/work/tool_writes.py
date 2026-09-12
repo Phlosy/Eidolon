@@ -26,6 +26,7 @@ from app.models.base import utcnow
 from app.models.enums import (
     DecisionSemantics,
     LifecycleStatus,
+    ProjectStatus,
     TaskKind,
     TaskStatus,
 )
@@ -105,6 +106,14 @@ def _create_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
     if assignee_id is not None:
         _active_employee(db, ctx, int(assignee_id))
 
+    # 管理 Agent 建出第一个任务 = "工作开始了" —— 这是**结构事实**（系统职责），
+    # 不是管理判断：项目的 status 只从"等管理层"推进到"进行中"。
+    if project.status in (
+        ProjectStatus.requested.value,
+        ProjectStatus.planning.value,
+        ProjectStatus.waiting_for_management.value,
+    ):
+        project.status = ProjectStatus.in_progress.value
     task = task_service.create_task(
         db,
         project_id=project_id,

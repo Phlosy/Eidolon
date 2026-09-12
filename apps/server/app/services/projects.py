@@ -48,7 +48,7 @@ from app.services import artifacts as artifact_service
 from app.services import drive as drive_service
 from app.services import position_compat
 from app.services import tasks as task_service
-from app.work import contracts, work_defaults, work_intake
+from app.work import contracts, planning_fixture, work_defaults, work_intake
 
 #: 未指定 deadline 时的默认计划窗口（天）。M2.1 起 guided / managed 共用它，
 #: 保证"只传 name/description"的老客户端在 schedule 字段上逐字段兼容（B4）。
@@ -198,11 +198,12 @@ def _create_fixture_project(
     它是测试/教程/CI/演示的载具，因此刻意**不走** guided 仪式（11 阶段与文档
     本身就是规划流程的产物，而这里规划被替身取代了）。
 
-    负责人沿用职位域的旧口径（`position_compat.employee_by_legacy_role`）——
-    这与它是 fixture 一致：确定性地跑完链条，不需要也不应该询问责任路由。
+    M2.5 起：**整张图在立项时就建好**（`app/work/planning_fixture.py`），
+    然后与生产项目走**完全相同的**调度路径 —— 就绪判定 / 可派发 / WorkSession / Runtime
+    都由 `Orchestrator` + `app/work/dispatch.py` 负责。fixture 与生产的唯一区别是
+    **谁创建了这张图**（R7）。
     """
     pm = position_compat.employee_by_legacy_role(db, company.id, EmployeeRole.product_manager.value)
-    review_holder = position_compat.employee_by_legacy_role(db, company.id, EmployeeRole.ceo.value)
     schedule_start = utcnow()
     project = _store_project(
         db,
@@ -212,26 +213,13 @@ def _create_fixture_project(
             company_id=int(company.id),
             choice=choice,
             code=_resolve_code(db, company, payload, required=False),
-            status=ProjectStatus.requested.value,
+            status=ProjectStatus.in_progress.value,
             owner_id=pm.id if pm else None,
             schedule_start=schedule_start,
             schedule_end=schedule_start + timedelta(days=DEFAULT_PLANNING_WINDOW_DAYS),
         ),
     )
-    task = task_service.create_task(
-        db,
-        project_id=project.id,
-        title=f"订单评审：{project.name}",
-        kind=TaskKind.order_review.value,
-        assignee_id=review_holder.id if review_holder else None,
-        status=TaskStatus.todo.value,
-        description=project.source_order_text,
-        acceptance_criteria="需求清晰、范围可控即可批准",
-        priority=10,
-        sequence=0,
-        planned_start_at=schedule_start,
-        planned_end_at=schedule_start + timedelta(days=1),
-    )
+    tasks = planning_fixture.build_deterministic_plan(db, project)
     db.commit()
     db.refresh(project)
     bus.publish(
@@ -240,7 +228,14 @@ def _create_fixture_project(
         company_id=int(company.id),
         project_id=project.id,
     )
-    task_service.publish_task_created(task, int(company.id))
+    bus.publish(
+        "project.started",
+        {"id": project.id, "name": project.name, "fixture": planning_fixture.__name__},
+        company_id=int(company.id),
+        project_id=project.id,
+    )
+    for task in tasks:
+        task_service.publish_task_created(task, int(company.id))
     from app.workflow.orchestrator import orchestrator
 
     orchestrator.notify({"type": "dispatch"})

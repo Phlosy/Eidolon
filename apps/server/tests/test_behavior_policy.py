@@ -288,9 +288,18 @@ def test_high_curiosity_projection_reaches_prompt_learning_and_usage(
         event for event in event_repo.list_events(db, limit=300) if event.type == "behavior.applied"
     ]
     assert applied, "behavior.applied 事件缺失 ⇒ 无法机器证明投影生效"
-    payload = applied[0].payload
+    # 钉到**本次**投影那一版：同一个员工可能在别的任务里又跑了一轮（revision 会前进），
+    # 所以不能拿"最新一条"来断言本次设置生效。
+    payload = next(
+        (
+            event.payload
+            for event in applied
+            if event.payload.get("profile_revision") == policy["profile_revision"]
+        ),
+        None,
+    )
+    assert payload is not None, "没有一条 behavior.applied 带着本次捕获的 profile_revision"
     assert payload["policy_version"] == policy["policy_version"]
-    assert payload["profile_revision"] == policy["profile_revision"]
     assert payload["open_questions"] > 0
     assert payload["candidate_skills_retrieved"] > 0
 

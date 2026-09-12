@@ -29,7 +29,7 @@ Canonical Executable Project Spec
 RoleContext + Role Resource Index + Authority Projection（派生读模型）
 Management Agent Tooling（只读事实查询 + 受校验的写操作）
 Leadership Planning & Delegation（Agent 提交结构化 Decision，系统 validate/apply/audit）
-Dynamic Task Graph Runtime（DAG 正确性 + 就绪调度；退役 GRAPH_TEMPLATE）
+Dynamic Task Graph Runtime（DAG 正确性 + 就绪调度；模板退出业务路径、编排器变纯调度器）
 Artifact Handoff & Lineage（基于现有 Drive，不新建第二套）
 Review / Rework / Replan（Reviewer Agent 判定；Manager 决定 replan）
 Recruit → READY_TO_WORK（招募后的自动开通编排）
@@ -70,7 +70,7 @@ Golden Path × 3 + 冻结
 | **M2.2** | Role Context & Adaptive Onboarding | 有（v41） | M2.1 | W4/W5/W7/W8/W12/W27/W37–W42 | **DONE** |
 | **M2.3** | Management Agent Tooling | 无 | M2.2 | W3/W6/W11/T1–T12 | **DONE** |
 | **M2.4** | Leadership Planning & Delegation | 有（v42） | M2.3 | W1/W2/W3/W14/W15/W28/DR1–DR10 | **DONE** |
-| **M2.5** | Dynamic Task Graph Runtime | 无（收敛既有表） | M2.4 | W2/W16/W30 | PENDING |
+| **M2.5** | Dynamic Task Graph Runtime | 无（收敛既有表） | M2.4 | W2/W16/W30/R1–R12 | ✅ **DONE** |
 | **M2.6** | Artifact Handoff & Shared Work Context | 有（task 维度 + lineage） | M2.5 | W19 | PENDING |
 | **M2.7** | Review / Rework / Replan | 有（ReviewRequest） | M2.6 | W17/W29 | PENDING |
 | **M2.8** | Recruit → Ready-to-Work | 无（复用 provisioning） | M2.7 | W31/W13 | PENDING |
@@ -175,17 +175,21 @@ Golden Path × 3 + 冻结
   `planning_fixture=deterministic_template` → 基础设施项目；`guided` → 引导仪式；
   `managed` → Work Intake 责任路由。`create_order()` 保留为**退役别名**（不再含分叉）
 - **两条正交维度**：`ProjectWorkMode`（guided | managed，产品）+ `PlanningFixture`
-  （none | deterministic_template，基础设施）；`GRAPH_TEMPLATE` 更名
-  `DETERMINISTIC_TEMPLATE_PLAN`，`_generate_graph` 更名 `_apply_deterministic_template_plan`
+  （none | deterministic_template，基础设施）；`GRAPH_TEMPLATE` 先更名
+  `DETERMINISTIC_TEMPLATE_PLAN`，**M2.5 再整体搬出编排器**到
+  `app/work/planning_fixture.py`（编排器里已无模板/建图/`kind` 分支代码，R12）
 - **Work Intake 责任路由**（`app/work/work_intake.py`，只读）：公司配置 → 职位 code →
   PositionSlot → 生效 PRIMARY 任职 → Employee；4 种结果状态；多条在任者按
   `effective_from` 取最早并上报全部在任者（审计）
 - **公司工作策略 API**：`GET|PATCH /company/work-policy`（`work_mode` + `work_intake_position_code`）
 - **Canonical Spec 读面**：`GET /projects/{id}/spec` 回答 8 个问题（spec / completeness /
   work_mode / planning_fixture / work_intake / management（含 `stale`）/ execution）
-- **不接管规划**（W34）：`orchestrator._advance` 的两个规划分支都以
+- **不接管规划**（W34）：当时 `orchestrator._advance` 的两个规划分支都以
   `_uses_deterministic_plan()` 门控；非 fixture 项目在接收任务完成后发
   `project.awaiting_management_action` 并**停住**
+  → **M2.5 更新**：那两个"规划分支"已整体删除（它们本身就是按 `kind` 推进）。
+  现在没有任何分支：图由 Manager Agent 或 `planning_fixture` 建，
+  就绪后没人负责 ⇒ `task.assignment_required`；没活了但项目没执行 ⇒ `awaiting_management_action`
 - **默认值推进**（B7）：`work_defaults.promote_after_project_completion()` 在两个完成点
   （orchestrator final_review / 交付域 delivery 阶段）调用；只改默认值、幂等、
   用户显式配置过的公司永不被自动改写
@@ -456,31 +460,44 @@ Golden Path × 3 + 冻结
 | 两个审计落点（`audit_logs` vs `tool_audits`） | 同一个事实只留一个落点：工具事实 → `tool_audits`；有专门用例断言 `audit_logs` 不再增长 |
 | **SQLite 单写者争用（`database is locked`）** | 实测：套跑偶发失败在 `INSERT INTO tasks`。根因是**后台编排器**与测试的会话同时写；而且读→写升级在 SQLite 里是**死锁语义**（不等 busy timeout）。修复：新增 `settings.orchestrator_dispatch_enabled`（默认开、测试默认关，与 `position_access_sync` / `evidence_pipeline_enabled` 同一纪律），需要跑完整链的用例显式打开；同时把写 handler 里"提交后再查库"的顺序改掉（读事务会挡住 `bus.publish` 的写事务）|
 
-## 8. M2.5 · Dynamic Task Graph Runtime `[无迁移]`
+## 8. M2.5 · Dynamic Task Graph Runtime `[无迁移]` — ✅ **DONE**
 
-### Goal
+### 用户拍板的执行语义（设计 §14d，R1–R12）
 
-`GRAPH_TEMPLATE` 退出业务真相；系统只回答"哪些 Task 现在可以执行"。
+```text
+Manager chooses. System schedules. Worker executes. Manager intervenes only when judgment is required.
+```
 
-### 范围
+### 落地物
 
-- `app/work/task_graph.py`：DAG 校验（复用 M2.0 `validate_task_graph`）+ 就绪判定 + 扇出/扇入
-- `Orchestrator` 改为**纯调度器**：不再生成 Task、不再决定 assignee、不再按 `kind` 分支推进
-- `_generate_graph()` / `_ensure_development_tasks()` 退役（删除或降级为测试夹具）
-- Task 来源标记：`tasks.origin = {legacy_template, manager, human}`（便于迁移与观测）
-- `_finalize` 不再 `in_review → done`（交 M2.7）
-
-### Acceptance
-
-| # | 判据 |
+| 文件 | 角色 |
 | --- | --- |
-| F1 | 删除 `GRAPH_TEMPLATE` 后，M2.4 的 managed 路径仍能跑通（Agent 建的 DAG 被执行） |
-| F2 | 就绪判定是**纯函数**，只依赖 (task.status, dependency statuses)，有属性测试 |
-| F3 | 扇出：N 个无依赖 Task 可并发（受员工并发不变式限制） |
-| F4 | 扇入：等待全部前置完成才就绪 |
-| F5 | 环 / 悬空依赖 / 自环 → 系统拒绝（400/422），不静默忽略 |
-| F6 | 系统**不**回答"下一步应该创建什么 Task"（无自动补 Task 路径，AST 守卫） |
-| F7 | `legacy_template` 项目仍可读（历史数据不破坏） |
+| `app/work/dispatch.py` | **"System schedules" 的唯一实现**：结构就绪（复用契约纯函数）+ 可派发判定 + 例外上报 |
+| `app/work/planning_fixture.py` | 确定性模板的**新家**：6 阶段整图，建完即退出（只建图，不推进） |
+| `app/workflow/orchestrator.py` | 重写成**纯调度器**：删除模板/建图/`kind` 分支/`_unblock_dependents` |
+| `app/work/contracts.py` | §10b 就绪 vs 可派发 + 两类原因集 + 封闭的事件集；不变量 **R1–R12** |
+| `tests/test_m2_dag_runtime.py` | 16 条用例（12 条锚点 + 4 条反例注入） |
+
+### 门禁
+
+| # | 判据 | 结果 |
+| --- | --- | --- |
+| F1 | 删除模板推进后，managed / guided / fixture 三种来源的图都能跑通 | ✅ |
+| F2 | 就绪判定是**纯函数**（复用 M2.0 `resolve_ready_tasks`），不再有第二份口径 | ✅ |
+| F3 | 扇出：多个无依赖 Task 同时就绪（受"一员工一 session"限制而排队） | ✅ |
+| F4 | 扇入：等全部前置完成才就绪 | ✅ |
+| F5 | 环 / 悬空依赖 / 自环 ⇒ 系统拒绝（M2.0 `validate_task_graph`） | ✅ 沿用 |
+| F6 | 系统**不**回答"下一步建什么 Task"，编排器里没有自动补 Task 的路径（AST 守卫） | ✅ |
+| F7 | 历史 `legacy_template` 项目仍可读 | ✅ 只加不删 |
+| F8 | **R1–R12 每条都有锚点，且每条都用反例注入验证过**（注入 → 红 → 还原 → 绿） | ✅ 12/12 |
+
+### 与计划的偏差（刻意）
+
+| 计划 | 实际 | 原因 |
+| --- | --- | --- |
+| `app/work/task_graph.py` | `app/work/dispatch.py` + `app/work/planning_fixture.py` | 就绪判定本来就是契约纯函数；运行时只需要"适配 + 可派发判定"，一个模块足够，不为文件名造壳 |
+| `tasks.origin = {legacy_template, manager, human}` | **未加** | 该阶段声明无迁移；且"图是谁建的"已由 `projects.planning_fixture` 与本阶段契约表达（R7）。需要独立标记时再单独立项 |
+| `_finalize` 不再 `in_review → done` | **保留**，交 M2.7 | 那是当前**唯一**的完成通道；现在拆掉会让所有项目卡在 `in_review`。M2.7 用 `ReviewVerdict` 替换它（W17 的 owner 阶段就是 M2.7） |
 
 ---
 
@@ -860,13 +877,12 @@ CEO A 离任 → CEO B 上任
     修复：**SAVEPOINT** 只回滚该 handler + 决策意图先提交再执行动作。
     对应的用例也补强了"成功的动作必须真的留在领域状态里"
 
-### 下一步（M2.5，不在 M2.4 范围）
+### ~~下一步（M2.5）~~ → **已完成**（见 §8）
 
-Dynamic Task Graph Runtime：`GRAPH_TEMPLATE` 退出业务真相；
-`Orchestrator` 变成**纯调度器**（不再生成 Task、不再决定 assignee）；
-`validate_task_graph` / `resolve_ready_tasks` 从契约接进运行时；
+`GRAPH_TEMPLATE` 已退出业务真相（搬到 `app/work/planning_fixture.py`，只建图不推进）；
+`Orchestrator` 已是**纯调度器**；`resolve_ready_tasks` 已接进运行时（`app/work/dispatch.py`）；
 Manager Agent 经 `create_task` / `create_dependency` / `assign_task` 建图，
-系统只回答"哪些 Task 现在可以执行"。
+系统只回答"哪些 Task 现在可以执行、能不能派给**它自己的**负责人"。
 
 ### ~~交付后暂停点~~ → **已拍板（2026-09-11，D1/D2/D3）**
 
@@ -1162,7 +1178,7 @@ cd apps/web && pnpm build              ✅
 | R2 | 守卫写成声明式装饰 | 不变量形同虚设 | 强制反例注入验证 |
 | R3 | target invariant 被误读为现状 | 报告失真 | `enforced` / `owner_stage` 双态 + "无静默丢弃"测试 |
 | R4 | Project 收敛破坏教程 | `first-project-practice` 7 步走不通 | M2.1 必须跑教程 E2E；`guided` 保留到 M2.7 |
-| R5 | 退役 `GRAPH_TEMPLATE` 破坏既有测试 | 大面积回归 | M2.5 保留 `legacy_template` 读路径 + 历史数据可读 |
+| R5 | 退役 `GRAPH_TEMPLATE` 破坏既有测试 | 大面积回归 | ✅ 已发生并处理：M2.5 保留了历史数据可读路径；受影响的是**断言分步生成的用例**（milestone 集合、边数、fixture 项目初始状态），已按新语义更新 |
 | R6 | 真实 Runtime 放开后的成本/超时/并发 | 长任务失败不可诊断 | M2.5 起补 WorkSession 事件持久化与重试策略（承接 Audit Gap #8/#9） |
 | R7 | 「Agent 决策」退化为「系统启发式穿着 Agent 外衣」 | 违背 M2 最高原则 | W1/W2/W17 的 AST 守卫 + 行为测试（关掉模板后项目不再自动推进） |
 | R8 | 四个 verdict 面漂移 | 审计已指出的重复真相风险复活 | W29 + 边界表 + 模块引用方向守卫 |

@@ -138,6 +138,12 @@ __all__ = [
     "TaskGraphReport",
     "validate_task_graph",
     "resolve_ready_tasks",
+    "REQUIRES_MANAGEMENT_DECISION",
+    "SYSTEM_BLOCKING_REASONS",
+    "DISPATCH_BLOCK_REASONS",
+    "DISPATCHABILITY_CONDITIONS",
+    "DECISION_NEEDED_EVENTS",
+    "FACT_EVENTS",
     "DagValidationError",
     "Invariant",
     "INVARIANTS",
@@ -1188,9 +1194,13 @@ def resolve_ready_tasks(nodes: Iterable[TaskGraphNode]) -> tuple[int, ...]:
     2. 依赖**全部**为终态成功（`done`）⇒ 就绪；
     3. 运行中 / 已完成 / 已驳回的 Task 不在就绪集合里。
 
-    **所有权**：系统只回答就绪集合；**是否执行、要不要新开 Task 由 Manager Agent 决定**
-    （W2）。M2.0 只冻结该定义 —— `workflow/orchestrator.py` 仍走旧路径，切换是 M2.5 的
-    交付项（`docs/m2-implementation-plan.md` §8 F1/F2）。
+    **所有权**：系统只回答就绪集合；**要不要新开 Task、派给谁由 Manager Agent 决定**
+    （W2 / R2）。M2.5 起 `app/work/dispatch.py` 是它的唯一运行时调用方 ——
+    编排器不再有 per-`TaskKind` 的推进逻辑。
+
+    注意它**只**回答"结构就绪"（R3）：可派发还要看负责人、运行时、项目状态等，
+    那些在 `dispatch.evaluate_dispatch()` 里，且结论只有"能派给**已存在的**负责人"
+    或"需要管理决策"两种（不存在"系统自己挑一个"）。
     """
     materialized = list(nodes)
     done = {node.task_id for node in materialized if node.status == "done"}
@@ -1201,6 +1211,87 @@ def resolve_ready_tasks(nodes: Iterable[TaskGraphNode]) -> tuple[int, ...]:
         if all(dep in done for dep in node.depends_on):
             ready.append(node.task_id)
     return tuple(sorted(ready))
+
+
+# ---------------------------------------------------------------------------
+# 10b. Ready vs Dispatchable（M2.5，R1–R12）
+# ---------------------------------------------------------------------------
+
+#: 需要**管理决策**才能继续的派发阻断原因（用户拍板 §4/§5/§6）。
+#:
+#: 这些**不是**"系统遇到的错误"，而是"系统按设计不能替管理层决定"的分界线：
+#: 系统只报事实，决定由被授权的管理 Agent / Owner 做。因此它们各自对应一个
+#: Decision-needed 事件，而不是一个自动补救动作。
+REQUIRES_MANAGEMENT_DECISION: frozenset[str] = frozenset(
+    {
+        "assignee_missing",  # 结构就绪但没人负责 ⇒ 必须有人做指派决定（R4）
+        "assignee_inactive",  # 负责人当前不可用 ⇒ 等 / 改派 / 修复，由管理层选（R5）
+        "runtime_unavailable",  # 运行时/资源不可用 ⇒ 同上（R5）
+        "provider_missing",  # 真实 runtime 缺模型绑定 ⇒ 同上
+        "task_failed",  # 执行失败 ⇒ 重做 / 改派 / 改方案是管理决策，系统不自动重试（R10）
+    }
+)
+
+#: **系统**自己就能判定的阻断原因（不需要管理决策，只需要等或修数据）。
+SYSTEM_BLOCKING_REASONS: frozenset[str] = frozenset(
+    {
+        "not_ready",  # 依赖还没完成（结构未就绪）
+        "project_not_executable",  # 项目处于终态/未开始
+        "task_held",  # blocked 状态：有人显式标记了阻塞
+    }
+)
+
+#: 派发阻断的完整原因集（两类的并集；由契约测试钉住完备性）。
+DISPATCH_BLOCK_REASONS: frozenset[str] = REQUIRES_MANAGEMENT_DECISION | SYSTEM_BLOCKING_REASONS
+
+#: **结构就绪**的定义（纯函数，见 `resolve_ready_tasks`）：只依赖完成。
+STRUCTURAL_READINESS_KEYS: frozenset[str] = frozenset({"dependencies", "status"})
+
+#: **可派发** = 结构就绪 + 这些额外条件（用户拍板 §4）。系统只回答"能不能派"，
+#: **不回答"该派给谁"** —— 后者是管理决策（R2）。
+DISPATCHABILITY_CONDITIONS: tuple[str, ...] = (
+    "assignee exists",
+    "assignee active",
+    "runtime executable",
+    "provider bound (non-mock only)",
+    "project executable",
+    "task not held",
+    "no conflicting running session for the assignee",
+)
+
+#: Decision-needed 事件：系统**无法继续自动执行**、需要管理判断时才发（用户拍板 §10）。
+#:
+#: 纪律：不要让 Manager Agent 响应所有普通 lifecycle 事件 —— 正常的状态推进由系统完成
+#: （R11），只有这些才唤醒管理层。
+DECISION_NEEDED_EVENTS: frozenset[str] = frozenset(
+    {
+        "task.assignment_required",  # 就绪但没人负责（R4）
+        "task.runtime_unavailable",  # 负责人/Runtime 不可用（R5）
+        "task.blocked",  # 有人显式标记阻塞
+        "task.failed",  # 任务失败 ⇒ 谁来 replan 是管理决策（R12）
+        "task.review_failed",  # 评审不通过（M2.7 落地）
+        "project.replan_required",  # 计划需要重做
+    }
+)
+
+#: **事实**事件：只陈述发生了什么，不是审批请求（R8）。正常 DAG 推进只发这些，
+#: 不产生 DecisionRecord（R9）。
+FACT_EVENTS: frozenset[str] = frozenset(
+    {
+        "task.ready",
+        "task.started",
+        "task.completed",
+        "project.started",
+        "project.delivery_ready",
+        "project.completed",
+        # 手里的活干完了、项目还没进入执行态 ⇒ 等管理层下一步（W34）。这是**事实**，
+        # 不是审批请求：系统只是报告"我没有可执行的工作了"。
+        "project.awaiting_management_action",
+    }
+)
+
+#: 事实事件与 Decision-needed 事件不得重名（一个事件要么是事实，要么要人决策）。
+assert not (FACT_EVENTS & DECISION_NEEDED_EVENTS), "事件语义重叠"
 
 
 # ---------------------------------------------------------------------------
@@ -1714,6 +1805,93 @@ INVARIANTS: tuple[Invariant, ...] = (
         enforced=True,
         owner_stage="M2.4",
         anchors=("test_outcome_is_traceable_without_scoring",),
+    ),
+    Invariant(
+        "R1",
+        "System may automatically dispatch only to the already-authorized assignee.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=(
+            "test_dispatch_only_to_existing_assignee",
+            "test_ready_unassigned_is_never_auto_assigned",
+        ),
+    ),
+    Invariant(
+        "R2",
+        "System never selects an assignee when a task becomes ready.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_ready_unassigned_is_never_auto_assigned",),
+    ),
+    Invariant(
+        "R3",
+        "Structural readiness and dispatchability are distinct concepts.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_readiness_and_dispatchability_are_distinct",),
+    ),
+    Invariant(
+        "R4",
+        "A ready unassigned task requires a management decision.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_ready_unassigned_escalates_as_management_decision",),
+    ),
+    Invariant(
+        "R5",
+        "Runtime/resource failure does not cause automatic reassignment.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_runtime_unavailable_does_not_reassign",),
+    ),
+    Invariant(
+        "R6",
+        "guided and managed share the same DAG runtime.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_guided_and_managed_share_one_dag_runtime",),
+    ),
+    Invariant(
+        "R7",
+        "Fixture graphs share the same dispatcher/runtime after graph creation.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_fixture_graph_uses_the_same_runtime",),
+    ),
+    Invariant(
+        "R8",
+        "task.ready is a fact event, not a management approval request.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_task_ready_is_a_fact_event",),
+    ),
+    Invariant(
+        "R9",
+        "Normal DAG progress does not require a new DecisionRecord.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_normal_dag_progress_creates_no_decision",),
+    ),
+    Invariant(
+        "R10",
+        "Any reassignment must originate from an authorized Agent/User decision.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_reassignment_requires_a_decision",),
+    ),
+    Invariant(
+        "R11",
+        "Manager Agents are invoked for decisions/exceptions, not ordinary scheduling.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_decision_needed_events_are_the_only_manager_triggers",),
+    ),
+    Invariant(
+        "R12",
+        "No production fallback may silently assign or plan work on behalf of management.",
+        enforced=True,
+        owner_stage="M2.5",
+        anchors=("test_no_silent_auto_planning_or_assignment_fallback",),
     ),
 )
 

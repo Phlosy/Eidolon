@@ -1,12 +1,35 @@
-"""Event-driven workflow orchestrator (not a general-purpose engine).
+"""M2.5 **Canonical Task Graph Runtime**：纯调度器（不是通用引擎，也不做管理决策）。
 
-See docs/architecture.md §5. Consumes dispatch signals, drives WorkSessions via
-the RuntimeGateway, and advances the fixed order → planning → build → verify →
-release pipeline. One running session per employee; queued tasks wait.
+用户拍板的执行语义（设计 §14d，R1–R12）：
+
+```text
+Manager chooses.   ← 建哪些 Task、依赖、谁负责、是否改派/取消/重规划（经 M2.3 工具 + M2.4 决策）
+System schedules.  ← 依赖是否满足、是否就绪、能不能派、何时派
+Worker executes.   ← WorkSession → Runtime
+```
+
+它**只做**四件事：
+
+1. 按**契约的**就绪口径（`app/work/dispatch.py` → `resolve_ready_tasks`）找出可以执行的任务；
+2. 对每个就绪任务做**可派发判定**，且只有两种结论：派给**它自己的**负责人（R1），
+   或者上报管理决策（`task.assignment_required` / `task.runtime_unavailable` …，R4/R5）；
+3. 驱动 WorkSession → Runtime → Artifact（执行本身）；
+4. 记录事实（`task.ready` / `task.completed` / `project.delivery_ready` …）。
+
+它**不再**做的事（M2.5 删除）：
+
+```text
+× 按 TaskKind 分支推进（order_review → planning → research → …）
+× 生成 Task 图（那是 Manager Agent 或 `app/work/planning_fixture.py` 的事）
+× 失败后自动把上游任务打回 todo（重做是管理决策，经 request_rework 工具，R10/R12）
+× 替任何人选择负责人（R2：系统永不选人）
+```
+
+一员工同时一个 running session（不变式 §3.4.2）：其他就绪任务**排队**，不是错误。
 """
 
 import asyncio
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from app.brain import DEFAULT_POLICY
 from app.brain import policy_for as behavior_policy_for
@@ -16,10 +39,8 @@ from app.core.logging import get_logger
 from app.events.bus import bus
 from app.learning import reflection, retrieval
 from app.models.enums import (
-    EmployeeRole,
     EmployeeStatus,
     MilestoneStatus,
-    PlanningFixture,
     ProjectStatus,
     TaskKind,
     TaskStatus,
@@ -37,34 +58,11 @@ from app.runtimes.gateway import gateway
 from app.services import artifacts as artifact_service
 from app.services import position_compat
 from app.services import tasks as task_service
+from app.work import contracts as C
+from app.work import dispatch as dispatch_runtime
 from app.work import work_defaults
 
 logger = get_logger(__name__)
-
-#: 确定性模板执行图 —— **测试/教程/CI/演示基础设施，不是生产规划逻辑**（M2.1，D3/W33）。
-#:
-#: 它替掉的是 **Manager Agent 的规划**：让
-#: ``Project → Task Graph → 执行 → Artifact → Review → Completed``
-#: 这条链在不依赖 LLM Manager Agent 的前提下可重复、可断言、零成本。
-#:
-#: 两条硬纪律：
-#: 1. **生产项目永远不会落到它头上** —— 没有"Manager 没反应 → 用模板顶上"；
-#: 2. 只有 `projects.planning_fixture == deterministic_template` 的项目才会应用它，
-#:    而这个值只可能由**显式请求 + 部署门控**（`settings.allow_planning_fixtures`）写入。
-#:
-#: 名字刻意长而白：任何开发者看到 `DETERMINISTIC_TEMPLATE_PLAN` 都应该立刻明白
-#: 这不是公司自己的决策逻辑。
-DETERMINISTIC_TEMPLATE_PLAN = [
-    ("Discovery", TaskKind.research.value, EmployeeRole.researcher.value, []),
-    ("Build", TaskKind.development.value, EmployeeRole.engineer.value, [TaskKind.research.value]),
-    (
-        "Verify",
-        TaskKind.testing.value,
-        EmployeeRole.qa_engineer.value,
-        [TaskKind.development.value],
-    ),
-    ("Release", TaskKind.final_review.value, EmployeeRole.ceo.value, [TaskKind.testing.value]),
-]
 
 
 class Orchestrator:
@@ -73,6 +71,8 @@ class Orchestrator:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._runner: asyncio.Task | None = None
         self._running: dict[int, asyncio.Task] = {}  # employee_id -> session task
+        #: (task_id, event_type) —— 同一任务同一原因只上报一次（重启后最多再报一次）
+        self._escalated: set[tuple[int, str]] = set()
 
     def start(self) -> None:
         self._loop = asyncio.get_running_loop()
@@ -115,24 +115,83 @@ class Orchestrator:
     # ---- dispatcher ----
 
     async def _dispatch_pending(self) -> None:
+        """把**已就绪且可派发**的任务交给**它自己的**负责人（R1/R2）。
+
+        三种结论，各自不同的处置：
+
+        | 判定 | 处置 |
+        | --- | --- |
+        | `dispatchable` | 起一个 WorkSession（派给**已存在的** assignee）|
+        | `queued`（负责人正忙）| 跳过 —— 下一轮再看，不是异常 |
+        | `needs_management` | 发 Decision-needed 事件（去重），**绝不自动挑人**（R4/R5）|
+
+        **去重**：同一 (task, event) 只在第一次遇到时上报；重启后最多再报一次
+        （事件是事实，重述一次可以接受；反复刷屏不可以）。
+        """
         if not settings.orchestrator_dispatch_enabled:
             # 门控：后台写者不与调用方抢同一份 SQLite（见 Settings 的注释）。
             return
         with SessionLocal() as db:
-            candidates = []
-            for task in project_repo.list_tasks_by_status(db, TaskStatus.todo.value):
-                if task.assignee_id is None or task.assignee_id in self._running:
+            candidates: list[tuple[int, int]] = []
+            escalations: list[tuple[int, str, dict]] = []
+            for project in project_repo.list_projects(db):
+                if project.status not in dispatch_runtime.EXECUTABLE_PROJECT_STATUSES:
                     continue
-                employee = org_repo.get_employee(db, task.assignee_id)
-                if employee is None or employee.status != EmployeeStatus.idle.value:
-                    continue
-                if project_repo.get_running_session_for_employee(db, employee.id):
-                    continue
-                candidates.append((task.id, employee.id))
+                state = dispatch_runtime.project_runtime_state(db, int(project.id))
+                for evaluation in state.dispatchable:
+                    assignee_id = int(evaluation.assignee_id or 0)
+                    if not assignee_id or assignee_id in self._running:
+                        continue
+                    if org_repo.get_employee(db, assignee_id) is None:
+                        continue
+                    candidates.append((int(evaluation.task_id), assignee_id))
+                for evaluation in state.needs_management:
+                    event = evaluation.event_type
+                    if event is None:
+                        continue
+                    key = (int(evaluation.task_id), event)
+                    if key in self._escalated:
+                        continue
+                    task = project_repo.get_task(db, int(evaluation.task_id))
+                    escalations.append(
+                        (
+                            int(evaluation.task_id),
+                            event,
+                            {
+                                "id": int(evaluation.task_id),
+                                "title": task.title if task else "",
+                                "kind": task.kind if task else "",
+                                "project_id": int(project.id),
+                                "company_id": int(project.company_id),
+                                "reasons": list(evaluation.reasons),
+                                "assignee_id": evaluation.assignee_id,
+                                "management_employee_id": project.management_employee_id,
+                                "needs_management": True,
+                            },
+                        )
+                    )
+                    self._escalated.add(key)
+        for task_id, event, payload in escalations:
+            logger.info("dispatch needs management: %s task=%s", event, task_id)
+            bus.publish(
+                event,
+                payload,
+                company_id=payload["company_id"],
+                project_id=payload["project_id"],
+                task_id=task_id,
+                actor_employee_id=payload.get("assignee_id"),
+            )
         for task_id, employee_id in candidates:
             # invariant §3.4.2: one running WorkSession per employee
-            self._running[employee_id] = asyncio.create_task(
+            session_task = asyncio.create_task(
                 self._run_task(task_id), name=f"work-session-task-{task_id}"
+            )
+            self._running[employee_id] = session_task
+            # 释放键必须**挂在会话任务的生命周期上**，不能写在 `_run_task` 里：
+            # 那里有若干早退分支（任务被别处改状态、员工不 idle 等），
+            # 任何一次早退漏掉释放，这个员工就会被永久跳过（实测踩过）。
+            session_task.add_done_callback(
+                lambda _task, employee=employee_id: self._running.pop(employee, None)
             )
 
     async def _run_task(self, task_id: int) -> None:
@@ -141,7 +200,12 @@ class Orchestrator:
         try:
             with SessionLocal() as db:
                 task = project_repo.get_task(db, task_id)
-                if task is None or task.status != TaskStatus.todo.value:
+                # 可派发的前提是"结构就绪 + 已指派"。`backlog` 表示"草稿"，
+                # 就绪后由**系统**推进到 `todo`（就绪是系统职责，选人是管理职责，R3）。
+                if task is None or task.status not in (
+                    TaskStatus.backlog.value,
+                    TaskStatus.todo.value,
+                ):
                     return
                 employee = org_repo.get_employee(db, task.assignee_id)
                 if employee is None or employee.status != EmployeeStatus.idle.value:
@@ -156,6 +220,9 @@ class Orchestrator:
                     else EmployeeStatus.working.value
                 )
                 employee.current_task_id = task.id
+                if task.status == TaskStatus.backlog.value:
+                    # backlog → todo → in_progress：状态机不允许跳步，也不该跳
+                    task_service.transition_task(db, task, TaskStatus.todo.value)
                 task_service.transition_task(db, task, TaskStatus.in_progress.value)
                 # v0.2: link the work session to the runtime instance + provider/model
                 runtime_instance = runtime_repo.get_instance_for_employee(db, employee.id)
@@ -287,9 +354,6 @@ class Orchestrator:
         except Exception as exc:
             logger.exception("work session crashed", extra={"task_id": task_id})
             self._finalize(task_id, False, [], f"internal error: {exc}", 0.0)
-        finally:
-            if employee_id is not None:
-                self._running.pop(employee_id, None)
 
     # ---- finalization & reflection ----
 
@@ -395,199 +459,82 @@ class Orchestrator:
             reflection.reflect(task_id, employee_id, success, 0.0, None if success else "manual")
         self._advance(task_id, success)
 
-    # ---- workflow advance (§5) ----
+    # ---- 事实记录与推进（**没有** per-TaskKind 分支，R12） ----
 
     def _advance(self, task_id: int, success: bool) -> None:
+        """任务结束后只做两件事：**记录事实**、**上报例外**。
+
+        - 成功：任务已由 `_finalize` 标成 done ⇒ 发 `task.ready`（新就绪的后续任务），
+          并检查项目是否全部完成（`project.delivery_ready` / `project.completed`）。
+        - 失败：发 `project.replan_required` —— **不自动重做**。
+          "把上游任务打回 todo" 是管理决策（`request_rework` 工具，R10/R12）。
+        """
         with SessionLocal() as db:
             task = project_repo.get_task(db, task_id)
             if task is None:
                 return
             project = project_repo.get_project(db, task.project_id)
-            company_id = project.company_id
+            if project is None:  # pragma: no cover - 防御
+                return
+            company_id = int(project.company_id)
+            project_id = int(project.id)
             events: list[tuple[str, dict]] = []
 
             if not success:
-                if task.kind == TaskKind.testing.value:
-                    # QA rejected → development 任务回到 todo（重做）
-                    dev_task = next(
-                        (
-                            t
-                            for t in project_repo.list_tasks(db, project.id)
-                            if t.kind == TaskKind.development.value
-                        ),
-                        None,
-                    )
-                    if dev_task is not None:
-                        task_service.transition_task(
-                            db, dev_task, TaskStatus.todo.value, force=True
-                        )
-                        events.append(
-                            (
-                                "task.assigned",
-                                {"id": dev_task.id, "title": dev_task.title, "rework": True},
-                            )
-                        )
+                events.append(("project.replan_required", _replan_payload(project, task)))
                 db.commit()
-                self._publish_advance_events(events, company_id, project.id)
-                self.notify({"type": "dispatch"})
+                self._publish_advance_events(events, company_id, project_id)
                 return
 
-            if task.kind == TaskKind.order_review.value:
-                project.status = ProjectStatus.planning.value
-                if self._uses_deterministic_plan(project):
-                    # 立项后接手的 PM：先问"谁占着 PM 编制"，没人任职才回退旧列镜像
-                    pm = position_compat.employee_by_legacy_role(
-                        db, company_id, EmployeeRole.product_manager.value
+            # 完成一个任务可能让后续任务就绪 —— 用**契约口径**算，不猜
+            for ready in dispatch_runtime.ready_tasks(db, project_id):
+                events.append(
+                    (
+                        "task.ready",
+                        {
+                            "id": int(ready.id),
+                            "title": ready.title,
+                            "kind": ready.kind,
+                            "assignee_id": ready.assignee_id,
+                        },
                     )
-                    planning_start = project.planned_start_at or project.created_at
-                    planning = task_service.create_task(
-                        db,
-                        project_id=project.id,
-                        title=f"产品规划：{project.name}",
-                        kind=TaskKind.planning.value,
-                        assignee_id=pm.id if pm else None,
-                        status=TaskStatus.todo.value,
-                        description=project.source_order_text,
-                        acceptance_criteria="产出完整 PRD",
-                        priority=9,
-                        sequence=1,
-                        planned_start_at=planning_start + timedelta(days=1),
-                        planned_end_at=planning_start + timedelta(days=2),
-                    )
-                    db.flush()
-                    events.append(("task.created", _task_summary(planning)))
-                    if planning.assignee_id:
-                        events.append(("task.assigned", _task_summary(planning)))
-                else:
-                    # M2.1 / W34：**系统不接管规划**。
-                    # Manager Agent 已完成接收，接下来的拆解/委派由它做（工具面在 M2.3）；
-                    # 没有工具之前就**停在这里等**，而不是自己生成一张固定图。
-                    events.append(
-                        ("project.awaiting_management_action", _awaiting_payload(project))
-                    )
-            elif task.kind == TaskKind.planning.value:
-                if self._uses_deterministic_plan(project):
-                    events.extend(self._apply_deterministic_template_plan(db, project))
-                    project.status = ProjectStatus.in_progress.value
-                    events.append(("project.started", {"id": project.id, "name": project.name}))
-                else:
-                    events.append(
-                        ("project.awaiting_management_action", _awaiting_payload(project))
-                    )
-            elif task.kind in (
-                TaskKind.research.value,
-                TaskKind.development.value,
-                TaskKind.testing.value,
+                )
+
+            # 项目级事实：全部任务完成 ⇒ 可交付（"计划跑完了"是事实，不是管理判断）
+            state = dispatch_runtime.project_runtime_state(db, project_id)
+            if state.all_tasks_done and project.status in (
+                ProjectStatus.requested.value,
+                ProjectStatus.planning.value,
             ):
-                events.extend(self._unblock_dependents(db, task))
-            elif task.kind == TaskKind.final_review.value:
+                # 手里的活干完了、但项目还没进入执行态 ⇒ 事实是"等管理层下一步动作"。
+                # 这不是替谁做决定：系统只说"我没活了"，要不要继续由 Manager Agent 决定（W34）。
+                project.status = ProjectStatus.planning.value
+                events.append(("project.awaiting_management_action", _awaiting_payload(project)))
+            if state.all_tasks_done and project.status in (
+                ProjectStatus.in_progress.value,
+                ProjectStatus.in_review.value,
+            ):
                 project.status = ProjectStatus.completed.value
-                if task.milestone_id:
-                    milestone = db.get(Milestone, task.milestone_id)
-                    if milestone:
-                        milestone.status = MilestoneStatus.completed.value
-                events.append(("project.completed", {"id": project.id, "name": project.name}))
+                for milestone in project_repo.list_milestones(db, project_id):
+                    milestone.status = MilestoneStatus.completed.value
+                events.append(("project.delivery_ready", {"id": project_id, "name": project.name}))
+                events.append(("project.completed", {"id": project_id, "name": project.name}))
                 # D2/B7：首次真实项目走完 ⇒ 公司默认工作模式从 guided 推进到 managed。
                 # 只改**默认值**，不改任何项目的 work_mode 快照（W35）。
                 work_defaults.promote_after_project_completion(db, company_id)
             db.commit()
-        self._publish_advance_events(events, company_id, project.id)
+        self._publish_advance_events(events, company_id, project_id)
         self.notify({"type": "dispatch"})
-
-    @staticmethod
-    def _uses_deterministic_plan(project) -> bool:
-        """该项目是否使用确定性模板替身规划（**基础设施**，见 W33）。"""
-        return project.planning_fixture == PlanningFixture.deterministic_template.value
-
-    def _apply_deterministic_template_plan(self, db, project) -> list[tuple[str, dict]]:
-        """按**确定性模板**生成 Milestones+Tasks 图（仅 fixture 项目）。
-
-        这是测试/教程/CI 的载具：research→development→testing→final_review。
-        它**不是**公司的规划策略 —— 生产项目的 Task 图只能由 Manager Agent 或 Human
-        经 `app/work/tools`（M2.3）创建。
-        """
-        events: list[tuple[str, dict]] = []
-        by_kind: dict[str, int] = {}
-        schedule_start = project.planned_start_at or project.created_at
-        schedule_windows = ((2, 5), (5, 11), (11, 15), (15, 18))
-        project.planned_start_at = schedule_start
-        project.planned_end_at = schedule_start + timedelta(days=18)
-        for order, (milestone_name, kind, role, deps) in enumerate(
-            DETERMINISTIC_TEMPLATE_PLAN, start=1
-        ):
-            start_offset, end_offset = schedule_windows[order - 1]
-            # 里程碑负责人同理：`role` 是 DETERMINISTIC_TEMPLATE_PLAN 里的旧口径，
-            # 桥把它换算成"现在谁占着这个编制"，而不是"谁身上写着这个字符串"
-            assignee = position_compat.employee_by_legacy_role(db, project.company_id, role)
-            milestone = project_repo.create_milestone(
-                db,
-                project_id=project.id,
-                name=milestone_name,
-                description=f"{milestone_name} 阶段",
-                order=order,
-                owner_id=assignee.id if assignee else None,
-                planned_start_at=schedule_start + timedelta(days=start_offset),
-                planned_end_at=schedule_start + timedelta(days=end_offset),
-            )
-            task = task_service.create_task(
-                db,
-                project_id=project.id,
-                milestone_id=milestone.id,
-                title=f"{milestone_name}：{project.name}",
-                kind=kind,
-                assignee_id=assignee.id if assignee else None,
-                status=TaskStatus.backlog.value,
-                description=project.source_order_text,
-                acceptance_criteria=f"产出符合要求的 {kind} 交付物",
-                priority=10 - order,
-                sequence=order + 1,
-                depends_on=[by_kind[d] for d in deps],
-                planned_start_at=schedule_start + timedelta(days=start_offset),
-                planned_end_at=schedule_start + timedelta(days=end_offset),
-            )
-            by_kind[kind] = task.id
-            events.append(("task.created", _task_summary(task)))
-            if assignee:
-                events.append(("task.assigned", _task_summary(task)))
-        research_id = by_kind[TaskKind.research.value]
-        research = project_repo.get_task(db, research_id)
-        task_service.transition_task(db, research, TaskStatus.todo.value)
-        milestone = db.get(Milestone, research.milestone_id)
-        if milestone:
-            milestone.status = MilestoneStatus.in_progress.value
-        return events
-
-    def _unblock_dependents(self, db, done_task) -> list[tuple[str, dict]]:
-        """Open dependents (backlog, or failed awaiting rework) once all deps are done."""
-        events: list[tuple[str, dict]] = []
-        project_tasks = project_repo.list_tasks(db, done_task.project_id)
-        for candidate in project_tasks:
-            if candidate.status not in (TaskStatus.backlog.value, TaskStatus.failed.value):
-                continue
-            dep_ids = task_service.task_dependencies(candidate)
-            if done_task.id not in dep_ids:
-                continue
-            if all(
-                project_repo.get_task(db, dep_id).status == TaskStatus.done.value
-                for dep_id in dep_ids
-            ):
-                task_service.transition_task(db, candidate, TaskStatus.todo.value, force=True)
-                if candidate.milestone_id:
-                    milestone = db.get(Milestone, candidate.milestone_id)
-                    if milestone and milestone.status == MilestoneStatus.pending.value:
-                        milestone.status = MilestoneStatus.in_progress.value
-                events.append(("task.assigned", _task_summary(candidate)))
-        # milestone completion sweep
-        for milestone in project_repo.list_milestones(db, done_task.project_id):
-            milestone_tasks = [t for t in project_tasks if t.milestone_id == milestone.id]
-            if milestone_tasks and all(t.status == TaskStatus.done.value for t in milestone_tasks):
-                milestone.status = MilestoneStatus.completed.value
-        return events
 
     def _publish_advance_events(
         self, events: list[tuple[str, dict]], company_id: int, project_id: int
     ) -> None:
         for event_type, data in events:
+            # 事件集是**封闭**的（R11）：要么是事实通告，要么是要管理层介入。
+            # 未登记的事件意味着"悄悄多了一条唤醒/通知路径"，这里直接炸。
+            assert event_type in (C.FACT_EVENTS | C.DECISION_NEEDED_EVENTS), (
+                f"未登记的事件类型：{event_type}（请先在 contracts 的事件表里登记）"
+            )
             bus.publish(
                 event_type,
                 data,
@@ -596,6 +543,21 @@ class Orchestrator:
                 task_id=data.get("id") if event_type.startswith("task.") else None,
                 actor_employee_id=data.get("assignee_id"),
             )
+
+
+def _replan_payload(project, task) -> dict:
+    """`project.replan_required` 的载荷：只陈述事实（谁失败了），不提议怎么重做。"""
+    return {
+        "id": int(project.id),
+        "name": project.name,
+        "work_mode": project.work_mode,
+        "management_employee_id": project.management_employee_id,
+        "failed_task_id": int(task.id),
+        "failed_task_title": task.title,
+        "failed_task_kind": task.kind,
+        "assignee_id": task.assignee_id,
+        "reason": "task_failed",
+    }
 
 
 def _awaiting_payload(project) -> dict:

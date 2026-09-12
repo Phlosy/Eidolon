@@ -22,7 +22,10 @@ def test_project_workflow(client, employees_by_slug, monkeypatch):
     )
     assert resp.status_code == 201, resp.text
     project_id = resp.json()["id"]
-    assert resp.json()["status"] == "requested"
+    # M2.5：fixture 项目在立项时就建好**整张**确定性图（含 Intake 阶段），
+    # 所以它一开始就是 in_progress —— 旧实现是"分步生成"，那要求编排器按
+    # TaskKind 分支推进，正是本阶段拆掉的东西。
+    assert resp.json()["status"] == "in_progress"
 
     deadline = time.time() + TIMEOUT_SEC
     status = ""
@@ -44,7 +47,10 @@ def test_project_workflow(client, employees_by_slug, monkeypatch):
         "testing",
         "final_review",
     } <= kinds
+    # M2.5：确定性图现在包含 Intake / Planning 两个前台阶段（整图在立项时建好）
     assert {m["name"] for m in detail["milestones"]} == {
+        "Intake",
+        "Planning",
         "Discovery",
         "Build",
         "Verify",
@@ -60,7 +66,8 @@ def test_project_workflow(client, employees_by_slug, monkeypatch):
     # graph endpoint is React Flow-ready
     graph = client.get(f"/api/v1/projects/{project_id}/graph").json()
     assert len(graph["nodes"]) == len(detail["tasks"])
-    assert len(graph["edges"]) == 3  # research→development→testing→final_review
+    # 链式依赖：Intake→Planning→Discovery→Build→Verify→Release（5 条边）
+    assert len(graph["edges"]) == 5
 
     # every employee that worked has learning records and skills
     for slug in ("alice", "morgan", "bob", "charlie", "dana"):

@@ -574,7 +574,7 @@ W23  WorkOrder remains economic/commercial wrapper, not execution truth.
 | --- | --- | --- |
 | M2.0 | 冻结 `ProjectWorkMode` 与收敛映射；不新增列、不改行为 | ✅ DONE |
 | **M2.1** | `Project` 承载 Canonical Spec；`work_mode` 快照；单一 `create_project()`；Work Intake 责任路由；规划 fixture 拆出产品维度 | ✅ **DONE** |
-| M2.5 | `DETERMINISTIC_TEMPLATE_PLAN` 彻底退出业务路径（只留 fixture 项目） | PENDING |
+| **M2.5** | `DETERMINISTIC_TEMPLATE_PLAN` 彻底退出业务路径：编排器变纯调度器，模板搬到 `app/work/planning_fixture.py`（建完即退出） | ✅ **DONE** |
 | M2.7 | `guided` 的评审门改为**复用同一套 Review 契约**（不保留第二套决策语义） | PENDING |
 | M2.9 | `WorkOrder` → `Project` 绑定边落地；`submit.project_id` 从"自由字段"变成"受校验引用" | PENDING |
 
@@ -673,9 +673,11 @@ Project Created → 系统自己生成执行图      ❌ 违反 W2 / W34
 用于 CI / 迁移回归 / orchestrator 回归 / runtime 回归 / 教程 / golden path。
 若所有测试都依赖 LLM Manager Agent，测试会变得非确定、昂贵、慢、难复现。
 
-**命名纪律**：模板常量叫 `DETERMINISTIC_TEMPLATE_PLAN`，应用函数叫
-`_apply_deterministic_template_plan` —— 任何开发者看到名字都该立刻明白
-**这不是生产环境的公司决策逻辑**。
+**命名纪律（M2.5 更新）**：模板**已经整体搬出编排器**，住在
+`app/work/planning_fixture.py`（`DETERMINISTIC_PLAN_STAGES` /
+`build_deterministic_plan`）—— 任何开发者看到文件名与函数名都该立刻明白
+**这不是生产环境的公司决策逻辑，而是替掉 Manager 规划的替身**。
+编排器里已**不存在**任何模板、建图、按 `kind` 推进的代码（R12 的 AST 守卫钉住这一点）。
 
 **Manager 缺失或失败时的正确行为**（不是 fallback）：
 
@@ -773,7 +775,7 @@ W11  Fit is decision-support only.
 
 ---
 
-## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10）
+## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10 / R1–R12）
 
 | # | 不变量 | M2.0 状态 |
 | --- | --- | --- |
@@ -841,6 +843,18 @@ W11  Fit is decision-support only.
 | **DR8** | parent_decision_id expresses the management decision tree; no separate workflow model is introduced. | **M2.4 强制** |
 | **DR9** | Decision context is a bounded snapshot with stable refs and a hash, never a copy of the database. | **M2.4 强制** |
 | **DR10** | Decision outcome is traceable (decision to outcome); no capability scoring in M2.4. | **M2.4 强制** |
+| **R1** | System may automatically dispatch only to the already-authorized assignee. | **M2.5 强制** | **M2.5 强制** |
+| **R2** | System never selects an assignee when a task becomes ready. | **M2.5 强制** | **M2.5 强制** |
+| **R3** | Structural readiness and dispatchability are distinct concepts. | **M2.5 强制** | **M2.5 强制** |
+| **R4** | A ready unassigned task requires a management decision. | **M2.5 强制** | **M2.5 强制** |
+| **R5** | Runtime/resource failure does not cause automatic reassignment. | **M2.5 强制** | **M2.5 强制** |
+| **R6** | guided and managed share the same DAG runtime. | **M2.5 强制** | **M2.5 强制** |
+| **R7** | Fixture graphs share the same dispatcher/runtime after graph creation. | **M2.5 强制** | **M2.5 强制** |
+| **R8** | task.ready is a fact event, not a management approval request. | **M2.5 强制** | **M2.5 强制** |
+| **R9** | Normal DAG progress does not require a new DecisionRecord. | **M2.5 强制** | **M2.5 强制** |
+| **R10** | Any reassignment must originate from an authorized Agent/User decision. | **M2.5 强制** | **M2.5 强制** |
+| **R11** | Manager Agents are invoked for decisions/exceptions, not ordinary scheduling. | **M2.5 强制** | **M2.5 强制** |
+| **R12** | No production fallback may silently assign or plan work on behalf of management. | **M2.5 强制** | **M2.5 强制** |
 
 > **"M2.0 强制"** = M2.0 就有可执行测试锚点；
 > **"冻结"** = M2.0 冻结契约与归属，锚点在其 owner 阶段落地。
@@ -937,6 +951,97 @@ AutonomyPolicy = **AI** 是否允许在无人确认下执行该动作      （M2
 不进玩家 router · 走**同一段**执行代码 · Authority / 领域校验 / 自主等级门禁 / 审计一样不少
 它只解决"谁能发起"，不解决"可以绕过什么"（T10）
 ```
+
+## 14d. M2.5 Canonical Task Graph Runtime（用户拍板的执行语义）
+
+一句话：
+
+```text
+Manager chooses.   ← 建哪些 Task、依赖、**谁负责**、是否改派/取消/重规划
+System schedules.  ← 依赖是否满足、是否就绪、能不能派、何时派
+Worker executes.   ← WorkSession → Runtime → Artifact
+Manager intervenes only when judgment is required.
+```
+
+### 14d.1 决策边界（§1）
+
+| 谁 | 决定什么 |
+| --- | --- |
+| **管理（Manager Agent / 授权人）** | 建哪些 Task、依赖怎么连、**谁负责**、是否改派 / 取消 / 重规划、是否接受交付 |
+| **系统** | 依赖是否满足、任务是否就绪、现在能不能派、派给谁**（只能是已存在的负责人）**、何时记录事实 |
+
+系统永远不回答"应该由谁来干这件事"，也永远不回答"下一步该建什么 Task"（W1/W2/R1/R2/R12）。
+
+### 14d.2 规范流程（§2）
+
+```text
+resolve_ready_tasks()            ← 契约纯函数：依赖全部 done 且自身未开始（**事实**）
+  → task.ready                   ← 事实事件，不是审批请求（R8）
+  → dispatch.evaluate_dispatch() ← 运行检查：负责人存在/可用 · runtime 可用 · 项目可执行
+      ├─ dispatchable → 派给**它自己的** assignee（backlog→todo→in_progress）
+      ├─ queued       → 负责人正忙，排队（不是异常，不改派）
+      └─ needs_management → 发 Decision-needed 事件，**等管理层**（R4/R5/R10）
+  → WorkSession → Runtime → Artifact → task.completed
+```
+
+### 14d.3 结构就绪 ≠ 可派发（§3/§4/R3）
+
+```text
+结构就绪（Structural Ready）  = 依赖全部完成 —— 纯结构事实，不看人、不看资源
+可派发（Dispatchable）        = 就绪 + 负责人有效 + runtime 可用 + 项目可执行 + 无冲突会话
+```
+
+两者**分开登记**在契约里：
+
+```text
+SYSTEM_BLOCKING_REASONS     = {not_ready, project_not_executable, task_held}
+REQUIRES_MANAGEMENT_DECISION = {assignee_missing, assignee_inactive,
+                                runtime_unavailable, provider_missing, task_failed}
+DISPATCH_BLOCK_REASONS      = 前两者的并集（完备性有断言钉住）
+```
+
+### 14d.4 五条硬纪律（§3–§10）
+
+```text
+① task.ready 是**事实**，不是批准：发布它不授予任何权限、不产生 DecisionRecord（R8/R9）
+② 就绪但没负责人 ⇒ task.assignment_required，系统**绝不**自动挑人（R2/R4）
+③ 负责人不可用 ⇒ 报告原因并等待，**绝不**自动改派（R5）
+④ 失败 ⇒ project.replan_required，**绝不**自动重做/自动回退上游（R10）
+⑤ guided / managed / fixture **共用同一个 DAG 运行时**，没有 per-mode 派发器（R6/R7）
+```
+
+### 14d.5 Decision-needed 事件集是封闭的（§10/R11）
+
+```text
+task.assignment_required   就绪但没人负责
+task.runtime_unavailable   负责人 / Runtime / 模型绑定不可用
+task.blocked               有人显式标记阻塞
+task.failed                执行失败 ⇒ 谁来 replan 是管理决策
+task.review_failed         评审不通过（M2.7 落地）
+project.replan_required    计划需要重做
+```
+
+事实事件（`FACT_EVENTS`）与它**不重名**：正常 DAG 推进只发事实，不唤醒管理层（R9）。
+编排器的发布口有运行时断言 + AST 守卫双重检查：未登记的事件没有出路。
+
+### 14d.6 Manager Agent 不是调度器（§9）
+
+```text
+❌ 不订阅 task.ready / task.completed 之类的事实事件去"接着排下一步"
+✅ 只在这些事件上介入：Decision-needed 六件套 + 交付验收 + 人的显式指令
+```
+
+### 14d.7 运行时**不存在**的东西（§6/§12，AST 守卫钉住）
+
+```text
+× 按 TaskKind 分支推进（order_review → planning → research → …）
+× 生成 Task 图（`_generate_graph` / 模板）
+× 失败后把上游任务打回 todo（`_unblock_dependents`）
+× 选择或更换负责人
+```
+
+确定性模板（`app/work/planning_fixture.py`）只负责**建图**，建完即退出：
+它不碰调度、不碰 WorkSession、不碰推进 —— 与 Manager Agent 建的图进入运行时后完全等价。
 
 ## 15. M2 明确不做
 

@@ -257,45 +257,73 @@ class RuntimeAdapter(ABC):
 
 ## 5. Workflow 编排（workflow/orchestrator.py）
 
-不是通用引擎，是一个**事件驱动的推进器 + 调度器**，消费 EventBus 事件。
+不是通用引擎，是一个**纯调度器**（M2.5 起，设计 §14d / R1–R12）：
 
-> **M2.1 起（D3 / W33）**：固定模板**不再是生产规划逻辑**。它已更名为
-> `DETERMINISTIC_TEMPLATE_PLAN`，只对 **基础设施项目**（
-> `projects.planning_fixture = deterministic_template`，需显式请求 + 部署门控）生效。
-> 生产项目（`managed` / `guided`）的 Task 图必须由 **Manager Agent 或 Human** 创建；
-> 系统在管理动作尚未发生时**停在等待**，不会自己生成执行图（W2 / W34）。
+```text
+Manager chooses.   ← 建哪些 Task / 依赖 / **谁负责** / 改派 / 取消 / 重规划（M2.3 工具 + M2.4 决策）
+System schedules.  ← 依赖是否满足、是否就绪、能不能派、何时派（app/work/dispatch.py）
+Worker executes.   ← WorkSession → Runtime → Artifact
+```
+
+**它只做四件事**：按契约口径算就绪 → 对就绪任务做可派发判定（结论只有两种：
+派给**它自己的**负责人，或上报管理决策）→ 驱动 WorkSession/Runtime → 记录事实。
+
+**它不再做的事**（M2.5 删除）：按 `TaskKind` 分支推进、生成 Task 图、
+失败后自动把上游打回 todo、替任何人选择负责人。
 
 ```text
 POST /projects  → services/projects.create_project()   ← M2.1 唯一立项入口
-  ├─ planning_fixture=deterministic_template → 基础设施项目（下表流程）
+  ├─ planning_fixture=deterministic_template → 基础设施项目：**立项时整张图建好**
+  │                                             （app/work/planning_fixture.py，建完即退出）
   ├─ work_mode=guided                        → 11 ProjectPhase + 人工评审门（v0.5 交付域）
   └─ work_mode=managed                       → Work Intake 责任路由
         ├─ routed        → management_* 快照 + 一个「工作接收」任务（kind=order_review）
         └─ 解析不到负责人 → status=waiting_for_management（零任务零规划）+ 事件
 ```
 
-**基础设施项目（fixture）的确定性流程**（仅教程/CI/测试/演示）：
+**三种图来源，一条执行路径**（R6/R7）：Manager Agent 建的图、Human 建的图、
+fixture 建的确定性图，进入运行时后**完全相同** —— 系统只区分"谁创建的图"，
+不区分"怎么执行"。
+
+**就绪 ≠ 可派发**（R3）：
 
 ```text
-order_review done → project.status=planning → task(planning, PM)
-planning done (产出 PRD artifact) → 按 DETERMINISTIC_TEMPLATE_PLAN 生成 Milestones+Tasks 图：
-    M1 Discovery : research(researcher)
-    M2 Build     : development(engineer)  depends-on research
-    M3 Verify    : testing(qa)            depends-on development
-    M4 Release   : final_review(ceo)      depends-on testing → 产出 release artifact
-  → project.status=in_progress
-testing done → final_review → done → project.status=completed, event project.completed
-QA rejected → development 任务回到 todo（重做），记录失败供 reflection
+结构就绪  = 契约纯函数 resolve_ready_tasks（依赖全部 done；只是事实）
+可派发    = dispatch.evaluate_dispatch()（负责人存在/可用、runtime 可用、项目可执行）
+            ├─ dispatchable        → 派给**已存在的** assignee（backlog→todo→in_progress）
+            ├─ queued（负责人正忙） → 跳过，下一轮再看（不是异常）
+            └─ needs_management    → 发 Decision-needed 事件，**绝不自动挑人**（R1/R2/R4/R5/R10）
+```
+
+**Decision-needed 事件集是封闭的**（R11）：`task.assignment_required` /
+`task.runtime_unavailable` / `task.blocked` / `task.failed` / `task.review_failed` /
+`project.replan_required`。其余推进只发**事实**事件（`task.ready` / `task.completed` /
+`project.delivery_ready` / `project.completed` …），不产生 DecisionRecord（R8/R9）。
+
+**fixture 项目的确定性流程**（仅教程/CI/测试/演示，需显式请求 + 部署门控，W33）：
+
+```text
+立项 → 一次性建全图（6 阶段链）：
+    Intake    : order_review (ceo)        day 0-1
+    Planning  : planning     (PM)         day 1-2
+    Discovery : research     (researcher) day 2-5
+    Build     : development  (engineer)   day 5-11
+    Verify    : testing      (qa)         day 11-15
+    Release   : final_review (ceo)        day 15-18
+  → project.status=in_progress（此刻起走与生产项目完全相同的调度路径）
+  → 最后一个任务 done ⇒ project.status=completed + project.completed
 ```
 
 **managed 项目的接收环节**：接收任务完成后 `project.status=planning` 并发
 `project.awaiting_management_action`；系统**不**创建 planning 任务、**不**生成任何图。
-拆解与委派由 Manager Agent 经 M2.3 的工具面完成。
+拆解与委派由 Manager Agent 经 M2.3 的工具面完成（建出第一个任务时项目才推进到 `in_progress`）。
 
 **默认值推进（D2/B7）**：项目完成时 `work_defaults.promote_after_project_completion()`
 把公司默认工作模式从 `guided` 推进到 `managed`（只改默认值、幂等、用户显式配置过的公司不改）。
 
-**Dispatcher**：task 进入 `todo` 且 assignee 当前 `idle` → 创建 WorkSession → Gateway 创建 Runtime Session → `send_task` → 消费 `stream_events`：更新员工状态/进度，收到 `completed` → 落 Artifact、task→in_review→done、触发 reflection。同一员工串行执行（一次一个 session）。
+**Dispatcher**：就绪 → 可派发 → 创建 WorkSession → Gateway 创建 Runtime Session →
+`send_task` → 消费 `stream_events`：更新员工状态/进度，收到 `completed` → 落 Artifact、
+task→in_review→done、触发 reflection。同一员工串行执行（一次一个 session；其余就绪任务排队）。
 
 ## 6. Learning 与 Knowledge
 

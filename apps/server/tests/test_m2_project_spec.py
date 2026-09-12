@@ -420,13 +420,11 @@ def test_missing_work_intake_manager_enters_waiting_not_fallback(client, db, no_
 
 
 def test_managed_project_does_not_plan_itself(client, db, default_company_id, monkeypatch):
-    # 要观察"接收任务真的跑完"这件事 ⇒ 显式打开派发
-    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     """W34 / B11：Manager 接了活之后，系统**不**生成任何执行图。"""
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     created = _post_project(
         client, name="自主管理的项目", description="交给 CEO 决定怎么组织", work_mode="managed"
     ).json()
-    assert created["status"] == "requested"
     assert created["management_employee_id"] is not None
     project_id = created["id"]
 
@@ -436,13 +434,15 @@ def test_managed_project_does_not_plan_itself(client, db, default_company_id, mo
     assert detail["milestones"] == []
 
     # 等接收任务跑完（mock runtime）——系统**不会**因此创造出规划与执行图
-    def _planning() -> bool:
+    def _awaiting() -> bool:
         return client.get(f"/api/v1/projects/{project_id}").json()["status"] == "planning"
 
-    assert _wait_for(_planning)
+    assert _wait_for(_awaiting)
     detail = client.get(f"/api/v1/projects/{project_id}").json()
     assert [t["kind"] for t in detail["tasks"]] == ["order_review"]
     assert detail["milestones"] == []
+    # M2.5：项目**不会**因为"唯一那个任务做完了"而被判完成 —— 它只是没活了
+    assert detail["status"] != "completed"
 
     from sqlalchemy import select
 
@@ -480,7 +480,9 @@ def test_planning_fixture_requires_explicit_request_and_gate(client, monkeypatch
     assert body["planning_fixture"] == PlanningFixture.deterministic_template.value
     # fixture 替代的是 **Manager 的规划** ⇒ 它隐含 managed（与 guided 自相矛盾）
     assert body["work_mode"] == ProjectWorkMode.managed.value
-    assert body["status"] == "requested"
+    # M2.5：确定性图在立项时就整张建好 ⇒ 项目一开始就 in_progress
+    # （旧实现分步生成，因此要求编排器按 TaskKind 分支推进 —— 那正是 M2.5 拆掉的）
+    assert body["status"] == "in_progress"
 
     # 3) 部署未开启 ⇒ 422，且**不**静默降级成 none
     monkeypatch.setattr(settings, "allow_planning_fixtures", False)
@@ -502,44 +504,47 @@ def test_resolve_planning_fixture_never_silently_degrades():
 
 
 def test_no_implicit_template_fallback_path_exists():
-    """W33（AST 守卫）：确定性模板的调用点必须**在 fixture 门控之内**。
+    """W33 / R7 / R12：图只由 **Manager Agent** 或 **显式 fixture** 生成；编排器只调度。
 
-    这条守卫防的是最危险的回归："Manager 没反应 → 系统偷偷用模板顶上"。
+    M2.5 起这条守卫比原来更强：不只是"模板调用必须在门控内"，
+    而是**编排器里根本不存在模板与按 kind 推进的代码**（它们整体搬到了
+    `app/work/planning_fixture.py`，只在 fixture 分支被调用一次）。
     """
-    tree = ast.parse(ORCHESTRATOR.read_text(encoding="utf-8"))
-    guarded = 0
-    unguarded: list[int] = []
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.If):
-            continue
-        test_source = ast.dump(node.test)
-        if "_uses_deterministic_plan" not in test_source:
-            continue
-        for child in ast.walk(node):
-            if isinstance(child, ast.Call):
-                func = child.func
-                name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
-                if name == "_apply_deterministic_template_plan":
-                    guarded += 1
-    total = sum(
-        1
+    source = ORCHESTRATOR.read_text(encoding="utf-8")
+    for forbidden in (
+        "DETERMINISTIC_TEMPLATE_PLAN",
+        "_generate_graph",
+        "_apply_deterministic_template_plan",
+        "_uses_deterministic_plan",
+        "_unblock_dependents",
+    ):
+        assert forbidden not in source, f"编排器里还有规划/推进逻辑：{forbidden}"
+
+    tree = ast.parse(source)
+    advance = next(
+        node
         for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        and (
-            (
-                isinstance(node.func, ast.Attribute)
-                and node.func.attr == "_apply_deterministic_template_plan"
-            )
-            or (
-                isinstance(node.func, ast.Name)
-                and node.func.id == "_apply_deterministic_template_plan"
-            )
-        )
+        if isinstance(node, ast.FunctionDef) and node.name == "_advance"
     )
-    assert total >= 1, "模板应用函数不存在了？"
-    assert guarded == total, (
-        f"有 {total - guarded} 处模板调用不在 `_uses_deterministic_plan` 门控内：{unguarded}"
+    assert "TaskKind" not in ast.dump(advance), "编排器不得按 TaskKind 分支推进（R12）"
+
+    # 建图只能发生在 fixture 分支：全仓唯一调用点
+    project_tree = ast.parse(PROJECT_SERVICE.read_text(encoding="utf-8"))
+    callers = [
+        node.name
+        for node in ast.walk(project_tree)
+        if isinstance(node, ast.FunctionDef) and "build_deterministic_plan" in ast.dump(node)
+    ]
+    assert callers == ["_create_fixture_project"], f"建图的调用点应当唯一：{callers}"
+
+    # 确定性图的数据住在 fixture 模块里，名字自解释（不是生产规划策略）
+    fixture_source = (SERVER_ROOT / "app" / "work" / "planning_fixture.py").read_text(
+        encoding="utf-8"
     )
+    assert "DETERMINISTIC_PLAN_STAGES" in fixture_source
+    # 文件名与函数名自解释：看到就知道这不是生产规划策略
+    assert "fixture" in (SERVER_ROOT / "app" / "work" / "planning_fixture.py").name
+    assert "build_deterministic_plan" in fixture_source
 
 
 def test_implicit_planning_sources_are_named_and_absent():

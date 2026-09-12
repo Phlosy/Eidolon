@@ -354,12 +354,59 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 
 ---
 
+## 5i. M2.5 Canonical Task Graph Runtime（**DONE**，2026-09-12）
+
+- **无迁移**（主线仍是 **v42** `c3e5a7b9d124`）：这一阶段是**语义收口**，不是加表
+- **用户拍板**（Plan 1 + 事件化 + 例外升级）→ 设计 **§14d** + 不变量 **R1–R12**：
+
+```text
+Manager chooses. System schedules. Worker executes. Manager intervenes only when judgment is required.
+```
+
+  1. **决策边界**：管理 = 建哪些 Task / 依赖 / 谁负责 / 改派 / 取消 / 重规划；
+     系统 = 依赖满足与否 / 是否就绪 / 能不能派 / 派给谁（**只能是已存在的负责人**）
+  2. **规范流程**：`resolve_ready_tasks` → `task.ready`（事实）→ 可派发判定 →
+     派给**它自己的** assignee → WorkSession → Runtime
+  3. **结构就绪 ≠ 可派发**：前者是纯结构事实，后者要查人/运行时/项目状态
+  4. **就绪但没负责人** ⇒ `task.assignment_required`，**绝不**自动挑人
+  5. **负责人不可用** ⇒ 报原因并等待，**绝不**自动改派
+  6. **guided / managed / fixture 共用一个运行时**，没有 per-mode 派发器
+  7. **Decision-needed 事件集封闭**（6 个）：`task.assignment_required` /
+     `task.runtime_unavailable` / `task.blocked` / `task.failed` /
+     `task.review_failed` / `project.replan_required`
+  8. **Manager Agent 不是调度器**：普通推进不唤醒它（正常 DAG 推进不产生 DecisionRecord）
+
+- **新增/重写**：
+  - `app/work/dispatch.py`：**"System schedules" 的唯一实现**（就绪适配 + 可派发判定 + 例外上报）
+  - `app/work/planning_fixture.py`：确定性模板搬出编排器（6 阶段整图，**建完即退出**）
+  - `app/workflow/orchestrator.py`：**纯调度器**（删掉模板 / 建图 / `kind` 分支 / `_unblock_dependents`）
+  - `app/work/contracts.py` §10b：两类原因集 + 封闭事件集 + **R1–R12**（注册表 76 条）
+  - `tests/test_m2_dag_runtime.py`：16 条（12 锚点 + 4 反例注入）
+- **fixture 项目行为变化**：立项时一次性建好 6 阶段图（Intake/Planning/Discovery/Build/
+  Verify/Release），项目一开始就是 `in_progress`（旧实现是分步生成 → 依赖 `kind` 推进）
+- **managed 项目**：Manager Agent 建出**第一个任务**时项目才 `requested/planning → in_progress`
+  （这是结构事实，不是管理判断）
+- **踩坑记录（真实 bug，务必别重复）**：`Orchestrator._running[employee_id]` **泄漏**。
+  旧写法把"释放键"写在 `_run_task` 的 `finally` 里，用局部 `employee_id`；而那里有若干
+  **早退分支**（任务被别处改状态、员工不 idle）会在赋值**之前** return → 释放成了 `pop(None)`
+  → 该员工被**永久跳过**，后续所有 fixture 项目都卡在同一个环节（本次实测卡在 researcher）。
+  修复：把释放挂在**会话任务的生命周期**上（`add_done_callback`），而不是挂在协程内部逻辑上
+- **第二条踩坑**：失败任务**不能**自动重跑。契约把 `failed` 列为"就绪候选"（结构上确实如此），
+  但运行时若顺着这条去派，就会无限重试 + 悄悄重做管理决策。M2.5 把 `task_failed` 归入
+  **需要管理决策**的原因（发 `task.failed`，等管理层决定重做/改派/改方案，R10）
+- **反例注入验证**：12/12 条注入全部被守卫拦住（注入生产代码 → 目标用例转红 → 还原 → 转绿），
+  脚本留在 `tmp/`（一次性），结论写进测试文件的反例注入小节
+- 下一步：**M2.6 Artifact Handoff & lineage**
+
+---
+
 ## 6. 下一步建议（按优先级）
 
-1. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
-2. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
-3. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。
-4. P6.1 flaky 的根因排查（注入时钟 / 事件循环生命周期 fixture）。
+1. **M2.6 Artifact Handoff & Shared Work Context**（`docs/m2-implementation-plan.md` §9）。
+2. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
+3. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
+4. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。
+5. P6.1 flaky 的根因排查（注入时钟 / 事件循环生命周期 fixture）。
 
 ---
 
