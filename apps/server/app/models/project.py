@@ -108,6 +108,9 @@ class Task(TimestampMixin, Base):
     # M2.6（H4）：Manager 声明的**预期**交付物类型（`ArtifactType` 值域）。
     # 声明 = 计划；实际产出的归属在 `drive_nodes.task_id`，两者分开（不互相覆盖）。
     produces_json: Mapped[list] = mapped_column(JSON, default=list)
+    # M2.7（RV5）：这个任务被返工过几次。**只计数**，不做"超过 N 次就怎样"的判断
+    # （"返工几次算太多"是管理判断，不是系统该定义的阈值）。
+    rework_count: Mapped[int] = mapped_column(Integer, default=0)
 
     project: Mapped[Project] = relationship(back_populates="tasks")
     dependencies: Mapped[list["TaskDependency"]] = relationship(

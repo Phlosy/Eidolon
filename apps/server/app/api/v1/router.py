@@ -32,6 +32,7 @@ from app.api.v1 import (
     project_delivery,
     projects,
     providers,
+    reviews,
     runtimes,
     talent_roster,
     talent_trade,
@@ -48,6 +49,7 @@ protected.include_router(contracts.router)
 protected.include_router(employees.router)
 protected.include_router(projects.router)
 protected.include_router(project_delivery.router)
+protected.include_router(reviews.router)
 protected.include_router(tasks.router)
 protected.include_router(decisions.router)  # M2.4 决策读面（只读）
 protected.include_router(artifacts.router)

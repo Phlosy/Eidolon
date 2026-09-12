@@ -617,11 +617,15 @@ def test_decision_needed_events_are_the_only_manager_triggers(db):
         "task.blocked",
         "task.failed",
         "task.review_failed",
+        # M2.7 追加：做完但还没有结论 / 评审人判定不了 ⇒ 需要人/管理层
+        "task.review_required",
         "project.replan_required",
     }
     # 只读的事实事件不得混进来
     assert not (C.FACT_EVENTS & C.DECISION_NEEDED_EVENTS)
     assert "task.ready" in C.FACT_EVENTS and "task.completed" in C.FACT_EVENTS
+    # M2.7 追加的事实：进入评审态 / 评审通过（都不是审批请求）
+    assert {"task.in_review", "task.review_passed"} <= C.FACT_EVENTS
 
     # 编排器发布的所有事件都在两张表里（没有"野生事件"）
     source = ORCHESTRATOR_MODULE.read_text(encoding="utf-8")

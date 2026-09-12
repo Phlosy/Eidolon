@@ -144,6 +144,13 @@ __all__ = [
     "DISPATCHABILITY_CONDITIONS",
     "DECISION_NEEDED_EVENTS",
     "FACT_EVENTS",
+    "REVIEW_VERDICT_TARGETS",
+    "REVIEW_REQUEST_STATUSES",
+    "REVIEW_REQUEST_OPEN",
+    "REVIEW_REQUEST_DECIDED",
+    "REVIEW_FACT_KINDS",
+    "REVIEW_RULES",
+    "GUIDED_REVIEW_DECISION_TO_VERDICT",
     "ARTIFACT_STORE_TABLE",
     "ARTIFACT_VERSION_TABLE",
     "ARTIFACT_OWNERSHIP_COLUMN",
@@ -938,8 +945,65 @@ def verdict_boundaries() -> tuple[VerdictBoundary, ...]:
 
 
 # ---------------------------------------------------------------------------
-# 9. 工作根：Canonical Executable Project（设计 §11，W20 / W22 / W23 / W30）
+# 8b. 评审请求与结论（M2.7，W17 / RV1–RV8）
 # ---------------------------------------------------------------------------
+
+#: **结论 → Task 状态目标**的唯一映射（W17）。
+#:
+#: `ESCALATE` **刻意没有目标**：它表示"评审人判定不了，需要人/管理层"，
+#: 因此系统不把它翻译成任何状态迁移 —— 停下来等人（H5/RV6）。
+#: 任何"隐式兜底目标"（例如未知 verdict 就当 PASS）都是越权。
+REVIEW_VERDICT_TARGETS: dict[str, str | None] = {
+    ReviewVerdict.passed.value: "done",
+    ReviewVerdict.rework.value: "todo",
+    ReviewVerdict.rejected.value: "rejected",
+    ReviewVerdict.escalated.value: None,
+}
+
+#: 评审请求的生命周期状态（**不复述 verdict**：结论只有一列，状态只表达
+#: "还没结论 / 已有结论"，避免同一事实两个落点）。
+REVIEW_REQUEST_OPEN = "open"
+REVIEW_REQUEST_DECIDED = "decided"
+REVIEW_REQUEST_STATUSES: frozenset[str] = frozenset({REVIEW_REQUEST_OPEN, REVIEW_REQUEST_DECIDED})
+
+#: **系统**能提供的评审事实种类（W18）。
+#:
+#: 纪律：事实是**系统**写的、可复核；verdict 是 **Reviewer Agent** 写的。
+#: 两者分开存（H6/RV3）—— 事实里永远不出现"好/坏/通过"这类判断词。
+#:
+#: 注意：本仓库**没有** lint / build / CI 运行器（没有可观察的产物），
+#: 因此不列这两类 —— 宁可少列，也不假装系统能提供它拿不到的事实。
+REVIEW_FACT_KINDS: tuple[str, ...] = (
+    "artifacts",  # 这次任务实际产出了什么（引用 + 类型 + 版本）
+    "produces_gap",  # 声明要产出的类型 vs 实际产出的类型（差异是事实，不是评价）
+    "acceptance_criteria",  # 任务上的验收标准是否存在 / 原文
+    "inputs",  # 用到哪些上游产物（交接事实，M2.6）
+    "session",  # 上次会话的结果 / 时长 / 错误
+    "rework",  # 这个任务被返工过几次（含本次之前的）
+)
+
+#: 反思（verdict）必须先有**指定的评审人**（RV4）：
+#: 系统**不**替管理层选评审人（W1/R2），所以"没有评审人"不是自动通过的理由，
+#: 而是请求发起时的硬约束（`request_review` 必须带 reviewer）。
+REVIEW_RULES: tuple[str, ...] = (
+    "only a human/agent actor produces a verdict; the system never does",
+    "a review request must name its reviewer before it is acknowledged",
+    "a verdict is append-only and attributed to the reviewer employee",
+    "facts are collected by the system; verdicts are written by the reviewer",
+    "ESCALATE has no automatic task-status target",
+)
+
+#: **跨面显式映射**（W29）：`guided` 模式的人类阶段门结论 → 任务级技术评审结论。
+#:
+#: 两张枚举**不得互相替代**；这个表是唯一的翻译点（只读、单向）。
+#: 反向（verdict → decision）**不存在**：任务级评审不决定阶段门。
+GUIDED_REVIEW_DECISION_TO_VERDICT: dict[str, str] = {
+    "approved": ReviewVerdict.passed.value,
+    "conditionally_approved": ReviewVerdict.rework.value,
+    "changes_requested": ReviewVerdict.rework.value,
+    "rejected": ReviewVerdict.rejected.value,
+}
+
 
 #: Canonical Project Spec 的必需字段（**Facts / Requirements**，不是 Execution Plan）。
 CANONICAL_PROJECT_FIELDS: tuple[str, ...] = (
@@ -1282,7 +1346,10 @@ DECISION_NEEDED_EVENTS: frozenset[str] = frozenset(
         "task.runtime_unavailable",  # 负责人/Runtime 不可用（R5）
         "task.blocked",  # 有人显式标记阻塞
         "task.failed",  # 任务失败 ⇒ 谁来 replan 是管理决策（R12）
-        "task.review_failed",  # 评审不通过（M2.7 落地）
+        "task.review_failed",  # 评审不通过（M2.7 落地：REWORK / REJECT 结论）
+        # M2.7 追加：工作做完了、还没有结论 ⇒ 需要 Reviewer 的判断（或 ESCALATE 后
+        # 需要人/管理层）。**正是这个集合存在的意义**：系统不能自己通过，所以叫醒别人。
+        "task.review_required",
         "project.replan_required",  # 计划需要重做
     }
 )
@@ -1294,6 +1361,10 @@ FACT_EVENTS: frozenset[str] = frozenset(
         "task.ready",
         "task.started",
         "task.completed",
+        # M2.7 追加：评审给了 PASS 并把任务推进到 done（事实通告，不是授权）
+        "task.review_passed",
+        # M2.7 追加：任务进入 in_review、等结论（事实；谁来判断由管理层定）
+        "task.in_review",
         "project.started",
         "project.delivery_ready",
         "project.completed",
@@ -1305,6 +1376,9 @@ FACT_EVENTS: frozenset[str] = frozenset(
 
 #: 事实事件与 Decision-needed 事件不得重名（一个事件要么是事实，要么要人决策）。
 assert not (FACT_EVENTS & DECISION_NEEDED_EVENTS), "事件语义重叠"
+assert set(REVIEW_VERDICT_TARGETS) == {v.value for v in ReviewVerdict}, (
+    "每个评审结论都必须有显式的状态目标（允许为 None，但不允许缺失）"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -2005,6 +2079,63 @@ INVARIANTS: tuple[Invariant, ...] = (
         enforced=True,
         owner_stage="M2.6",
         anchors=("test_referencing_an_unfinished_tasks_output_is_refused",),
+    ),
+    # ---- M2.7 Review / Rework / Replan（W17 / RV1–RV8）----
+    Invariant(
+        "RV1",
+        "The system never produces a review verdict; it only collects review facts.",
+        enforced=True,
+        owner_stage="M2.7",
+        anchors=("test_system_never_produces_a_verdict",),
+    ),
+    Invariant(
+        "RV2",
+        "A task leaves in_review only through an explicit verdict; no auto-approval path.",
+        enforced=True,
+        owner_stage="M2.7",
+        anchors=("test_in_review_waits_for_a_verdict",),
+    ),
+    Invariant(
+        "RV3",
+        "Review facts and verdicts are stored separately: facts are the system's.",
+        enforced=True,
+        owner_stage="M2.7",
+        anchors=("test_facts_and_verdicts_are_stored_separately",),
+    ),
+    Invariant(
+        "RV4",
+        "A verdict is append-only and attributed to the named reviewer; it is never overwritten.",
+        enforced=True,
+        owner_stage="M2.7",
+        anchors=("test_verdict_is_attributed_and_append_only",),
+    ),
+    Invariant(
+        "RV5",
+        "REWORK returns the task to todo, records the reason and counts the rework.",
+        enforced=True,
+        owner_stage="M2.7",
+        anchors=("test_rework_returns_to_todo_and_counts",),
+    ),
+    Invariant(
+        "RV6",
+        "ESCALATE has no automatic task-status target: it stops and waits for a human or manager.",
+        enforced=True,
+        owner_stage="M2.7",
+        anchors=("test_escalate_has_no_automatic_target",),
+    ),
+    Invariant(
+        "RV7",
+        "REPLAN is only accepted from the project's manager; the system never replans by itself.",
+        enforced=True,
+        owner_stage="M2.7",
+        anchors=("test_replan_is_manager_only",),
+    ),
+    Invariant(
+        "RV8",
+        "Cross-surface verdict mapping is explicit and one-way; surfaces are never substituted.",
+        enforced=True,
+        owner_stage="M2.7",
+        anchors=("test_guided_decision_maps_to_verdict_explicitly",),
     ),
 )
 

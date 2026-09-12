@@ -620,6 +620,27 @@ def _list_task_artifacts(db: Session, ctx: tools.ToolCallContext, args: dict) ->
     return handoff.task_artifact_report(db, task_id).as_dict()
 
 
+def _inspect_task_review(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
+    """与 HTTP 读面**同一个**查询层（T2/T11）：`reviews.review_view()`。"""
+    from app.work import reviews
+
+    task_id = int(args["task_id"])
+    task = project_repo.get_task(db, task_id)
+    if task is None:
+        raise tools.ToolError("task not found")
+    project = project_repo.get_project(db, int(task.project_id))
+    if project is None or int(project.company_id) != ctx.company_id:
+        raise tools.ToolError("task not found in this company")
+    request = reviews.latest_request_for_task(db, task_id)
+    return {
+        "task_id": task_id,
+        "task_status": str(task.status),
+        "rework_count": int(task.rework_count or 0),
+        "verdict_targets": dict(C.REVIEW_VERDICT_TARGETS),
+        "review": reviews.review_view(db, request).as_dict() if request else None,
+    }
+
+
 def build_read_tools() -> tuple[tools.ToolSpec, ...]:
     """读工具清单（**共享能力**：同一批事实也由既有领域读面服务 UI/CLI）。"""
     return (
@@ -762,6 +783,14 @@ def build_read_tools() -> tuple[tools.ToolSpec, ...]:
             input_schema=tools.object_schema({"query": _STR, "limit": _INT}),
             output_schema=tools.object_schema({"matches": {"type": "array"}}),
             handler=_search_company_knowledge,
+        ),
+        tools.ToolSpec(
+            name="inspect_task_review",
+            description="读一个任务的评审：请求 / 事实（系统收集）/ 结论 / 返工次数",
+            side_effect=C.ToolSideEffect.read,
+            input_schema=tools.object_schema({"task_id": _INT}, ("task_id",)),
+            output_schema=tools.object_schema({"task_id": _INT}),
+            handler=_inspect_task_review,
         ),
         tools.ToolSpec(
             name="list_task_artifacts",

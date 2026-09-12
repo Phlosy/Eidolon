@@ -60,7 +60,7 @@ from app.services import position_compat
 from app.services import tasks as task_service
 from app.work import contracts as C
 from app.work import dispatch as dispatch_runtime
-from app.work import handoff, work_defaults
+from app.work import handoff, review_fixture, work_defaults
 
 logger = get_logger(__name__)
 
@@ -168,6 +168,29 @@ class Orchestrator:
                     if org_repo.get_employee(db, assignee_id) is None:
                         continue
                     candidates.append((int(evaluation.task_id), assignee_id))
+                # M2.7：做完了却没指定评审人 ⇒ 叫管理层（系统不替它选人，W1/R2/RV1）
+                for pending in dispatch_runtime.tasks_awaiting_review(db, int(project.id)):
+                    key = (int(pending.id), "task.review_required")
+                    if key in self._escalated:
+                        continue
+                    self._escalated.add(key)
+                    escalations.append(
+                        (
+                            int(pending.id),
+                            "task.review_required",
+                            {
+                                "id": int(pending.id),
+                                "task_id": int(pending.id),
+                                "title": pending.title,
+                                "kind": pending.kind,
+                                "company_id": int(project.company_id),
+                                "project_id": int(project.id),
+                                "management_employee_id": project.management_employee_id,
+                                "needs_reviewer": True,
+                                "needs_management": True,
+                            },
+                        )
+                    )
                 for evaluation in state.needs_management:
                     event = evaluation.event_type
                     if event is None:
@@ -456,9 +479,17 @@ class Orchestrator:
                 )
                 artifact_ids.append((node.id, node.doc_type, node.name))
 
+            fixture_review_enabled = False
             if success:
+                # M2.7（RV2 / 设计 §12.3）：**删除 in_review → done 的自动连跳**。
+                # 工作做完了就停在 `in_review`：通过与否是 Reviewer Agent 的判断，
+                # 系统只负责把事实摆出来（`review_facts`）。
                 task_service.transition_task(db, task, TaskStatus.in_review.value)
-                task_service.transition_task(db, task, TaskStatus.done.value)
+                # 测试/教程/CI 的替身评审（与 planning_fixture 同款门控）在**提交之后**
+                # 用一段**独立短事务**完成：它要走真实的评审服务（读事实 + 写请求 +
+                # 写结论），塞进这个事务里会让 SQLite 的单写者窗口变长（实测：
+                # 并发的 HTTP 读会吃 `database is locked`）。
+                fixture_review_enabled = review_fixture.enabled_for(project)
             else:
                 task_service.transition_task(db, task, TaskStatus.failed.value)
             if employee is not None:
@@ -466,7 +497,21 @@ class Orchestrator:
                 employee.current_task_id = None
             employee_id = employee.id if employee else None
             task_title, task_kind = task.title, task.kind
+            task_status_after = str(task.status)
+            task_project_id = int(task.project_id)
             db.commit()
+
+        reviewed_inline = False
+        if success and fixture_review_enabled:
+            # 替身评审自带短事务（见 `review_fixture` 的说明）。它返回 None 表示
+            # "没评成" —— 任务留在 in_review 等管理层，**不**因此自动通过。
+            request = review_fixture.review_now(task_id=task_id, project_id=task_project_id)
+            reviewed_inline = request is not None
+            if reviewed_inline:
+                # 替身结论已落地：任务状态按**同一个映射**推导，不另写一套语义
+                task_status_after = (
+                    C.REVIEW_VERDICT_TARGETS.get(request.verdict) or task_status_after
+                )
 
         for artifact_id, artifact_type, artifact_title in artifact_ids:
             bus.publish(
@@ -474,9 +519,42 @@ class Orchestrator:
                 {"id": artifact_id, "type": artifact_type, "title": artifact_title},
                 company_id=company_id,
                 actor_employee_id=employee_id,
-                project_id=task.project_id,
+                project_id=task_project_id,
                 task_id=task_id,
             )
+        if success:
+            # M2.7：工作干完了，进入"等评审"（事实）
+            bus.publish(
+                "task.in_review",
+                {
+                    "id": task_id,
+                    "title": task_title,
+                    "kind": task_kind,
+                    "status": task_status_after,
+                    "fixture_review": reviewed_inline,
+                },
+                company_id=company_id,
+                actor_employee_id=employee_id,
+                project_id=task_project_id,
+                task_id=task_id,
+            )
+            if not reviewed_inline:
+                # 还没有结论、也还没有指定评审人 ⇒ 需要管理层（把 reviewer 指定出来）。
+                # 系统**不**替它选人（W1/R2），所以这条必须叫醒别人。
+                bus.publish(
+                    "task.review_required",
+                    {
+                        "id": task_id,
+                        "task_id": task_id,
+                        "title": task_title,
+                        "kind": task_kind,
+                        "needs_reviewer": True,
+                    },
+                    company_id=company_id,
+                    actor_employee_id=employee_id,
+                    project_id=task_project_id,
+                    task_id=task_id,
+                )
         bus.publish(
             "task.completed" if success else "task.failed",
             {"id": task_id, "title": task_title, "kind": task_kind, "error": error},
@@ -551,12 +629,13 @@ class Orchestrator:
 
             # 项目级事实：全部任务完成 ⇒ 可交付（"计划跑完了"是事实，不是管理判断）
             state = dispatch_runtime.project_runtime_state(db, project_id)
-            if state.all_tasks_done and project.status in (
+            if state.work_finished and project.status in (
                 ProjectStatus.requested.value,
                 ProjectStatus.planning.value,
             ):
-                # 手里的活干完了、但项目还没进入执行态 ⇒ 事实是"等管理层下一步动作"。
-                # 这不是替谁做决定：系统只说"我没活了"，要不要继续由 Manager Agent 决定（W34）。
+                # 手里的活干完了（含"干完但还在等评审"）、但项目还没进入执行态 ⇒
+                # 事实是"等管理层下一步动作"。这不是替谁做决定：系统只说"我没活了"，
+                # 要不要继续由 Manager Agent 决定（W34）。
                 project.status = ProjectStatus.planning.value
                 events.append(("project.awaiting_management_action", _awaiting_payload(project)))
             if state.all_tasks_done and project.status in (

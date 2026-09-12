@@ -751,6 +751,62 @@ M2.7 起：`in_review` 只能由 `ReviewVerdict.passed` 推进 → `done`。
 
 ---
 
+### 12.4 M2.7 落地：评审闭环（W17 / RV1–RV8）
+
+```text
+Worker 干完            → task 停在 in_review（系统**不**替谁通过，RV1/RV2）
+Manager/Requester 发起 → review_requests(status=open, reviewer=**指定的人**)
+系统                   → 收集事实（review_facts：产物/声明差异/交接/会话/返工次数）
+Reviewer Agent 出结论  → ReviewVerdict（PASS / REWORK / REJECT / ESCALATE）
+系统按**显式映射**落地  → REVIEW_VERDICT_TARGETS（ESCALATE 没有目标，停下来等人）
+```
+
+**唯一的结论 → 状态映射**（不再有第二处判断）：
+
+| 结论 | 任务状态目标 | 说明 |
+| --- | --- | --- |
+| `PASS` | `done` | 完成（下游因此就绪）|
+| `REWORK` | `todo`（经 `rejected`）| 回待办 + `tasks.rework_count` +1 + 理由可查 |
+| `REJECT` | `rejected` | 不收这份工作（终态，管理层的下一步动作是新建任务）|
+| `ESCALATE` | **无** | 评审人判定不了 ⇒ 停在原地等人/管理层（RV6）|
+
+**事实 vs 结论**（H6/RV3）：
+
+| 落点 | 谁写 | 内容 |
+| --- | --- | --- |
+| `review_facts` | **系统** | `artifacts` / `produces_gap` / `acceptance_criteria` / `inputs` / `session` / `rework` —— 可复核，**没有**判断词 |
+| `review_requests.verdict` + `verdict_notes` | **Reviewer Agent** | 结论与理由（追加式，写下即不可改写）|
+
+**刻意的空白**：`lint` / `build` / CI 结果**不提供** —— 本仓库没有可观察的运行器，
+列出来只会让"系统提供的事实"变成空话（设计的少而真原则）。有运行器之后再登记新的 fact kind。
+
+**系统仍然不做的事**（W17 的边界）：
+
+```text
+❌ 不产生任何结论（没有"事实全绿 ⇒ PASS"的启发式）
+❌ 不替管理层指定评审人（没有 reviewer 的请求不成立，不是"自动通过"）
+❌ 不自己 replan（只有该项目的 Manager 能发起，RV7）
+❌ 不把评估/结算/能力考核的枚举拿来做任务级评审（W29/RV8）
+```
+
+**测试/教程/CI 的替身评审**（`app/work/review_fixture.py`，与 `planning_fixture` 同款纪律）：
+
+```text
+门控：settings.allow_planning_fixtures **且** planning_fixture=deterministic_template
+归属：结论署在项目负责人（Manager 替身）名下，理由里写明这是替身
+路径：调用**同一段**评审服务（open_review_request + submit_verdict），不绕状态机
+失败：替身出错 ⇒ 任务留在 in_review 等管理层，**绝不**因此自动通过
+```
+
+### 12.5 与 M2.5 运行时的接缝
+
+```text
+M2.5 _finalize      ：完成 → in_review（**删除** in_review → done 连跳）
+M2.5 _dispatch_pending：in_review 且没人接手 ⇒ 发 task.review_required（叫醒管理层）
+M2.5 _advance       ：work_finished（含等评审）⇒ 项目回 planning 等管理层；
+                       all_tasks_done 才谈交付（评审未过不算完成）
+```
+
 ## 13. Fit 只是 Decision Support
 
 ```text
@@ -775,7 +831,7 @@ W11  Fit is decision-support only.
 
 ---
 
-## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10 / R1–R12 / H1–H8）
+## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10 / R1–R12 / H1–H8 / RV1–RV8）
 
 | # | 不变量 | M2.0 状态 |
 | --- | --- | --- |
@@ -863,6 +919,14 @@ W11  Fit is decision-support only.
 | **H6** | Handoff carries content, not just a pointer: excerpts reach the runtime TaskContext. | **M2.6 强制** |
 | **H7** | Lineage is walkable: a consumer is traceable back through at least two hops. | **M2.6 强制** |
 | **H8** | Only finished work is consumable: an unfinished Task's output is never referenced. | **M2.6 强制** |
+| **RV1** | The system never produces a review verdict; it only collects review facts. | **M2.7 强制** |
+| **RV2** | A task leaves in_review only through an explicit verdict; no auto-approval path. | **M2.7 强制** |
+| **RV3** | Review facts and verdicts are stored separately: facts are the system's. | **M2.7 强制** |
+| **RV4** | A verdict is append-only and attributed to the named reviewer; it is never overwritten. | **M2.7 强制** |
+| **RV5** | REWORK returns the task to todo, records the reason and counts the rework. | **M2.7 强制** |
+| **RV6** | ESCALATE has no automatic task-status target: it stops and waits for a human or manager. | **M2.7 强制** |
+| **RV7** | REPLAN is only accepted from the project's manager; the system never replans by itself. | **M2.7 强制** |
+| **RV8** | Cross-surface verdict mapping is explicit and one-way; surfaces are never substituted. | **M2.7 强制** |
 
 > **"M2.0 强制"** = M2.0 就有可执行测试锚点；
 > **"冻结"** = M2.0 冻结契约与归属，锚点在其 owner 阶段落地。

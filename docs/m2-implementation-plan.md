@@ -72,7 +72,7 @@ Golden Path × 3 + 冻结
 | **M2.4** | Leadership Planning & Delegation | 有（v42） | M2.3 | W1/W2/W3/W14/W15/W28/DR1–DR10 | **DONE** |
 | **M2.5** | Dynamic Task Graph Runtime | 无（收敛既有表） | M2.4 | W2/W16/W30/R1–R12 | ✅ **DONE** |
 | **M2.6** | Artifact Handoff & Shared Work Context | 有（v43：归属列 + 声明表 + 使用表） | M2.5 | W19/H1–H8 | ✅ **DONE** |
-| **M2.7** | Review / Rework / Replan | 有（ReviewRequest） | M2.6 | W17/W29 | PENDING |
+| **M2.7** | Review / Rework / Replan | 有（v44：评审请求 + 评审事实表） | M2.6 | W17/W29/RV1–RV8 | ✅ **DONE** |
 | **M2.8** | Recruit → Ready-to-Work | 无（复用 provisioning） | M2.7 | W31/W13 | PENDING |
 | **M2.9** | WorkOrder Bridge | 有（binding） | M2.8 | W23 | PENDING |
 | **M2.10** | Golden Path × 3 & Freeze | 无 | M2.9 | 全部 | PENDING |
@@ -561,30 +561,62 @@ B 开工 → 记下被谁在哪次会话用掉  ← artifact_links（H3/G5）
 
 ---
 
-## 10. M2.7 · Review / Rework / Replan `[有迁移]`
+## 10. M2.7 · Review / Rework / Replan `[有迁移]` — ✅ **DONE**
 
 ### Goal
 
 Worker 完成后**不再自动 done**。
 
-### 范围
+```text
+in_review → （只有结论）→ done / todo（返工）/ rejected / 原地（升级）
+```
 
-- `review_requests` 表：requested_by（Manager/Reviewer）、reviewer（Agent）、verdict、notes、facts
-- Fact 收集器（系统提供，W18）：`test_result` / `lint` / `build` / `artifact` / `acceptance_criteria`
-- `ReviewVerdict` → Task 状态目标映射（PASS→done / REWORK→todo / REJECT→rejected / ESCALATE→人工或 Manager）
-- `request_rework` / `replan` 走 M2.3 工具 + M2.4 DecisionRecord
-- `guided` 模式的 `ReviewDecision` 与 `ReviewVerdict` 之间建立**显式映射表**（不互相替代，W29）
+### 迁移 **v44** `b3aee926425c`（additive）
+
+| 变更 | 内容 |
+| --- | --- |
+| `review_requests`（新表）| 谁请谁评 / `status ∈ {open, decided}` / `verdict` / `verdict_notes` / `verdict_decision_id` / 时间 |
+| `review_facts`（新表）| **系统**收集的事实（`kind` + `payload_json` + `source`），**没有**结论列 |
+| `tasks.rework_count` | 返工计数（从 0 起算，不回填：历史没有可复核记录，不猜）|
+
+三条设计裁决：**状态不复述结论**（`status` 只有 open/decided）、
+**结论追加式**（改判走新请求）、**事实与结论分开存**（谁写的可回答）。
+
+### 落地物
+
+| 文件 | 角色 |
+| --- | --- |
+| `app/work/reviews.py` | **唯一口径**：发起 / 出结论 / 落地映射 / replan 权限 |
+| `app/work/review_facts.py` | 系统事实收集器（产物 / 声明差异 / 交接 / 会话 / 返工次数）|
+| `app/work/review_fixture.py` | 确定性替身评审（与 planning fixture 同款门控，署在人头上）|
+| `app/models/review.py` | `ReviewRequest` / `ReviewFact` |
+| `app/api/v1/tasks.py` | 读+发起：`GET/POST /tasks/{id}/review` |
+| `app/api/v1/reviews.py` | 出结论：`GET /task-reviews/{id}`、`POST /task-reviews/{id}/verdict` |
+| `app/work/tool_writes.py` | `submit_review_verdict`（required）/ `replan_project`（required）/ `request_review` 升级为真实请求 |
+| `app/work/tool_reads.py` | `inspect_task_review`（与 HTTP 同一份事实）|
+| `app/workflow/orchestrator.py` | **删除** `in_review → done` 连跳；替身评审（门控）；`task.in_review` / `task.review_required` 事件 |
+| `tests/test_m2_review.py` | 14 条（8 条 RV 锚点 + 端到端 + 工具 + 反例注入）|
 
 ### Acceptance
 
-| # | 判据 |
-| --- | --- |
-| H1 | Task 完成后停在 `in_review`，直到有 `ReviewVerdict.passed` |
-| H2 | 系统**不产生**任何 verdict（无启发式自动 PASS，AST 守卫 + 行为测试） |
-| H3 | `REWORK` → Task 回 `todo` + 记 rework 次数 + 产生 DecisionRecord |
-| H4 | `REPLAN` 只能由该 Project 的 Manager 发起（权限测试） |
-| H5 | `ESCALATE` 不被系统自动处理（停在需人工/管理层） |
-| H6 | review 事实（test/lint/build）与 verdict 分开存：事实是系统的，verdict 是 Agent 的 |
+| # | 判据 | 结果 |
+| --- | --- | --- |
+| H1 | Task 完成后停在 `in_review`，直到有 `ReviewVerdict.passed` | ✅ 且 AST 守卫禁止连跳回归 |
+| H2 | 系统**不产生**任何 verdict（无启发式自动 PASS） | ✅ AST 守卫 + 行为测试 + 事实收集器"无判断词"扫描 |
+| H3 | `REWORK` → 回 `todo` + 记次数 + 理由可查 | ✅ `rework_count` +1、`actual_end_at` 清空、notes 落库 |
+| H4 | `REPLAN` 只能由该 Project 的 Manager 发起 | ✅ 服务层 + 工具（required 语义）双重校验 |
+| H5 | `ESCALATE` 不被系统自动处理 | ✅ 状态目标为 `None`，只发 `task.review_required` |
+| H6 | 事实与 verdict 分开存 | ✅ 两张表、列级守卫（事实表无结论列、结论行无事实载荷）|
+| RV1–RV8 | 八条不变量各有锚点 + **反例注入** | ✅ 12/12 注入被守卫拦住 |
+
+### 与计划的偏差（刻意）
+
+| 计划 | 实际 | 原因 |
+| --- | --- | --- |
+| Fact 含 `test_result` / `lint` / `build` | 不提供 | 本仓库没有可观察的运行器与产物；列出来就是空话（少而真）|
+| `ReviewDecision ↔ ReviewVerdict` 映射表 | 固化 `GUIDED_REVIEW_DECISION_TO_VERDICT`（**单向**）| W29：不得互相替代；反向表不存在（有守卫）|
+| （计划未列）替身评审 | `review_fixture.py`（门控 + 署名）| 与 D3/W33 的规划 fixture 同款：CI/教程/演示需要一条确定性链路，但**不能**变成"系统自动通过" |
+| （计划未列）两个新事件 | `task.review_required`（决策需求）/ `task.review_passed` + `task.in_review`（事实）| 评审闭环必须能叫醒人，且不新增第三套语义（沿用 M2.5 的封闭事件集）|
 
 ---
 

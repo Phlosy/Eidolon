@@ -12,10 +12,13 @@ from app.schemas.work import (
     TaskArtifactReportOut,
     TaskInputsIn,
     TaskInputsOut,
+    TaskReviewIn,
+    TaskReviewOut,
 )
 from app.services import tasks as task_service
 from app.services.schedules import InvalidScheduleError, apply_schedule_patch
-from app.work import handoff
+from app.work import contracts as C
+from app.work import handoff, reviews
 
 
 def _task_out(task) -> TaskOut:
@@ -135,3 +138,55 @@ def consume_task_artifact(
         # G3：引用未完成的 Task 产物 ⇒ 422（系统拒绝，而不是默默接受）
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return TaskArtifactReportOut(**handoff.task_artifact_report(db, task_id).as_dict())
+
+
+# ---------------------------------------------------------------------------
+# M2.7 评审 / 返工 / 重新规划（设计 §12，W17 / RV1–RV8）
+#
+# 三个端点、一个服务层口径（`app/work/reviews.py`）：
+#   · 读：评审请求 + 系统事实 + 结论 + 返工次数
+#   · 写：发起评审（人类管理动作，**必须**指定评审人）
+#   · 写：给出结论（人类管理动作；ESCALATE 没有自动状态目标）
+# 机器可证的边界：系统**不产生**任何结论（没有"自动通过"端点）。
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{task_id}/review", response_model=TaskReviewOut)
+def get_task_review(task_id: int, db: Session = Depends(get_db)) -> TaskReviewOut:
+    """一个任务的评审全景：请求 / 事实（系统收集）/ 结论 / 返工次数。"""
+    task = _task_or_404(db, task_id)
+    request = reviews.latest_request_for_task(db, task_id)
+    return TaskReviewOut(
+        task_id=int(task.id),
+        task_status=str(task.status),
+        rework_count=int(task.rework_count or 0),
+        verdict_targets=dict(C.REVIEW_VERDICT_TARGETS),
+        review=reviews.review_view(db, request).as_dict() if request else None,
+    )
+
+
+@router.post("/{task_id}/review", response_model=TaskReviewOut)
+def open_task_review(
+    task_id: int, payload: TaskReviewIn, db: Session = Depends(get_db)
+) -> TaskReviewOut:
+    """发起评审（人类管理动作）：任务必须在 `in_review`，且必须指定评审人。"""
+    task = _task_or_404(db, task_id)
+    try:
+        reviews.open_review_request(
+            db,
+            task=task,
+            requester_employee_id=int(payload.requester_employee_id),
+            reviewer_employee_id=int(payload.reviewer_employee_id),
+            reason=payload.reason,
+        )
+    except reviews.ReviewError as exc:
+        # RV4/W1：结构问题（状态不对 / 没指定评审人）⇒ 422，不是 500
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    request = reviews.latest_request_for_task(db, task_id)
+    return TaskReviewOut(
+        task_id=int(task.id),
+        task_status=str(task.status),
+        rework_count=int(task.rework_count or 0),
+        verdict_targets=dict(C.REVIEW_VERDICT_TARGETS),
+        review=reviews.review_view(db, request).as_dict() if request else None,
+    )

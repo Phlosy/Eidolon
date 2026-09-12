@@ -102,6 +102,7 @@ from app.models.project_delivery import (
     TutorialProgress,
 )
 from app.models.provider import ModelBinding, Provider, Secret
+from app.models.review import ReviewFact, ReviewRequest
 from app.models.runtime import EmployeeBrain, RuntimeImage, RuntimeInstance
 
 __all__ = [
@@ -140,6 +141,8 @@ __all__ = [
     "Event",
     "GitConnection",
     "ArtifactLink",
+    "ReviewFact",
+    "ReviewRequest",
     "TaskInput",
     "KnowledgeItem",
     "LearningPriority",

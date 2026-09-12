@@ -273,6 +273,10 @@ class ProjectRuntimeState:
     needs_management: tuple[DispatchEvaluation, ...] = field(default_factory=tuple)
     all_tasks_done: bool = False
     task_count: int = 0
+    #: M2.7：**没有可跑的活了** —— 全部任务要么已完成、要么在等评审。
+    #: 与 `all_tasks_done` 的区别很重要：`in_review` 是"干完了但还没结论"，
+    #: 它**不算完成**（项目不能因此交付），但确实没有东西可以调度了。
+    work_finished: bool = False
     #: 图结构非法（系统职责里"这张图能不能执行"，W16）⇒ 一律不调度，上报重规划
     invalid_graph: bool = False
     graph_problems: tuple[str, ...] = ()
@@ -280,6 +284,13 @@ class ProjectRuntimeState:
     @property
     def has_work_in_flight(self) -> bool:
         return bool(self.dispatchable or self.queued)
+
+
+def _all_work_finished(tasks: list[Task]) -> bool:
+    """没有可跑的活了：全部任务要么已完成、要么在等评审（M2.7）。"""
+    return all(
+        str(task.status) in {TaskStatus.done.value, TaskStatus.in_review.value} for task in tasks
+    )
 
 
 def project_runtime_state(db: Session, project_id: int) -> ProjectRuntimeState:
@@ -304,6 +315,7 @@ def project_runtime_state(db: Session, project_id: int) -> ProjectRuntimeState:
             project_id=int(project_id),
             all_tasks_done=bool(tasks)
             and all(str(task.status) == TaskStatus.done.value for task in tasks),
+            work_finished=bool(tasks) and _all_work_finished(tasks),
             task_count=len(tasks),
             invalid_graph=True,
             graph_problems=_graph_problems(report),
@@ -317,8 +329,32 @@ def project_runtime_state(db: Session, project_id: int) -> ProjectRuntimeState:
         needs_management=tuple(item for item in evaluations if item.needs_management),
         all_tasks_done=bool(tasks)
         and all(str(task.status) == TaskStatus.done.value for task in tasks),
+        work_finished=bool(tasks) and _all_work_finished(tasks),
         task_count=len(tasks),
     )
+
+
+def tasks_awaiting_review(db: Session, project_id: int) -> list[Task]:
+    """做完、但**还没有人接手评审**的任务（M2.7）。
+
+    "没人接手" = `in_review` 且没有未决定的 `review_requests` 行。
+    系统不替管理层指定评审人（W1/R2），所以这种状态是**要叫醒别人**的，
+    而不是"系统自己通过"。
+    """
+    from app.repositories import review as review_repo
+
+    pending: list[Task] = []
+    for task in project_repo.list_tasks(db, int(project_id)):
+        if str(task.status) != TaskStatus.in_review.value:
+            continue
+        open_rows = [
+            row
+            for row in review_repo.list_requests(db, task_id=int(task.id))
+            if row.status == C.REVIEW_REQUEST_OPEN
+        ]
+        if not open_rows:
+            pending.append(task)
+    return pending
 
 
 def _graph_problems(report: C.TaskGraphReport) -> tuple[str, ...]:
@@ -342,6 +378,7 @@ __all__ = [
     "REASON_EVENTS",
     "graph_nodes",
     "graph_report",
+    "tasks_awaiting_review",
     "structural_ready_task_ids",
     "ready_tasks",
     "evaluate_dispatch",

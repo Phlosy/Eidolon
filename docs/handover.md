@@ -447,9 +447,50 @@ B 开工 → 记下被谁在哪次会话用掉  ← artifact_links（role 只有
 
 ---
 
+## 5k. M2.7 Review / Rework / Replan（**DONE**，2026-09-12）
+
+- 迁移 **v44** `b3aee926425c`（additive）：`review_requests` / `review_facts` / `tasks.rework_count`
+- **用户拍板语义**（计划 §10 + 设计 **§12.4**）→ 不变量 **RV1–RV8**（注册表 92 条；enforced 80）
+- 一句话：**Worker 完成后不再自动 `done`**
+
+```text
+Worker 干完            → task 停在 in_review（系统不替谁通过）
+Manager/Requester 发起 → review_requests(open, reviewer=**指定的人**)
+系统                   → 收集事实（review_facts：产物/声明差异/交接/会话/返工次数）
+Reviewer Agent 出结论  → PASS / REWORK / REJECT / ESCALATE
+系统按**显式映射**落地  → REVIEW_VERDICT_TARGETS（ESCALATE 没有目标，停下来等人）
+```
+
+- **唯一的结论 → 状态映射**：`PASS→done` / `REWORK→todo(+计数)` / `REJECT→rejected` / `ESCALATE→无`
+- **事实与结论分开存**（RV3）：`review_facts` 是系统写的（**没有**判断词），
+  `review_requests.verdict` 是评审人写的；**追加式**（改判走新请求）
+- **系统仍然不做**：不产生结论、不替管理层指定评审人、不自己 replan（RV7）、
+  不把评估/结算/能力枚举拿来当任务级评审（W29/RV8）
+- **替身评审**（`app/work/review_fixture.py`）：与 `planning_fixture` **同款门控**
+  （`allow_planning_fixtures` + `planning_fixture=deterministic_template`），
+  结论**署在项目负责人名下**、理由写明是替身、走**同一段**评审服务；
+  替身失败 ⇒ 任务留在 `in_review` 等管理层，**绝不**因此自动通过
+- **踩坑记录（真实 bug，务必别重复）**：**事件必须在事务提交之后发**。
+  `bus.publish` 用**另一个数据库连接**写 `events`；在写事务还没提交时发事件，
+  SQLite 的单写者直接 `database is locked`（而且会等满 15s busy_timeout）。
+  第一版替身评审把"发事件"塞在评审事务里 → 每个任务卡 15s，整条 fixture 链跑不完。
+  修法：替身评审拆成**两段独立短事务**（发起 / 出结论），每段各自提交后再发事件
+- **第二条**：`project_runtime_state` 新增 `work_finished`（"全干完、含等评审"）——
+  `all_tasks_done`（严格完成）与它**不能混**：等评审不算完成（项目不能据此交付），
+  但此时确实没有可调度的工作（项目该回 `planning` 等管理层，而不是卡在 `in_progress`）
+- **第三条**：`SessionLocal` 的**长事务读者会挡住写者**（rollback journal 模式）。
+  测试里"用 `db` 会话轮询后台进度"会把 15s busy_timeout 直接吃满 ——
+  后台跑图时用 HTTP 轮询（每请求一个短事务），别用常驻会话读
+- **反例注入验证**：**12/12** 条（自动通过 / 事实里写判断词 / 结论行塞事实 /
+  代签 / 改判 / 不计数 / ESCALATE 被翻译成状态 / 谁都能 replan / 反向映射 /
+  替身不门控 / 替身绕过状态机 / 结论工具去掉 required）
+- 下一步：**M2.8 Recruit → Ready-to-Work**
+
+---
+
 ## 6. 下一步建议（按优先级）
 
-1. **M2.7 Review / Rework / Replan**（`docs/m2-implementation-plan.md` §10）：`ReviewVerdict` 落地，替换 `_finalize` 里的 `in_review → done` 自动通过（W17）。
+1. **M2.8 Recruit → Ready-to-Work**（`docs/m2-implementation-plan.md` §11）：招聘通过后自动开通运行时，`READY_TO_WORK` 之前不许被派活（W31）。
 2. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
 3. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
 4. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。

@@ -28,15 +28,17 @@ from app.models.enums import (
     DecisionSemantics,
     LifecycleStatus,
     ProjectStatus,
+    ReviewVerdict,
     TaskKind,
     TaskStatus,
 )
 from app.models.project import Task
 from app.repositories import organization as org_repo
 from app.repositories import project as project_repo
+from app.repositories import review as review_repo
 from app.services import tasks as task_service
 from app.work import contracts as C
-from app.work import handoff, tools
+from app.work import handoff, reviews, tools
 
 #: 允许由管理 Agent 创建的任务类型（`general` 刻意放开：不是每个工作项都能塞进固定分类）
 CREATABLE_TASK_KINDS = tuple(kind.value for kind in TaskKind)
@@ -391,17 +393,33 @@ def _delegate_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> di
 
 
 def _request_review(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
-    """请人评审一件已完成的工作：状态推进到 `in_review` + 留痕 + 事件。
+    """请人评审一件已完成的工作（M2.7：**真实**的 `review_requests` 行）。
 
-    M2.3 的诚实边界：**没有**持久的 `ReviewRequest` 实体（那是 M2.7）；
-    被指定的评审人记在审计与事件里，返回值明确说明这一点。
+    与 M2.3 的诚实边界不同，这里已经**有**持久的评审实体：
+
+    - 任务必须已经进入 `in_review`（工作先做完，才有东西可评；M2.7 起系统
+      不再自动通过，所以"谁来评"必须由管理层指定）；
+    - **必须**指定 `reviewer_employee_id`：系统不替管理层选人（W1/R2）；
+    - 事实由系统收集（`review_facts`），结论由评审人给（`submit_review_verdict`）。
     """
-    task, _ = _task_in_company(db, ctx, int(args["task_id"]))
+    task, company_id = _task_in_company(db, ctx, int(args["task_id"]))
     reviewer_id = args.get("reviewer_employee_id")
-    reviewer = _active_employee(db, ctx, int(reviewer_id)) if reviewer_id is not None else None
+    if reviewer_id is None:
+        # 缺少评审人不是"系统自己上"的理由，而是这次请求不成立 —— 说清楚。
+        raise tools.ToolError(
+            "reviewer_employee_id is required: the system never picks a reviewer (W1/R2)"
+        )
+    _active_employee(db, ctx, int(reviewer_id))
     try:
-        task_service.transition_task(db, task, TaskStatus.in_review.value)
-    except task_service.InvalidTransitionError as exc:
+        request = reviews.open_review_request(
+            db,
+            task=task,
+            requester_employee_id=ctx.employee_id,
+            reviewer_employee_id=int(reviewer_id),
+            reason=str(args.get("reason") or ""),
+            commit=False,
+        )
+    except C.WorkContractError as exc:
         raise tools.ToolError(str(exc)) from exc
     db.commit()
     db.refresh(task)
@@ -410,19 +428,21 @@ def _request_review(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
         "work.review_requested",
         {
             "task_id": int(task.id),
-            "reviewer_employee_id": int(reviewer.id) if reviewer else None,
+            "review_request_id": int(request.id),
+            "reviewer_employee_id": int(request.reviewer_employee_id),
             "via": "agent_tool",
         },
-        company_id=ctx.company_id,
+        company_id=company_id,
         actor_employee_id=ctx.employee_id,
         project_id=int(task.project_id),
         task_id=int(task.id),
     )
     return {
         "task": _task_snapshot(task),
-        "reviewer_employee_id": int(reviewer.id) if reviewer else None,
-        "review_entity": "deferred_to_M2.7",
-        "applied": "in_review",
+        "review_request_id": int(request.id),
+        "reviewer_employee_id": int(request.reviewer_employee_id),
+        "status": request.status,
+        "facts_collected": True,
     }
 
 
@@ -555,6 +575,70 @@ def _consume_artifact(db: Session, ctx: tools.ToolCallContext, args: dict) -> di
     }
 
 
+def _submit_review_verdict(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
+    """给出一条评审结论（`ReviewVerdict`）。
+
+    身份来自**上下文**（T5）：结论只能记在当前调用者身上，而且它必须是这条
+    请求指定的评审人 —— 参数里不接受"评审人是谁"。
+    """
+    request = review_repo.get_request(db, int(args["review_request_id"]))
+    if request is None:
+        raise tools.ToolError("review request not found")
+    project = project_repo.get_project(db, int(request.project_id))
+    if project is None or int(project.company_id) != ctx.company_id:
+        raise tools.ToolError("review request not found in this company")
+    try:
+        reviews.submit_verdict(
+            db,
+            request=request,
+            reviewer_employee_id=ctx.employee_id,
+            verdict=str(args["verdict"]),
+            notes=str(args.get("notes") or ""),
+            commit=False,
+        )
+    except C.WorkContractError as exc:
+        # 契约违规（状态不对 / 不是评审人 / 结论缺理由）⇒ 具体原因，不是 500
+        raise tools.ToolError(str(exc)) from exc
+    db.commit()
+    db.refresh(request)
+    db.refresh(request.task if hasattr(request, "task") else request)
+    return {
+        "review_request_id": int(request.id),
+        "task_id": int(request.task_id),
+        "verdict": request.verdict,
+        "target_status": C.REVIEW_VERDICT_TARGETS.get(request.verdict or ""),
+        "applied": reviews.review_view(db, request).task_status,
+    }
+
+
+def _replan_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
+    """把项目退回"等管理层重新规划"（RV7：只有该项目的 Manager 能发起）。
+
+    **不生成任何图**：系统不 replan（W2/W34），它只是把项目放回规划态并留下理由。
+    """
+    project = project_repo.get_project(db, int(args["project_id"]))
+    if project is None or int(project.company_id) != ctx.company_id:
+        raise tools.ToolError("project not found in this company")
+    try:
+        reviews.replan_project(
+            db,
+            project=project,
+            actor_employee_id=ctx.employee_id,
+            reason=str(args.get("reason") or ""),
+            commit=False,
+        )
+    except C.WorkContractError as exc:
+        raise tools.ToolError(str(exc)) from exc
+    db.commit()
+    db.refresh(project)
+    return {
+        "project_id": int(project.id),
+        "status": project.status,
+        "management_employee_id": project.management_employee_id,
+        "applied": "replan_requested",
+    }
+
+
 def build_write_tools() -> tuple[tools.ToolSpec, ...]:
     """写工具清单（**只有内部执行面**；人类管理动作走各领域自己的正式 API）。"""
     return (
@@ -665,6 +749,39 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
             ),
             output_schema=tools.object_schema({"project": {"type": "object"}}),
             handler=_delegate_project,
+        ),
+        tools.ToolSpec(
+            name="submit_review_verdict",
+            # 决策语义 REQUIRED：出一个结论是判断，必须隶属于一条决策（DR7）
+            decision_semantics=DecisionSemantics.required,
+            description="给出一条任务级评审结论（PASS / REWORK / REJECT / ESCALATE）",
+            side_effect=C.ToolSideEffect.write,
+            required_authority=C.AuthorityKind.accept_delivery,
+            authority_target=_target_company,
+            input_schema=tools.object_schema(
+                {
+                    "review_request_id": _INT,
+                    "verdict": {"type": "string", "enum": [v.value for v in ReviewVerdict]},
+                    "notes": _STR,
+                },
+                ("review_request_id", "verdict"),
+            ),
+            output_schema=tools.object_schema({"review_request_id": _INT}),
+            handler=_submit_review_verdict,
+        ),
+        tools.ToolSpec(
+            name="replan_project",
+            # 决策语义 REQUIRED：重新规划是管理决策（W2/RV7）
+            decision_semantics=DecisionSemantics.required,
+            description="把项目退回等管理层重新规划（只有该项目的 Manager 能发起）",
+            side_effect=C.ToolSideEffect.write,
+            required_authority=C.AuthorityKind.plan_project_work,
+            authority_target=_target_company,
+            input_schema=tools.object_schema(
+                {"project_id": _INT, "reason": _STR}, ("project_id", "reason")
+            ),
+            output_schema=tools.object_schema({"project_id": _INT}),
+            handler=_replan_project,
         ),
         tools.ToolSpec(
             name="request_review",

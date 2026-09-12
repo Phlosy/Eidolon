@@ -14,6 +14,8 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.models.enums import ReviewVerdict
+
 
 class AuthorityGrantOut(BaseModel):
     """一条生效授权（与 `position_authority_grants` 字段一一对应）。"""
@@ -292,3 +294,65 @@ class TaskInputsIn(BaseModel):
 class TaskInputsOut(BaseModel):
     task_id: int
     declared_inputs: list[DeclaredInputOut] = []
+
+
+# ---------------------------------------------------------------------------
+# M2.7 评审（设计 §12，W17 / RV1–RV8）
+#
+# 形状与 `app/work/reviews.py` 的数据类一一对应 —— 那份 dataclass 是唯一口径，
+# 这里只是它的 HTTP 面。
+# ---------------------------------------------------------------------------
+
+
+class ReviewFactOut(BaseModel):
+    """**系统**收集的一条评审事实（没有通过/不通过）。"""
+
+    kind: str
+    payload: dict = {}
+    source: str = "system"
+
+
+class ReviewViewOut(BaseModel):
+    request_id: int
+    task_id: int
+    project_id: int
+    status: str
+    verdict: str | None = None
+    reviewer_employee_id: int
+    requested_by_employee_id: int
+    reason: str = ""
+    notes: str = ""
+    verdict_decision_id: int | None = None
+    requested_at: str = ""
+    decided_at: str | None = None
+    facts: list[ReviewFactOut] = []
+    task_status: str = ""
+    target_status: str | None = None
+    rework_count: int = 0
+
+
+class TaskReviewOut(BaseModel):
+    """`GET /tasks/{id}/review`：请求 + 事实 + 结论 + 返工次数。"""
+
+    task_id: int
+    task_status: str = ""
+    rework_count: int = 0
+    #: 结论 → 状态目标的**显式**映射（含 `None`：ESCALATE 没有自动目标）
+    verdict_targets: dict[str, str | None] = {}
+    review: ReviewViewOut | None = None
+
+
+class TaskReviewIn(BaseModel):
+    """发起评审（人类管理动作）。评审人**必填**：系统不替管理层选人。"""
+
+    requester_employee_id: int
+    reviewer_employee_id: int
+    reason: str = ""
+
+
+class VerdictIn(BaseModel):
+    """给出结论（人类管理动作）。"""
+
+    reviewer_employee_id: int
+    verdict: ReviewVerdict
+    notes: str = ""

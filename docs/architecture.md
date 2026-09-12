@@ -339,6 +339,22 @@ B 开工时    ：artifact_links(artifact, B, session)     ← 使用事实（�
 - 只消费**已完成**的产出；未完成任务的产物永不被引用（服务层 + HTTP + 工具三处拒绝）
 - `GET /tasks/{id}/artifacts`：产出 / 使用 / 声明 / 上游链（≥2 跳）；Agent 读工具同一份事实
 
+### 5c. 评审闭环（M2.7）
+
+```text
+Worker 干完            → task 停在 in_review（系统不替谁通过）
+Manager/Requester 发起 → review_requests(open, reviewer=指定的人)   ← 系统不选人
+系统                   → review_facts（产物/声明差异/交接/会话/返工次数）
+Reviewer Agent 出结论  → PASS → done ／ REWORK → todo(+计数) ／ REJECT → rejected
+                          ESCALATE → **不动状态**，发 task.review_required 等人/管理层
+```
+
+- 结论 → 状态的映射只有一处（`REVIEW_VERDICT_TARGETS`），且 `ESCALATE` 刻意没有目标
+- 事实（系统写）与结论（人写）分开两张表；结论追加式，改判走新请求
+- 做完了却没人接手 ⇒ 调度器发 `task.review_required` 叫醒管理层（不自动通过）
+- 确定性 fixture 项目由**替身评审**（门控 + 署名）走同一段服务出 PASS，
+  因此 CI/教程的确定性链路仍然完整
+
 ## 6. Learning 与 Knowledge
 
 ### 6.1 Reflection（Project Learning）
