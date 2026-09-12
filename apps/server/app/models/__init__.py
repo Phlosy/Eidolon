@@ -48,6 +48,7 @@ from app.models.economy import (
 )
 from app.models.event import Event
 from app.models.git import GitConnection
+from app.models.handoff import ArtifactLink, TaskInput
 from app.models.knowledge import (
     KnowledgeItem,
     LearningPriority,
@@ -138,6 +139,8 @@ __all__ = [
     "Entitlement",
     "Event",
     "GitConnection",
+    "ArtifactLink",
+    "TaskInput",
     "KnowledgeItem",
     "LearningPriority",
     "LearningSession",

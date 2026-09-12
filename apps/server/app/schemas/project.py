@@ -153,6 +153,8 @@ class TaskOut(ORMModel):
     phase_id: int | None = None
     # Not an ORM column (n-n via task_dependencies); populated explicitly by services.
     dependencies: list[int] = []
+    # M2.6（H4）：Manager 声明的**预期**交付物类型（实际产出在 /tasks/{id}/artifacts）
+    produces: list[str] = []
     created_at: datetime
     updated_at: datetime
 

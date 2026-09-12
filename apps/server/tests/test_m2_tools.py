@@ -1015,6 +1015,8 @@ def test_read_and_write_tool_names_are_the_agreed_first_batch():
         "get_runtime_status",
         "search_company_knowledge",
         "inspect_artifact",
+        # M2.6（H7）：交付物全景（产出 / 使用 / 上游链），与 HTTP 读面同一服务
+        "list_task_artifacts",
     } <= read_names
     write_names = {spec.name for spec in executor.registry.by_side_effect(ToolSideEffect.write)}
     assert write_names == {
@@ -1027,11 +1029,13 @@ def test_read_and_write_tool_names_are_the_agreed_first_batch():
         "request_rework",
         "mark_task_blocked",
         "cancel_task",
+        # M2.6（H8）：登记一次"产物 → 输入"的显式交接；未完成的产出一律拒绝
+        "consume_artifact",
     }
 
 
 def test_build_helpers_are_pure_constructors():
     """构建函数只造 spec，不注册到全局表（注册只发生一次，且显式）。"""
     assert len(tool_reads.build_read_tools()) >= 12
-    assert len(tool_writes.build_write_tools()) == 9
+    assert len(tool_writes.build_write_tools()) == 10  # M2.6 起 9 → 10（consume_artifact）
     assert isinstance(machinery.ToolRegistry(), machinery.ToolRegistry)

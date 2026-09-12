@@ -39,6 +39,7 @@ from app.models.project import Task
 from app.repositories import project as project_repo
 from app.repositories import runtimes as runtime_repo
 from app.work import contracts as C
+from app.work import handoff
 
 #: 项目处于这些状态时允许执行（终态与"等管理层"不在此列）
 EXECUTABLE_PROJECT_STATUSES: frozenset[str] = frozenset(
@@ -60,6 +61,8 @@ REASON_RUNTIME_UNAVAILABLE = "runtime_unavailable"
 REASON_PROVIDER_MISSING = "provider_missing"
 #: 执行失败：**结构上**是就绪候选（契约如此），但**运行上**需要管理决策（R10/R12）
 REASON_TASK_FAILED = "task_failed"
+#: M2.6：声明的上游**跑完了却没产出**可交付物 ⇒ 计划与事实不符（H5）
+REASON_INPUT_ARTIFACTS_MISSING = C.REASON_INPUT_ARTIFACTS_MISSING
 
 #: 每个阻断原因对应的事件（事实 vs 需要管理决策，见契约 §10b）
 REASON_EVENTS: dict[str, str] = {
@@ -69,6 +72,8 @@ REASON_EVENTS: dict[str, str] = {
     REASON_PROVIDER_MISSING: "task.runtime_unavailable",
     REASON_TASK_HELD: "task.blocked",
     REASON_TASK_FAILED: "task.failed",
+    # 输入缺失 = 这张计划按现状跑不出预期结果 ⇒ 重规划（不新增事件，复用 M2.5 的封闭集）
+    REASON_INPUT_ARTIFACTS_MISSING: "project.replan_required",
 }
 
 assert set(REASON_EVENTS) == set(C.REQUIRES_MANAGEMENT_DECISION | {REASON_TASK_HELD}), (
@@ -230,6 +235,12 @@ def evaluate_dispatch(db: Session, task: Task) -> DispatchEvaluation:
             reasons.extend(_runtime_block_reasons(db, employee))
         else:
             reasons.extend(_runtime_block_reasons(db, employee))
+
+    # ④b M2.6：声明要用的上游跑完了却没产出 ⇒ 不派发，交给管理层（H5/R10）。
+    # 这是"计划与事实不符"，不是"缺人/缺资源"：换个人也拿不到不存在的产物。
+    missing_inputs = handoff.missing_input_sources(db, task)
+    if missing_inputs:
+        reasons.append(REASON_INPUT_ARTIFACTS_MISSING)
 
     if reasons:
         return DispatchEvaluation(

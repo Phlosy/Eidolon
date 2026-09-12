@@ -124,6 +124,16 @@ def build_artifact(ctx: TaskContext, behavior: str = "") -> ProducedArtifact:
     if behavior:
         # §3.4 验收条件 2/4：投影必须能在产出里被机器验证到。
         artifact.content += f"\n\n## Behavior Projection\n\n{behavior}\n"
+    if ctx.input_artifacts:
+        # M2.6（H6/G1）：交接必须能在产出里被**机器验证**到 ——
+        # 只写"收到 N 个引用"是不够的，要把上游内容（有界摘要）真的带上来。
+        sections = []
+        for item in ctx.input_artifacts:
+            sections.append(
+                f"### {item['title']}（来自任务「{item['source_task_title']}」"
+                f"，artifact #{item['artifact_id']}）\n\n{item['excerpt']}"
+            )
+        artifact.content += "\n\n## Inputs From Upstream Tasks\n\n" + "\n\n".join(sections) + "\n"
     if ctx.prior_knowledge:
         # Make learning retrieval observable in the produced artifact.
         skills = "\n".join(f"- {name}" for name in ctx.validated_skills) or "- (none validated yet)"

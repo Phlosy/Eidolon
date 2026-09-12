@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.config import settings
 from app.events.bus import bus
@@ -49,8 +49,30 @@ def _restore_org_state(org_snapshot):
 
 @pytest.fixture(autouse=True)
 def _no_background_dispatch(monkeypatch):
-    """守卫单测不跑后台调度器：本文件要**单向**验证判定结果，不要并发写库。"""
+    """关掉后台调度器，并让**全局**实例失活。
+
+    只关开关不够：`TestClient` 关闭时若全局 runner 正处在同步段（读库 + publish），
+    取消不会立刻生效 —— 它的 sweep 会与本文件手工调用的 `_dispatch_pending`
+    抢同一份事件流（实测：随机序下同一条 `task.assignment_required` 被报了两次，
+    断言就红了）。这里把全局实例的 `_handle` 换成惰性替身，机制上杜绝干扰。
+    """
     monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", False)
+
+
+@pytest.fixture()
+def _inert_global(monkeypatch):
+    """让**全局**调度器实例失活（只给手工调 `_dispatch_pending` 的用例用）。
+
+    为什么需要：`TestClient` 关闭时若全局 runner 正处在同步段（读库 + publish），
+    取消不会立刻生效 —— 它的 sweep 会与本文件手工调用的 `_dispatch_pending`
+    抢同一份事件流（实测：随机序下同一条 `task.assignment_required` 被报了两次）。
+    需要**真实**全局调度器跑图的用例（如 fixture 项目跑到底）不挂这个 fixture。
+    """
+
+    async def _inert(_signal: dict) -> None:  # pragma: no cover - 测试替身
+        return None
+
+    monkeypatch.setattr(orchestrator_module.orchestrator, "_handle", _inert)
 
 
 # ---------------------------------------------------------------------------
@@ -227,7 +249,9 @@ def test_ready_unassigned_is_never_auto_assigned(db, default_company_id):
 # ---------------------------------------------------------------------------
 
 
-def test_ready_unassigned_escalates_as_management_decision(db, default_company_id, monkeypatch):
+def test_ready_unassigned_escalates_as_management_decision(
+    db, default_company_id, monkeypatch, _inert_global
+):
     """R4：调度器遇到"就绪但没负责人"只发事件；同一原因不刷屏（去重）。"""
     published: list[tuple[str, dict]] = []
     monkeypatch.setattr(
@@ -243,17 +267,26 @@ def test_ready_unassigned_escalates_as_management_decision(db, default_company_i
     import asyncio
 
     asyncio.run(orchestrator._dispatch_pending())
-    escalations = [item for item in published if item[0] == "task.assignment_required"]
+    # 只认**这个任务**的上报：库里可能有其它遗留项目同时在扫（全局调度器），
+    # 不筛 id 的话断言会被别人的上报顶掉（实测过：整仓跑时偶发）。
+    escalations = [
+        item
+        for item in published
+        if item[0] == "task.assignment_required" and item[1].get("id") == int(task.id)
+    ]
     assert escalations, "就绪但缺负责人必须上报，不能静静等着"
     payload = escalations[0][1]
-    assert payload["id"] == int(task.id)
     assert payload["needs_management"] is True
     assert D.REASON_ASSIGNEE_MISSING in payload["reasons"]
 
     # 去重：同一 (task, event) 不再重复上报
     published.clear()
     asyncio.run(orchestrator._dispatch_pending())
-    assert not [item for item in published if item[0] == "task.assignment_required"]
+    assert not [
+        item
+        for item in published
+        if item[0] == "task.assignment_required" and item[1].get("id") == int(task.id)
+    ]
 
     # 事件落的还是**事实**：任务依然没人、依然没开始
     db.expire_all()
@@ -302,6 +335,8 @@ def test_runtime_unavailable_does_not_reassign(db, default_company_id, real_runt
         D.REASON_PROVIDER_MISSING: "task.runtime_unavailable",
         D.REASON_TASK_HELD: "task.blocked",
         D.REASON_TASK_FAILED: "task.failed",
+        # M2.6（H5）：声明要用的上游跑完却没产出 ⇒ 计划与事实不符，复用 replan 事件
+        D.REASON_INPUT_ARTIFACTS_MISSING: "project.replan_required",
     }
 
 
@@ -468,13 +503,25 @@ def test_task_ready_is_a_fact_event(db, default_company_id, monkeypatch):
         assert forbidden not in payload
 
     # ③ 而且**没有**因此产生 DecisionRecord（事实 ≠ 决策，R9 的另一半）
-    assert not _decision_tables_have_rows(db)
+    assert _decision_rows_for_project(db, int(project.id)) == 0
 
 
-def _decision_tables_have_rows(db) -> bool:
+def _decision_rows_for_project(db, project_id: int) -> int:
+    """这个项目下的决策行数。
+
+    **必须按项目圈定**：库里可能有别的用例留下的决策（M2.4/M2.6 都会写），
+    断言"全表为空"只在"本文件恰好跑在它们前面"时才成立 —— 那是顺序依赖的假绿。
+    """
     from app.models.decision import DecisionRecord
 
-    return db.scalar(select(DecisionRecord.id).limit(1)) is not None
+    return (
+        db.scalar(
+            select(func.count())
+            .select_from(DecisionRecord)
+            .where(DecisionRecord.project_id == int(project_id))
+        )
+        or 0
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -499,7 +546,7 @@ def test_normal_dag_progress_creates_no_decision(db, default_company_id, monkeyp
     db.commit()
     orchestrator_module.Orchestrator()._advance(int(task.id), success=True)
 
-    assert not _decision_tables_have_rows(db), "正常推进不得产生决策记录"
+    assert _decision_rows_for_project(db, int(project.id)) == 0, "正常推进不得产生决策记录"
     escalated = [
         event_type for event_type, _ in published if event_type in C.DECISION_NEEDED_EVENTS
     ]
@@ -552,7 +599,9 @@ def test_reassignment_requires_a_decision(db, default_company_id, monkeypatch):
     assert project_repo.get_task(db, int(upstream.id)).status == TaskStatus.failed.value
     assert project_repo.get_task(db, int(downstream.id)).status == TaskStatus.backlog.value
     assert int(downstream.id) not in D.structural_ready_task_ids(db, int(project.id))
-    assert not _decision_tables_have_rows(db), "系统自己改写派是越权 —— 必须留下决策记录才允许"
+    assert _decision_rows_for_project(db, int(project.id)) == 0, (
+        "系统自己改写派是越权 —— 要么不动，要么留下决策记录"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -652,7 +701,9 @@ def test_no_silent_auto_planning_or_assignment_fallback():
 # ---------------------------------------------------------------------------
 
 
-def test_invalid_graph_is_never_scheduled_and_escalates(db, default_company_id, monkeypatch):
+def test_invalid_graph_is_never_scheduled_and_escalates(
+    db, default_company_id, monkeypatch, _inert_global
+):
     """环 / 悬空依赖 ⇒ 权威口径直接给空集，并上报 `project.replan_required`（去重）。"""
     people = _employees(db, default_company_id)
     project = _project(db, default_company_id)

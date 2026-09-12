@@ -105,6 +105,9 @@ class Task(TimestampMixin, Base):
     phase_id: Mapped[int | None] = mapped_column(
         ForeignKey("project_phases.id"), nullable=True, index=True
     )
+    # M2.6（H4）：Manager 声明的**预期**交付物类型（`ArtifactType` 值域）。
+    # 声明 = 计划；实际产出的归属在 `drive_nodes.task_id`，两者分开（不互相覆盖）。
+    produces_json: Mapped[list] = mapped_column(JSON, default=list)
 
     project: Mapped[Project] = relationship(back_populates="tasks")
     dependencies: Mapped[list["TaskDependency"]] = relationship(

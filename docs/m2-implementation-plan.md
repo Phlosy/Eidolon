@@ -71,7 +71,7 @@ Golden Path × 3 + 冻结
 | **M2.3** | Management Agent Tooling | 无 | M2.2 | W3/W6/W11/T1–T12 | **DONE** |
 | **M2.4** | Leadership Planning & Delegation | 有（v42） | M2.3 | W1/W2/W3/W14/W15/W28/DR1–DR10 | **DONE** |
 | **M2.5** | Dynamic Task Graph Runtime | 无（收敛既有表） | M2.4 | W2/W16/W30/R1–R12 | ✅ **DONE** |
-| **M2.6** | Artifact Handoff & Shared Work Context | 有（task 维度 + lineage） | M2.5 | W19 | PENDING |
+| **M2.6** | Artifact Handoff & Shared Work Context | 有（v43：归属列 + 声明表 + 使用表） | M2.5 | W19/H1–H8 | ✅ **DONE** |
 | **M2.7** | Review / Rework / Replan | 有（ReviewRequest） | M2.6 | W17/W29 | PENDING |
 | **M2.8** | Recruit → Ready-to-Work | 无（复用 provisioning） | M2.7 | W31/W13 | PENDING |
 | **M2.9** | WorkOrder Bridge | 有（binding） | M2.8 | W23 | PENDING |
@@ -501,29 +501,63 @@ Manager chooses. System schedules. Worker executes. Manager intervenes only when
 
 ---
 
-## 9. M2.6 · Artifact Handoff & Shared Work Context `[有迁移]`
+## 9. M2.6 · Artifact Handoff & Shared Work Context `[有迁移]` — ✅ **DONE**
 
 ### Goal
 
 让 Agent A 的输出真正成为 Agent B 的输入。**基于现有 Drive**，不建第二套。
 
-### 范围
+```text
+Manager 声明：B 要用 A 的产品   ← task_inputs（指向 Task，不是 artifact）
+A 跑完 → 产物落 Drive          ← drive_nodes.task_id = A（产出归属，H2）
+B 就绪 → 系统运行期解析输入     ← resolve_input_artifacts（H4）
+B 开工 → 记下被谁在哪次会话用掉  ← artifact_links（H3/G5）
+```
 
-- `drive_nodes.task_id`（Artifact 归属到 Task）+ `artifact_links`（produced_by / consumed_by）
-- `TaskContext` 增加 `input_artifacts`（上游 Task 的产物引用 + 内容摘要）
-- `Task.consumes` / `Task.produces` 的显式声明（由 Manager 在 create_task 时给）
-- `GET /tasks/{id}/artifacts`（produced + consumed + lineage）
-- Lineage 校验：consumed 的 artifact 必须由**已完成**的 Task 产出（W19）
+### 迁移 **v43** `43a70cd19cc7`（additive + 事实驱动回填）
+
+| 变更 | 事实 | 说明 |
+| --- | --- | --- |
+| `drive_nodes.task_id`（+ 索引 + FK）| 产出归属 | 产出时写入、此后不变；人上传/历史为 NULL |
+| `tasks.produces_json` | 声明的**预期**交付物类型 | `server_default '[]'`，枚举内校验 |
+| `task_inputs`（新表）| 「要用谁的产品」= 计划声明 | 指向 **Task**；UNIQUE(task, source) |
+| `artifact_links`（新表）| 「被谁在哪次会话用掉了」= 使用事实 | UNIQUE(artifact, task, role)；role 只有 `consumed_by` |
+
+回填只搬库里**已经写着**的事实：`drive_nodes.task_id ← work_sessions.task_id`
+（经 `work_session_id`）。没有会话关联的文档保持 NULL —— **不猜**。
+
+### 落地物
+
+| 文件 | 角色 |
+| --- | --- |
+| `app/work/handoff.py` | **唯一交接口径**：声明校验 / 运行期解析 / 使用事实 / lineage / 报告 |
+| `app/repositories/handoff.py` | 两张表的查询层（表只被 repo 碰，守卫钉住）|
+| `app/models/handoff.py` | `TaskInput` / `ArtifactLink`（**不是**产物存储）|
+| `app/api/v1/tasks.py` | 读：`GET /tasks/{id}/artifacts`；写：`POST /tasks/{id}/inputs`、`.../consume`（越界 422）|
+| `app/work/tool_reads.py` | 读工具 `list_task_artifacts`（与 HTTP 同一服务，T2/T11）|
+| `app/work/tool_writes.py` | 写工具 `consume_artifact`（required）；`create_task` 增 `consumes` / `produces` |
+| `app/workflow/orchestrator.py` | 解决输入 → `TaskContext.input_artifacts` → 记使用事实 → 写产出归属 |
+| `app/runtimes/mock/templates.py` | 把输入内容渲染进产出（**可机器验证**的交接，G1）|
+| `tests/test_m2_handoff.py` | 13 条（8 条 H 锚点 + G 验收 + 反例注入）|
 
 ### Acceptance
 
-| # | 判据 |
-| --- | --- |
-| G1 | B 的 prompt / TaskContext 里能拿到 A 的 artifact 内容（不是同一段 project 原文） |
-| G2 | `GET /tasks/{id}/artifacts` 能追到上游 Task 链（≥2 跳） |
-| G3 | 引用未完成的 Task 产物 → 系统拒绝（422） |
-| G4 | 不新建 Artifact 表；`artifacts`（legacy）仍不被写入 |
-| G5 | `artifact_links` 可追"这个产物被谁用了、用在哪次会话" |
+| # | 判据 | 结果 |
+| --- | --- | --- |
+| G1 | B 的 prompt / TaskContext 里能拿到 A 的 artifact **内容**（不是同一段 project 原文）| ✅ 产出里出现上游内容摘要（prompt 同样内联）|
+| G2 | `GET /tasks/{id}/artifacts` 能追到上游 Task 链（≥2 跳）| ✅ `upstream` 带 depth 1/2 |
+| G3 | 引用未完成的 Task 产物 → 系统拒绝（422）| ✅ 服务层 + HTTP 422 + 工具 `domain_rejected`（决策失败、审计留因）|
+| G4 | 不新建 Artifact 表；`artifacts`（legacy）仍不被写入 | ✅ 表存在性 + 内容列扫描 + 跑完整项目后行数不变 |
+| G5 | `artifact_links` 可追"这个产物被谁用了、用在哪次会话"| ✅ consumed 报告带 `work_session_id` / `actor_employee_id` |
+| H1–H8 | 八条不变量各有锚点，且每条都有**反例注入**验证 | ✅ 11/11 条注入被守卫拦住 |
+
+### 与计划的偏差（刻意）
+
+| 计划 | 实际 | 原因 |
+| --- | --- | --- |
+| `artifact_links (produced_by / consumed_by)` | 只有 `consumed_by` | 产出归属由 `drive_nodes.task_id`(+`work_session_id`) 表达；再存一份 produced_by 就是同一事实两个落点 |
+| `Task.consumes` 作为列 | `task_inputs` 表 | `consumes` 引用**别的行**（需要引用完整性与祖先校验），`produces` 只引用枚举值 ⇒ 前者建表、后者 `produces_json` |
+| （计划未列）写端点 | 加 2 个小端点（inputs / consume）| G3 的 422 需要一个真实 HTTP 面；人类管理动作与 Agent 工具走**同一段**服务（T11）|
 
 ---
 

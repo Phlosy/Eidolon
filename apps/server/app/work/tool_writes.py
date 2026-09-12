@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from app.events.bus import bus
 from app.models.base import utcnow
 from app.models.enums import (
+    ArtifactType,
     DecisionSemantics,
     LifecycleStatus,
     ProjectStatus,
@@ -35,7 +36,7 @@ from app.repositories import organization as org_repo
 from app.repositories import project as project_repo
 from app.services import tasks as task_service
 from app.work import contracts as C
-from app.work import tools
+from app.work import handoff, tools
 
 #: 允许由管理 Agent 创建的任务类型（`general` 刻意放开：不是每个工作项都能塞进固定分类）
 CREATABLE_TASK_KINDS = tuple(kind.value for kind in TaskKind)
@@ -71,6 +72,16 @@ def _active_employee(db: Session, ctx: tools.ToolCallContext, employee_id: int):
     return employee
 
 
+def _artifact_types(raw) -> tuple[str, ...]:
+    """`produces` 的声明值域 = `ArtifactType`（M2.6/H4）。未知类型直接拒绝。"""
+    allowed = {item.value for item in ArtifactType}
+    values = [str(item) for item in (raw or [])]
+    unknown = [item for item in values if item not in allowed]
+    if unknown:
+        raise tools.ToolError(f"unknown artifact types: {unknown} (allowed: {sorted(allowed)})")
+    return tuple(dict.fromkeys(values))
+
+
 def _task_snapshot(task: Task) -> dict:
     return {
         "task_id": int(task.id),
@@ -102,6 +113,13 @@ def _create_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
     for dependency_id in depends_on:
         _task_in_company(db, ctx, dependency_id)
 
+    # M2.6（H4）：声明的输入 / 预期产出。**声明不是引用** —— 这里只记"要用谁的产品"，
+    # 产物到上游跑完才存在；但顺序必须现在就成立（声明必须是 DAG 祖先，H5）。
+    consumes = [int(item) for item in (args.get("consumes") or [])]
+    for source_id in consumes:
+        _task_in_company(db, ctx, source_id)
+    produces = _artifact_types(args.get("produces"))
+
     assignee_id = args.get("assignee_id")
     if assignee_id is not None:
         _active_employee(db, ctx, int(assignee_id))
@@ -114,19 +132,25 @@ def _create_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         ProjectStatus.waiting_for_management.value,
     ):
         project.status = ProjectStatus.in_progress.value
-    task = task_service.create_task(
-        db,
-        project_id=project_id,
-        title=str(args["title"]).strip(),
-        kind=kind,
-        assignee_id=int(assignee_id) if assignee_id is not None else None,
-        status=TaskStatus.backlog.value,
-        description=str(args.get("description") or ""),
-        acceptance_criteria=str(args.get("acceptance_criteria") or ""),
-        priority=int(args.get("priority", 0)),
-        sequence=int(args.get("sequence", 0)),
-        depends_on=depends_on,
-    )
+    try:
+        task = task_service.create_task(
+            db,
+            project_id=project_id,
+            title=str(args["title"]).strip(),
+            kind=kind,
+            assignee_id=int(assignee_id) if assignee_id is not None else None,
+            status=TaskStatus.backlog.value,
+            description=str(args.get("description") or ""),
+            acceptance_criteria=str(args.get("acceptance_criteria") or ""),
+            priority=int(args.get("priority", 0)),
+            sequence=int(args.get("sequence", 0)),
+            depends_on=depends_on,
+            # M2.6：声明交给领域服务（工具只做适配，不自己碰列，也不自己 flush）
+            consumes=consumes,
+            produces=list(produces),
+        )
+    except C.WorkContractError as exc:
+        raise tools.ToolError(str(exc)) from exc
     db.commit()
     db.refresh(task)
     task_service.publish_task_created(task, ctx.company_id)
@@ -491,6 +515,46 @@ _TASK_ID = {"task_id": _INT}
 _PROJECT_ID = {"project_id": _INT}
 
 
+def _consume_artifact(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
+    """把一个产物登记为某个 Task 的输入（H3/H8）。
+
+    用途：**跨分支交接** —— "B 也要用 C 的测试报告"。规则是硬的：
+    产出它的 Task 必须已经 `done`（H8），否则系统拒绝（未完成的产出永不被引用）。
+    """
+    task, company_id = _task_in_company(db, ctx, int(args["task_id"]))
+    artifact_id = int(args["artifact_id"])
+    try:
+        link = handoff.consume_artifact(
+            db,
+            task=task,
+            artifact_id=artifact_id,
+            actor_employee_id=ctx.employee_id,
+            reason=str(args.get("reason") or "explicit"),
+            commit=False,
+        )
+    except C.WorkContractError as exc:
+        raise tools.ToolError(str(exc)) from exc
+    db.commit()
+    bus.publish(
+        "work.artifact_consumed",
+        {
+            "task_id": int(task.id),
+            "artifact_id": artifact_id,
+            "via": "agent_tool",
+        },
+        company_id=company_id,
+        actor_employee_id=ctx.employee_id,
+        project_id=int(task.project_id),
+        task_id=int(task.id),
+    )
+    return {
+        "task_id": int(task.id),
+        "artifact_id": artifact_id,
+        "artifact_link_id": int(link.id),
+        "role": link.role,
+    }
+
+
 def build_write_tools() -> tuple[tools.ToolSpec, ...]:
     """写工具清单（**只有内部执行面**；人类管理动作走各领域自己的正式 API）。"""
     return (
@@ -513,11 +577,29 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
                     "sequence": _INT,
                     "assignee_id": _INT,
                     "depends_on": {"type": "array", "items": _INT},
+                    # M2.6：声明要用谁的产品（必须是 DAG 祖先，H5）/ 预期产出什么
+                    "consumes": {"type": "array", "items": _INT},
+                    "produces": {"type": "array", "items": _STR},
                 },
                 ("project_id", "title"),
             ),
             output_schema=tools.object_schema({"task": {"type": "object"}}),
             handler=_create_task,
+        ),
+        tools.ToolSpec(
+            name="consume_artifact",
+            # 决策语义 REQUIRED：改变执行**输入**是计划动作，值得一条决策记录（DR7）
+            decision_semantics=DecisionSemantics.required,
+            description="把一个已完成任务的产出登记为某任务的输入（未完成的产出一律拒绝）",
+            side_effect=C.ToolSideEffect.write,
+            required_authority=C.AuthorityKind.plan_project_work,
+            authority_target=_target_task_owner,
+            input_schema=tools.object_schema(
+                {**_TASK_ID, "artifact_id": _INT, "reason": _STR},
+                ("task_id", "artifact_id"),
+            ),
+            output_schema=tools.object_schema({"artifact_link_id": _INT}),
+            handler=_consume_artifact,
         ),
         tools.ToolSpec(
             name="update_task",

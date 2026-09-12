@@ -60,7 +60,7 @@ from app.services import position_compat
 from app.services import tasks as task_service
 from app.work import contracts as C
 from app.work import dispatch as dispatch_runtime
-from app.work import work_defaults
+from app.work import handoff, work_defaults
 
 logger = get_logger(__name__)
 
@@ -292,6 +292,9 @@ class Orchestrator:
                     result = retrieval.RetrievalResult()
                 prior_knowledge, validated_skills = result.knowledge, result.skill_names
                 validated_skill_refs = result.skills
+                # M2.6（H4/H6）：输入在**运行期**解析 —— 上游产物这时才一定存在。
+                # 声明的上游由 DAG 保证先跑完；在跑的产物不会被取到（H8）。
+                input_artifacts = handoff.resolve_input_artifacts(db, task)
                 task_ctx = TaskContext(
                     task_id=task.id,
                     project_id=task.project_id,
@@ -304,6 +307,7 @@ class Orchestrator:
                     employee_role=position_compat.legacy_role_of(db, employee),
                     prior_knowledge=prior_knowledge,
                     validated_skills=validated_skills,
+                    input_artifacts=[item.as_dict() for item in input_artifacts],
                 )
                 employee_snapshot = employee
 
@@ -331,6 +335,18 @@ class Orchestrator:
                 ws = project_repo.get_running_session_for_task(db, task_id)
                 if ws:
                     ws.runtime_session_ref = session.id
+                    # M2.6（H3/G5）：**使用事实**在会话建立的那一刻落库 ——
+                    # 「这个产物被谁、在哪次会话用掉了」必须可追溯，且与产出归属分开记。
+                    if input_artifacts:
+                        handoff.record_consumed(
+                            db,
+                            task_id=task_id,
+                            artifact_ids=[item.artifact_id for item in input_artifacts],
+                            work_session_id=int(ws.id),
+                            actor_employee_id=employee_id,
+                            reason="auto: declared input",
+                            commit=False,
+                        )
                     # 接缝 9 / §10.3：技能被交出去的那一刻记基准（含策略原因 + 版本）。
                     # 已验证技能也记：“这个任务到底跑在哪些技能上”本身是事实，不是判断。
                     for skill in validated_skill_refs:
@@ -350,6 +366,14 @@ class Orchestrator:
                 f"任务：{task_ctx.title}\n\n{task_ctx.description}\n\n"
                 f"验收标准：{task_ctx.acceptance_criteria or '按任务描述完成'}"
             )
+            if task_ctx.input_artifacts:
+                # M2.6（H6）：上游产物作为**输入**进入 prompt（有界摘要）。
+                blocks = "\n\n".join(
+                    f"### {item['title']}（来自任务「{item['source_task_title']}」）\n\n"
+                    f"{item['excerpt']}"
+                    for item in task_ctx.input_artifacts
+                )
+                prompt += f"\n\n## 上游交付物（本次任务的输入）\n\n{blocks}"
             await adapter.send_task(
                 session,
                 prompt,
@@ -427,6 +451,8 @@ class Orchestrator:
                     content=item.content,
                     author_id=employee.id if employee else None,
                     work_session_id=ws.id if ws else None,
+                    # M2.6（H2）：产出归属 = 这个 Task。写在这里、此后不变。
+                    task_id=task_id,
                 )
                 artifact_ids.append((node.id, node.doc_type, node.name))
 

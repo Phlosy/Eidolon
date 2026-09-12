@@ -325,6 +325,20 @@ fixture 建的确定性图，进入运行时后**完全相同** —— 系统只
 `send_task` → 消费 `stream_events`：更新员工状态/进度，收到 `completed` → 落 Artifact、
 task→in_review→done、触发 reflection。同一员工串行执行（一次一个 session；其余就绪任务排队）。
 
+### 5b. Artifact 交接（M2.6）
+
+```text
+产出的那一刻：drive_nodes.task_id = 产出它的 Task     ← 归属写入时确定（H2）
+计划声明    ：task_inputs(task → source_task)          ← 声明指向 **Task**（产物还没存在）
+B 开工前    ：handoff.resolve_input_artifacts()        ← 运行期解析上游**已完成**的产物
+B 开工时    ：artifact_links(artifact, B, session)     ← 使用事实（谁在哪次会话用掉）
+```
+
+- 交付物只有**一个**落点：`drive_nodes` / `drive_revisions`（不建第二套 Artifact 系统）
+- 声明必须有**顺序保证**（上游是 DAG 祖先），否则 422
+- 只消费**已完成**的产出；未完成任务的产物永不被引用（服务层 + HTTP + 工具三处拒绝）
+- `GET /tasks/{id}/artifacts`：产出 / 使用 / 声明 / 上游链（≥2 跳）；Agent 读工具同一份事实
+
 ## 6. Learning 与 Knowledge
 
 ### 6.1 Reflection（Project Learning）

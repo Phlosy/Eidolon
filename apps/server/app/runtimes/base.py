@@ -57,6 +57,10 @@ class TaskContext:
     # v0.2 learning retrieval: assignee's relevant private knowledge + skills.
     prior_knowledge: list[str] = field(default_factory=list)
     validated_skills: list[str] = field(default_factory=list)
+    # M2.6 handoff（H6）：上游 Task 的产物引用 + **有界**内容摘要。
+    # 每一项是 `app/work/handoff.py::InputArtifactRef.as_dict()`。
+    # 它是**输入**，不是知识：这里不做检索、不做裁剪判断，由 handoff 层决定。
+    input_artifacts: list[dict] = field(default_factory=list)
 
 
 @dataclass

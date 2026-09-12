@@ -1148,6 +1148,16 @@ class AuthorityKind(StrEnum):
     plan_project_work = "plan_project_work"
 
 
+class ArtifactLinkRole(StrEnum):
+    """`artifact_links.role` 的值域（M2.6，H3）。
+
+    只有一个成员是**刻意的**：产出归属由 `drive_nodes.task_id` 表达，
+    链接表只记**使用**。同一个事实不留两个落点。
+    """
+
+    consumed_by = "consumed_by"
+
+
 class ToolSideEffect(StrEnum):
     """工具副作用等级（M2.3 用户拍板 §10）。
 

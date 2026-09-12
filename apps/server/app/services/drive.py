@@ -232,6 +232,7 @@ def create_document(
     project_id: int | None = None,
     owner_employee_id: int | None = None,
     work_session_id: int | None = None,
+    task_id: int | None = None,
     message: str | None = None,
     commit: bool = False,
 ) -> DriveNode:
@@ -250,6 +251,7 @@ def create_document(
         owner_employee_id=owner_employee_id,
         current_version=1,
         work_session_id=work_session_id,
+        task_id=task_id,
     )
     target = abs_path(node)
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -450,6 +452,7 @@ def create_project_document(
     content: str,
     owner_employee_id: int | None = None,
     work_session_id: int | None = None,
+    task_id: int | None = None,
     message: str | None = None,
 ) -> DriveNode:
     """Write a workflow artifact into the project's type-mapped subfolder."""
@@ -464,6 +467,7 @@ def create_project_document(
         project_id=project.id,
         owner_employee_id=owner_employee_id,
         work_session_id=work_session_id,
+        task_id=task_id,
         message=message,
     )
 

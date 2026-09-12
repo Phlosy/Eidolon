@@ -775,7 +775,7 @@ W11  Fit is decision-support only.
 
 ---
 
-## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10 / R1–R12）
+## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10 / R1–R12 / H1–H8）
 
 | # | 不变量 | M2.0 状态 |
 | --- | --- | --- |
@@ -843,18 +843,26 @@ W11  Fit is decision-support only.
 | **DR8** | parent_decision_id expresses the management decision tree; no separate workflow model is introduced. | **M2.4 强制** |
 | **DR9** | Decision context is a bounded snapshot with stable refs and a hash, never a copy of the database. | **M2.4 强制** |
 | **DR10** | Decision outcome is traceable (decision to outcome); no capability scoring in M2.4. | **M2.4 强制** |
-| **R1** | System may automatically dispatch only to the already-authorized assignee. | **M2.5 强制** | **M2.5 强制** |
-| **R2** | System never selects an assignee when a task becomes ready. | **M2.5 强制** | **M2.5 强制** |
-| **R3** | Structural readiness and dispatchability are distinct concepts. | **M2.5 强制** | **M2.5 强制** |
-| **R4** | A ready unassigned task requires a management decision. | **M2.5 强制** | **M2.5 强制** |
-| **R5** | Runtime/resource failure does not cause automatic reassignment. | **M2.5 强制** | **M2.5 强制** |
-| **R6** | guided and managed share the same DAG runtime. | **M2.5 强制** | **M2.5 强制** |
-| **R7** | Fixture graphs share the same dispatcher/runtime after graph creation. | **M2.5 强制** | **M2.5 强制** |
-| **R8** | task.ready is a fact event, not a management approval request. | **M2.5 强制** | **M2.5 强制** |
-| **R9** | Normal DAG progress does not require a new DecisionRecord. | **M2.5 强制** | **M2.5 强制** |
-| **R10** | Any reassignment must originate from an authorized Agent/User decision. | **M2.5 强制** | **M2.5 强制** |
-| **R11** | Manager Agents are invoked for decisions/exceptions, not ordinary scheduling. | **M2.5 强制** | **M2.5 强制** |
-| **R12** | No production fallback may silently assign or plan work on behalf of management. | **M2.5 强制** | **M2.5 强制** |
+| **R1** | System may automatically dispatch only to the already-authorized assignee. | **M2.5 强制** |
+| **R2** | System never selects an assignee when a task becomes ready. | **M2.5 强制** |
+| **R3** | Structural readiness and dispatchability are distinct concepts. | **M2.5 强制** |
+| **R4** | A ready unassigned task requires a management decision. | **M2.5 强制** |
+| **R5** | Runtime/resource failure does not cause automatic reassignment. | **M2.5 强制** |
+| **R6** | guided and managed share the same DAG runtime. | **M2.5 强制** |
+| **R7** | Fixture graphs share the same dispatcher/runtime after graph creation. | **M2.5 强制** |
+| **R8** | task.ready is a fact event, not a management approval request. | **M2.5 强制** |
+| **R9** | Normal DAG progress does not require a new DecisionRecord. | **M2.5 强制** |
+| **R10** | Any reassignment must originate from an authorized Agent/User decision. | **M2.5 强制** |
+| **R11** | Manager Agents are invoked for decisions/exceptions, not ordinary scheduling. | **M2.5 强制** |
+| **R12** | No production fallback may silently assign or plan work on behalf of management. | **M2.5 强制** |
+| **H1** | Artifacts stay in Drive: no second artifact store is introduced. | **M2.6 强制** |
+| **H2** | Every produced artifact carries its source Task; attribution is written, never guessed. | **M2.6 强制** |
+| **H3** | Consumption is recorded with the using session; ownership is not copied into links. | **M2.6 强制** |
+| **H4** | Inputs are declared as producer Tasks; the system resolves the artifacts at run time. | **M2.6 强制** |
+| **H5** | A declared input must be DAG-guaranteed: its producer is an ancestor of the consumer. | **M2.6 强制** |
+| **H6** | Handoff carries content, not just a pointer: excerpts reach the runtime TaskContext. | **M2.6 强制** |
+| **H7** | Lineage is walkable: a consumer is traceable back through at least two hops. | **M2.6 强制** |
+| **H8** | Only finished work is consumable: an unfinished Task's output is never referenced. | **M2.6 强制** |
 
 > **"M2.0 强制"** = M2.0 就有可执行测试锚点；
 > **"冻结"** = M2.0 冻结契约与归属，锚点在其 owner 阶段落地。
@@ -951,6 +959,86 @@ AutonomyPolicy = **AI** 是否允许在无人确认下执行该动作      （M2
 不进玩家 router · 走**同一段**执行代码 · Authority / 领域校验 / 自主等级门禁 / 审计一样不少
 它只解决"谁能发起"，不解决"可以绕过什么"（T10）
 ```
+
+## 14c. M2.6 Artifact Handoff（W19 / H1–H8）
+
+一句话：**让 Agent A 的输出真正成为 Agent B 的输入**，且这件事可追溯。
+
+```text
+Manager 声明：B 要用 A 的产品        ← task_inputs（指向 **Task**，不是 artifact）
+A 跑完 → 产物落 Drive               ← drive_nodes.task_id = A（产出归属，H2）
+B 就绪 → 系统**在运行期解析**输入     ← resolve_input_artifacts（H4）
+B 开工 → 记下"被 B 在哪次会话用掉"     ← artifact_links（H3/G5）
+```
+
+### 14c.1 三个事实落点（**不是**第二套 Artifact 系统）
+
+| 落点 | 事实 | 谁写 |
+| --- | --- | --- |
+| `drive_nodes` + `drive_revisions` | 内容 / 版本 / sha256 | Drive（既有）|
+| `drive_nodes.task_id` | **产出归属**：这个交付物是哪个 Task 的产物 | 产出时写，此后不变 |
+| `tasks.produces_json` | Manager 声明的**预期**交付物类型 | Manager（建任务时）|
+| `task_inputs` | 「要用**谁**的产品」= 计划声明 | Manager（建任务时 / 显式声明）|
+| `artifact_links` | 「被**谁**在**哪次会话**用掉了」= 使用事实 | 系统（开工时）/ 显式消费 |
+
+两条纪律：
+
+```text
+① 同一个事实不留两个落点：产出归属只有 drive_nodes.task_id 一处；
+   artifact_links 只记**使用**（role 值域刻意只有 consumed_by 一个成员）。
+② 不新增产物表：内容/版本/哈希仍是 Drive 的职责（G4/H1 的守卫钉住）。
+```
+
+### 14c.2 声明 ≠ 引用（H4/H5）
+
+```text
+声明（计划）   ：task_inputs.source_task_id = 上游 **Task**
+               → 硬约束是**顺序保证**：上游必须是消费方的 DAG 祖先（否则 422）
+解析（运行期）：resolve_input_artifacts() 在开工前取上游**已完成**的产物（有界摘要）
+拒绝（H8）    ：产出方还没完成 ⇒ 系统拒绝引用（服务层 + HTTP 422 + 工具 domain_rejected）
+```
+
+为什么声明不指向 artifact：产物要等上游跑完才存在。让声明指向产物会逼出
+"要么先编一个占位引用，要么允许悬空引用" —— 两条都是把不确定性塞进事实层。
+
+### 14c.3 五条可验证的行为
+
+```text
+① 产出归属写入时确定（不靠猜、不从会话反推）        → H2
+② 使用事实带会话（"用在哪次会话"必须能回答）        → H3/G5
+③ 交给 Agent 的是**内容**（有界摘要），不是指针      → H6/G1
+④ lineage 至少可追两跳（A ← B ← C）                → H7/G2
+⑤ 只消费已完成的产出，未完成的产物永不被引用         → H8/G3
+```
+
+### 14c.4 读面与写面
+
+```text
+GET  /tasks/{id}/artifacts                      产出 / 使用 / 声明 / 上游链（G2）
+POST /tasks/{id}/inputs                         声明输入（人类管理动作；越界 422）
+POST /tasks/{id}/artifacts/{aid}/consume        显式消费一个**已完成**任务的产物（H8；越界 422）
+
+Agent 读工具 list_task_artifacts                与 HTTP 读面**同一份**事实（T2/T11）
+Agent 写工具 consume_artifact                   decision_semantics=required（改变输入是计划动作）
+```
+
+### 14c.5 声明的上游没交付 ⇒ 交管理层（不静默降级）
+
+```text
+声明的上游 done 了却没有任何产物
+  → 不派发（换个人也拿不到不存在的产物）
+  → 发 project.replan_required（复用 M2.5 的**封闭**事件集，不新增事件）
+  → 去重：同一项目只报一次
+```
+
+### 14c.6 与 M2.5 运行时的接缝
+
+```text
+M2.5 evaluate_dispatch()：就绪 → 可派发 → （M2.6）输入可用？（缺 ⇒ needs_management）
+M2.5 _run_task()        ：解析输入 → 进 TaskContext → 记使用事实 → 跑 → 算产出归属
+```
+
+即：**交接不改变调度语义**，只是在"能不能派"上加了一条"输入够不够"的事实检查。
 
 ## 14d. M2.5 Canonical Task Graph Runtime（用户拍板的执行语义）
 

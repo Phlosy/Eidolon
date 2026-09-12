@@ -100,6 +100,9 @@ def _create_node_collision_safe(db: Session, fields: dict) -> DriveNode:
         "owner_person_id": fields.get("owner_person_id"),
         "current_version": fields.get("current_version", 1),
         "work_session_id": fields.get("work_session_id"),
+        # M2.6（H2）：产出归属必须跟着一起落库。**这条白名单容易漏** ——
+        # 漏掉时不会报错，只会让"谁产出的"变成 NULL（实测踩到过：产物归属全丢）。
+        "task_id": fields.get("task_id"),
         "created_at": fields.get("created_at") or utcnow(),
         "updated_at": fields.get("updated_at") or utcnow(),
     }

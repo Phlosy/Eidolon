@@ -44,6 +44,10 @@ class DriveNode(TimestampMixin, Base):
     work_session_id: Mapped[int | None] = mapped_column(
         ForeignKey("work_sessions.id"), nullable=True
     )
+    # M2.6（H2）：**产出归属** —— 这个交付物是哪个 Task 的产物。
+    # 产出时写入、此后不可变；人上传/历史文档为 NULL（不允许猜）。
+    # 与 `work_session_id` 合起来 = "谁在哪次会话产出的"；使用关系在 `artifact_links`。
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True, index=True)
 
     project: Mapped[Project | None] = relationship()
 

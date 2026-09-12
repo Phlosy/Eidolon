@@ -597,6 +597,8 @@ def test_declared_semantics_match_the_agreed_split():
         "delegate_project",
         "request_rework",
         "cancel_task",
+        # M2.6（H4）：改变执行**输入**是计划动作（与 create_dependency 同族）
+        "consume_artifact",
     }
     assert optional == {"update_task", "request_review", "mark_task_blocked"}
 

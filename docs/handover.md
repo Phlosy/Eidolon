@@ -404,9 +404,52 @@ Manager chooses. System schedules. Worker executes. Manager intervenes only when
 
 ---
 
+## 5j. M2.6 Artifact Handoff & Shared Work Context（**DONE**，2026-09-12）
+
+- 迁移 **v43** `43a70cd19cc7`（additive + 事实驱动回填）：
+  `drive_nodes.task_id` / `tasks.produces_json` / `task_inputs` / `artifact_links`
+- **用户拍板语义**（计划 §9 + 设计 **§14c**）→ 不变量 **H1–H8**（注册表 84 条：W42/T12/DR10/R12/H8）
+- 一句话：**让 A 的输出真正成为 B 的输入**，且可追溯
+
+```text
+Manager 声明：B 要用 A 的产品   ← task_inputs（指向 Task，不是 artifact）
+A 跑完 → 产物落 Drive          ← drive_nodes.task_id = A（产出归属）
+B 就绪 → 系统**运行期解析**输入  ← 有界内容摘要进 TaskContext / prompt
+B 开工 → 记下被谁在哪次会话用掉  ← artifact_links（role 只有 consumed_by）
+```
+
+- **四条硬纪律**：
+  1. **不建第二套 Artifact 系统**（H1）：内容/版本/sha256 仍在 Drive；
+     工作域只加"归属"与"使用"两类事实
+  2. **声明 ≠ 引用**（H4/H5）：声明指向上游 **Task**，硬约束是**顺序保证**
+     （上游必须是 DAG 祖先，否则 422）；产物由系统在**运行期**解析
+  3. **只消费已完成的产出**（H8）：在跑的产物永不被引用（服务层 + HTTP 422 + 工具拒绝）
+  4. **同一个事实不留两个落点**（H3）：产出归属只有 `drive_nodes.task_id` 一处，
+     链接表只记使用（`ARTIFACT_LINK_ROLES == {"consumed_by"}`）
+- **读面**：`GET /tasks/{id}/artifacts`（产出 / 使用 / 声明 / 上游链 depth≥2）；
+  Agent 读工具 `list_task_artifacts` 与它**同一份**事实
+- **写面**：`POST /tasks/{id}/inputs`、`POST /tasks/{id}/artifacts/{aid}/consume`（越界 422）；
+  Agent 工具 `consume_artifact`（decision_semantics=**required**）+ `create_task.consumes/produces`
+- **踩坑记录（真实 bug，务必别重复）**：`drive_repo._create_node_collision_safe()`
+  用**显式白名单**拼 values 做 `ON CONFLICT DO NOTHING` 插入 —— 新列 `task_id`
+  不在白名单里就被**静默丢掉**（不报错、字段为 NULL）。产物归属全丢就是这么来的。
+  教训：凡给 `drive_nodes` 加列，必须同时改这条白名单；H2 的守卫就是为这种"静默丢失"写的
+- **第二条**：`consume_artifact` 是 required 语义 ⇒ 工具面**必须**经决策信封，
+  裸调用会被 DR7 拦住（`decision_required`）。测试因此走 `submit_envelope`，
+  拒绝理由落在 `tool_audits.error`（决策行不复制执行细节，DR5）
+- **输入缺失**（声明的上游 done 却零产出）⇒ 不派发、发一次 `project.replan_required`：
+  复用 M2.5 的**封闭**事件集，**没有**新增事件（只新增一条原因 `input_artifacts_missing`）
+- **反例注入验证**：**11/11** 条（归属丢失 / 白名单吞列 / 不记会话 / 第二套产物表 /
+  声明当引用 / 不校验祖先 / 只给指针 / lineage 只走一跳 / 未完成也能引用 ×2 / 静默派发）
+- **测试纪律**：M2.3/M2.4 的"工具面清单 + 决策语义"是**钉住的** —— 加工具必须显式改那两条
+  （本次：`consume_artifact` required、`list_task_artifacts` read）
+- 下一步：**M2.7 Review / Rework / Replan**
+
+---
+
 ## 6. 下一步建议（按优先级）
 
-1. **M2.6 Artifact Handoff & Shared Work Context**（`docs/m2-implementation-plan.md` §9）。
+1. **M2.7 Review / Rework / Replan**（`docs/m2-implementation-plan.md` §10）：`ReviewVerdict` 落地，替换 `_finalize` 里的 `in_review → done` 自动通过（W17）。
 2. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
 3. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
 4. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。

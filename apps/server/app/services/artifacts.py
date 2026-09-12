@@ -30,8 +30,13 @@ def record_project_artifact(
     content: str,
     author_id: int | None = None,
     work_session_id: int | None = None,
+    task_id: int | None = None,
 ) -> DriveNode:
-    """Write a produced artifact into the project's drive folder (revision v1)."""
+    """Write a produced artifact into the project's drive folder (revision v1).
+
+    M2.6（H2）：**产出归属**随内容一起落库（`drive_nodes.task_id`）——
+    写入时确定，之后不再猜。`task_id` 缺席时（历史调用点）保持 NULL。
+    """
     return drive_service.create_project_document(
         db,
         project,
@@ -40,6 +45,7 @@ def record_project_artifact(
         content=content,
         owner_employee_id=author_id,
         work_session_id=work_session_id,
+        task_id=task_id,
     )
 
 

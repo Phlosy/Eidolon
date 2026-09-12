@@ -81,6 +81,10 @@ def create_task(
     depends_on: list[int] | None = None,
     planned_start_at=None,
     planned_end_at=None,
+    # M2.6（H4）：声明要用谁的产品 / 预期产出什么类型。
+    # 声明落在**服务层**（持久化归服务，工具只做适配），规则在 `app/work/handoff.py`。
+    consumes: list[int] | None = None,
+    produces: list[str] | None = None,
 ) -> Task:
     task = project_repo.create_task(
         db,
@@ -99,6 +103,15 @@ def create_task(
     )
     for dep_id in depends_on or []:
         project_repo.add_dependency(db, task_id=task.id, depends_on_id=dep_id)
+    if produces:
+        task.produces_json = list(dict.fromkeys(str(item) for item in produces))
+    if consumes:
+        # 依赖边已经写好 ⇒ 现在才可能满足"上游是祖先"（H5）。校验失败会抛
+        # `WorkContractError`，由调用方决定怎么翻译（工具 → ToolError，HTTP → 422）。
+        from app.work import handoff
+
+        db.flush()
+        handoff.declare_inputs(db, task=task, source_task_ids=list(consumes), commit=False)
     return task
 
 
@@ -148,6 +161,7 @@ def task_out(task: Task):
         actual_end_at=task.actual_end_at,
         phase_id=task.phase_id,
         dependencies=task_dependencies(task),
+        produces=list(task.produces_json or ()),
         created_at=task.created_at,
         updated_at=task.updated_at,
     )

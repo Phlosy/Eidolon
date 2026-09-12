@@ -201,3 +201,94 @@ class DecisionStatsOut(BaseModel):
     decisions_by_status: dict[str, int] = {}
     tool_audits_by_outcome: dict[str, int] = {}
     tool_audits_by_decision_semantics: dict[str, int] = {}
+
+
+# ---------------------------------------------------------------------------
+# M2.6 Artifact Handoff（设计 §14c，H1–H8）
+#
+# 事实形状与 `app/work/handoff.py` 的数据类一一对应 —— 那份 dataclass 是唯一口径，
+# 这里只是它的 HTTP 读面（T2/T11：读面不自己写查询）。
+# ---------------------------------------------------------------------------
+
+
+class ArtifactRefOut(BaseModel):
+    """一个产物的引用 + 归属（内容按需读）。"""
+
+    artifact_id: int
+    title: str
+    doc_type: str
+    task_id: int | None = None
+    task_title: str | None = None
+    work_session_id: int | None = None
+    version: int
+    sha256: str
+
+
+class InputArtifactOut(ArtifactRefOut):
+    """交给下游的输入：多一段**有界**内容摘要（H6）。"""
+
+    source_task_id: int = 0
+    source_task_title: str = ""
+    excerpt: str = ""
+
+
+class ConsumedArtifactOut(BaseModel):
+    """使用事实：谁在哪次会话用掉了它（H3/G5）。"""
+
+    artifact_id: int
+    title: str
+    doc_type: str
+    task_id: int
+    task_title: str | None = None
+    work_session_id: int | None = None
+    actor_employee_id: int | None = None
+    reason: str
+    created_at: str
+
+
+class DeclaredInputOut(BaseModel):
+    """输入声明 + 它当前的事实状态（不做判断）。"""
+
+    source_task_id: int
+    source_task_title: str
+    source_task_status: str
+    artifact_count: int
+    ready: bool
+
+
+class LineageHopOut(BaseModel):
+    """上游链上的一跳（`depth` = 离查询目标的距离）。"""
+
+    depth: int
+    task_id: int
+    task_title: str
+    task_status: str
+    artifact_id: int
+    artifact_title: str
+    doc_type: str
+
+
+class TaskArtifactReportOut(BaseModel):
+    """`GET /tasks/{id}/artifacts`：产出 / 使用 / 声明 / 上游链。"""
+
+    task_id: int
+    project_id: int | None = None
+    produces: list[str] = []
+    produced: list[ArtifactRefOut] = []
+    consumed: list[ConsumedArtifactOut] = []
+    declared_inputs: list[DeclaredInputOut] = []
+    inputs: list[InputArtifactOut] = []
+    upstream: list[LineageHopOut] = []
+    missing_input_sources: list[int] = []
+    self_artifacts_are_consumable: bool = False
+
+
+class TaskInputsIn(BaseModel):
+    """声明输入（人类管理动作；与 Agent 工具 `create_task.consumes` 同一服务）。"""
+
+    source_task_ids: list[int]
+
+
+class TaskInputsOut(BaseModel):
+    task_id: int
+    declared_inputs: list[DeclaredInputOut] = []

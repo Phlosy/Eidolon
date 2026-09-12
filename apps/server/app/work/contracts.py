@@ -144,6 +144,14 @@ __all__ = [
     "DISPATCHABILITY_CONDITIONS",
     "DECISION_NEEDED_EVENTS",
     "FACT_EVENTS",
+    "ARTIFACT_STORE_TABLE",
+    "ARTIFACT_VERSION_TABLE",
+    "ARTIFACT_OWNERSHIP_COLUMN",
+    "ARTIFACT_LINK_ROLES",
+    "TASK_INPUT_RULES",
+    "INPUT_ARTIFACT_EXCERPT_CHARS",
+    "LINEAGE_RULES",
+    "REASON_INPUT_ARTIFACTS_MISSING",
     "DagValidationError",
     "Invariant",
     "INVARIANTS",
@@ -1222,6 +1230,10 @@ def resolve_ready_tasks(nodes: Iterable[TaskGraphNode]) -> tuple[int, ...]:
 #: 这些**不是**"系统遇到的错误"，而是"系统按设计不能替管理层决定"的分界线：
 #: 系统只报事实，决定由被授权的管理 Agent / Owner 做。因此它们各自对应一个
 #: Decision-needed 事件，而不是一个自动补救动作。
+#: M2.6 追加的阻断原因：声明要用的上游**跑完了却没产出**可交付物。
+#: 这是"计划与事实不符"，不是"缺人/缺资源" —— 换个人也拿不到不存在的产物。
+REASON_INPUT_ARTIFACTS_MISSING = "input_artifacts_missing"
+
 REQUIRES_MANAGEMENT_DECISION: frozenset[str] = frozenset(
     {
         "assignee_missing",  # 结构就绪但没人负责 ⇒ 必须有人做指派决定（R4）
@@ -1229,6 +1241,7 @@ REQUIRES_MANAGEMENT_DECISION: frozenset[str] = frozenset(
         "runtime_unavailable",  # 运行时/资源不可用 ⇒ 同上（R5）
         "provider_missing",  # 真实 runtime 缺模型绑定 ⇒ 同上
         "task_failed",  # 执行失败 ⇒ 重做 / 改派 / 改方案是管理决策，系统不自动重试（R10）
+        REASON_INPUT_ARTIFACTS_MISSING,  # 声明的上游没交付 ⇒ 重规划（M2.6/H5）
     }
 )
 
@@ -1293,6 +1306,49 @@ FACT_EVENTS: frozenset[str] = frozenset(
 #: 事实事件与 Decision-needed 事件不得重名（一个事件要么是事实，要么要人决策）。
 assert not (FACT_EVENTS & DECISION_NEEDED_EVENTS), "事件语义重叠"
 
+
+# ---------------------------------------------------------------------------
+# 10c. Artifact Handoff（M2.6，W19 / H1–H8）
+# ---------------------------------------------------------------------------
+
+#: 交付物的**存储落点**：Drive 文档（内容 / 版本 / sha256 全在 Drive）。
+#:
+#: 纪律（W19/G4）：**不建第二套 Artifact 系统**。工作域只加两类事实：
+#: 「这个产物是哪个 Task 的」与「这个产物被哪个 Task 在哪次会话用掉了」。
+ARTIFACT_STORE_TABLE = "drive_nodes"
+ARTIFACT_VERSION_TABLE = "drive_revisions"
+
+#: **产出归属**列（H2）：产出时写入、此后不可变；人上传/历史文档可为空。
+#: 与既有的 `drive_nodes.work_session_id` 合起来 = "谁在哪次会话产出的"。
+ARTIFACT_OWNERSHIP_COLUMN = "drive_nodes.task_id"
+
+#: **使用关系**（H3）：只记「被谁用了」。产出归属不在这里重复
+#: —— 同一个事实不留两个落点（M2.4 的审计同款纪律）。
+ARTIFACT_LINK_ROLES: frozenset[str] = frozenset({"consumed_by"})
+
+#: 输入声明（`task_inputs`，H4/H5）：Manager 建任务时说「这个任务要用谁的产品」。
+#:
+#: 它是**计划声明**，不是产物引用 —— 产物要等上游跑完才存在。
+#: 因此声明校验的是**顺序保证**（上游必须是 DAG 祖先），而不是产物本身。
+TASK_INPUT_RULES: tuple[str, ...] = (
+    "source task must exist and belong to the same project",
+    "a task may never consume its own output",
+    "the source task must be an ancestor in the task DAG",
+)
+
+#: `produces`（H4 的另一半）：Manager 声明的**预期**交付物类型。
+#: 可校验（枚举内），不是判断（"产物好不好"不在这里）。
+#: 值域 = `ArtifactType`（M2.6 起作为声明值域使用）。
+
+#: 交给 Agent 的上游产物**内容摘要**上限（H6）—— 有界上下文，不是把文档全塞进 prompt。
+INPUT_ARTIFACT_EXCERPT_CHARS = 1200
+
+#: lineage 校验（H8/G3）：**只消费已完成的产出**。
+LINEAGE_RULES: tuple[str, ...] = (
+    "the artifact must exist and belong to this company",
+    "the producing task must be done (in-flight output is never consumable)",
+    "a task may never consume its own artifact",
+)
 
 # ---------------------------------------------------------------------------
 # 11. 不变量注册表（W1–W31，设计 §14）
@@ -1892,6 +1948,63 @@ INVARIANTS: tuple[Invariant, ...] = (
         enforced=True,
         owner_stage="M2.5",
         anchors=("test_no_silent_auto_planning_or_assignment_fallback",),
+    ),
+    # ---- M2.6 Artifact Handoff（W19 / H1–H8）----
+    Invariant(
+        "H1",
+        "Artifacts stay in Drive: no second artifact store is introduced.",
+        enforced=True,
+        owner_stage="M2.6",
+        anchors=("test_no_second_artifact_store_and_legacy_table_stays_unwritten",),
+    ),
+    Invariant(
+        "H2",
+        "Every produced artifact carries its source Task; attribution is written, never guessed.",
+        enforced=True,
+        owner_stage="M2.6",
+        anchors=("test_produced_artifacts_carry_their_source_task",),
+    ),
+    Invariant(
+        "H3",
+        "Consumption is recorded with the using session; ownership is not copied into links.",
+        enforced=True,
+        owner_stage="M2.6",
+        anchors=("test_consumption_is_recorded_with_the_session",),
+    ),
+    Invariant(
+        "H4",
+        "Inputs are declared as producer Tasks; the system resolves the artifacts at run time.",
+        enforced=True,
+        owner_stage="M2.6",
+        anchors=("test_declaration_is_not_a_reference_resolution_happens_at_run_time",),
+    ),
+    Invariant(
+        "H5",
+        "A declared input must be DAG-guaranteed: its producer is an ancestor of the consumer.",
+        enforced=True,
+        owner_stage="M2.6",
+        anchors=("test_input_declaration_requires_a_dag_ancestor",),
+    ),
+    Invariant(
+        "H6",
+        "Handoff carries content, not just a pointer: excerpts reach the runtime TaskContext.",
+        enforced=True,
+        owner_stage="M2.6",
+        anchors=("test_upstream_artifact_content_reaches_the_task_context",),
+    ),
+    Invariant(
+        "H7",
+        "Lineage is walkable: a consumer is traceable back through at least two hops.",
+        enforced=True,
+        owner_stage="M2.6",
+        anchors=("test_lineage_walks_at_least_two_hops",),
+    ),
+    Invariant(
+        "H8",
+        "Only finished work is consumable: an unfinished Task's output is never referenced.",
+        enforced=True,
+        owner_stage="M2.6",
+        anchors=("test_referencing_an_unfinished_tasks_output_is_refused",),
     ),
 )
 
