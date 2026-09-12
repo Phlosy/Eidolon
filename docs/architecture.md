@@ -387,6 +387,9 @@ WorkOrder ACCEPTED（M1 经济事实；状态机不动 —— 手写快照 + 导
 - 交付意图差异只记事实（`deliverable_facts`），不据此拒绝（判断归管理层）
 - 桥不碰验收/结算/账本（WO6）
 
+> **M2 已冻结（2026-09-12）**：工作与组织运行域的形态 / 不变量 / 唯一写入路径 / 模块边界
+> 见 `docs/m2-freeze.md`；设计全文见 `docs/m2-agent-work-runtime-design.md`。
+
 ## 6. Learning 与 Knowledge
 
 ### 6.1 Reflection（Project Learning）

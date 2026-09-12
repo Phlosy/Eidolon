@@ -925,6 +925,10 @@ W11  Fit is decision-support only.
 
 ## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10 / R1–R12 / H1–H8 / RV1–RV8 / RD1–RD7 / WO1–WO6）
 
+> **M2 冻结（2026-09-12）**：105 条不变量**全部 `enforced=True`**（不再有"冻结待锚点"的双态）。
+> 收口声明见 **`docs/m2-freeze.md`**（形态 / 唯一写入路径 / 模块边界 / 关键裁决 / 留给 M3 的清单）。
+> 三条黄金路径（M2.10）在 `apps/server/tests/test_m2_golden_path.py`。
+
 | # | 不变量 | M2.0 状态 |
 | --- | --- | --- |
 | **W1** | Eidolon system does not choose team members. | 冻结（M2.4 使能；M2.5 强制执行） |

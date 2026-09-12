@@ -21,7 +21,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
 from app.models.enums import (
     AuthorityKind,
@@ -31,6 +34,34 @@ from app.models.enums import (
     ToolTransport,
 )
 from app.work import contracts as C
+
+
+def json_safe(value):
+    """把领域返回值转成**可持久化**的形状（审计与事件都要写 JSON 列）。
+
+    为什么需要：领域层返回的是**事实**，里面可能带 datetime / Decimal / UUID /
+    set 这类"真话但 JSON 不认"的值。让审计层炸掉等于丢掉整条执行事实
+    （M2.10 黄金路径实测踩到：`list_company_people` 带 `created_at` 直接把
+    `tool_audits` 的 INSERT 打挂）。所以这里统一**降级成字符串**，
+    并保持结构（dict/list/tuple 递归；未知类型 `str()`）。
+    """
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, dict):
+        return {str(key): json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [json_safe(item) for item in value]
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, (bytes, bytearray)):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, UUID):
+        return str(value)
+    if hasattr(value, "value") and hasattr(value, "name"):  # StrEnum / Enum
+        return json_safe(value.value)
+    return str(value)
 
 
 class ToolError(ValueError):

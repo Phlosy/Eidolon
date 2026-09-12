@@ -931,11 +931,21 @@ def test_invariant_ids_and_texts_match_the_design_document():
     assert not mismatched, f"不变量文本不一致：{mismatched}"
 
 
-def test_target_invariants_name_a_real_m2_stage():
-    """target 不变量必须有**真实存在的阶段**承接（不是"以后再说"）。"""
-    owners = {invariant.owner_stage for invariant in C.INVARIANTS if not invariant.enforced}
-    assert owners
-    for owner in owners:
+def test_every_invariant_is_enforced_at_the_m2_freeze():
+    """M2.10 冻结（K2）：不再有"冻结待锚点"的不变量 —— 每条都有**现存**测试锚点。
+
+    M2.0 冻结契约时允许 `enforced=False` + `owner_stage`（"归属已定、锚点在后续阶段落地"）。
+    M2 收官后这个双态必须收敛到单态：**没有任何一条还挂着"以后再说"**。
+    `owner_stage` 字段保留为历史归属，但仍必须是合法的 M2 阶段名。
+    """
+    pending = [
+        (invariant.id, invariant.owner_stage)
+        for invariant in C.INVARIANTS
+        if not invariant.enforced
+    ]
+    assert not pending, f"M2 冻结时仍有未落地的不变量：{pending}"
+    # 填了的归属必须是合法阶段名（空字符串 = M2.0 起就带锚点的老条目，不参与这一检查）
+    for owner in {invariant.owner_stage for invariant in C.INVARIANTS if invariant.owner_stage}:
         assert owner in C.M2_STAGES, f"{owner} 不是合法的 M2 阶段"
 
 

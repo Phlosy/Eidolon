@@ -571,9 +571,48 @@ WorkOrder ACCEPTED（M1 经济事实，状态机**不动**）
 
 ---
 
+## 5n. M2.10 Golden Path × 3 & Freeze（**DONE**，2026-09-12）— **M2 收官**
+
+- **无迁移**（M2 最后一个迁移仍是 v45 `325887b7109a`）
+- **三条黄金路径**（`apps/server/tests/test_m2_golden_path.py`，5 条测试）：
+
+```text
+A 公司已有完整团队：Project → 路由给管理层 → Manager 用工具查人（只拿事实）
+                   → 决策信封建 DAG + 选人 → 系统执行 → Artifact 归属
+                   → Reviewer 逐个 PASS → 交付 → Evidence
+B 能力不足：Manager 查出缺口（无建议字段）→ 系统不替它选 → 走"改方案 + 派人"
+                   → 留 DecisionRecord + 审计 + 结果
+C 新 CEO 接任：CEO A 离任 → CEO B 上任 → B 不继承 A 的技能/私人知识/人格
+                   → B 拿到 RoleContext + 公司策略 + 制度知识 + 历史决策 + 在跑项目
+                   → B 自己决策
+```
+
+- **冻结面落盘**：`docs/m2-freeze.md`（形态 / 不变量 / 唯一写入路径 / 模块边界 /
+  关键裁决 / 留给 M3 的 10 项清单）；设计 §14 顶部加冻结声明
+- **K2 收口**：12 条历史上"冻结待锚点"的不变量（W1/W2/W3/W12/W14/W15/W16/W17/W19/
+  W22/W30/W31）补齐**现存**测试锚点 ⇒ 注册表 **105 条全部 enforced**
+- **踩坑记录（真实 bug，务必别重复）**：
+  1. **评审结论不触发项目终态**：`submit_verdict` 只发 `dispatch`，而"全部完成 ⇒ 交付"
+     的判断在 `Orchestrator._advance` 里 ⇒ 最后一个任务被结论推进 `done` 时项目永远停在
+     `in_progress`。修：PASS ⇒ 发 `task_finished`（`_finalize_external` = 反思 + 推进）。
+     三个场景串起来才暴露 —— 这就是黄金路径的价值。
+  2. **工具审计被 datetime 打挂**：`list_company_people` 的载荷带 `created_at` ⇒
+     `tool_audits` 的 JSON 列 INSERT 失败（丢一整条执行事实）。
+     修：`tools.json_safe`（datetime/Decimal/UUID/set/bool 递归降级），入参出参都过。
+  3. 读工具的**载荷键**与参数名要现查：`list_company_people` 返回 `items`、
+     `get_current_load` 要 `employee_ids`（数组）、`get_runtime_status` 不要参数、
+     `calculate_task_fit` 返回 `candidates`。凭印象写测试会一路 AttributeError。
+  4. "某员工名下没有 X 行"要**直接查表**：`list_skills` 按 person 口径过滤，
+     注入的行（`person_id` 为 NULL）在仓库读路径里看不见 ⇒ 靠仓库断言会漏掉违规
+     （反例注入当场抓到）。
+- **反例注入验证**：M2.10 **7/7**；连同 M2.5–M2.9 共 **64 条**注入全部"转红→还原→转绿"
+- 下一步：**M3**（见 `docs/m2-freeze.md` §6 的 10 项清单）；M2 已冻结，改动需显式理由
+
+---
+
 ## 6. 下一步建议（按优先级）
 
-1. **M2.10 Golden Path × 3 & Freeze**（`docs/m2-implementation-plan.md` §13）：三条端到端黄金路径 + M2 冻结。
+1. **M3**：先读 `docs/m2-freeze.md` §6（留给 M3 的 10 项）。M2 已冻结 —— 改冻结面需要显式理由 + 先跑对应锚点。
 2. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
 3. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
 4. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。

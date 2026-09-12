@@ -75,7 +75,7 @@ Golden Path × 3 + 冻结
 | **M2.7** | Review / Rework / Replan | 有（v44：评审请求 + 评审事实表） | M2.6 | W17/W29/RV1–RV8 | ✅ **DONE** |
 | **M2.8** | Recruit → Ready-to-Work | 无（复用 provisioning + settings） | M2.7 | W31/RD1–RD7 | ✅ **DONE** |
 | **M2.9** | WorkOrder Bridge | 有（v45：绑定边表） | M2.8 | W23/WO1–WO6 | ✅ **DONE** |
-| **M2.10** | Golden Path × 3 & Freeze | 无 | M2.9 | 全部 | PENDING |
+| **M2.10** | Golden Path × 3 & Freeze | 无 | M2.9 | 全部 | ✅ **DONE** |
 
 > 顺序理由：**0 → 1 → 2 → 3 → 4 → 5** 是硬链（先有工作定义，才有履职上下文，才有工具，
 > 才有决策，才有动态图）。**6 → 7 → 8 → 9** 可在 5 之后视情况并行（6 只碰 Artifact，
@@ -733,45 +733,41 @@ WorkOrder ACCEPTED（状态机不动）
 
 ---
 
-## 13. M2.10 · Golden Path × 3 & Freeze `[无迁移]`
+## 13. M2.10 · Golden Path × 3 & Freeze `[无迁移]` — ✅ **DONE**
 
-### 场景 A — 公司已有完整团队
+### 三条黄金路径（各一条真实调用链 E2E）
 
-```text
-复杂问题 → Project → 路由到 CEO Agent → CEO 自主决定自己规划或委派 CTO
-        → CTO 查 People/Competencies/Experience/Load/Runtime
-        → CTO 自主建 DAG + 自主选人 → 系统 validate → 系统执行
-        → Artifact → Handoff → Reviewer Agent → PASS
-        → Final Delivery → Evidence → Agent Growth
-```
+| 场景 | 链路 | 测试 |
+| --- | --- | --- |
+| **A 公司已有完整团队** | Project → 路由给管理层 → Manager 用工具查人（**只拿事实**）→ 决策信封建 DAG + 选人 → 系统校验/执行 → Artifact 归属 → Reviewer PASS（逐个任务）→ 交付 → Evidence | `test_golden_path_a_company_with_a_full_team` |
+| **B Agent 能力不足** | Project → Manager 查能力/负载/适配（**无建议字段**）→ 系统**不替它选** → Manager 走"改方案 + 派人" → 留 DecisionRecord + 审计 + 结果 | `test_golden_path_b_capability_gap_manager_decides` |
+| **C 新 CEO 接任** | CEO A 离任 → CEO B 上任 → B **不继承** A 的技能/私人知识/人格 → B 拿到 RoleContext + 公司策略 + 制度知识 + 历史决策 + 在跑项目 → B 自己决策 | `test_golden_path_c_ceo_handover_does_not_carry_personal_assets` |
 
-### 场景 B — Agent 能力不足
+### 冻结面（`docs/m2-freeze.md`）
 
-```text
-Project → Manager 查询团队 → 发现缺 Kubernetes 能力
-        → Manager 自主四选一（学 / 调 / 招 / 改方案）—— 系统不替它选
-        → 走对应路径并留下 DecisionRecord + 结果
-```
-
-### 场景 C — 新 CEO 接任
-
-```text
-CEO A 离任 → CEO B 上任
-  B 未获得 A 的 Personal Skill / Memory / Traits / Evidence
-  B 获得：CEO RoleContext + Company Policy + Company Knowledge + 历史 DecisionRecord + Current Projects
-  B 自主学习 → 开始管理 → 产生自己的 DecisionRecord 与 Evidence
-```
+形态 / 不变量（105 条，全部 enforced）/ 唯一写入路径 / 模块边界 / 关键裁决 / 留给 M3 的清单（10 项）。
 
 ### Acceptance
 
-| # | 判据 |
-| --- | --- |
-| K1 | A/B/C 三个场景各有一条 E2E 测试（真实调用链，不是接口 200） |
-| K2 | W1–W31 全部有**现存**测试锚点（不再是 `owner_stage`） |
-| K3 | 反例注入验证：抽掉任一条守卫 → 对应测试转红（守卫不是声明式装饰） |
-| K4 | M1 / T2 / T1 / R1 的冻结锚点全绿（无回归） |
-| K5 | 完整门禁全绿（含 build） |
-| K6 | 冻结面落盘：形态 / 不变量 / 唯一写入路径 / 模块边界 / 关键裁决 / 留给 M3 的清单 |
+| # | 判据 | 结果 |
+| --- | --- | --- |
+| K1 | A/B/C 三个场景各有一条 E2E 测试（真实调用链）| ✅ 三条都走 HTTP + 工具 + 决策信封 + 调度器 + 评审 |
+| K2 | W1–W31 全部有**现存**测试锚点（不再是 `owner_stage`）| ✅ 12 条历史"冻结"条目补齐锚点，**105/105 enforced** |
+| K3 | 反例注入验证：抽掉任一条守卫 → 对应测试转红 | ✅ M2.10 **7/7**；加上 M2.5–M2.9 共 **64 条**注入全部被拦住 |
+| K4 | M1 / T2 / T1 / R1 冻结锚点全绿 | ✅ `test_m1_golden_path` / `test_m1_invariants` / `test_t2_golden_path` / `test_market_*` / `test_recruitment` / `test_evidence_invariants` |
+| K5 | 完整门禁全绿（含 build）| ✅ pytest / ruff check / ruff format / alembic check / tsc / eslint / prettier / vitest / build |
+| K6 | 冻结面落盘 | ✅ `docs/m2-freeze.md`（含机器可检的章节与条数断言）|
+
+### 本阶段修掉的两个真实问题
+
+1. **结论推进不触发项目终态**：M2.7 的 `submit_verdict` 只发 `dispatch` 信号，
+   而"全部任务完成 ⇒ 交付"的判断在 `Orchestrator._advance` 里 ——
+   当最后一个任务是被**结论**推进 `done` 时，项目会永远停在 `in_progress`。
+   修复：PASS ⇒ 发 `task_finished`（`_finalize_external` = 反思 + 推进，不碰状态机）。
+   *这正是黄金路径存在的意义：三个场景串起来才暴露它。*
+2. **工具审计被 datetime 打挂**：领域返回的事实里可能带 `datetime`/`Decimal`，
+   SQLite 的 JSON 列不认 ⇒ `tool_audits` 的 INSERT 直接失败（整条执行事实丢失）。
+   修复：`app/work/tools.py::json_safe`（递归降级成字符串）+ 入参/出参都过一遍。
 
 ---
 

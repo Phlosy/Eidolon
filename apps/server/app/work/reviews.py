@@ -287,10 +287,17 @@ def submit_verdict(
         db.commit()
     _publish_verdict(db, request=request, task=task, applied=applied, target=target)
     if applied is not None:
-        # 结论改变了任务状态 ⇒ 可能让下游就绪 / 需要重新派人
         from app.workflow.orchestrator import orchestrator
 
-        orchestrator.notify({"type": "dispatch"})
+        if verdict_value == ReviewVerdict.passed.value:
+            # PASS ⇒ 任务变 done：既要让下游就绪，还要跑一次**推进**
+            # （"全部任务完成 ⇒ 交付"的判断在 `_advance` 里；只发 dispatch 会漏掉它 ——
+            #  M2.10 黄金路径实测：最后一个任务是被结论推进 done 的，项目因此停在 in_progress）。
+            # `_finalize_external` 只做"反思 + 推进"，不碰状态机，正好是这一步要的语义。
+            orchestrator.notify({"type": "task_finished", "task_id": int(task.id), "success": True})
+        else:
+            # REWORK / REJECT：任务回到可执行/终态，交给调度器重新安排
+            orchestrator.notify({"type": "dispatch"})
     return request
 
 

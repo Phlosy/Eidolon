@@ -216,14 +216,16 @@ def _record_tool_audit(
         task_id=ctx.task_id,
         project_id=ctx.project_id,
         # 入参原样留档（执行事实；决策行里不复制它，DR5）
-        arguments_json=dict(args),
+        # `json_safe`：领域返回值可能带 datetime/Decimal 等 JSON 不认的值 ——
+        # 让审计炸掉等于丢执行事实（M2.10 黄金路径实测踩到）
+        arguments_json=tool_machinery.json_safe(dict(args)),
         arguments_digest=_args_digest(args),
         authority_json=authority_snapshot,
         authority_allowed=(bool(snapshot["allowed"]) if "allowed" in snapshot else None),
         authority_reason=str(snapshot.get("reason") or ""),
         authority_grant_ids=list(snapshot.get("grant_ids") or []),
         authority_grants_hash=str(snapshot.get("grants_hash") or ""),
-        result_json=result,
+        result_json=tool_machinery.json_safe(result) if result is not None else None,
         error=error,
         started_at=started_at or utcnow(),
         finished_at=utcnow(),

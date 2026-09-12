@@ -1608,20 +1608,32 @@ INVARIANTS: tuple[Invariant, ...] = (
     Invariant(
         "W1",
         "Eidolon system does not choose team members.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.4",
+        anchors=(
+            "test_ready_unassigned_is_never_auto_assigned",
+            "test_bridge_never_creates_a_project",
+        ),
     ),
     Invariant(
         "W2",
         "Eidolon system does not make project decomposition decisions.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.4",
+        anchors=(
+            "test_managed_project_does_not_plan_itself",
+            "test_bridge_never_creates_a_project",
+        ),
     ),
     Invariant(
         "W3",
         "Management decisions must originate from an authorized Agent/User actor.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.3",
+        anchors=(
+            "test_decision_never_grants_authority",
+            "test_internal_transport_still_enforces_authority",
+        ),
     ),
     Invariant(
         "W4",
@@ -1688,8 +1700,12 @@ INVARIANTS: tuple[Invariant, ...] = (
     Invariant(
         "W12",
         "An Agent may work outside its normal role scope if authorized.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.4",
+        anchors=(
+            "test_company_scope_verifies_targets_belong_to_the_actor_company",
+            "test_authority_layer_validates_but_never_decides",
+        ),
     ),
     Invariant(
         "W13",
@@ -1701,26 +1717,36 @@ INVARIANTS: tuple[Invariant, ...] = (
     Invariant(
         "W14",
         "Reassign/replace decisions belong to authorized management Agents or Owner.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.4",
+        anchors=("test_reassignment_requires_a_decision", "test_decision_never_grants_authority"),
     ),
     Invariant(
         "W15",
         "All management decisions are auditable.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.4",
+        anchors=(
+            "test_one_decision_produces_many_actions",
+            "test_decision_read_api_and_audit_query",
+        ),
     ),
     Invariant(
         "W16",
         "Task DAG execution is system responsibility; DAG design is management responsibility.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.5",
+        anchors=(
+            "test_readiness_and_dispatchability_are_distinct",
+            "test_no_silent_auto_planning_or_assignment_fallback",
+        ),
     ),
     Invariant(
         "W17",
         "Task review acceptance is not automatically decided by system heuristics.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.7",
+        anchors=("test_system_never_produces_a_verdict", "test_in_review_waits_for_a_verdict"),
     ),
     Invariant(
         "W18",
@@ -1732,8 +1758,12 @@ INVARIANTS: tuple[Invariant, ...] = (
     Invariant(
         "W19",
         "Artifact lineage must be preserved.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.6",
+        anchors=(
+            "test_lineage_walks_at_least_two_hops",
+            "test_submitted_artifact_references_are_real",
+        ),
     ),
     Invariant(
         "W20",
@@ -1750,8 +1780,12 @@ INVARIANTS: tuple[Invariant, ...] = (
     Invariant(
         "W22",
         "Project becomes the canonical executable work root.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.1",
+        anchors=(
+            "test_project_answers_the_eight_canonical_questions",
+            "test_spec_read_model_never_writes",
+        ),
     ),
     Invariant(
         "W23",
@@ -1805,14 +1839,22 @@ INVARIANTS: tuple[Invariant, ...] = (
     Invariant(
         "W30",
         "`guided` and `managed` project modes share one Task/Assignment/Review substrate.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.1",
+        anchors=(
+            "test_guided_and_managed_share_one_dag_runtime",
+            "test_guided_and_managed_share_one_substrate",
+        ),
     ),
     Invariant(
         "W31",
         "A recruited Agent is not READY_TO_WORK until provisioning completes.",
-        enforced=False,
+        enforced=True,
         owner_stage="M2.8",
+        anchors=(
+            "test_not_ready_agent_is_never_dispatched",
+            "test_provisioning_failure_is_partial_and_explicit",
+        ),
     ),
     Invariant(
         "W32",
