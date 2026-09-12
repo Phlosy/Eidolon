@@ -72,6 +72,9 @@ async def lifespan(app: FastAPI):
         from app.services.economy import consumers as economy_cost_consumers
 
         economy_cost_consumers.register(engine_module.engine)
+        from app.work import work_order_events
+
+        work_order_events.register(engine_module.engine)
     await engine_module.engine.start()
     manager = get_manager()
     await manager.start_healthcheck_loop()

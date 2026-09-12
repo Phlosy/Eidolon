@@ -242,6 +242,8 @@ class WorkOrder(TimestampMixin, Base):
         Index("ix_work_orders_status_deadline", "status", "deadline_at"),
         Index("ix_work_orders_kind_status", "kind", "status"),
         Index("ix_work_orders_assignee", "assignee_actor_kind", "assignee_actor_ref"),
+        # M2.9：按项目反查订单（绑定边读面）
+        Index("ix_work_orders_project_id", "project_id"),
     )
 
     code: Mapped[str] = mapped_column(String(60), unique=True)
@@ -278,6 +280,39 @@ class WorkOrder(TimestampMixin, Base):
         ForeignKey("ledger_transactions.id"), nullable=True
     )
     settled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class WorkOrderProjectLink(TimestampMixin, Base):
+    """WorkOrder ↔ Project 的**绑定边**（M2.9，W23 / WO1–WO6）。
+
+    **只记事实与决定，不改 WorkOrder 状态机**（J5）：
+
+    | action | 谁写 | 含义 |
+    | --- | --- | --- |
+    | `routed` | **系统**（actor 为空）| 已承接的订单被投递给公司的 Work Intake 责任人 |
+    | `bound` | **管理**（actor = 决策人）| 这份订单由某个 Project 执行 |
+    | `declined` | **管理**（actor = 决策人）| 明确不接（理由必填）|
+
+    `work_orders.project_id` 是**当前绑定的指针**（读起来便宜）；本表是**决定的历史**
+    （J1 要求"绑定或显式拒绝两条路径都有记录"）。两者在同一事务里由
+    `app/work/work_order_bridge.py` 写入 —— 同一条事实不留两个写入者。
+    """
+
+    __tablename__ = "work_order_project_links"
+    __table_args__ = (
+        Index("ix_work_order_project_links_order", "work_order_id", "id"),
+        Index("ix_work_order_project_links_project", "project_id", "id"),
+    )
+
+    work_order_id: Mapped[int] = mapped_column(ForeignKey("work_orders.id"), index=True)
+    action: Mapped[str] = mapped_column(String(16))  # WORK_ORDER_LINK_ACTIONS
+    #: `bound` 时是那个 Project；`routed`/`declined` 为空
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("projects.id"), nullable=True)
+    #: `routed` 的责任人（系统投递的目标）；管理动作时是决策人
+    actor_employee_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
+    reason: Mapped[str] = mapped_column(Text, default="")
+    #: 事实快照（路由解析结果、交付意图差异…）—— 只放事实，不放判断
     metadata_json: Mapped[dict] = mapped_column(JSON, default=dict)
 
 

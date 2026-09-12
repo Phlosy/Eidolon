@@ -62,6 +62,7 @@ from app.models.enums import (
     RoleResourceKind,
     ToolSideEffect,
     ToolTransport,
+    WorkOrderStatus,
 )
 
 __all__ = [
@@ -158,6 +159,10 @@ __all__ = [
     "FORBIDDEN_RUNTIME_POLICY_KEYS",
     "DEFAULT_RUNTIME_TYPE",
     "RUNTIME_POLICY_SOURCES",
+    "WORK_ORDER_LINK_ACTIONS",
+    "WORK_ORDER_ARTIFACT_REF_PREFIX",
+    "WORK_ORDER_STATES_FROZEN",
+    "WORK_ORDER_BINDING_RULES",
     "ARTIFACT_STORE_TABLE",
     "ARTIFACT_VERSION_TABLE",
     "ARTIFACT_OWNERSHIP_COLUMN",
@@ -1095,6 +1100,53 @@ RUNTIME_POLICY_SOURCES: dict[str, str] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# 8d. WorkOrder ↔ Project 绑定边（M2.9，W23 / WO1–WO6）
+# ---------------------------------------------------------------------------
+
+#: 桥的**唯一**动作集（J5：不给 WorkOrder 状态机加状态、不加必经步骤）。
+#:
+#: - `routed`：**系统**的事实 —— 这份已承接的订单已被送到公司的 Work Intake 责任人
+#:   （actor 为空；系统只做投递，不做决定）
+#: - `bound`：**管理**的决定 —— 这份订单由某个 Project 执行（actor = 决策人）
+#: - `declined`：**管理**的决定 —— 明确不接（actor = 决策人，必须写理由）
+WORK_ORDER_LINK_ACTIONS: tuple[str, ...] = ("routed", "bound", "declined")
+
+#: 交付物引用的**可解析形式**（W19：引用必须指向真实产物）。
+#:
+#: 形如 `12`（DriveNode id）或 `"drive:12"`。**其它形式一律拒绝** ——
+#: 自由字符串不是引用（"external:https://…" 这类没有可核对的落点）。
+WORK_ORDER_ARTIFACT_REF_PREFIX = "drive:"
+
+#: WorkOrder 状态机的**冻结快照**（J5 的机器守卫：桥不新增状态）。
+#:
+#: 这不是"又一处真相"——`WorkOrderStatus` 才是真相；这里只是把它**钉住**，
+#: 让"某天有人给订单加了一个状态"变成一次显式的、需要改契约的改动。
+WORK_ORDER_STATES_FROZEN: tuple[str, ...] = (
+    "ACCEPTED",
+    "APPROVED",
+    "CANCELLED",
+    "DISPUTED",
+    "DRAFT",
+    "EXPIRED",
+    "IN_PROGRESS",
+    "OPEN",
+    "REJECTED",
+    "REVIEWING",
+    "SETTLED",
+    "SUBMITTED",
+)
+
+#: 执行承接的判定者归属（设计 §11.3：绑定由管理层决定，系统只投递与记录）。
+WORK_ORDER_BINDING_RULES: tuple[str, ...] = (
+    "the system routes an accepted order to the company's Work Intake owner",
+    "binding a project to an order is a management act; the system never picks one",
+    "declining is a management act and must state a reason",
+    "the bridge never creates or plans a project",
+    "evaluation and settlement stay on the untouched M1 path",
+)
+
+
 #: Canonical Project Spec 的必需字段（**Facts / Requirements**，不是 Execution Plan）。
 CANONICAL_PROJECT_FIELDS: tuple[str, ...] = (
     "background",
@@ -1468,6 +1520,14 @@ FACT_EVENTS: frozenset[str] = frozenset(
 
 #: 事实事件与 Decision-needed 事件不得重名（一个事件要么是事实，要么要人决策）。
 assert not (FACT_EVENTS & DECISION_NEEDED_EVENTS), "事件语义重叠"
+#: J5 的机器守卫：状态机**手写快照**（不是从枚举派生 —— 派生出来的快照会跟着枚举一起变，
+#: 那就永远测不出"有人加了状态"）。真的需要改状态机时，这两处要**一起**改：
+#: 改枚举 + 改快照 —— 一次显式的、需要过评审的动作。
+assert set(WORK_ORDER_STATES_FROZEN) == {item.value for item in WorkOrderStatus}, (
+    "WorkOrder 状态机变了：桥只许加边，不许加状态（WO1/J5）。"
+    "如果确实要改状态机，请同时更新 contracts.WORK_ORDER_STATES_FROZEN 并说明理由。"
+)
+
 assert not (set(RUNTIME_POLICY_KEYS) & FORBIDDEN_RUNTIME_POLICY_KEYS), (
     "运行时策略的允许键与禁止键重叠：环境配置夹带了工作方式（W26/I6）"
 )
@@ -2282,6 +2342,49 @@ INVARIANTS: tuple[Invariant, ...] = (
         enforced=True,
         owner_stage="M2.8",
         anchors=("test_onboarding_leaves_person_assets_untouched",),
+    ),
+    # ---- M2.9 WorkOrder Bridge（W23 / WO1–WO6）----
+    Invariant(
+        "WO1",
+        "The bridge adds a binding edge only; the WorkOrder state machine gains no states.",
+        enforced=True,
+        owner_stage="M2.9",
+        anchors=("test_work_order_state_machine_is_untouched",),
+    ),
+    Invariant(
+        "WO2",
+        "An accepted order is either bound to a project or explicitly declined, both recorded.",
+        enforced=True,
+        owner_stage="M2.9",
+        anchors=("test_accepted_order_is_either_bound_or_declined",),
+    ),
+    Invariant(
+        "WO3",
+        "A bound project is a validated reference: it exists and belongs to the acting company.",
+        enforced=True,
+        owner_stage="M2.9",
+        anchors=("test_project_reference_is_validated",),
+    ),
+    Invariant(
+        "WO4",
+        "Submitted artifact references must resolve to real artifacts of the acting company.",
+        enforced=True,
+        owner_stage="M2.9",
+        anchors=("test_submitted_artifact_references_are_real",),
+    ),
+    Invariant(
+        "WO5",
+        "The bridge never creates or plans a project; routing only tells the owner.",
+        enforced=True,
+        owner_stage="M2.9",
+        anchors=("test_bridge_never_creates_a_project",),
+    ),
+    Invariant(
+        "WO6",
+        "The bridge never touches evaluation, settlement or the ledger.",
+        enforced=True,
+        owner_stage="M2.9",
+        anchors=("test_bridge_does_not_touch_evaluation_or_ledger",),
     ),
 )
 

@@ -550,6 +550,24 @@ def test_execution_reuses_projects_without_copying(db):
     assert project.name == "Delivery"
 
 
+def _company_artifact(db, company: Company, title: str):
+    """建一个属于该公司的 Drive 文档（提交引用的真实落点）。"""
+    from app.models.drive import DriveNode
+    from app.models.enums import DriveNodeKind, DriveZone
+
+    node = DriveNode(
+        company_id=int(company.id),
+        kind=DriveNodeKind.document.value,
+        name=title,
+        path=f"drive/m29/{company.id}-{title}.md",
+        zone=DriveZone.projects.value,
+        current_version=1,
+    )
+    db.add(node)
+    db.commit()
+    return node
+
+
 def test_order_detail_surfaces_submissions_and_evaluations(db):
     company = _company(db, "DetailCo")
     service = WorkOrderService(db)
@@ -557,13 +575,21 @@ def test_order_detail_surfaces_submissions_and_evaluations(db):
         title="Detail", reward_amount=1_000, evaluation_mode=EvaluationMode.manual
     ).order
     service.accept(order.id, company_id=company.id)
-    service.submit(order.id, company_id=company.id, summary="v1", artifact_refs=["drive:1"])
+    # M2.9（W19）：交付物引用必须是**本公司的真实产物** —— 这里真的建一个 Drive 文档，
+    # 而不是塞一个自由字符串（"drive:1" 那种写法现在是 422：自由字符串不是引用）。
+    node = _company_artifact(db, company, "detail-artifact")
+    service.submit(
+        order.id,
+        company_id=company.id,
+        summary="v1",
+        artifact_refs=[f"drive:{node.id}"],
+    )
     service.evaluate(order.id, verdict=EvaluationVerdict.approved, score=88)
 
     submissions = service.submissions(order.id)
     evaluations = service.evaluations(order.id)
     assert len(submissions) == 1
-    assert submissions[0].artifact_refs == ["drive:1"]
+    assert submissions[0].artifact_refs == [f"drive:{node.id}"]
     assert len(evaluations) == 1
     assert evaluations[0].score == 88
     assert isinstance(evaluations[0], Evaluation)

@@ -210,6 +210,49 @@ class WorkOrderDetailOut(WorkOrderOut):
     evaluations: list[WorkOrderEvaluationOut] = []
 
 
+class WorkOrderBindingEdgeOut(BaseModel):
+    """绑定边上的一条事实/决定（M2.9）。"""
+
+    link_id: int
+    action: str
+    project_id: int | None = None
+    actor_employee_id: int | None = None
+    reason: str = ""
+    metadata: dict = {}
+    created_at: str = ""
+
+
+class WorkOrderBindingOut(BaseModel):
+    """`GET /work-orders/{id}/binding`：事实（投递）+ 决定（绑定/拒绝）。"""
+
+    work_order_id: int
+    status: str
+    accepted_company_id: int | None = None
+    project_id: int | None = None
+    project_name: str | None = None
+    routed: dict | None = None
+    bound: dict | None = None
+    declined: dict | None = None
+    edges: list[dict] = []
+    deliverable_facts: dict = {}
+    rules: list[str] = []
+
+
+class WorkOrderBindIn(BaseModel):
+    """把一个 Project 绑到订单上（**管理决定**）。"""
+
+    project_id: int
+    actor_employee_id: int
+    reason: str = ""
+
+
+class WorkOrderDeclineIn(BaseModel):
+    """明确不接这份订单（**管理决定**，理由必填）。"""
+
+    actor_employee_id: int
+    reason: str
+
+
 class WorkOrderSubmitIn(BaseModel):
     """提交交付物（金额不在请求体里 —— 奖励由订单与验收决定）。"""
 

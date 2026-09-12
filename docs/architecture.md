@@ -372,6 +372,21 @@ Reviewer Agent 出结论  → PASS → done ／ REWORK → todo(+计数) ／ REJ
 - `GET /employees/{id}/readiness`（读）、`POST /employees/{id}/provision`（重试）、
   Agent 读工具 `inspect_readiness`
 
+### 5e. WorkOrder → Project 绑定边（M2.9）
+
+```text
+WorkOrder ACCEPTED（M1 经济事实；状态机不动 —— 手写快照 + 导入期断言钉住）
+     ↓ 事件 work_order.accepted
+桥：投递给公司 Work Intake 责任人（routed；系统只投递）
+     ↓ 管理层决定（GET/POST /work-orders/{id}/binding[/decline]）
+   bound（指针写 work_orders.project_id + 历史行）／ declined（理由必填）
+```
+
+- 引用受校验：`project_id` 同公司（跨公司 404）；`artifact_refs` 必须是
+  `12` / `"drive:12"` 且指向本公司真实产物（W19）
+- 交付意图差异只记事实（`deliverable_facts`），不据此拒绝（判断归管理层）
+- 桥不碰验收/结算/账本（WO6）
+
 ## 6. Learning 与 Knowledge
 
 ### 6.1 Reflection（Project Learning）

@@ -529,9 +529,51 @@ Reviewer Agent 出结论  → PASS / REWORK / REJECT / ESCALATE
 
 ---
 
+## 5m. M2.9 WorkOrder Bridge（**DONE**，2026-09-12）
+
+- 迁移 **v45** `325887b7109a`（additive + 事实驱动回填）：`work_order_project_links` +
+  `ix_work_orders_project_id`
+- **用户拍板语义**（计划 §12 + 设计 **§11.4**）→ 不变量 **WO1–WO6**（注册表 105 条；enforced 93）
+- 一句话：连接商业需求与执行载体，**不把 WorkOrder 变成执行图**（W23）
+
+```text
+WorkOrder ACCEPTED（M1 经济事实，状态机**不动**）
+     ↓ 事件 work_order.accepted
+桥：投递给公司 Work Intake 责任人（routed；系统只投递、不署名、不决策）
+     ↓ 管理层决定
+   bind_project → bound ／ decline_binding → declined（理由必填）
+```
+
+- **只加一条边**（WO1/J5）：`contracts.WORK_ORDER_STATES_FROZEN` 是**手写**快照 +
+  导入期断言 —— 给订单加状态会**直接导致导入失败**（必须显式改契约）
+- **指针 vs 历史**：`work_orders.project_id` 是当前绑定的指针；
+  `work_order_project_links` 是决定历史（J1 要"绑定或显式拒绝都有记录"）；
+  两者由同一个函数在同一事务里写
+- **引用受校验**（WO3/WO4）：`submit.project_id` 必须存在且同公司（跨公司 **404**）、
+  `artifact_refs` 必须是 `12` / `"drive:12"` 且指向**本公司真实 Drive 文档**（W19）
+- **交付意图匹配只记事实**：订单 `deliverables` vs 项目 `deliverables` 的差异写进绑定边
+  （`deliverable_facts`），系统**不据此拒绝**（那是管理判断）
+- **桥不碰钱**（WO6）：验收/结算/托管/账本仍在 M1 路径（AST 守卫 + 账本行数前后对比）
+- **踩坑记录（真实 bug，务必别重复）**：
+  1. 第一版"状态机冻结快照"是**从枚举派生**的（`tuple(item.value for item in WorkOrderStatus)`）
+     —— 派生快照会跟着枚举一起变，**永远测不出"有人加了状态"**。改成手写元组 +
+     导入期断言后才真正拦得住（反例注入验证过）。
+  2. `WorkIntakeResolution` 的字段是 `configured_position_code`（不是 `position_code`），
+     且它没有 `is_routed` 方法（是 property）—— 桥里一开始按错名字取值，AttributeError。
+  3. 断言"账本没被写"不能写"全表为空"：同一个测试库里别的用例会写账本。
+     一律用**前后对比**（与 M2.5/M2.7 的同类教训一致）。
+- **反例注入验证**：**10/10**（加状态 / 桥推状态 / 拒绝不需要理由 / 投递不幂等 /
+  绑定不校验 / 提交不校验 / 引用不解析 / 放行任意字符串 / 桥建项目 / 桥做结算）
+- 另：M1 的 `test_order_detail_surfaces_submissions_and_evaluations` 从
+  `artifact_refs=["drive:1"]`（不存在的节点）改成引用**真实**产物 —— 那是 W19 的必然结果，
+  测试意图（提交记录能在详情里读到）没变
+- 下一步：**M2.10 Golden Path × 3 & Freeze**
+
+---
+
 ## 6. 下一步建议（按优先级）
 
-1. **M2.9 WorkOrder Bridge**（`docs/m2-implementation-plan.md` §12）：`WorkOrder → Project` 绑定边落地，`submit.project_id` 从自由字段变成受校验引用（W23）。
+1. **M2.10 Golden Path × 3 & Freeze**（`docs/m2-implementation-plan.md` §13）：三条端到端黄金路径 + M2 冻结。
 2. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
 3. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
 4. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。

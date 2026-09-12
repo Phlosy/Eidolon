@@ -625,7 +625,7 @@ W23  WorkOrder remains economic/commercial wrapper, not execution truth.
 | **M2.1** | `Project` 承载 Canonical Spec；`work_mode` 快照；单一 `create_project()`；Work Intake 责任路由；规划 fixture 拆出产品维度 | ✅ **DONE** |
 | **M2.5** | `DETERMINISTIC_TEMPLATE_PLAN` 彻底退出业务路径：编排器变纯调度器，模板搬到 `app/work/planning_fixture.py`（建完即退出） | ✅ **DONE** |
 | M2.7 | `guided` 的评审门改为**复用同一套 Review 契约**（不保留第二套决策语义） | PENDING |
-| M2.9 | `WorkOrder` → `Project` 绑定边落地；`submit.project_id` 从"自由字段"变成"受校验引用" | PENDING |
+| **M2.9** | `WorkOrder` → `Project` 绑定边落地；`submit.project_id` 从"自由字段"变成"受校验引用" | ✅ **DONE** |
 
 **不做什么**（避免把可用的子系统拆掉）：
 
@@ -757,6 +757,49 @@ guided ：Manager 提出计划 → UI 展示并讲解 → 人类确认 → 系�
 
 ---
 
+### 11.8 M2.9 落地：绑定边（W23 / WO1–WO6）
+
+```text
+WorkOrder ACCEPTED（M1 的经济事实，状态机**不动**）
+        ↓ 事件 `work_order.accepted`
+桥：投递给公司的 Work Intake 责任人（记 `routed`；系统只投递，不署名、不决策）
+        ↓ 管理层决定
+      bind_project（绑某个 Project）/ decline_binding（明确不接，理由必填）
+```
+
+**只加一条边**（WO1/J5）：
+
+| 做法 | 是否允许 |
+| --- | --- |
+| 给 WorkOrder 加状态（如 `PARKED`）| ❌ 状态集被契约**手写快照**钉住，加状态=显式改契约 |
+| 给订单加"必须先建项目才能提交"之类必经步骤 | ❌ |
+| 记录"这份订单由哪个 Project 执行"这条边 | ✅（本阶段唯一新增）|
+
+**两条落点、一个写入者**：
+
+```text
+work_orders.project_id            ← 当前绑定的**指针**（读起来便宜）
+work_order_project_links          ← 决定与事实的**历史**（routed / bound / declined）
+```
+
+J1 要"绑定或显式拒绝两条路径都有记录"，所以历史必须在表里；指针只是缓存。
+两者由 `app/work/work_order_bridge.py` 在**同一事务**里写。
+
+**引用受校验**（WO3/WO4）：
+
+| 引用 | 规则 |
+| --- | --- |
+| `submit.project_id` | 必须存在（422）且属于承接公司（跨公司 **404**，隔离优先）|
+| 绑定 `project_id` | 同上；且订单必须已 ACCEPTED、未被 declined |
+| `artifact_refs` | 必须是 `12` 或 `"drive:12"` 形式，且指向**本公司的真实 Drive 文档**（W19）；自由字符串 ⇒ 422 |
+
+**交付意图匹配是判断，不是校验**：订单 `deliverables` 与项目声明 `deliverables` 的差异
+只作为**事实**记录在绑定边里（`deliverable_facts`），系统**不**据此拒绝 ——
+"这单该不该由这个项目做"属于管理层（W1/W2）。
+
+**桥不碰钱**（WO6）：验收 / 结算 / 托管 / 账本仍然走 M1 既有路径，桥一行都不写
+（有 AST 守卫 + 账本行数前后对比）。
+
 ## 12. 评审 / 返工 / 重新规划的归属
 
 ### 12.1 三套 verdict 不得互相替代
@@ -880,7 +923,7 @@ W11  Fit is decision-support only.
 
 ---
 
-## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10 / R1–R12 / H1–H8 / RV1–RV8 / RD1–RD7）
+## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10 / R1–R12 / H1–H8 / RV1–RV8 / RD1–RD7 / WO1–WO6）
 
 | # | 不变量 | M2.0 状态 |
 | --- | --- | --- |
@@ -983,6 +1026,12 @@ W11  Fit is decision-support only.
 | **RD5** | A provisioning failure leaves the agent not-ready with an explicit reason. | **M2.8 强制** |
 | **RD6** | Readiness is company-scoped: another company's employee is not readable or provisionable. | **M2.8 强制** |
 | **RD7** | Onboarding never copies or creates person-level assets (skills, knowledge, competency). | **M2.8 强制** |
+| **WO1** | The bridge adds a binding edge only; the WorkOrder state machine gains no states. | **M2.9 强制** |
+| **WO2** | An accepted order is either bound to a project or explicitly declined, both recorded. | **M2.9 强制** |
+| **WO3** | A bound project is a validated reference: it exists and belongs to the acting company. | **M2.9 强制** |
+| **WO4** | Submitted artifact references must resolve to real artifacts of the acting company. | **M2.9 强制** |
+| **WO5** | The bridge never creates or plans a project; routing only tells the owner. | **M2.9 强制** |
+| **WO6** | The bridge never touches evaluation, settlement or the ledger. | **M2.9 强制** |
 
 > **"M2.0 强制"** = M2.0 就有可执行测试锚点；
 > **"冻结"** = M2.0 冻结契约与归属，锚点在其 owner 阶段落地。

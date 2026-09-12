@@ -23,7 +23,10 @@ from app.models.enums import EvaluationMode, WorkOrderKind, WorkOrderStatus
 from app.repositories import economy as economy_repo
 from app.schemas.economy import (
     EscrowOut,
+    WorkOrderBindIn,
+    WorkOrderBindingOut,
     WorkOrderCreateIn,
+    WorkOrderDeclineIn,
     WorkOrderDetailOut,
     WorkOrderPageOut,
     WorkOrderSubmitIn,
@@ -31,6 +34,7 @@ from app.schemas.economy import (
 from app.services.economy.escrow import EscrowService
 from app.services.economy.ledger import LedgerError
 from app.services.economy.work_orders import WorkOrderError, WorkOrderService
+from app.work import work_order_bridge as bridge
 
 router = APIRouter(prefix="/work-orders", tags=["work-orders"])
 
@@ -42,6 +46,13 @@ def _company_or_404(company_id: int | None) -> int:
     if company_id is None:
         raise HTTPException(status_code=404, detail="company not found")
     return int(company_id)
+
+
+def _holder_company_id(order) -> int | None:
+    """订单的**承接公司**（没有承接方 ⇒ None）。读面用它做隔离判断。"""
+    if str(order.assignee_actor_kind or "") != "company":
+        return None
+    return int(order.assignee_actor_ref or 0) or None
 
 
 def _order_out(order, *, company_id: int | None, service: WorkOrderService) -> dict:
@@ -252,6 +263,66 @@ def accept_work_order(
     except WorkOrderError as exc:
         raise HTTPException(status_code=exc.http_status, detail=exc.reason) from exc
     return get_work_order(order_id, company_id=company_id, db=db)
+
+
+@router.get("/{order_id}/binding", response_model=WorkOrderBindingOut)
+def get_work_order_binding(
+    order_id: int,
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """执行绑定视图（M2.9）：投递事实 + 管理决定（绑定 / 明确拒绝）。"""
+    current = _company_or_404(company_id)
+    order = economy_repo.get_work_order(db, int(order_id))
+    if order is None or _holder_company_id(order) != current:
+        raise HTTPException(status_code=404, detail="work_order_not_found")
+    return bridge.binding_view(db, order)
+
+
+@router.post("/{order_id}/binding", response_model=WorkOrderBindingOut)
+def bind_work_order_project(
+    order_id: int,
+    payload: WorkOrderBindIn,
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """把一个 Project 绑到订单上（**管理决定**；系统不替谁选执行载体，W1/WO5）。"""
+    current = _company_or_404(company_id)
+    order = economy_repo.get_work_order(db, int(order_id))
+    if order is None or _holder_company_id(order) != current:
+        raise HTTPException(status_code=404, detail="work_order_not_found")
+    try:
+        bridge.bind_project(
+            db,
+            order,
+            project_id=payload.project_id,
+            actor_employee_id=payload.actor_employee_id,
+            reason=payload.reason,
+        )
+    except bridge.WorkOrderBridgeError as exc:
+        raise HTTPException(status_code=exc.http_status, detail=exc.reason) from exc
+    return bridge.binding_view(db, order)
+
+
+@router.post("/{order_id}/binding/decline", response_model=WorkOrderBindingOut)
+def decline_work_order_binding(
+    order_id: int,
+    payload: WorkOrderDeclineIn,
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """明确不接这份订单（**管理决定**，理由必填）—— J1 的另一条路径。"""
+    current = _company_or_404(company_id)
+    order = economy_repo.get_work_order(db, int(order_id))
+    if order is None or _holder_company_id(order) != current:
+        raise HTTPException(status_code=404, detail="work_order_not_found")
+    try:
+        bridge.decline_binding(
+            db, order, actor_employee_id=payload.actor_employee_id, reason=payload.reason
+        )
+    except bridge.WorkOrderBridgeError as exc:
+        raise HTTPException(status_code=exc.http_status, detail=exc.reason) from exc
+    return bridge.binding_view(db, order)
 
 
 @router.post("/{order_id}/submit", response_model=WorkOrderDetailOut)

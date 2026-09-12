@@ -44,6 +44,7 @@ from app.models.economy import (
     RewardGrant,
     WalletProjection,
     WorkOrder,
+    WorkOrderProjectLink,
     WorkOrderSubmission,
 )
 from app.models.event import Event
@@ -156,6 +157,7 @@ __all__ = [
     "LedgerTransaction",
     "RewardGrant",
     "WorkOrder",
+    "WorkOrderProjectLink",
     "WorkOrderSubmission",
     "WalletProjection",
     "LearningRecord",

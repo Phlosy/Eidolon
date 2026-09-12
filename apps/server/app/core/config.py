@@ -111,6 +111,9 @@ class Settings(BaseSettings):
     # `position_access_sync` / `evidence_pipeline_enabled` 同一纪律：
     # **后台写者不和测试抢同一份 SQLite**（实测：争用会以 `database is locked` 出现，
     # 而且因为读→写升级的死锁语义，它**不**会等 busy timeout）。
+    #: M2.9：WorkOrder 桥的事件消费者（accepted → 投递给 Work Intake 责任人）。
+    #: 测试默认关（事件引擎在后台跑，会与测试手动驱动的路径抢同一份状态）。
+    work_order_bridge_consumers_enabled: bool = False
     orchestrator_dispatch_enabled: bool = True
 
     # M2.3 —— 内部 Agent 工具执行面。写工具**只有**这一条通道（没有玩家 /tools 路由，T3）。

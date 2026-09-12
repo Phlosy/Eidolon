@@ -74,7 +74,7 @@ Golden Path × 3 + 冻结
 | **M2.6** | Artifact Handoff & Shared Work Context | 有（v43：归属列 + 声明表 + 使用表） | M2.5 | W19/H1–H8 | ✅ **DONE** |
 | **M2.7** | Review / Rework / Replan | 有（v44：评审请求 + 评审事实表） | M2.6 | W17/W29/RV1–RV8 | ✅ **DONE** |
 | **M2.8** | Recruit → Ready-to-Work | 无（复用 provisioning + settings） | M2.7 | W31/RD1–RD7 | ✅ **DONE** |
-| **M2.9** | WorkOrder Bridge | 有（binding） | M2.8 | W23 | PENDING |
+| **M2.9** | WorkOrder Bridge | 有（v45：绑定边表） | M2.8 | W23/WO1–WO6 | ✅ **DONE** |
 | **M2.10** | Golden Path × 3 & Freeze | 无 | M2.9 | 全部 | PENDING |
 
 > 顺序理由：**0 → 1 → 2 → 3 → 4 → 5** 是硬链（先有工作定义，才有履职上下文，才有工具，
@@ -676,29 +676,60 @@ in_review → （只有结论）→ done / todo（返工）/ rejected / 原地�
 
 ---
 
-## 12. M2.9 · WorkOrder Bridge `[有迁移]`
+## 12. M2.9 · WorkOrder Bridge `[有迁移]` — ✅ **DONE**
 
 ### Goal
 
 连接商业需求与执行载体，**不把 WorkOrder 变成执行图**（W23）。
 
-### 范围
+```text
+WorkOrder ACCEPTED（状态机不动）
+     ↓ 事件 work_order.accepted
+桥：投递给公司 Work Intake 责任人（routed，系统只投递）
+     ↓ 管理层决定
+   bind_project（bound）/ decline_binding（declined，理由必填）
+```
 
-- `work_orders.project_id` 从"无校验自由字段"变成**受校验引用**（同公司、同交付意图）
-- `WorkOrderService.accept()` → 发 `work_order.accepted` → **路由给公司的 Work Intake 职位**
-  （M2.4 路由规则）→ 由 Manager 决定"接不接 / 怎么组织"
-- 交付提交时的 `artifact_refs` 校验：必须指向**本公司的真实 Artifact**（W19）
-- `Evaluation` / `Settlement` 走 M1 既有路径，**不动 E 系列不变量**
+### 迁移 **v45** `325887b7109a`（additive + 事实驱动回填）
+
+| 变更 | 内容 |
+| --- | --- |
+| `work_order_project_links`（新表）| 绑定边：`routed` / `bound` / `declined` + actor + reason + 事实快照 |
+| `ix_work_orders_project_id` | 按项目反查订单 |
+
+三条裁决：**状态机不动**（J5，`WORK_ORDER_STATES_FROZEN` 手写快照把状态集钉住）、
+**指针与历史分开**（`work_orders.project_id` 是当前绑定；链接表是决定历史）、
+**回填只搬既有事实**（只给"指针真的指向本公司项目"的订单补 `bound` 行；脏值原样留着不美化）。
+
+### 落地物
+
+| 文件 | 角色 |
+| --- | --- |
+| `app/work/work_order_bridge.py` | **唯一口径**：投递（routed）/ 绑定（bound）/ 拒绝（declined）+ 绑定视图 |
+| `app/work/work_order_events.py` | 事件消费者（`work_order.accepted` → 投递；开关 `work_order_bridge_consumers_enabled`）|
+| `app/services/artifacts.py` | `parse_artifact_ref` / `resolve_artifact_refs`（W19 的引用解析，中性服务）|
+| `app/services/economy/work_orders.py` | `submit()` 写库前校验 `project_id` + `artifact_refs` |
+| `app/api/v1/work_orders.py` | `GET/POST /work-orders/{id}/binding`、`POST .../binding/decline` |
+| `tests/test_m2_work_order_bridge.py` | 10 条（6 条 WO 锚点 + J 验收 + 反例注入）|
 
 ### Acceptance
 
-| # | 判据 |
-| --- | --- |
-| J1 | `ACCEPTED` 之后项目被绑定或由 Manager 显式拒绝（两条路径都有记录） |
-| J2 | 提交一个不存在的 `project_id` / `artifact_refs` → 422 |
-| J3 | 跨公司的 `project_id` → 404（隔离不破） |
-| J4 | M1 Golden Path 逐条不变（E1–E31 锚点全绿） |
-| J5 | WorkOrder 状态机**不新增**状态、不新增必经步骤（只加绑定边） |
+| # | 判据 | 结果 |
+| --- | --- | --- |
+| J1 | `ACCEPTED` 之后项目被绑定或由 Manager 显式拒绝（两条路径都有记录）| ✅ `routed`/`bound`/`declined` 三类边 + 视图 |
+| J2 | 不存在的 `project_id` / `artifact_refs` → 422 | ✅ 服务层与 HTTP 双面 |
+| J3 | 跨公司的 `project_id` → 404 | ✅（提交与绑定两处）|
+| J4 | M1 Golden Path 逐条不变（E1–E31 锚点全绿）| ✅ 经济测试全绿（只有一处 M1 测试把自由字符串换成真实产物 —— 见偏差）|
+| J5 | WorkOrder 状态机不新增状态/步骤 | ✅ 手写快照 + 导入期断言（加状态即失败）|
+| WO1–WO6 | 六条不变量各有锚点 + **反例注入** | ✅ 10/10 注入被守卫拦住 |
+
+### 与计划的偏差（刻意）
+
+| 计划 | 实际 | 原因 |
+| --- | --- | --- |
+| "同公司、**同交付意图**" 也作为校验 | 同公司=硬校验；交付意图只记**事实差异** | "意图是否吻合"是判断（W1/W2/W17）；系统只报事实，不替管理层决定要不要接 |
+| （未列）`artifact_refs` 的既有自由格式 | 现在必须可解析（int / `drive:<id>`）| W19：自由字符串不是引用。M1 的一个测试因此改成引用真实产物（意图不变：提交记录能在详情里读到）|
+| （未列）事件消费者开关 | 新增 `work_order_bridge_consumers_enabled`（测试默认关）| 与证据流水线/成本消费者同款纪律：后台消费者不与测试手动路径抢状态 |
 
 ---
 

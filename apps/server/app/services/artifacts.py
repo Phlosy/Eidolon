@@ -49,6 +49,64 @@ def record_project_artifact(
     )
 
 
+class ArtifactRefError(ValueError):
+    """产物引用无法解析（不是判断，是引用问题）。`http_status` 由调用方翻成 HTTP。"""
+
+    def __init__(self, reason: str, http_status: int = 422) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.http_status = http_status
+
+
+def parse_artifact_ref(ref) -> int:
+    """把一条引用解析成 DriveNode id（M2.9，W19）。
+
+    只接受两种形式：`12`（int）与 `"drive:12"`。**其它形式一律拒绝** ——
+    自由字符串不是引用（"external:https://…" 之类没有可核对的落点）。
+    """
+    from app.work.contracts import WORK_ORDER_ARTIFACT_REF_PREFIX as PREFIX
+
+    if isinstance(ref, bool):  # bool 是 int 的子类，别让它混进来
+        raise ArtifactRefError(f"invalid artifact reference: {ref!r}")
+    if isinstance(ref, int):
+        return int(ref)
+    if isinstance(ref, str) and ref.startswith(PREFIX):
+        tail = ref[len(PREFIX) :]
+        if tail.isdigit():
+            return int(tail)
+    raise ArtifactRefError(f"artifact reference must be an id or '{PREFIX}<id>': {ref!r} (W19)")
+
+
+def resolve_artifact_refs(db: Session, *, company_id: int, refs: list) -> list[dict]:
+    """校验交付物引用（M2.9/J2/J3/W19）：必须指向**本公司的真实产物**。
+
+    返回每条引用的**事实**（id / name / doc_type / sha256），供提交记录与读面使用。
+    - 引用形式非法 / 产物不存在 / 不是文档 ⇒ **422**
+    - 产物属于**别家公司** ⇒ **404**（隔离优先于"参数不对"，J3 同款口径）
+    """
+    resolved: list[dict] = []
+    for ref in refs or []:
+        node_id = parse_artifact_ref(ref)
+        node = drive_repo.get_node(db, int(node_id))
+        if node is None or node.kind != DriveNodeKind.document.value:
+            raise ArtifactRefError(f"artifact {node_id} not found", http_status=422)
+        if node.company_id is not None and int(node.company_id) != int(company_id):
+            # 别家公司的产物：**不存在的口径**（不泄露它存在）
+            raise ArtifactRefError(f"artifact {node_id} not found", http_status=404)
+        revision = drive_repo.get_revision(db, int(node.id), int(node.current_version))
+        resolved.append(
+            {
+                "artifact_id": int(node.id),
+                "name": node.name,
+                "doc_type": node.doc_type or "",
+                "sha256": revision.sha256 if revision else "",
+                "version": int(node.current_version),
+                "task_id": int(node.task_id) if node.task_id else None,
+            }
+        )
+    return resolved
+
+
 def list_artifact_nodes(
     db: Session, project_id: int | None = None, artifact_type: str | None = None
 ) -> list[DriveNode]:

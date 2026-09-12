@@ -44,6 +44,8 @@ from app.models.enums import (
     WorkOrderStatus,
 )
 from app.repositories import economy as economy_repo
+from app.repositories import project as project_repo
+from app.services import artifacts as artifact_service
 from app.services.economy.costs import FeeService
 from app.services.economy.escrow import EscrowService
 from app.services.economy.evaluations import EvaluationError, EvaluationService, bonus_total
@@ -356,6 +358,24 @@ class WorkOrderService:
             order.assignee_actor_ref or 0
         ) != int(company_id):
             raise WorkOrderError("not_your_order", http_status=404)
+        # ---- M2.9（WO3/WO4）：引用受校验 —— 交付指向真实的执行载体与真实的产物 ----
+        # 校验放在**写之前**：不合法的提交不落库（J2 的 422 是拒绝，不是事后报错）。
+        resolved_artifacts: list[dict] = []
+        if project_id is not None:
+            project = project_repo.get_project(self.db, int(project_id))
+            if project is None:
+                raise WorkOrderError("project_not_found", http_status=422)
+            if int(project.company_id) != int(company_id):
+                # 跨公司：**不存在的口径**（J3：隔离不破）
+                raise WorkOrderError("project_not_found", http_status=404)
+        if artifact_refs:
+            try:
+                resolved_artifacts = artifact_service.resolve_artifact_refs(
+                    self.db, company_id=int(company_id), refs=list(artifact_refs)
+                )
+            except artifact_service.ArtifactRefError as exc:
+                raise WorkOrderError(exc.reason, http_status=exc.http_status) from exc
+
         if not summary.strip() and not deliverables and not artifact_refs:
             raise WorkOrderError("empty_submission", http_status=422)
 
@@ -437,7 +457,13 @@ class WorkOrderService:
             self._publish_event(
                 "work_order.submitted",
                 order,
-                {"submission_id": int(submission.id), "attempt": int(submission.attempt)},
+                {
+                    "submission_id": int(submission.id),
+                    "attempt": int(submission.attempt),
+                    # M2.9：引用解析出来的**事实**（名字/类型/sha256/归属 Task）——
+                    # 事件里可核对，不额外落列（W19 的"引用能追到内容"）
+                    "artifact_facts": resolved_artifacts,
+                },
             )
         return submission, order, evaluation
 
