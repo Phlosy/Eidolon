@@ -394,8 +394,12 @@ Manager chooses. System schedules. Worker executes. Manager intervenes only when
 - **第二条踩坑**：失败任务**不能**自动重跑。契约把 `failed` 列为"就绪候选"（结构上确实如此），
   但运行时若顺着这条去派，就会无限重试 + 悄悄重做管理决策。M2.5 把 `task_failed` 归入
   **需要管理决策**的原因（发 `task.failed`，等管理层决定重做/改派/改方案，R10）
-- **反例注入验证**：12/12 条注入全部被守卫拦住（注入生产代码 → 目标用例转红 → 还原 → 转绿），
-  脚本留在 `tmp/`（一次性），结论写进测试文件的反例注入小节
+- **坏图 fail-closed**（W16，设计 §14d.8）：图有环/悬空依赖 ⇒ 权威就绪口径给**空集**、
+  上报一次 `project.replan_required`（带结构问题清单）、**不挑着跑**看起来没问题的那部分。
+  注意 `validate_task_graph` 的"重复边"分支在库里**不可能出现**
+  （`task_dependencies` 有 UNIQUE(task_id, depends_on_id)），它是给内存图用的防御
+- **反例注入验证**：**13/13** 条注入全部被守卫拦住（注入生产代码 → 目标用例转红 → 还原 → 转绿），
+  其中一条专门验证"绕过图校验 ⇒ 坏图被调度"会被拦住
 - 下一步：**M2.6 Artifact Handoff & lineage**
 
 ---

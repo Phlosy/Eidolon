@@ -335,11 +335,8 @@ def _runtime_surface() -> dict[str, object]:
 def test_guided_and_managed_share_one_dag_runtime(db, default_company_id):
     """R6：`work_mode` 只影响**人的参与度**，不影响调度路径（无 per-mode 派发器）。"""
     surface = _runtime_surface()
-    dump = str(surface["dispatch_dump"])
-    # 派发判定不许看 work_mode / planning_fixture
-    for forbidden in ("work_mode", "planning_fixture", "guided", "managed"):
-        assert forbidden not in dump, f"派发路径按 {forbidden} 分叉了 —— R6/R12"
-    # 也不许按任务类型分叉（载荷里的 "kind" 键不算分叉，只有**比较**才算）
+    # 派发路径**不许按任何"分类维度"分叉**：只说载荷里出现字段名不算分叉，
+    # 真正要拦的是 `if <分类维度> == ...`。所以扫的是**比较表达式**。
     comparisons = [
         node
         for node in ast.walk(
@@ -347,9 +344,10 @@ def test_guided_and_managed_share_one_dag_runtime(db, default_company_id):
         )
         if isinstance(node, ast.Compare)
     ]
-    assert not [node for node in comparisons if "kind" in ast.dump(node)], (
-        "派发路径按任务类型分叉了 —— R12"
-    )
+    for forbidden in ("work_mode", "planning_fixture", "guided", "managed", "kind"):
+        assert not [node for node in comparisons if forbidden in ast.dump(node)], (
+            f"派发路径按 {forbidden} 分叉了 —— R6/R12"
+        )
     assert "work_mode" not in str(surface["dispatch_module"]), "判定模块不该知道产品模式"
 
     # 行为等价：同样形状的两个项目（只是 work_mode 不同）得到同样的判定
@@ -640,10 +638,98 @@ def test_no_silent_auto_planning_or_assignment_fallback():
         assert "assignee_id =" not in dump, f"{name} 在写负责人 —— 那是管理决策"
         assert "select(" not in dump and ".all()" not in dump, f"{name} 在挑候选人了 —— R2"
 
-    # 就绪口径只有一处实现：契约纯函数（dispatch 只是它的运行时适配）
+    # 就绪口径只有一处实现：契约纯函数（dispatch 只是它的运行时适配）。
+    # 运行时里**不许**再写一遍"依赖都完成了没有"。
     dispatch_source = DISPATCH_MODULE.read_text(encoding="utf-8")
-    assert "C.resolve_ready_tasks(" in dispatch_source
+    assert "C.validate_task_graph(" in dispatch_source, "就绪集合必须来自契约校验器"
     assert dispatch_source.count("def structural_ready_task_ids") == 1
+    assert "dep in done" not in dispatch_source, "运行时重写了一遍就绪口径 —— R12"
+    assert dispatch_source.count("REASON_NOT_READY") >= 1
+
+
+# ---------------------------------------------------------------------------
+# 图本身非法 ⇒ 不调度、不静默卡住（W16：DAG 正确性是系统职责）
+# ---------------------------------------------------------------------------
+
+
+def test_invalid_graph_is_never_scheduled_and_escalates(db, default_company_id, monkeypatch):
+    """环 / 悬空依赖 ⇒ 权威口径直接给空集，并上报 `project.replan_required`（去重）。"""
+    people = _employees(db, default_company_id)
+    project = _project(db, default_company_id)
+    first = _task(db, project, "环上的甲", assignee_id=int(people["bob"].id))
+    second = _task(db, project, "环上的乙", assignee_id=int(people["charlie"].id))
+
+    # 绕过工具面直接写环（模拟历史脏数据）—— 工具面本来会拒绝（M2.3 的 create_dependency）
+    db.execute(
+        __import__("sqlalchemy").text(
+            "INSERT INTO task_dependencies (task_id, depends_on_id) VALUES (:a, :b), (:b, :a)"
+        ),
+        {"a": int(first.id), "b": int(second.id)},
+    )
+    db.commit()
+
+    report = D.graph_report(db, int(project.id))
+    assert report.is_valid is False and report.cycles
+    state = D.project_runtime_state(db, int(project.id))
+    assert state.invalid_graph is True
+    assert state.graph_problems and "cycle" in state.graph_problems[0]
+    assert state.ready_task_ids == () and state.dispatchable == () and state.queued == ()
+    # 也**不**冒充"缺人/缺资源"（那是另一类判断）
+    assert state.needs_management == ()
+    # 两个任务即使"没有未完成的前置"也不许被当成就绪
+    assert D.structural_ready_task_ids(db, int(project.id)) == ()
+
+    published: list[tuple[str, dict]] = []
+    monkeypatch.setattr(
+        bus, "publish", lambda event, payload, **kw: published.append((event, payload))
+    )
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
+    orchestrator = orchestrator_module.Orchestrator()
+
+    import asyncio
+
+    asyncio.run(orchestrator._dispatch_pending())
+    replans = [item for item in published if item[0] == "project.replan_required"]
+    assert replans, "图不可执行必须上报重规划，不能静静卡住"
+    assert replans[0][1]["id"] == int(project.id)
+    assert replans[0][1]["reasons"], "上报要带上结构问题清单"
+
+    # 去重：不刷屏
+    published.clear()
+    asyncio.run(orchestrator._dispatch_pending())
+    assert not [item for item in published if item[0] == "project.replan_required"]
+
+    # 而且**没有**任何任务被启动
+    db.expire_all()
+    assert {
+        project_repo.get_task(db, int(first.id)).status,
+        project_repo.get_task(db, int(second.id)).status,
+    } == {TaskStatus.backlog.value}
+
+    # fail-closed 的第二形态：**悬空依赖**（历史脏数据/外部写入）。
+    # 它跟环不一样：环上的任务自己等自己，本来就永远不就绪；而悬空依赖只污染
+    # 一个任务，**别的**任务在纯依赖口径下依然"看起来就绪" —— 系统不许
+    # "隔壁那条边坏了，我先跑这条"，因为一张有坏边的图就不是一张可执行计划。
+    other = _project(db, default_company_id, name="悬空依赖项目")
+    healthy = _task(db, other, "看起来完全就绪", assignee_id=int(people["bob"].id))
+    broken = _task(db, other, "指向不存在的任务", assignee_id=int(people["charlie"].id))
+    db.execute(
+        __import__("sqlalchemy").text(
+            "INSERT INTO task_dependencies (task_id, depends_on_id) VALUES (:a, :b)"
+        ),
+        {"a": int(broken.id), "b": 999_999_999},
+    )
+    db.commit()
+
+    nodes = D.graph_nodes(db, int(other.id))
+    # 纯依赖口径：健康任务确实"就绪"（它没有未完成的前置）
+    assert C.resolve_ready_tasks(nodes) == (int(healthy.id),)
+    report = D.graph_report(db, int(other.id))
+    assert report.is_valid is False and report.dangling
+    # 但权威口径给空集：坏图整体不可执行（fail-closed，不挑着跑）
+    assert D.structural_ready_task_ids(db, int(other.id)) == ()
+    assert D.project_runtime_state(db, int(other.id)).invalid_graph is True
+    assert D.evaluate_dispatch(db, healthy).dispatchable is False
 
 
 # ---------------------------------------------------------------------------

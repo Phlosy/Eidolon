@@ -1043,6 +1043,19 @@ project.replan_required    计划需要重做
 确定性模板（`app/work/planning_fixture.py`）只负责**建图**，建完即退出：
 它不碰调度、不碰 WorkSession、不碰推进 —— 与 Manager Agent 建的图进入运行时后完全等价。
 
+### 14d.8 坏图 fail-closed（W16）
+
+图结构非法（环 / 悬空依赖 / 自环）时：
+
+```text
+① 权威就绪口径直接给**空集**（validate_task_graph → ready）—— 不挑着跑"看起来没问题"的那部分
+② 不冒充"缺人/缺资源"（那是另一类判断）：单独发 project.replan_required，带上结构问题清单
+③ 去重：同一项目只报一次，不刷屏
+④ 任务状态保持原样 —— 系统不动任何人的活
+```
+
+"局部能跑就先跑"会在坏图上产生**无法解释的交付**，所以选择整体拒绝 + 上报重规划。
+
 ## 15. M2 明确不做
 
 ```text

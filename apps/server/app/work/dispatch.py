@@ -131,9 +131,19 @@ def graph_nodes(db: Session, project_id: int) -> tuple[C.TaskGraphNode, ...]:
     )
 
 
+def graph_report(db: Session, project_id: int) -> C.TaskGraphReport:
+    """这张图**结构上**能不能执行（自环 / 悬空依赖 / 重复边 / 环）。"""
+    return C.validate_task_graph(graph_nodes(db, int(project_id)))
+
+
 def structural_ready_task_ids(db: Session, project_id: int) -> tuple[int, ...]:
-    """结构就绪集合（依赖全部完成且自身还没开始）。"""
-    return C.resolve_ready_tasks(graph_nodes(db, project_id))
+    """结构就绪集合（依赖全部完成且自身还没开始）。
+
+    **fail-closed**：图非法时权威口径（`validate_task_graph` 内部的
+    `resolve_ready_tasks`）直接给空集。非法图的任务**不会被调度**，
+    也不会因为"依赖都完成了"被误判成就绪 —— 环上永远等不到终态。
+    """
+    return graph_report(db, project_id).ready
 
 
 def ready_tasks(db: Session, project_id: int) -> list[Task]:
@@ -178,17 +188,9 @@ def evaluate_dispatch(db: Session, task: Task) -> DispatchEvaluation:
     assignee_id = task.assignee_id
     status = str(task.status)
 
-    # ① 结构就绪：依赖必须全部完成
+    # ① 结构就绪：**只看契约口径**（不在这里重写一遍"依赖满足了没有"）
     project_id = int(task.project_id)
-    deps: dict[int, list[int]] = {}
-    for row in project_repo.list_dependencies(db, project_id):
-        deps.setdefault(int(row.task_id), []).append(int(row.depends_on_id))
-    done = {
-        int(row.id)
-        for row in project_repo.list_tasks(db, project_id)
-        if str(row.status) == TaskStatus.done.value
-    }
-    if not all(dep in done for dep in deps.get(int(task.id), ())):
+    if int(task.id) not in structural_ready_task_ids(db, project_id):
         reasons.append(REASON_NOT_READY)
 
     # ② 任务自身状态：只有 backlog / todo 可以进入执行
@@ -260,6 +262,9 @@ class ProjectRuntimeState:
     needs_management: tuple[DispatchEvaluation, ...] = field(default_factory=tuple)
     all_tasks_done: bool = False
     task_count: int = 0
+    #: 图结构非法（系统职责里"这张图能不能执行"，W16）⇒ 一律不调度，上报重规划
+    invalid_graph: bool = False
+    graph_problems: tuple[str, ...] = ()
 
     @property
     def has_work_in_flight(self) -> bool:
@@ -269,6 +274,29 @@ class ProjectRuntimeState:
 def project_runtime_state(db: Session, project_id: int) -> ProjectRuntimeState:
     """一次性算清"这个项目现在处于什么状态"（调度器与观测共用同一份口径）。"""
     tasks = project_repo.list_tasks(db, int(project_id))
+    report = C.validate_task_graph(
+        C.TaskGraphNode(
+            task_id=int(task.id),
+            status=str(task.status),
+            depends_on=tuple(
+                int(dep.depends_on_id)
+                for dep in project_repo.list_dependencies(db, int(project_id))
+                if int(dep.task_id) == int(task.id)
+            ),
+        )
+        for task in tasks
+    )
+    if not report.is_valid:
+        # 非法图：不派发、不上报"要人决策"（没人能靠换个负责人修好一张有环的图），
+        # 由调用方按 project.replan_required 上报 —— 这张计划得重做。
+        return ProjectRuntimeState(
+            project_id=int(project_id),
+            all_tasks_done=bool(tasks)
+            and all(str(task.status) == TaskStatus.done.value for task in tasks),
+            task_count=len(tasks),
+            invalid_graph=True,
+            graph_problems=_graph_problems(report),
+        )
     evaluations = [evaluate_dispatch(db, task) for task in tasks]
     return ProjectRuntimeState(
         project_id=int(project_id),
@@ -282,12 +310,27 @@ def project_runtime_state(db: Session, project_id: int) -> ProjectRuntimeState:
     )
 
 
+def _graph_problems(report: C.TaskGraphReport) -> tuple[str, ...]:
+    """把校验报告翻成给管理层看的问题清单（只陈述结构问题）。"""
+    problems: list[str] = []
+    if report.self_loops:
+        problems.append(f"self_loop:{sorted(report.self_loops)}")
+    if report.dangling:
+        problems.append(f"dangling:{sorted(report.dangling)}")
+    if report.duplicates:
+        problems.append(f"duplicate_edge:{sorted(report.duplicates)}")
+    if report.cycles:
+        problems.append(f"cycle:{sorted(report.cycles)}")
+    return tuple(problems)
+
+
 __all__ = [
     "DispatchEvaluation",
     "ProjectRuntimeState",
     "EXECUTABLE_PROJECT_STATUSES",
     "REASON_EVENTS",
     "graph_nodes",
+    "graph_report",
     "structural_ready_task_ids",
     "ready_tasks",
     "evaluate_dispatch",

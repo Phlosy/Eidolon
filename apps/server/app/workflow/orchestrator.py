@@ -133,11 +133,34 @@ class Orchestrator:
             return
         with SessionLocal() as db:
             candidates: list[tuple[int, int]] = []
-            escalations: list[tuple[int, str, dict]] = []
+            escalations: list[tuple[int | None, str, dict]] = []
             for project in project_repo.list_projects(db):
                 if project.status not in dispatch_runtime.EXECUTABLE_PROJECT_STATUSES:
                     continue
                 state = dispatch_runtime.project_runtime_state(db, int(project.id))
+                if state.invalid_graph:
+                    # 图本身有环/悬空 ⇒ 这张计划无法执行：上报重规划（等管理层修图），
+                    # 既不调度、也不假装它是"缺人/缺资源"（那是另一类判断）。
+                    key = (int(project.id), "project.replan_required")
+                    if key not in self._escalated:
+                        self._escalated.add(key)
+                        escalations.append(
+                            (
+                                None,
+                                "project.replan_required",
+                                {
+                                    "id": int(project.id),
+                                    "name": project.name,
+                                    "company_id": int(project.company_id),
+                                    "project_id": int(project.id),
+                                    "work_mode": project.work_mode,
+                                    "management_employee_id": project.management_employee_id,
+                                    "reasons": list(state.graph_problems),
+                                    "needs_management": True,
+                                },
+                            )
+                        )
+                    continue
                 for evaluation in state.dispatchable:
                     assignee_id = int(evaluation.assignee_id or 0)
                     if not assignee_id or assignee_id in self._running:
@@ -172,7 +195,7 @@ class Orchestrator:
                     )
                     self._escalated.add(key)
         for task_id, event, payload in escalations:
-            logger.info("dispatch needs management: %s task=%s", event, task_id)
+            logger.info("dispatch needs management: %s target=%s", event, task_id or "project")
             bus.publish(
                 event,
                 payload,
