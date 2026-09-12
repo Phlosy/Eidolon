@@ -728,7 +728,7 @@ CEO A 离任 → CEO B 上任
 | M2.1 Canonical Executable Project Spec | **DONE**（2026-09-11） | `01060ab` | 迁移 **v40**；单一立项入口 + 两轴路由 + Work Intake 责任路由 + Canonical Spec 读面；W32–W36 强制 |
 | M2.2 Role Context & Adaptive Onboarding | **DONE**（2026-09-11） | `164272c` | 迁移 **v41**；Authority Projection（default-deny / 有限作用域 / append-only 双摘要）+ RoleContext 投影 + Role Resource Index；W37–W42 强制 |
 | M2.3 Management Agent Tooling | **DONE**（2026-09-11） | `e402c06` | 无迁移；Read Shared / Write Internal + Tool Registry + 执行五步 + 调试口；T1–T12 强制 |
-| M2.4 Leadership Planning & Delegation | **DONE**（2026-09-11） | 见 §17.0d | 迁移 **v42**；Decision Envelope + 三层分离 + 决策树 + 只读决策面；DR1–DR10 强制 |
+| M2.4 Leadership Planning & Delegation | **DONE**（2026-09-11） | `073c0ab` | 迁移 **v42**；Decision Envelope + 三层分离 + 决策树 + 只读决策面；DR1–DR10 强制 |
 
 ### Progress Log
 
@@ -878,7 +878,65 @@ Manager Agent 经 `create_task` / `create_dependency` / `assign_task` 建图，
 
 ## 17.0d M2.4 交付证据
 
-见本轮汇报与 §16 Progress Log（commit hash 由收尾提交补记）。
+**Commit**：`073c0ab`（`feat(work): M2.4 leadership planning & delegation (decision envelope)`，
+36 files / +3163 / -198）。
+
+### 文件清单
+
+| 文件 | 类型 | 说明 |
+| --- | --- | --- |
+| `migrations/versions/c3e5a7b9d124_v42_decision_records.py` | 新增 | v42 纯 additive：2 张新表 + 索引，无回填 |
+| `app/models/decision.py` | 新增 | `DecisionRecord`（管理语义）+ `ToolAudit`（执行事实） |
+| `app/work/decisions.py` | 新增 | 信封执行者 + 状态聚合 + 上下文哈希 + 读模型 |
+| `app/api/v1/decisions.py` + `app/schemas/work.py` | 新增/修改 | 只读决策面（4 个端点，**无写端点**） |
+| `app/work/{tools,tool_writes,tool_executor}.py` | 修改 | `decision_semantics` 声明与门禁；执行事实改落 `tool_audits`；SAVEPOINT 隔离 |
+| `app/work/contracts.py` | 修改 | `DecisionRecord` → `DecisionIntent`；`DecisionOutcome` 退役；DR1–DR10 |
+| `app/models/enums.py` | 修改 | `DecisionStatus` / `DecisionSemantics` |
+| `app/core/config.py` + `.env.example` | 修改 | `orchestrator_dispatch_enabled`（默认开、测试默认关） |
+| `app/workflow/orchestrator.py` | 修改 | 派发门禁（后台写者不与调用方抢 SQLite） |
+| 前端 6 个文件 | 新增/修改 | 项目管理决策时间线 + types/api/hook + i18n 中英 |
+| `tests/test_m2_decisions.py` | 新增 | 27 个（DR1–DR10 + 领域状态断言） |
+| `tests/{test_m2_tools,test_m2_contract,conftest}.py` | 修改 | 适配决策语义；`api_paths` fixture；派发门控 opt-in |
+| `docs/{m2-agent-work-runtime-design,m2-implementation-plan,handover}.md` | 修改 | §10 重写 / ADR-28..35 / DR1–DR10 / 进度 |
+
+### 门禁实测
+
+```text
+pytest apps/server/tests -q（默认随机序）      1179 passed, 6 deselected   ← 连跑 5 次全绿
+ruff check app tests                         All checks passed
+ruff format --check app tests                5 files would be reformatted（既有 WIP，未新增）
+cd apps/server && alembic check              No new upgrade operations detected
+alembic current                              c3e5a7b9d124 (head)   ← v42
+alembic upgrade → downgrade -1 → upgrade     实测通过
+cd apps/web && tsc / eslint / prettier / vitest(351) / build      全绿
+```
+
+### 守卫反例注入验证（6/6 转红后撤回）
+
+| 注入 | 期望转红 | 结果 |
+| --- | --- | --- |
+| 决策行写入工具名 | `test_decision_record_does_not_copy_tool_payloads` | ✅ 转红 |
+| 部分生效被四舍五入成 `APPLIED` | `test_partial_apply_is_expressed_not_rounded` | ✅ 转红 |
+| 决策（有 decision_id）绕过 Authority | `test_decision_never_grants_authority` | ✅ 转红 |
+| 建 `DecisionRecord.audit_ids[]` 反向数组 | `test_three_layers_are_separate` + `test_link_direction_is_single_way` | ✅ 转红 |
+| 写工具不声明 `decision_semantics` | `test_decision_semantics_are_declared_and_enforced` | ✅ 转红 |
+| 放过未知决策上下文键 | `test_unknown_context_keys_are_rejected` | ✅ 转红 |
+
+### 本轮修掉的三个真实问题（都写进代码注释）
+
+1. **执行面的 `db.rollback()` 会抹掉调用方的上下文**：一个动作在 handler 里被领域拒绝 ⇒
+   整条 `DecisionRecord` 与其前序成功动作**全部消失**。修复：`SAVEPOINT` 只回滚该 handler +
+   决策意图先提交再执行动作；用例补强为"成功的动作必须真的留在领域状态里"。
+2. **写 handler 在 `commit()` 之后又查库再 `bus.publish`**：读事务会挡住另一个连接的写事务
+   （SQLite 单写者）。改为"提交后不再查库 / `refresh` 后再 `commit` 一次"。
+3. **套跑偶发 `database is locked`**：后台编排器与测试抢同一份 SQLite，而读→写**升级**是
+   死锁语义（不等 busy timeout）。新增 `settings.orchestrator_dispatch_enabled`
+   （默认开、测试默认关，与 `position_access_sync` / `evidence_pipeline_enabled` 同一纪律），
+   需要跑完整链的用例显式打开。修复前 ~1/4 概率失败，修复后连跑 5 次全绿。
+
+> **顺带修掉一条空断言**：M2.3 的"不得存在玩家面 `/tools` 路由"用 `client.app.routes` 枚举，
+> 而新版 FastAPI 把 `include_router` 包成 `_IncludedRouter`，嵌套路由不再扁平出现 ⇒
+> 那条断言实际上什么都没查。改用 OpenAPI 路径集合（`conftest.api_paths`）。
 
 ---
 
