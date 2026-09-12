@@ -366,6 +366,55 @@ Competency changes                ← 复用 evidence pipeline + competency aggr
 
 ---
 
+### 8b. M2.8 落地：招募 → Ready-to-Work（W31 / RD1–RD7）
+
+```text
+招募 → Employee → PositionAssignment → RoleContext
+     → 环境编排（工作区目录 / 运行时实例 / 供应商绑定）
+     → READY_TO_WORK（**派生量**，不是一列）
+```
+
+**逐项事实**（每一项都能单独核对、单独解释，RD2）：
+
+| 项 | 事实来源 | 执行门禁里？ |
+| --- | --- | --- |
+| `position` | 生效主职 → 编制 → 职位定义 | ❌（软契约 W5：不该把没编制的人彻底挡在工作之外）|
+| `workspace` | `employees.workspace_path` + 目录真的存在 | ✅（真实运行时）|
+| `runtime` | `runtime_instances`（状态/健康）| ✅（真实运行时；mock 由 MockAdapter 自带）|
+| `provider` | `model_bindings`(primary) + `providers.enabled` | ✅（真实运行时；mock 不需要）|
+
+```text
+READY_TO_WORK      = 四项事实都成立（报告口径，用于解释"这个人现在能不能开工"）
+执行门禁（派发用）  = 只查"跑起来真的需要"的项（mock ⇒ 不额外要求；真实 ⇒ 工作区/运行时/供应商）
+```
+
+**为什么门禁比 READY 窄**：`position` 是**软契约**（W5）—— 缺编制会降低解释力，
+但不该成为"永远不能干活"的硬闸；真正拦人是"环境跑不起来"。
+两者都写进契约（`READINESS_REQUIRED_FOR_EXECUTION`），所以差别是**声明**，不是巧合。
+
+**公司运行时策略只配环境**（RD4/I6）：
+
+```text
+允许：runtime_type / deployment_mode / provider_id / model / runtime_config
+禁止：persona / personality / traits / system_prompt / prompt / instructions /
+      workflow / sop / skills / position_package / role_prompt / temperature / brain / goals
+```
+
+未知键与禁止键一律 **422**（静默忽略会让"我配了但没生效"变成查不出来的谜）。
+`RUNTIME_POLICY_KEYS ∩ FORBIDDEN_RUNTIME_POLICY_KEYS` 在**导入期**就断言为空。
+
+**谁说了算**（避免"门禁算一种、执行算另一种"）：
+
+```text
+runtime_type    ：员工行权威（gateway.adapter_for 就是读它）；招募时用公司策略写入
+runtime_config  ：员工行优先，没配则继承公司策略的环境参数
+provider/model  ：只有公司策略有（员工行没有这两列）
+```
+
+**失败不四舍五入**（RD5/I2）：编排单步失败 ⇒ `provisioning_jobs.status = partial` +
+该步骤 `error` 写明原因 + 人就绪为 false。**编排不自己 commit** ——
+招募路径把它放进同一事务，招募失败整笔回滚（E13/E14/E15 的既有纪律，RD7/I5 保证人级资产逐行不变）。
+
 ## 9. 能力不足不是死刑
 
 Agent 在职位上真实工作后：
@@ -831,7 +880,7 @@ W11  Fit is decision-support only.
 
 ---
 
-## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10 / R1–R12 / H1–H8 / RV1–RV8）
+## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10 / R1–R12 / H1–H8 / RV1–RV8 / RD1–RD7）
 
 | # | 不变量 | M2.0 状态 |
 | --- | --- | --- |
@@ -927,6 +976,13 @@ W11  Fit is decision-support only.
 | **RV6** | ESCALATE has no automatic task-status target: it stops and waits for a human or manager. | **M2.7 强制** |
 | **RV7** | REPLAN is only accepted from the project's manager; the system never replans by itself. | **M2.7 强制** |
 | **RV8** | Cross-surface verdict mapping is explicit and one-way; surfaces are never substituted. | **M2.7 强制** |
+| **RD1** | READY_TO_WORK is derived from facts, never stored as a column or enum value. | **M2.8 强制** |
+| **RD2** | Readiness is reported per item with a resolvable source; gaps are always named. | **M2.8 强制** |
+| **RD3** | A recruited agent is never dispatched before its execution-required items are ready. | **M2.8 强制** |
+| **RD4** | Company runtime defaults configure the environment only; persona/prompt keys are refused. | **M2.8 强制** |
+| **RD5** | A provisioning failure leaves the agent not-ready with an explicit reason. | **M2.8 强制** |
+| **RD6** | Readiness is company-scoped: another company's employee is not readable or provisionable. | **M2.8 强制** |
+| **RD7** | Onboarding never copies or creates person-level assets (skills, knowledge, competency). | **M2.8 强制** |
 
 > **"M2.0 强制"** = M2.0 就有可执行测试锚点；
 > **"冻结"** = M2.0 冻结契约与归属，锚点在其 owner 阶段落地。

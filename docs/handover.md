@@ -488,9 +488,50 @@ Reviewer Agent 出结论  → PASS / REWORK / REJECT / ESCALATE
 
 ---
 
+## 5l. M2.8 Recruit → Ready-to-Work（**DONE**，2026-09-12）
+
+- **无迁移**（主线仍 v44 `b3aee926425c`）：全部复用既有表 + `companies.settings`
+- **用户拍板语义**（计划 §11 + 设计 **§8b**）→ 不变量 **RD1–RD7**（注册表 99 条；enforced 87）
+- 一句话：招募得到的人**能立刻执行 Agent Task**
+
+```text
+招募 → Employee → PositionAssignment → RoleContext
+     → 环境编排（工作区目录 / 运行时实例 / 供应商绑定）
+     → READY_TO_WORK（**派生量**，不是一列）
+```
+
+- **四项事实**（逐项可核对，RD2）：`position`（生效主职→编制→定义）、
+  `workspace`（路径 + 目录真的存在）、`runtime`（实例状态/健康）、
+  `provider`（主绑定 + provider enabled）
+- **`READY_TO_WORK` 与执行门禁刻意分开**：门禁只查"跑起来真的需要"的项
+  （mock ⇒ 不额外要求；真实运行时 ⇒ 工作区/运行时/供应商）。
+  `position` 是软契约（W5），它在报告里、但**不在闸门里** —— 缺编制不该等于"永远不能干活"
+- **公司运行时策略只配环境**（RD4/I6）：允许 `runtime_type` / `deployment_mode` /
+  `provider_id` / `model` / `runtime_config`；人格 / 提示词 / 工作流 / 技能 / 职位行为
+  一律 **422**（未知键也 422：静默忽略会让"配了没生效"变成谜）
+- **谁说了算**：`runtime_type` 员工行权威（`gateway.adapter_for` 读它）、
+  招募时由策略写入；`runtime_config` 员工优先、否则继承公司策略；provider/model 只在公司策略
+- **失败不四舍五入**（RD5/I2）：单步失败 ⇒ job `partial` + 步骤 `error` + 人就绪 false；
+  `orchestrate()` **不 commit**（招募路径同一事务 ⇒ 失败整笔回滚，I4）
+- **就绪摘要进招募响应**（`RecruitOut.readiness`）：未达 READY 时**明确告知缺什么**
+- **踩坑记录（真实 bug，务必别重复）**：
+  1. `PositionAssignment`（物理表 `employments`）**没有** `position_definition_id` 列 ——
+     职位定义要经 `position_slot_id → position_slots.position_definition_id` 解析。
+     直接读那个属性会 AttributeError（实测踩到）。
+  2. 第一版 `resolve_runtime_policy` 把"员工行是 mock"当成"没配"，从而回落到公司策略 ——
+     结果**门禁按公司策略算、执行按员工行跑**，两边不一致（真实运行时的人被门禁放行、
+     mock 的人被门禁拦住）。现在员工行权威，门禁与 `gateway.adapter_for` 读同一个值。
+  3. 写测试时用常驻 `db` 会话轮询后台进度会挡住写者（rollback journal）——
+     与 M2.7 同一条纪律：后台跑图用 HTTP 轮询。
+- **反例注入验证**：**11/11** 条（就绪落列 / 不报缺口 / 门禁失效 / 放行提示词键 /
+  绕过键校验 / 失败报 done / 假成功 / 跨公司读设置 / 注入技能 / 编排自己 commit / 招募忽略策略）
+- 下一步：**M2.9 WorkOrder Bridge**
+
+---
+
 ## 6. 下一步建议（按优先级）
 
-1. **M2.8 Recruit → Ready-to-Work**（`docs/m2-implementation-plan.md` §11）：招聘通过后自动开通运行时，`READY_TO_WORK` 之前不许被派活（W31）。
+1. **M2.9 WorkOrder Bridge**（`docs/m2-implementation-plan.md` §12）：`WorkOrder → Project` 绑定边落地，`submit.project_id` 从自由字段变成受校验引用（W23）。
 2. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
 3. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
 4. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。

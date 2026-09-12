@@ -204,3 +204,5 @@ class RecruitOut(BaseModel):
     listing_id: int
     position_slot_id: int | None = None
     assignment_id: int | None = None
+    #: M2.8：就绪摘要（逐项事实 + 缺口 + 环境策略）。未达 READY 时**明确告知缺什么**。
+    readiness: dict | None = None

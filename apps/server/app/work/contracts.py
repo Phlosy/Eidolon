@@ -151,6 +151,13 @@ __all__ = [
     "REVIEW_FACT_KINDS",
     "REVIEW_RULES",
     "GUIDED_REVIEW_DECISION_TO_VERDICT",
+    "READINESS_ITEMS",
+    "READINESS_FACT_SOURCES",
+    "READINESS_REQUIRED_FOR_EXECUTION",
+    "RUNTIME_POLICY_KEYS",
+    "FORBIDDEN_RUNTIME_POLICY_KEYS",
+    "DEFAULT_RUNTIME_TYPE",
+    "RUNTIME_POLICY_SOURCES",
     "ARTIFACT_STORE_TABLE",
     "ARTIFACT_VERSION_TABLE",
     "ARTIFACT_OWNERSHIP_COLUMN",
@@ -1005,6 +1012,89 @@ GUIDED_REVIEW_DECISION_TO_VERDICT: dict[str, str] = {
 }
 
 
+# ---------------------------------------------------------------------------
+# 8c. Ready-to-Work（M2.8，W31 / RD1–RD7）
+# ---------------------------------------------------------------------------
+
+#: 就绪的四个**事实项**（每项单独可核对、单独可解释）。
+#:
+#: 纪律（RD1/RD2）：`READY_TO_WORK` 是**派生量**，不落库、不落枚举 ——
+#: 它只是"这四项事实现在都成立"的缩写，所以永远能回答"差哪一项"。
+READINESS_ITEMS: tuple[str, ...] = ("position", "workspace", "runtime", "provider")
+
+#: 每一项的事实来源（可核对：读哪张表 / 哪个目录）—— **不含任何判断**。
+READINESS_FACT_SOURCES: dict[str, str] = {
+    # 软契约：有生效主职就有角色上下文（W4/W5）；没有也不阻止执行，只影响解释
+    "position": "position_assignments (effective primary) + position_definitions",
+    # 工作区：路径写在员工行上，且目录真的存在
+    "workspace": "employees.workspace_path + 目录存在 + resource_accounts(workspace)",
+    # 运行时：实例存在且状态/健康可用（mock 代理由 MockAdapter 自带，不需实例）
+    "runtime": "runtime_instances (status / health_status)",
+    # 供应商：绑定的 provider 启用且有主模型绑定（mock 不需要）
+    "provider": "model_bindings (is_primary) + providers.enabled",
+}
+
+#: **执行必须满足**的项（派发门禁用这个，而不是整个 `READY_TO_WORK`）：
+#:
+#: - `mock`：MockAdapter 自带执行环境，不需要工作区/供应商实例；
+#: - 真实运行时：工作区目录 + 运行时实例 + 供应商绑定，缺一不可（W31）。
+#:
+#: `position` **刻意不在门禁里**：它是软契约（W5），缺了会降低解释力，
+#: 但不应该把一个人彻底挡在工作之外 —— 该由管理层决定补职位还是换人。
+READINESS_REQUIRED_FOR_EXECUTION: dict[str, tuple[str, ...]] = {
+    "mock": (),
+    "real": ("workspace", "runtime", "provider"),
+}
+
+#: 公司默认运行时策略的**允许键**（M2.8，I6/W26）。
+#:
+#: 它**只解决环境配置**：用哪个运行时、怎么部署、绑哪个供应商与模型、
+#: 以及运行时的**环境参数**（超时、并发、模拟失败率…）。
+RUNTIME_POLICY_KEYS: tuple[str, ...] = (
+    "runtime_type",
+    "deployment_mode",
+    "provider_id",
+    "model",
+    "runtime_config",
+)
+
+#: 明确**禁止**出现在运行时策略里的键（哪怕公司想配也不行，W26/I6）。
+#:
+#: 为什么列得这么细：这些键看起来都像"环境"，实际上在决定"这个人怎么工作"。
+#: 人格 / 提示词 / 工作流 / 技能 / 职位行为一旦进了公司策略，
+#: 就等于系统给每个人预设了工作方式（W4/W26 明令禁止）。
+FORBIDDEN_RUNTIME_POLICY_KEYS: frozenset[str] = frozenset(
+    {
+        "persona",
+        "personality",
+        "traits",
+        "curiosity",
+        "goals",
+        "brain",
+        "system_prompt",
+        "prompt",
+        "instructions",
+        "workflow",
+        "sop",
+        "skills",
+        "skill_package",
+        "position_package",
+        "role_prompt",
+        "temperature",
+    }
+)
+
+#: 默认运行时类型（冷启动）：mock 让新公司在没有真实供应商时也能跑通。
+DEFAULT_RUNTIME_TYPE = "mock"
+
+#: 运行时策略的**事实**来源（谁写的、写在哪）—— 用于解释"这个值哪来的"。
+RUNTIME_POLICY_SOURCES: dict[str, str] = {
+    "company_default": "companies.settings['runtime_defaults']",
+    "employee_override": "employees.runtime_type / employees.runtime_config",
+    "platform_default": "contracts.DEFAULT_RUNTIME_TYPE",
+}
+
+
 #: Canonical Project Spec 的必需字段（**Facts / Requirements**，不是 Execution Plan）。
 CANONICAL_PROJECT_FIELDS: tuple[str, ...] = (
     "background",
@@ -1306,6 +1396,8 @@ REQUIRES_MANAGEMENT_DECISION: frozenset[str] = frozenset(
         "provider_missing",  # 真实 runtime 缺模型绑定 ⇒ 同上
         "task_failed",  # 执行失败 ⇒ 重做 / 改派 / 改方案是管理决策，系统不自动重试（R10）
         REASON_INPUT_ARTIFACTS_MISSING,  # 声明的上游没交付 ⇒ 重规划（M2.6/H5）
+        # M2.8（W31）：这个人的执行环境还没配齐（工作区/运行时/供应商）⇒ 交管理层
+        "assignee_not_ready",
     }
 )
 
@@ -1376,6 +1468,10 @@ FACT_EVENTS: frozenset[str] = frozenset(
 
 #: 事实事件与 Decision-needed 事件不得重名（一个事件要么是事实，要么要人决策）。
 assert not (FACT_EVENTS & DECISION_NEEDED_EVENTS), "事件语义重叠"
+assert not (set(RUNTIME_POLICY_KEYS) & FORBIDDEN_RUNTIME_POLICY_KEYS), (
+    "运行时策略的允许键与禁止键重叠：环境配置夹带了工作方式（W26/I6）"
+)
+
 assert set(REVIEW_VERDICT_TARGETS) == {v.value for v in ReviewVerdict}, (
     "每个评审结论都必须有显式的状态目标（允许为 None，但不允许缺失）"
 )
@@ -2136,6 +2232,56 @@ INVARIANTS: tuple[Invariant, ...] = (
         enforced=True,
         owner_stage="M2.7",
         anchors=("test_guided_decision_maps_to_verdict_explicitly",),
+    ),
+    # ---- M2.8 Ready-to-Work（W31 / RD1–RD7）----
+    Invariant(
+        "RD1",
+        "READY_TO_WORK is derived from facts, never stored as a column or enum value.",
+        enforced=True,
+        owner_stage="M2.8",
+        anchors=("test_ready_to_work_is_derived_not_stored",),
+    ),
+    Invariant(
+        "RD2",
+        "Readiness is reported per item with a resolvable source; gaps are always named.",
+        enforced=True,
+        owner_stage="M2.8",
+        anchors=("test_readiness_is_per_item_and_names_the_gaps",),
+    ),
+    Invariant(
+        "RD3",
+        "A recruited agent is never dispatched before its execution-required items are ready.",
+        enforced=True,
+        owner_stage="M2.8",
+        anchors=("test_not_ready_agent_is_never_dispatched",),
+    ),
+    Invariant(
+        "RD4",
+        "Company runtime defaults configure the environment only; persona/prompt keys are refused.",
+        enforced=True,
+        owner_stage="M2.8",
+        anchors=("test_runtime_policy_is_environment_only",),
+    ),
+    Invariant(
+        "RD5",
+        "A provisioning failure leaves the agent not-ready with an explicit reason.",
+        enforced=True,
+        owner_stage="M2.8",
+        anchors=("test_provisioning_failure_is_partial_and_explicit",),
+    ),
+    Invariant(
+        "RD6",
+        "Readiness is company-scoped: another company's employee is not readable or provisionable.",
+        enforced=True,
+        owner_stage="M2.8",
+        anchors=("test_readiness_is_company_scoped",),
+    ),
+    Invariant(
+        "RD7",
+        "Onboarding never copies or creates person-level assets (skills, knowledge, competency).",
+        enforced=True,
+        owner_stage="M2.8",
+        anchors=("test_onboarding_leaves_person_assets_untouched",),
     ),
 )
 

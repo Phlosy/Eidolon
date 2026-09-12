@@ -641,6 +641,16 @@ def _inspect_task_review(db: Session, ctx: tools.ToolCallContext, args: dict) ->
     }
 
 
+def _inspect_readiness(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
+    """与 HTTP 读面**同一个**查询层（T2/T11）：`readiness.readiness_report()`。"""
+    from app.work import readiness
+
+    employee = org_repo.get_employee(db, int(args["employee_id"]))
+    if employee is None or int(employee.company_id or 0) != ctx.company_id:
+        raise tools.ToolError("employee not found in this company")
+    return readiness.readiness_report(db, employee).as_dict()
+
+
 def build_read_tools() -> tuple[tools.ToolSpec, ...]:
     """读工具清单（**共享能力**：同一批事实也由既有领域读面服务 UI/CLI）。"""
     return (
@@ -767,6 +777,14 @@ def build_read_tools() -> tuple[tools.ToolSpec, ...]:
             input_schema=tools.object_schema({"employee_ids": {"type": "array", "items": _INT}}),
             output_schema=tools.object_schema({"load": {"type": "array"}}),
             handler=_get_current_load,
+        ),
+        tools.ToolSpec(
+            name="inspect_readiness",
+            description=("读一个人的就绪事实（职位 / 工作区 / 运行时 / 供应商）+ 缺口（W31）"),
+            side_effect=C.ToolSideEffect.read,
+            input_schema=tools.object_schema({"employee_id": _INT}, ("employee_id",)),
+            output_schema=tools.object_schema({"employee_id": _INT}),
+            handler=_inspect_readiness,
         ),
         tools.ToolSpec(
             name="get_runtime_status",

@@ -63,6 +63,8 @@ REASON_PROVIDER_MISSING = "provider_missing"
 REASON_TASK_FAILED = "task_failed"
 #: M2.6：声明的上游**跑完了却没产出**可交付物 ⇒ 计划与事实不符（H5）
 REASON_INPUT_ARTIFACTS_MISSING = C.REASON_INPUT_ARTIFACTS_MISSING
+#: M2.8：这个人的执行环境还没配齐（工作区 / 运行时 / 供应商）—— W31 的门禁面
+REASON_ASSIGNEE_NOT_READY = "assignee_not_ready"
 
 #: 每个阻断原因对应的事件（事实 vs 需要管理决策，见契约 §10b）
 REASON_EVENTS: dict[str, str] = {
@@ -74,6 +76,8 @@ REASON_EVENTS: dict[str, str] = {
     REASON_TASK_FAILED: "task.failed",
     # 输入缺失 = 这张计划按现状跑不出预期结果 ⇒ 重规划（不新增事件，复用 M2.5 的封闭集）
     REASON_INPUT_ARTIFACTS_MISSING: "project.replan_required",
+    # 没配齐环境 ⇒ 负责人/Runtime 不可用（复用 M2.5 的封闭事件集，不新增事件）
+    REASON_ASSIGNEE_NOT_READY: "task.runtime_unavailable",
 }
 
 assert set(REASON_EVENTS) == set(C.REQUIRES_MANAGEMENT_DECISION | {REASON_TASK_HELD}), (
@@ -161,6 +165,17 @@ def ready_tasks(db: Session, project_id: int) -> list[Task]:
 # ---------------------------------------------------------------------------
 
 
+def _readiness_block_reasons(db: Session, employee: Employee) -> list[str]:
+    """M2.8（W31/RD3）：执行环境是否就绪。
+
+    **只查"执行必须满足"的那几项**（见契约 §8c）：mock 运行时不需要工作区/实例，
+    真实运行时缺任何一项都拦下并交给管理层 —— 系统不会"先跑跑看"。
+    """
+    from app.work import readiness
+
+    return [REASON_ASSIGNEE_NOT_READY] if readiness.blocking_gaps(db, employee) else []
+
+
 def _runtime_block_reasons(db: Session, employee: Employee) -> list[str]:
     """运行时/模型绑定是否可用。
 
@@ -232,8 +247,10 @@ def evaluate_dispatch(db: Session, task: Task) -> DispatchEvaluation:
             EmployeeStatus.error.value,
         }:
             # 离线的 Agent 仍然可以"被派"（runtime 会把它拉起来）；只有真错误的才拦。
+            reasons.extend(_readiness_block_reasons(db, employee))
             reasons.extend(_runtime_block_reasons(db, employee))
         else:
+            reasons.extend(_readiness_block_reasons(db, employee))
             reasons.extend(_runtime_block_reasons(db, employee))
 
     # ④b M2.6：声明要用的上游跑完了却没产出 ⇒ 不派发，交给管理层（H5/R10）。

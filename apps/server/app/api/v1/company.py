@@ -18,7 +18,7 @@ from app.core.database import get_db
 from app.models.enums import ResponsibilityKind
 from app.repositories import organization as org_repo
 from app.schemas.organization import CompanyOut, WorkPolicyOut, WorkPolicyPatchIn
-from app.work import contracts, work_defaults, work_intake
+from app.work import contracts, readiness, work_defaults, work_intake
 
 router = APIRouter(tags=["company"])
 
@@ -38,6 +38,8 @@ def _work_policy_out(db: Session, company) -> dict:
     )
     return {
         "work_mode_default": work_defaults.company_work_mode_default(db, company).value,
+        # M2.8：运行时策略（只配环境，不配工作方式）
+        "runtime_defaults": readiness.company_runtime_defaults(db, int(company.id)),
         "work_mode_explicit": work_defaults.is_work_mode_explicitly_configured(company),
         "work_mode_by_stage": {
             stage: mode.value for stage, mode in contracts.WORK_MODE_BY_COMPANY_STAGE.items()
@@ -95,5 +97,14 @@ def patch_work_policy(
                     detail=f"unknown position code for this company: {code!r}",
                 )
         work_defaults.set_company_work_intake_code(db, company, code, commit=False)
+    if payload.runtime_defaults is not None:
+        # M2.8（RD4/I6）：只配环境。未知键与**禁止键**（人格/提示词/工作流…）一律 422 ——
+        # 静默忽略会让"我配了但它没生效"变成查不出来的谜。
+        try:
+            readiness.set_company_runtime_defaults(
+                db, int(company.id), payload.runtime_defaults, commit=False
+            )
+        except readiness.ReadinessError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
     db.commit()
     return _work_policy_out(db, company)

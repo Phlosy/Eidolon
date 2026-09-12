@@ -141,8 +141,13 @@ class WorkPolicyOut(BaseModel):
     work_intake_default_position_code: str
     work_intake_is_configured: bool
     allow_planning_fixtures: bool
+    #: M2.8：公司默认**运行时策略**（只配环境：运行时/部署/供应商/模型/环境参数）。
+    #: 人格、提示词、工作流、技能一律不在这里（W26/I6）。
+    runtime_defaults: dict = {}
 
 
 class WorkPolicyPatchIn(BaseModel):
     work_mode: ProjectWorkMode | None = None
     work_intake_position_code: str | None = None
+    #: M2.8：只允许 `contracts.RUNTIME_POLICY_KEYS`；禁止键与未知键都会被拒绝（422）
+    runtime_defaults: dict | None = None

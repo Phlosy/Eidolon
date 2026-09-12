@@ -45,6 +45,8 @@ from app.schemas.runtime import (
 from app.schemas.work import (
     AuthorityGrantOut,
     PositionExpectationRefOut,
+    ReadinessOut,
+    ReadinessProvisionOut,
     RoleContextOut,
     RoleContextPageOut,
     RoleProjectBriefOut,
@@ -53,6 +55,7 @@ from app.schemas.work import (
 from app.services import employees as employee_service
 from app.services import runtimes as runtime_service
 from app.services.providers import provider_service
+from app.work import readiness
 from app.work import role_context as role_context_service
 
 router = APIRouter(prefix="/employees", tags=["employees"])
@@ -196,6 +199,38 @@ def get_performance(employee_id: int, db: Session = Depends(get_db)) -> Employee
 
 
 # ---- v0.3: employee-owned providers ----
+
+
+@router.get("/{employee_id}/readiness", response_model=ReadinessOut)
+def get_employee_readiness(employee_id: int, db: Session = Depends(get_db)) -> ReadinessOut:
+    """逐项就绪事实（position / workspace / runtime / provider）+ 缺口（M2.8，W31）。
+
+    `ready_to_work` 是**派生量**（不落库）：它就是"四项事实现在都成立"的缩写，
+    所以未就绪时一定能回答"差哪一项"。
+    """
+    employee = org_repo.get_employee(db, employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail="employee not found")
+    return ReadinessOut(**readiness.readiness_report(db, employee).as_dict())
+
+
+@router.post("/{employee_id}/provision", response_model=ReadinessProvisionOut)
+def provision_employee_readiness(
+    employee_id: int, db: Session = Depends(get_db)
+) -> ReadinessProvisionOut:
+    """重跑环境编排（工作区 / 运行时 / 供应商）—— 人类管理动作（M2.8）。
+
+    典型场景：招募时环境没配好（job `partial`），公司把供应商配好后再跑一次。
+    失败**不会**把员工变成"就绪"：结果里带 job 状态与失败步骤。
+    """
+    employee = org_repo.get_employee(db, employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail="employee not found")
+    try:
+        result = readiness.provision_employee(db, employee)
+    except readiness.ReadinessError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return ReadinessProvisionOut(**result.as_dict())
 
 
 @router.get("/{employee_id}/providers", response_model=list[ProviderOut])

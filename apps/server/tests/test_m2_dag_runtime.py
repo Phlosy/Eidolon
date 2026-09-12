@@ -337,6 +337,8 @@ def test_runtime_unavailable_does_not_reassign(db, default_company_id, real_runt
         D.REASON_TASK_FAILED: "task.failed",
         # M2.6（H5）：声明要用的上游跑完却没产出 ⇒ 计划与事实不符，复用 replan 事件
         D.REASON_INPUT_ARTIFACTS_MISSING: "project.replan_required",
+        # M2.8（W31）：执行环境没配齐 ⇒ 负责人/Runtime 不可用（不新增事件）
+        D.REASON_ASSIGNEE_NOT_READY: "task.runtime_unavailable",
     }
 
 

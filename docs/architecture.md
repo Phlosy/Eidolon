@@ -355,6 +355,23 @@ Reviewer Agent 出结论  → PASS → done ／ REWORK → todo(+计数) ／ REJ
 - 确定性 fixture 项目由**替身评审**（门控 + 署名）走同一段服务出 PASS，
   因此 CI/教程的确定性链路仍然完整
 
+### 5d. 招募 → Ready-to-Work（M2.8）
+
+```text
+招募 → Employee → PositionAssignment → RoleContext
+     → 环境编排（工作区目录 / 运行时实例 / 供应商绑定）
+     → READY_TO_WORK（派生量：四项事实都成立）
+```
+
+- 四项事实逐项可核对：position（主职→编制→定义）/ workspace（路径 + 目录存在）/
+  runtime（实例状态）/ provider（主绑定 + provider enabled）
+- 执行门禁只查"跑起来真的需要"的项：mock 不额外要求，真实运行时要求工作区/运行时/供应商
+- 公司策略（`companies.settings["runtime_defaults"]`）**只配环境**：
+  人格 / 提示词 / 工作流 / 技能键一律 422（W26）
+- 编排失败 ⇒ `provisioning_jobs.status = partial` + 步骤原因；人就绪为 false（不四舍五入）
+- `GET /employees/{id}/readiness`（读）、`POST /employees/{id}/provision`（重试）、
+  Agent 读工具 `inspect_readiness`
+
 ## 6. Learning 与 Knowledge
 
 ### 6.1 Reflection（Project Learning）

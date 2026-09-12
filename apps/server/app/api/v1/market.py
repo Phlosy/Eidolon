@@ -236,4 +236,6 @@ def recruit_listing(
         "listing_id": result.listing_id,
         "position_slot_id": result.position_slot_id,
         "assignment_id": result.assignment_id,
+        # M2.8：招募后的就绪摘要（逐项事实 + 缺口 + 环境策略）
+        "readiness": result.readiness,
     }

@@ -872,6 +872,7 @@ M2_TEST_MODULES = (
     "test_m2_dag_runtime",
     "test_m2_handoff",
     "test_m2_review",
+    "test_m2_readiness",
 )
 
 
@@ -903,7 +904,7 @@ def test_invariant_ids_are_unique_and_sequential_per_family():
         families.setdefault(re.sub(r"\d", "", invariant_id), []).append(
             int(re.sub(r"\D", "", invariant_id))
         )
-    assert set(families) == {"W", "T", "DR", "R", "H", "RV"}, (
+    assert set(families) == {"W", "T", "DR", "R", "H", "RV", "RD"}, (
         f"未知的不变量家族：{sorted(families)}"
     )
     for prefix, numbers in families.items():
@@ -916,7 +917,7 @@ def test_invariant_ids_and_texts_match_the_design_document():
     """W 表是**设计文档与代码的同一份事实**：任一侧改动而另一侧没跟就转红。"""
     design = DESIGN_DOC.read_text(encoding="utf-8")
     rows = re.findall(
-        r"^\|\s*\*\*((?:W|T|DR|R|H|RV)\d+)\*\*\s*\|\s*(.+?)\s*\|", design, flags=re.MULTILINE
+        r"^\|\s*\*\*((?:W|T|DR|R|H|RV|RD)\d+)\*\*\s*\|\s*(.+?)\s*\|", design, flags=re.MULTILINE
     )
     documented = {wid: text for wid, text in rows}
     assert documented, "设计文档里没有解析到不变量表（§14 的格式可能被改了）"

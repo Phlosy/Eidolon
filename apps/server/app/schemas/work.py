@@ -14,7 +14,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-from app.models.enums import ReviewVerdict
+from app.models.enums import DeploymentMode, ReviewVerdict, RuntimeType
 
 
 class AuthorityGrantOut(BaseModel):
@@ -356,3 +356,68 @@ class VerdictIn(BaseModel):
     reviewer_employee_id: int
     verdict: ReviewVerdict
     notes: str = ""
+
+
+# ---------------------------------------------------------------------------
+# M2.8 Ready-to-Work（W31 / RD1–RD7）
+# ---------------------------------------------------------------------------
+
+
+class ReadinessItemOut(BaseModel):
+    """一项就绪事实：结论 + **可核对**的解释 + 事实来源。"""
+
+    item: str
+    ready: bool
+    detail: str
+    source: str
+    facts: dict = {}
+
+
+class RuntimePolicyOut(BaseModel):
+    """生效的环境策略（+ 每个值来自哪 —— 解释"这个值哪来的"）。"""
+
+    runtime_type: str
+    deployment_mode: str
+    provider_id: int | None = None
+    model: str = ""
+    runtime_config: dict = {}
+    source: str = ""
+
+
+class ReadinessOut(BaseModel):
+    """`GET /employees/{id}/readiness`：逐项事实 + 缺口 + 派生结论（RD1/RD2）。"""
+
+    employee_id: int
+    company_id: int
+    runtime_type: str
+    deployment_mode: str
+    ready_to_work: bool
+    gaps: list[str] = []
+    policy: RuntimePolicyOut
+    items: list[ReadinessItemOut] = []
+
+
+class ReadinessProvisionOut(BaseModel):
+    """一次环境编排的事实结果（哪几步做了、哪几步失败）。"""
+
+    employee_id: int
+    job_id: int | None = None
+    job_status: str
+    steps: list[dict] = []
+    failed_steps: list[str] = []
+    ok: bool
+    readiness: ReadinessOut
+
+
+class RuntimeDefaultsIn(BaseModel):
+    """公司默认运行时策略（**只配环境**，RD4/I6）。
+
+    允许的键就是这些：运行时类型 / 部署方式 / 供应商 / 模型 / 环境参数。
+    人格、提示词、工作流、技能、职位行为等键会被**拒绝**（W26）。
+    """
+
+    runtime_type: RuntimeType | None = None
+    deployment_mode: DeploymentMode | None = None
+    provider_id: int | None = None
+    model: str | None = None
+    runtime_config: dict | None = None

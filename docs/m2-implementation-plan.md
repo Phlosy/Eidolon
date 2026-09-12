@@ -73,7 +73,7 @@ Golden Path × 3 + 冻结
 | **M2.5** | Dynamic Task Graph Runtime | 无（收敛既有表） | M2.4 | W2/W16/W30/R1–R12 | ✅ **DONE** |
 | **M2.6** | Artifact Handoff & Shared Work Context | 有（v43：归属列 + 声明表 + 使用表） | M2.5 | W19/H1–H8 | ✅ **DONE** |
 | **M2.7** | Review / Rework / Replan | 有（v44：评审请求 + 评审事实表） | M2.6 | W17/W29/RV1–RV8 | ✅ **DONE** |
-| **M2.8** | Recruit → Ready-to-Work | 无（复用 provisioning） | M2.7 | W31/W13 | PENDING |
+| **M2.8** | Recruit → Ready-to-Work | 无（复用 provisioning + settings） | M2.7 | W31/RD1–RD7 | ✅ **DONE** |
 | **M2.9** | WorkOrder Bridge | 有（binding） | M2.8 | W23 | PENDING |
 | **M2.10** | Golden Path × 3 & Freeze | 无 | M2.9 | 全部 | PENDING |
 
@@ -620,31 +620,59 @@ in_review → （只有结论）→ done / todo（返工）/ rejected / 原地�
 
 ---
 
-## 11. M2.8 · Recruit → Ready-to-Work `[无迁移]`
+## 11. M2.8 · Recruit → Ready-to-Work `[无迁移]` — ✅ **DONE**
 
 ### Goal
 
 招募/购买得到的人**能立刻执行 Agent Task**。
 
-### 范围
+```text
+招募 → Employee → PositionAssignment → RoleContext
+     → 环境编排（工作区 / 运行时实例 / 供应商绑定）
+     → READY_TO_WORK（派生量）
+```
 
-- `recruit_existing_person` 之后自动编排：Employee → PositionAssignment → RoleContext → Provisioning
-  → Workspace → RuntimeInstance → Provider Binding → `READY_TO_WORK`
-- **Company Default Runtime Policy**（`Company.settings["runtime_defaults"]`）只解决**环境配置**，
-  不解决"Agent 怎么工作"
-- `GET /employees/{id}/readiness`：返回逐项事实（workspace / runtime / provider / position）
-- 招募响应新增 `readiness` 摘要；未达 READY 时**明确告知缺什么**
+### 无迁移（刻意的）
+
+| 落点 | 复用 |
+| --- | --- |
+| 公司策略 | `companies.settings["runtime_defaults"]`（既有 JSON 列）|
+| 编排步骤与失败原因 | `provisioning_jobs` / `provisioning_steps`（既有生命周期表）|
+| 运行时实例 | `runtime_instances`（既有）|
+| 供应商绑定 | `model_bindings` / `providers`（既有）|
+| 就绪 | **派生**（不落列、不落枚举 —— RD1 有守卫）|
+
+### 落地物
+
+| 文件 | 角色 |
+| --- | --- |
+| `app/work/readiness.py` | **唯一口径**：策略解析/校验 + 四项事实 + 环境编排（不 commit）|
+| `app/services/recruitment.py` | 招募时按策略建员工 + 同事务跑编排 + 返回就绪摘要 |
+| `app/api/v1/employees.py` | 读 `GET /employees/{id}/readiness`；写 `POST /employees/{id}/provision`（重试编排）|
+| `app/api/v1/company.py` | `GET/PATCH /company/work-policy` 增 `runtime_defaults`（禁止键 422）|
+| `app/work/tool_reads.py` | 读工具 `inspect_readiness`（与 HTTP 同一份事实）|
+| `app/work/dispatch.py` | 派发门禁新增 `assignee_not_ready`（W31；复用 `task.runtime_unavailable` 事件）|
+| `tests/test_m2_readiness.py` | 12 条（7 条 RD 锚点 + I 验收 + 反例注入）|
 
 ### Acceptance
 
-| # | 判据 |
-| --- | --- |
-| I1 | 招募后（mock 模式）该员工可被分配 Task 并真实跑完一个 WorkSession |
-| I2 | 招募后（docker 模式，mock provider）runtime instance 被建出并通过健康检查；失败时 job `partial` + 明确原因 |
-| I3 | `READY_TO_WORK` 是**派生**的（不落列），逐项可解释 |
-| I4 | 招募失败 → 整笔回滚（沿用 E13/E14/E15 与 `_snapshot` 对拍） |
-| I5 | 人级资产在任何开通步骤前后**逐行不变**（W7/W8/W10） |
-| I6 | Default Runtime Policy 的字段里**没有**任何人格/提示词/工作方式配置（W26） |
+| # | 判据 | 结果 |
+| --- | --- | --- |
+| I1 | 招募后（mock 模式）该员工可被分配 Task 并真实跑完一个 WorkSession | ✅ 门禁放行 + mock 会话实测 |
+| I2 | docker 模式（mock provider）真实运行时的环境事实齐备；失败时 job `partial` + 明确原因 | ✅ 缺供应商/供应商不存在 ⇒ `partial` + 步骤 error；补齐后 `done` |
+| I3 | `READY_TO_WORK` 是**派生**的（不落列），逐项可解释 | ✅ 列扫描 + 枚举扫描 + AST 写入守卫 |
+| I4 | 编排失败/回滚不留半个员工 | ✅ `orchestrate` 不 commit；回滚后无 job / 无实例 |
+| I5 | 人级资产在任何开通步骤前后**逐行不变** | ✅ 快照对拍（技能行逐字段）|
+| I6 | Default Runtime Policy 里**没有**人格/提示词/工作方式 | ✅ 允许键与禁止键导入期断言不相交 + HTTP 422 |
+| RD1–RD7 | 七条不变量各有锚点 + **反例注入** | ✅ 11/11 注入被守卫拦住 |
+
+### 与计划的偏差（刻意）
+
+| 计划 | 实际 | 原因 |
+| --- | --- | --- |
+| "docker 模式 runtime instance 通过健康检查" | 编排**登记**实例（`created` / `unknown`），拉起容器仍归运行时管理器 | 同步编排路径不拉容器（那需要 docker + 供应商凭据）；就绪由**实例状态**决定，所以"拉起来了没有"依然是事实 |
+| 提供 `lint`/`build` 之外的**环境**事实 | 只提供四项（position/workspace/runtime/provider）| 少而真：每一项都能落到可核对的行或目录 |
+| 计划未列 | 就绪**门禁**与 `READY_TO_WORK` 分开（软契约项不进闸门） | W5：缺编制不该等于"永远不能干活"；真正拦人是环境跑不起来 |
 
 ---
 

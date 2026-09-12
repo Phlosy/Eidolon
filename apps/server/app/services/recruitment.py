@@ -41,7 +41,6 @@ from app.models.enums import (
     EmployeeStatus,
     LifecycleStatus,
     MarketListingStatus,
-    RuntimeType,
 )
 from app.models.organization import Department
 from app.models.position import PositionSlot
@@ -53,6 +52,7 @@ from app.schemas.position import AssignmentIn
 from app.services import career as career_service
 from app.services import position_service
 from app.talent.market import eligibility
+from app.work import readiness
 
 
 @dataclass(frozen=True)
@@ -65,6 +65,9 @@ class RecruitmentResult:
     listing_id: int
     position_slot_id: int | None
     assignment_id: int | None
+    #: M2.8：招募后的**就绪摘要**（逐项事实 + 缺口；`commit=False` 路径为 None ——
+    #: 那时事务还没提交，环境编排由调用方决定要不要跑）。
+    readiness: dict | None = None
 
 
 class RecruitmentError(RuntimeError):
@@ -170,6 +173,8 @@ class RecruitmentService:
                 db.rollback()
             raise RecruitmentError("listing_not_active")
 
+        # M2.8：招募之前先把**环境策略**解析出来（只读；不产生任何副作用）
+        runtime_policy = readiness.resolve_runtime_policy(db, company_id=int(company_id))
         try:
             # ---- 5. Employee(person_id = 既有 Person.id)：不新建 Person ----
             slug = _unique_employee_slug(db, person.slug)
@@ -202,16 +207,28 @@ class RecruitmentService:
                 title=resolved_title,
                 avatar=person.avatar or "",
                 status=EmployeeStatus.idle.value,
-                # 人已到位；运行时/工作区开通沿用既有员工流程（本阶段不做全链开通）
                 lifecycle_status=LifecycleStatus.active.value,
                 username=naming.username(slug),
-                runtime_type=RuntimeType.mock.value,
-                runtime_config={},
+                # M2.8：运行时类型/参数来自**公司运行时策略**（只配环境，不配工作方式）。
+                # 没有策略的公司落到平台默认（mock），新公司因此开箱可跑。
+                runtime_type=runtime_policy.runtime_type,
+                runtime_config=dict(runtime_policy.runtime_config),
                 workspace_path=f"{settings.workspace_root}/{slug}",
                 memory_namespace=f"emp_{slug}",
             )
             # listing 自身记录 "被谁招走"（同一事务；行已由 CAS 归本事务）
             listing.recruited_employee_id = int(employee.id)
+
+            # ---- 5b. M2.8：环境编排（工作区 / 运行时实例 / 供应商绑定）----
+            # **同一事务**：招募失败 ⇒ 整笔回滚（E13/E14/E15）。
+            # 单步失败**不抛**：员工成立、job 记 partial、就绪为 false（RD5/I2）。
+            orchestration = readiness.orchestrate(
+                db,
+                employee,
+                policy=runtime_policy,
+                reason="recruit",
+                commit=False,
+            )
 
             # ---- 6.（可选）任职：同一事务，事件由本服务在 commit 后补发 ----
             assignment = None
@@ -267,6 +284,7 @@ class RecruitmentService:
 
         if not commit:
             # 调用方持有事务 ⇒ 事件也由调用方在提交后发（与 M1.5 的 post(commit=False) 同一约定）
+            # M2.8：环境编排同样由调用方在同一事务里决定何时跑（见 `readiness.orchestrate`）
             return RecruitmentResult(
                 person_id=person_id,
                 employee_id=int(employee.id),
@@ -316,6 +334,7 @@ class RecruitmentService:
             listing_id=int(listing.id),
             position_slot_id=int(slot.id) if slot is not None else None,
             assignment_id=int(assignment.id) if assignment is not None else None,
+            readiness=orchestration.as_dict(),
         )
 
 
