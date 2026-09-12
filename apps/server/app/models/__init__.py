@@ -32,6 +32,7 @@ from app.models.competency import (
     PositionCompetencyRequirement,
 )
 from app.models.cultivation import CharacterProfile, EducationEvent, TrainingProgram
+from app.models.decision import DecisionRecord, ToolAudit
 from app.models.drive import DriveCollaborator, DriveNode, DriveRevision
 from app.models.economy import (
     Escrow,
@@ -123,6 +124,8 @@ __all__ = [
     "CompetencyDomain",
     "CompetencyEvidence",
     "Department",
+    "DecisionRecord",
+    "ToolAudit",
     "DriveCollaborator",
     "DriveNode",
     "DriveRevision",

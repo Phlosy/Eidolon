@@ -326,5 +326,25 @@
     "resolved": "Resolved",
     "advisory": "Advisory",
     "missing": "Missing"
+  },
+  "decisionKind": {
+    "accept_project": "Accept project",
+    "decline_project": "Decline project",
+    "decompose_project": "Decompose project",
+    "delegate_management": "Delegate management",
+    "assign_task": "Assign task",
+    "reassign_task": "Reassign task",
+    "create_dependency": "Create dependency",
+    "request_review": "Request review",
+    "request_rework": "Request rework",
+    "mark_blocked": "Mark blocked",
+    "replan": "Replan",
+    "accept_delivery": "Accept delivery",
+    "recruit": "Recruit",
+    "purchase_agent": "Purchase agent",
+    "assign_position": "Assign position",
+    "release_position": "Release position",
+    "enroll_learning": "Enroll learning",
+    "offboard": "Offboard"
   }
 }

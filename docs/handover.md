@@ -317,6 +317,43 @@ v14 m8b1d4e7f063 → v15 n9e8d7c6b5a4 → v16 o1f2e3d4c5b6 → v17 p2e4a6c8d0f3
 
 ---
 
+---
+
+## 5h. M2.4 Leadership Planning & Delegation（**DONE**，2026-09-11）
+
+- 迁移 **v42** `c3e5a7b9d124`（纯 additive：`decision_records` + `tool_audits`，**无回填**）
+- **用户拍板（方案 3 + Decision Envelope）** → 设计 §10 + §14c + M2-ADR-28..35 + DR1–DR10：
+  1. **三层不混**：`DecisionRecord`（为什么）/ `ToolAudit`（执行了什么）/ domain state（真相）
+  2. **tool call ≠ decision**：一条决策 → N 个动作
+  3. 关联**单向**：`ToolAudit.decision_id → DecisionRecord.id`；不建 `audit_ids[]`
+  4. **Decision Envelope**：一次提交 `{type, reason, intended_outcome, scope, context, actions}`
+  5. `DecisionRecord` **不复制** tool 名/入参/出参/错误（那些在 `tool_audits`）
+  6. `decision_semantics`（`none`/`optional`/`required`）是**工具属性**，注册时强制：
+     READ=none；`create_task`/`create_dependency`/`assign_task`/`delegate_project`/
+     `request_rework`/`cancel_task`=required；`update_task`/`request_review`/
+     `mark_task_blocked`=optional
+  7. `parent_decision_id` 表达 CEO → CTO → Lead；**不建** workflow 模型
+  8. 状态：`PROPOSED/EXECUTING/APPLIED/PARTIALLY_APPLIED/FAILED/SUPERSEDED`
+     （`DecisionOutcome` **已退役** —— 结果只由 `DecisionStatus` 表达）
+  9. 不假定整个决策是一个事务：意图**先提交**，动作逐个执行（可跨阶段）
+ 10. 决策**不授予权限**；每个动作重新走 Authority（`authority_json` 只是证据）
+ 11. 上下文是**有界键集**快照 + 稳定引用 + 哈希（`DECISION_CONTEXT_KEYS`），不是库副本
+ 12. 只留 Decision → Outcome 可追踪；**不做** CEO/CTO 能力评分
+- **只读读面**：`GET /decisions`（按 project/task/status 过滤）、`/{id}`、
+  `/{id}/tool-audits`（**反查**执行事实）、`/decisions/stats`；**没有写端点**
+- **工具事实改落 `tool_audits`**（不再写 `audit_logs`）：需要按 `decision_id` 反查，
+  JSON blob 里没有可索引列；`audit_logs` 继续承载人/领域动作
+- **踩坑记录（真实 bug，务必别重复）**：执行面原来的 `db.rollback()` 会把**调用方**
+  （决策信封）已经写下的东西一起抹掉 —— 一个动作被领域拒绝，整条 `DecisionRecord`
+  与前序成功动作全部消失。修复：**SAVEPOINT**（`db.begin_nested()`）只回滚该 handler，
+  且决策意图**先提交**再执行动作。对应用例补了"成功的动作必须真的留在领域状态里"
+- **测试纪律**：`_lab()` 现在**幂等**（`org_snapshot` 不删测试期间新建的职位定义，
+  同一 code 会被多个用例复用）—— 重复调用不再 409
+- 下一步：**M2.5 Dynamic Task Graph Runtime**（`GRAPH_TEMPLATE` 退出业务真相；
+  `Orchestrator` 变纯调度器；`validate_task_graph` / `resolve_ready_tasks` 接进运行时）
+
+---
+
 ## 6. 下一步建议（按优先级）
 
 1. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。

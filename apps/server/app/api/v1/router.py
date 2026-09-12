@@ -13,6 +13,7 @@ from app.api.v1 import (
     competencies,
     contracts,
     cultivation,
+    decisions,
     drive,
     economy,
     employees,
@@ -48,6 +49,7 @@ protected.include_router(employees.router)
 protected.include_router(projects.router)
 protected.include_router(project_delivery.router)
 protected.include_router(tasks.router)
+protected.include_router(decisions.router)  # M2.4 决策读面（只读）
 protected.include_router(artifacts.router)
 protected.include_router(drive.router)
 protected.include_router(economy.router)

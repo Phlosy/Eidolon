@@ -19,7 +19,7 @@ docs/m2-agent-work-runtime-design.md 的代码化。**本模块是纯契约层**
 | 履职上下文 | `RoleContext` / `RoleResource`（派生读模型，不落表） | M2.2 |
 | 自适应上岗 | `ROLE_ONBOARDING_PATH` / `FORBIDDEN_ONBOARDING_ACTIONS` | M2.2 |
 | 记忆平面 | `MEMORY_PLANE_SURFACES`（制度 vs 个人，逐表声明） | M2.0 |
-| 决策记录 | `DecisionRecord` / `validate_decision_record()` | M2.4 |
+| 决策意图 | `DecisionIntent` / `validate_decision_intent()` | M2.4 |
 | 评审归属 | `ReviewVerdict` + `verdict_boundaries()` | M2.7 |
 | 工作根 | `ProjectWorkMode` / `CANONICAL_PROJECT_FIELDS` | M2.1 |
 | DAG 正确性 | `validate_task_graph()` / `resolve_ready_tasks()` | M2.5 |
@@ -50,7 +50,8 @@ from app.models.enums import (
     AuthorityScopeKind,
     AutonomyLevel,
     DecisionKind,
-    DecisionOutcome,
+    DecisionSemantics,
+    DecisionStatus,
     FactKind,
     MemoryPlane,
     PlanningFixture,
@@ -67,7 +68,8 @@ __all__ = [
     "WorkContractError",
     "FactKind",
     "DecisionKind",
-    "DecisionOutcome",
+    "DecisionStatus",
+    "DecisionSemantics",
     "ReviewVerdict",
     "ProjectWorkMode",
     "PlanningFixture",
@@ -112,8 +114,10 @@ __all__ = [
     "MEMORY_PLANE_SURFACES",
     "SPLIT_MEMORY_SURFACES",
     "DecisionAction",
-    "DecisionRecord",
-    "validate_decision_record",
+    "DecisionIntent",
+    "validate_decision_intent",
+    "DECISION_CONTEXT_VERSION",
+    "DECISION_CONTEXT_KEYS",
     "VerdictBoundary",
     "verdict_boundaries",
     "CANONICAL_PROJECT_FIELDS",
@@ -740,6 +744,29 @@ MEMORY_PLANE_SURFACES: tuple[MemorySurface, ...] = _MEMORY_SURFACES
 # 7. DecisionRecord（设计 §10，W3 / W15 / W28）
 # ---------------------------------------------------------------------------
 
+#: 决策上下文的版本 + **有界键集**（DR9）。
+#:
+#: 决策上下文是"当时基于什么事实做的决定"的**有界快照 + 稳定引用**，
+#: **不是**公司数据库的副本。键集封闭：加字段要走这里的评审，
+#: 而不是让某个 handler 顺手把整张表塞进 JSON。
+DECISION_CONTEXT_VERSION = 1
+DECISION_CONTEXT_KEYS: frozenset[str] = frozenset(
+    {
+        "project_id",
+        "task_ids",
+        "candidate_employee_ids",
+        "requirement_codes",
+        "deliverable_count",
+        "open_task_count",
+        "load_summary",
+        "knowledge_refs",
+        "artifact_refs",
+        "authority",  # `authority_snapshot()` 的双摘要（凭什么 + 当时手里有什么）
+        "note",  # Agent 自己补的一句事实说明（**事实**，不是评语）
+    }
+)
+
+
 #: `DecisionRecord.scope` 允许的载体前缀（"kind:id"）。
 DECISION_SCOPE_KINDS: frozenset[str] = frozenset(
     {"company", "project", "task", "person", "employee", "position", "listing", "workorder"}
@@ -756,12 +783,16 @@ class DecisionAction:
 
 
 @dataclass(frozen=True)
-class DecisionRecord:
-    """管理决策的**可审计**记录（设计 §10.1，M2.4 落表，W28 append-only）。
+class DecisionIntent:
+    """**决策意图**（Decision Envelope 的可校验形状，设计 §14c）。
+
+    M2.4 起它是**提交前的意图**，不再是持久化实体 —— 落库的是
+    `app/models/decision.py::DecisionRecord`（管理语义）与 `ToolAudit`（执行事实），
+    两层不混（DR1/DR5）。
 
     这里只冻结字段契约与**结构**校验。系统**不评价**决策内容 ——
     它只记录「做了什么决定、依据是什么、结果是什么」，由真实结果形成 Evidence。
-    (`validate_decision_record` 甚至会接受 `reason="I felt like it"` —— 这是特性，不是疏漏。)
+    (`validate_decision_intent` 甚至会接受 `reason="I felt like it"` —— 这是特性，不是疏漏。)
     """
 
     actor_person_id: int
@@ -769,12 +800,14 @@ class DecisionRecord:
     decision: DecisionKind
     scope: str
     reason: str
+    #: Agent 自述"我希望达成什么"（**意图**，不是判据；系统不核验它是否达成）
+    intended_outcome: str = ""
     context_snapshot: Mapping[str, Any] = field(default_factory=dict)
+    #: 一次决策落成的 N 个动作 —— **tool call ≠ decision**（DR2）
     actions: tuple[DecisionAction, ...] = ()
     acting_position_definition_id: int | None = None
-    #: 结果**事后回填**（append-only 的追加，不是对决策的重写）
-    outcome: DecisionOutcome | None = None
-    outcome_ref: str = ""
+    #: 决策树（CEO → CTO → Team Lead）：只用一个自引用，不建第二套 workflow 模型（DR8）
+    parent_decision_id: int | None = None
     created_at: datetime | None = None
 
 
@@ -784,13 +817,14 @@ def _positive_id(value: object, field_name: str) -> int:
     return value
 
 
-def validate_decision_record(record: DecisionRecord) -> DecisionRecord:
+def validate_decision_intent(record: DecisionIntent) -> DecisionIntent:
     """校验 **结构**（不是内容）。W18：系统不做管理判断。
 
     只检查：actor 身份齐全、决策类型合法、scope 形式正确、理由**已被陈述**（非空）、
-    上下文是映射、动作是已知工具名形状。
+    上下文是映射、动作是已知工具名形状、父决策 id 合法。
 
-    **刻意不做**：评价 reason 是否合理、判断 context 是否完备、推断 outcome 好坏。
+    **刻意不做**：评价 reason 是否合理、判断 intended_outcome 是否现实、
+    推断 outcome 好坏、检查 context 是否"足够"。
     """
     _positive_id(record.actor_person_id, "actor_person_id")
     _positive_id(record.acting_employee_id, "acting_employee_id")
@@ -809,11 +843,11 @@ def validate_decision_record(record: DecisionRecord) -> DecisionRecord:
         raise WorkContractError("a management decision must state a reason (content is not judged)")
     if not isinstance(record.context_snapshot, Mapping):
         raise WorkContractError("context_snapshot must be a mapping")
+    if record.parent_decision_id is not None:
+        _positive_id(record.parent_decision_id, "parent_decision_id")
     for action in record.actions:
         if not isinstance(action, DecisionAction) or not action.tool.strip():
             raise WorkContractError("each action must name a tool")
-    if record.outcome is not None and not isinstance(record.outcome, DecisionOutcome):
-        raise WorkContractError(f"unknown decision outcome: {record.outcome!r}")
     return record
 
 
@@ -1382,7 +1416,7 @@ INVARIANTS: tuple[Invariant, ...] = (
         "DecisionRecord is append-only; outcomes are appended, decisions are never rewritten.",
         enforced=True,
         owner_stage="M2.4",
-        anchors=("test_decision_record_is_frozen_as_append_only",),
+        anchors=("test_decision_intent_is_frozen_and_carries_no_execution_details",),
     ),
     Invariant(
         "W29",
@@ -1604,6 +1638,82 @@ INVARIANTS: tuple[Invariant, ...] = (
         enforced=True,
         owner_stage="M2.3",
         anchors=("test_every_tool_call_is_audited",),
+    ),
+    Invariant(
+        "DR1",
+        "DecisionRecord is intent, ToolAudit is execution, domain state is truth: "
+        "three layers never merged.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_three_layers_are_separate",),
+    ),
+    Invariant(
+        "DR2",
+        "One decision may produce N tool actions; a tool call is never by itself a decision.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_one_decision_produces_many_actions",),
+    ),
+    Invariant(
+        "DR3",
+        "The decision/audit link is one-way: ToolAudit.decision_id points at DecisionRecord; "
+        "there is no reverse array.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_link_direction_is_single_way",),
+    ),
+    Invariant(
+        "DR4",
+        "DecisionRecord never grants authority; every action is re-validated at execution time.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_decision_never_grants_authority",),
+    ),
+    Invariant(
+        "DR5",
+        "DecisionRecord never copies tool input or output; those live in ToolAudit.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_decision_record_does_not_copy_tool_payloads",),
+    ),
+    Invariant(
+        "DR6",
+        "Decision status can express PARTIALLY_APPLIED; "
+        "partial success is never rounded to success or failure.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_partial_apply_is_expressed_not_rounded",),
+    ),
+    Invariant(
+        "DR7",
+        "Every tool declares its decision semantics (none/optional/required) "
+        "and the executor enforces it.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_decision_semantics_are_declared_and_enforced",),
+    ),
+    Invariant(
+        "DR8",
+        "parent_decision_id expresses the management decision tree; "
+        "no separate workflow model is introduced.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_parent_decision_forms_a_tree_without_a_workflow_model",),
+    ),
+    Invariant(
+        "DR9",
+        "Decision context is a bounded snapshot with stable refs and a hash, "
+        "never a copy of the database.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_context_is_bounded_and_hashed",),
+    ),
+    Invariant(
+        "DR10",
+        "Decision outcome is traceable (decision to outcome); no capability scoring in M2.4.",
+        enforced=True,
+        owner_stage="M2.4",
+        anchors=("test_outcome_is_traceable_without_scoring",),
     ),
 )
 

@@ -12,6 +12,7 @@ import {
   listProjects,
   getProjectSpec,
 } from "../api/projects";
+import { listDecisions } from "../api/decisions";
 import type { CreateProjectInput } from "../types";
 import type { ReviewDecisionInput } from "../types";
 
@@ -111,5 +112,14 @@ export function useCreateChangeRequest(projectId: number) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["projects", projectId, "lifecycle"] });
     },
+  });
+}
+
+/** M2.4：某项目的管理决策时间线（只读）。 */
+export function useProjectDecisions(projectId: number) {
+  return useQuery({
+    queryKey: ["decisions", { projectId }],
+    queryFn: () => listDecisions({ projectId, limit: 20 }),
+    enabled: Number.isFinite(projectId),
   });
 }

@@ -365,5 +365,20 @@
     "title": "Nobody is responsible for taking this project in yet",
     "hint": "The system does not plan on the company's behalf, and never picks a random employee. Appoint the position that carries Work Intake responsibility (CEO by default), or handle it manually as Owner.",
     "reason": "Reason"
+  },
+  "decisions": {
+    "title": "Management decisions",
+    "description": "Who, why, and what came of it — the system records and validates, never judges",
+    "empty": "No management decisions yet",
+    "details": "Actions",
+    "intended": "Intent"
+  },
+  "decisionStatus": {
+    "PROPOSED": "Proposed",
+    "EXECUTING": "Executing",
+    "APPLIED": "Applied",
+    "PARTIALLY_APPLIED": "Partially applied",
+    "FAILED": "Failed",
+    "SUPERSEDED": "Superseded"
   }
 }

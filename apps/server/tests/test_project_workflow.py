@@ -2,10 +2,14 @@
 
 import time
 
+from app.core.config import settings
+
 TIMEOUT_SEC = 60
 
 
-def test_project_workflow(client, employees_by_slug):
+def test_project_workflow(client, employees_by_slug, monkeypatch):
+    # 这条链需要真的执行：显式打开编排器派发（conftest 默认关，见那里的注释）
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     # M2.1（D3/W33）：这是一条**基础设施回归**（orchestrator + mock runtime），
     # 因此显式请求确定性规划 fixture —— 生产项目不会隐式落到固定模板上。
     resp = client.post(

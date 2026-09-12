@@ -970,20 +970,6 @@ class DecisionKind(StrEnum):
     offboard = "offboard"
 
 
-class DecisionOutcome(StrEnum):
-    """决策的**结果**（事后回填，不是事前判定；W18 / W28）。
-
-    `pending` 是默认态：决策作出时还不知道结果，这是常态而非缺陷。
-    系统**不定义**"好/坏结果"的标准 —— 它只记录业务事实的终态。
-    """
-
-    pending = "pending"
-    succeeded = "succeeded"
-    failed = "failed"
-    superseded = "superseded"  # 被后续决策取代（例如 replan）
-    withdrawn = "withdrawn"  # 决策者自己撤回
-
-
 class ReviewVerdict(StrEnum):
     """**任务级技术评审**结论（M2.7，W17 / W29）。
 
@@ -1210,3 +1196,56 @@ class AutonomyLevel(StrEnum):
     requires_confirmation = "requires_confirmation"
     #: 任何情况下都不允许由 AI 自主执行
     forbidden = "forbidden"
+
+
+# ---------------------------------------------------------------------------
+# M2.4 · 管理决策（Decision Envelope，设计 §10 / §14c，DR1–DR10）
+# ---------------------------------------------------------------------------
+
+
+class DecisionStatus(StrEnum):
+    """一条 `DecisionRecord` 的**生命周期状态**（用户拍板 §8）。
+
+    三层不混（DR1）：
+
+    ```text
+    DecisionRecord.status  = 这个决定进行到哪一步（管理语义）
+    ToolAudit.outcome      = 为执行它，系统实际执行了什么（执行事实）
+    Domain State           = 最终事实（tasks / assignments / projects …）
+    ```
+
+    `PARTIALLY_APPLIED` 必须存在（DR6）：一个决策会落成 N 个 Tool Action，
+    而它们**不一定都成功** —— 表达不了"部分生效"就会逼着人用谎言（全成功或全失败）覆盖事实。
+    """
+
+    #: 已登记、尚未开始执行动作（长生命周期决策的第一阶段，§9）
+    proposed = "PROPOSED"
+    #: 正在逐个执行 actions
+    executing = "EXECUTING"
+    #: 全部动作成功
+    applied = "APPLIED"
+    #: 部分动作成功、部分失败/被拒 —— **不得**被四舍五入成成功或失败
+    partially_applied = "PARTIALLY_APPLIED"
+    #: 全部动作失败/被拒（或决策本身在执行前就作废）
+    failed = "FAILED"
+    #: 被后续决策取代（例如 replan）—— 原记录**不改写**，只标记被谁取代
+    superseded = "SUPERSEDED"
+
+
+class DecisionSemantics(StrEnum):
+    """工具与「管理决策」的关系（用户拍板 §6）。
+
+    | 值 | 含义 |
+    | --- | --- |
+    | `none` | 不属于任何决策：读工具（事实查询） |
+    | `optional` | 可以是独立动作，也可以是某条决策的一部分（状态推进/维护类） |
+    | `required` | **必须**隶属于一条决策（真正改变工作图 / 归属 / 质量判定的管理动作）|
+
+    注册时强制（`ToolSpec.__post_init__`）：READ 必须 `none`；
+    WRITE / HIGH_IMPACT 必须显式声明 `optional` 或 `required` —— 写动作**不允许**静默地
+    "不知道自己算不算决策"。
+    """
+
+    none = "none"
+    optional = "optional"
+    required = "required"

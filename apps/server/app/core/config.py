@@ -105,6 +105,14 @@ class Settings(BaseSettings):
     autonomous_learning_enabled: bool = False
     learning_force_failure: bool = False
 
+    # 编排器的**自动派发**开关（默认开）。
+    # 关掉之后 orchestrator 的 sweep 不再把 `todo` 任务派给 runtime，
+    # 但它仍然可以在测试/调试里被显式驱动。测试默认关 —— 与
+    # `position_access_sync` / `evidence_pipeline_enabled` 同一纪律：
+    # **后台写者不和测试抢同一份 SQLite**（实测：争用会以 `database is locked` 出现，
+    # 而且因为读→写升级的死锁语义，它**不**会等 busy timeout）。
+    orchestrator_dispatch_enabled: bool = True
+
     # M2.3 —— 内部 Agent 工具执行面。写工具**只有**这一条通道（没有玩家 /tools 路由，T3）。
     # 调试口：允许 CLI / 测试从任意员工身份调用同一执行面（默认关；生产不开）。
     # 注意：即便打开，Authority / 领域校验**照做不误**（T4/T10）—— 它只是"谁能发起"，

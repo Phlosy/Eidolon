@@ -36,6 +36,11 @@ os.environ["EIDOLON_ALLOW_PLANNING_FIXTURES"] = "true"
 # 理由：lifespan 一跑起来后台消费者就会和测试抢同一份状态）。消费者本体由
 # tests/test_m2_role_context.py 直接调用 handle() 覆盖。
 os.environ["EIDOLON_ROLE_CONTEXT_EVENTS"] = "false"
+# M2.4：编排器的**自动派发**默认关。它是个后台写者，而 SQLite 是单写者 ——
+# 争用会以 `database is locked` 出现（且读→写升级是死锁语义，不会等 busy timeout），
+# 表现为随机失败的 flaky。需要"真的跑完一条链"的用例用
+# `monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)` 显式打开。
+os.environ["EIDOLON_ORCHESTRATOR_DISPATCH_ENABLED"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -99,6 +104,18 @@ def no_work_intake(db):
         db.rollback()
         company.settings = original
         db.commit()
+
+
+@pytest.fixture()
+def api_paths(client) -> set[str]:
+    """已注册的 API 路径集合（**版本无关**）。
+
+    为什么不用 `client.app.routes`：新版 FastAPI 把 `include_router` 包成
+    `_IncludedRouter`，嵌套路由不再扁平地出现在 `app.routes` 里 ——
+    用 `app.routes` 做"某路由不存在"的断言会变成**空断言**（守卫退化成装饰）。
+    OpenAPI schema 是这份信息的权威投影，任何版本都成立。
+    """
+    return set(client.app.openapi()["paths"])
 
 
 @pytest.fixture()

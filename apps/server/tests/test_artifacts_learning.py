@@ -54,7 +54,9 @@ def test_artifact_written_to_disk_with_sha256(client, no_work_intake):
     )
 
 
-def test_workflow_artifacts_materialized_with_session_link(client):
+def test_workflow_artifacts_materialized_with_session_link(client, monkeypatch):
+    # 这条链需要真的执行：显式打开编排器派发（conftest 默认关）
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     # M2.1（D3/W33）：全链路回归 = 基础设施项目 ⇒ 显式请求确定性规划 fixture
     project = client.post(
         "/api/v1/projects",
@@ -115,7 +117,8 @@ def test_retrieval_matches_private_knowledge(db, employees_by_slug):
     assert "onboarding portal" not in none_hit
 
 
-def test_mock_runtime_weaves_prior_knowledge(client, db, employees_by_slug):
+def test_mock_runtime_weaves_prior_knowledge(client, db, employees_by_slug, monkeypatch):
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     """End-to-end: private knowledge for the CEO shows up in the order-review artifact."""
     alice = employees_by_slug["alice"]
     marker_topic = f"zztopic-{int(time.time() * 1000)}"

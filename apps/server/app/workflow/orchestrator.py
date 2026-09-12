@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 
 from app.brain import DEFAULT_POLICY
 from app.brain import policy_for as behavior_policy_for
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
 from app.events.bus import bus
@@ -114,6 +115,9 @@ class Orchestrator:
     # ---- dispatcher ----
 
     async def _dispatch_pending(self) -> None:
+        if not settings.orchestrator_dispatch_enabled:
+            # 门控：后台写者不与调用方抢同一份 SQLite（见 Settings 的注释）。
+            return
         with SessionLocal() as db:
             candidates = []
             for task in project_repo.list_tasks_by_status(db, TaskStatus.todo.value):

@@ -105,3 +105,99 @@ class RoleContextPageOut(BaseModel):
     #: 当前这个人的职位是否持有管理授权（事实；**不**表示"能不能做某件事"）
     has_management_authority: bool = False
     authority_grant_count: int = 0
+
+
+# ---------------------------------------------------------------------------
+# M2.4 · 管理决策读面（DecisionRecord + ToolAudit）
+#
+# 三层不混（DR1）：这里第一层给**管理语义**（为什么），
+# `actions[]` 只给执行事实的**定位信息**（tool/outcome/AuditId），
+# 完整入参出参走 `/decisions/{id}/tool-audits` —— 决策读面不该变成审计转储（DR5）。
+# ---------------------------------------------------------------------------
+
+
+class DecisionActionRefOut(BaseModel):
+    """一条执行事实的定位信息（不含入参出参）。"""
+
+    audit_id: int
+    tool_name: str
+    outcome: str
+    decision_semantics: str
+    authority_allowed: bool | None = None
+    created_at: datetime | None = None
+
+
+class DecisionActionSummaryOut(BaseModel):
+    """派生计数（不落列 —— 存下来就是第二份真相，DR5）。"""
+
+    total: int = 0
+    applied: int = 0
+    by_outcome: dict[str, int] = {}
+
+
+class DecisionOut(BaseModel):
+    decision_id: int
+    company_id: int
+    actor_person_id: int | None = None
+    actor_employee_id: int
+    acting_position_assignment_id: int | None = None
+    acting_position_definition_id: int | None = None
+    acting_position_code: str | None = None
+    decision_type: str
+    scope: str
+    project_id: int | None = None
+    task_id: int | None = None
+    reason: str = ""
+    intended_outcome: str = ""
+    status: str
+    outcome_note: str = ""
+    parent_decision_id: int | None = None
+    superseded_by_id: int | None = None
+    context_version: int = 1
+    context_hash: str = ""
+    context: dict = {}
+    #: 决策**当时**的授权快照（凭据，不是通行证 —— DR4）
+    authority_at_decision: dict = {}
+    action_summary: DecisionActionSummaryOut = DecisionActionSummaryOut()
+    actions: list[DecisionActionRefOut] = []
+    child_decision_ids: list[int] = []
+    created_at: datetime | None = None
+    resolved_at: datetime | None = None
+
+
+class ToolAuditOut(BaseModel):
+    """一次工具调用的**执行事实**（完整留档）。"""
+
+    audit_id: int
+    tool_name: str
+    decision_id: int | None = None
+    outcome: str
+    side_effect: str
+    decision_semantics: str
+    autonomy: str
+    transport: str
+    origin: str
+    actor_employee_id: int | None = None
+    actor_person_id: int | None = None
+    actor_company_id: int | None = None
+    work_session_id: int | None = None
+    task_id: int | None = None
+    project_id: int | None = None
+    arguments: dict = {}
+    arguments_digest: str = ""
+    authority_allowed: bool | None = None
+    authority_reason: str = ""
+    authority_grant_ids: list[int] = []
+    authority_grants_hash: str = ""
+    result: dict | None = None
+    error: str = ""
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class DecisionStatsOut(BaseModel):
+    """决策观测（只读）。"""
+
+    decisions_by_status: dict[str, int] = {}
+    tool_audits_by_outcome: dict[str, int] = {}
+    tool_audits_by_decision_semantics: dict[str, int] = {}

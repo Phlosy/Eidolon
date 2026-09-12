@@ -398,69 +398,115 @@ W14  调岗 / 替换决定属于被授权的管理 Agent 或 Owner
 
 ---
 
-## 10. DecisionRecord（管理决策可审计）
+## 10. DecisionRecord（管理决策：Decision Envelope，M2.4）
 
-### 10.1 字段契约
-
-```text
-actor_person_id            做出决策的 Person（人级资产口径）
-acting_employee_id         以哪个员工身份行权（公司成员身份）
-acting_position_definition_id  当时占据的职位（可为空：AVAILABLE 的人也能被授权）
-decision                   DecisionKind（§10.2）
-scope                      "company:1" | "project:12" | "task:34" | "listing:5" …
-reason                     Agent 自己写的理由（**系统不评价**）
-context_snapshot           决策时看到的事实快照（可复现"当时它是怎么想的"）
-actions[]                  通过 Tool 提交的动作（tool + 参数摘要 + 结果）
-result                     决策的**结果**（事后回填，不是事前判定）
-created_at / updated_at
-```
-
-示例：
+### 10.1 三层不混（DR1）
 
 ```text
-CTO Alice
-decision = assign_task
-scope    = task:34
-reason   = "Bob 的 Rust Fit 88%，有网络经验，负载 20%"
-context  = { project: "X", task: "Y", candidates: [...] }
-actions  = [assign_task(task_id=34, employee_id=57)]
+DecisionRecord  = 管理 Agent **为什么**做出这个决定      ← 管理语义（表 `decision_records`）
+ToolAudit       = 为执行它，系统**实际执行了什么**        ← 执行事实（表 `tool_audits`）
+Domain State    = 事实最终变成什么样（tasks / assignments / projects …）  ← 真相
 ```
 
-### 10.2 决策类型（`DecisionKind`）
+三者**不得混为同一层**：决策行里没有 tool 名/入参/出参/错误（那些在 `ToolAudit`），
+`ToolAudit` 里没有 reason/intended_outcome/parent（那些在决策行）。
 
-`accept_project / decline_project / decompose_project / delegate_management /
-assign_task / reassign_task / create_dependency / request_review / request_rework /
-mark_blocked / replan / accept_delivery / recruit / purchase_agent /
-assign_position / release_position / enroll_learning / offboard`
+### 10.2 Decision Envelope（一次提交，而不是两次仪式）
 
-### 10.3 系统只记录，不评价「想法」
+**不采用 "tool call = decision"**（DR2）：一个真实管理决策通常产生**多个**动作。
+所以执行面接受一次提交：
 
 ```text
-记录：它做了什么决定、依据是什么、结果是什么
-不记录/不产生："我觉得 CEO 的决定不好"
+Decision Envelope
+├── decision_type
+├── reason
+├── intended_outcome
+├── scope                 "project:12" / "company:1" / "task:34" …
+├── context               有界事实快照（+ 稳定引用）
+├── parent_decision_id    可选：管理决策树（DR8）
+└── actions[]             [{tool, args}, …]   ← 一条决策 → N 个 Tool Action
 ```
 
-结果由真实事实形成证据：
+执行顺序：
 
 ```text
-Project success / Task review / Rework / Delivery quality → Evidence
+① 校验信封（**结构**，不评价内容）          validate_decision_intent
+② 落 DecisionRecord（PROPOSED）并**先提交**  意图独立成短事务：崩在动作中途也留痕
+③ 逐个执行 actions，ToolAudit 自动挂 decision_id（DR3）
+④ 聚合 → APPLIED / PARTIALLY_APPLIED / FAILED（DR6）
+⑤ 写 resolved_at + outcome_note（追加式推进，不重写语义字段）
 ```
 
-**管理 Agent 本身也可以成长**（M3：Decision → Outcome → Evidence → Management Experience）。
+**原子性**（不假定整个决策是一个事务）：短决策（建任务 + 连依赖 + 派活）逐个动作提交；
+长生命周期决策（plan → execute → review → replan）用
+`open_decision()`（PROPOSED）→ 分阶段 `execute_actions()` → `resolve_decision()`，
+**不持有长 DB transaction**。`PARTIALLY_APPLIED` 正是为这种局面准备的诚实状态。
 
-### 10.4 纪律
+### 10.3 关联只有一个方向（DR3）
 
 ```text
-W3   Management decisions must originate from an authorized Agent/User actor
-W15  All management decisions are auditable
-W28  DecisionRecord is append-only（决策永不重写；结果回填是追加，不是修改）
-W19  Artifact lineage must be preserved（决策引用的产物可追溯）
+ToolAudit.decision_id → DecisionRecord.id          ✅ 唯一方向
+DecisionRecord.audit_ids[]                          ❌ 不建（第二份关系真相）
 ```
 
-`validate_decision_record()` **只校验结构**，绝不校验"理由是否合理" ——
-由 `tests/test_m2_contract.py::test_decision_validation_never_judges_intent` 钉住。
+查询某决策执行了什么，一律 `WHERE decision_id = …` 反查；
+决策读面里的动作计数是**派生量**（读时反查），不落列（仓库 ADR-12）。
 
----
+### 10.4 决策字段（管理语义）
+
+| 组 | 字段 |
+| --- | --- |
+| 谁 | `actor_person_id` / `actor_employee_id` / `acting_position_assignment_id` / `acting_position_definition_id` / `acting_position_code` |
+| 关于什么 | `company_id` / `scope` / `project_id` / `task_id` |
+| 决定什么 | `decision_type` / `reason` / `intended_outcome` |
+| 依据什么 | `context_json`（有界）/ `context_hash` / `context_version` / `authority_json` |
+| 结果 | `status` / `outcome_note` / `resolved_at` |
+| 树 | `parent_decision_id` / `superseded_by_id` |
+
+`acting_position_assignment_id` 是**当时那一段任职**：换人之后历史仍指向它，
+而不是拿今天的组织去解释昨天的决定。
+
+### 10.5 Decision ↔ Tool 的语义（DR7）
+
+工具声明它与决策的关系（注册时强制）：
+
+| `decision_semantics` | 工具 | 执行面行为 |
+| --- | --- | --- |
+| `none` | 全部读工具 | 挂了 `decision_id` ⇒ **拒绝**（事实查询不是决策动作） |
+| `optional` | `update_task` / `request_review` / `mark_task_blocked` | 可独立执行，也可作为决策的一部分 |
+| `required` | `create_task` / `create_dependency` / `assign_task` / `delegate_project` / `request_rework` / `cancel_task` | 没有 `decision_id` ⇒ **拒绝**（`decision_required`） |
+
+### 10.6 决策不授予权限（DR4）
+
+```text
+DecisionRecord 里写"我要 offboard Bob" ≠ 获得 offboard 授权
+```
+
+每个动作执行时**重新**走一遍：
+`Actor → 生效任职 → PositionAssignment → PositionAuthorityGrant → Scope/Constraints → Domain Validation`。
+`DecisionRecord.authority_json` 是**决策当时的授权快照**（证据），不是通行证。
+
+### 10.7 系统只记录，不评价「想法」
+
+```text
+记录：谁在什么时候、以什么职位、基于什么事实、决定了什么、结果如何
+不产生："我觉得 CEO 的决定不好"
+```
+
+结果由真实事实形成证据；`Decision → Outcome` 只留**可追踪**能力（DR10），
+**不做** CEO/CTO 能力评分（那是 M3 Agent Career 的活）。
+
+### 10.8 状态机
+
+```text
+PROPOSED ──▶ EXECUTING ──┬──▶ APPLIED              （全部动作成功）
+                         ├──▶ PARTIALLY_APPLIED    （部分成功，DR6）
+                         └──▶ FAILED               （全部失败/被拒）
+任意终态 ◀── SUPERSEDED（被后续决策取代；原记录**不改写**，只记 superseded_by_id）
+```
+
+`DecisionOutcome`（M2.0 预留的"结果回填"枚举）**已退役** ——
+同一个概念留两个枚举就是两个真相；结果现在只由 `DecisionStatus` 表达。
 
 ## 11. Project / Task / WorkOrder 边界（M2 冻结）
 
@@ -727,7 +773,7 @@ W11  Fit is decision-support only.
 
 ---
 
-## 14. M2 不变量（W1–W42 / T1–T12）
+## 14. M2 不变量（W1–W42 / T1–T12 / DR1–DR10）
 
 | # | 不变量 | M2.0 状态 |
 | --- | --- | --- |
@@ -785,6 +831,16 @@ W11  Fit is decision-support only.
 | **T10** | Transport choice does not change domain invariants. | **M2.3 强制** |
 | **T11** | Human management APIs and Agent management tools must produce equivalent domain effects. | **M2.3 强制** |
 | **T12** | Tool execution must be auditable. | **M2.3 强制** |
+| **DR1** | DecisionRecord is intent, ToolAudit is execution, domain state is truth: three layers never merged. | **M2.4 强制** |
+| **DR2** | One decision may produce N tool actions; a tool call is never by itself a decision. | **M2.4 强制** |
+| **DR3** | The decision/audit link is one-way: ToolAudit.decision_id points at DecisionRecord; there is no reverse array. | **M2.4 强制** |
+| **DR4** | DecisionRecord never grants authority; every action is re-validated at execution time. | **M2.4 强制** |
+| **DR5** | DecisionRecord never copies tool input or output; those live in ToolAudit. | **M2.4 强制** |
+| **DR6** | Decision status can express PARTIALLY_APPLIED; partial success is never rounded to success or failure. | **M2.4 强制** |
+| **DR7** | Every tool declares its decision semantics (none/optional/required) and the executor enforces it. | **M2.4 强制** |
+| **DR8** | parent_decision_id expresses the management decision tree; no separate workflow model is introduced. | **M2.4 强制** |
+| **DR9** | Decision context is a bounded snapshot with stable refs and a hash, never a copy of the database. | **M2.4 强制** |
+| **DR10** | Decision outcome is traceable (decision to outcome); no capability scoring in M2.4. | **M2.4 强制** |
 
 > **"M2.0 强制"** = M2.0 就有可执行测试锚点；
 > **"冻结"** = M2.0 冻结契约与归属，锚点在其 owner 阶段落地。
@@ -940,6 +996,14 @@ AutonomyPolicy = **AI** 是否允许在无人确认下执行该动作      （M2
 | **M2-ADR-25** | Actor 身份由 Runtime Session / WorkSession / 系统上下文注入，**参数里的身份字段一律拒绝** | 用户拍板 §6；身份若可被提示词指定，审计与权限同时失效（T5）|
 | **M2-ADR-26** | **Authority ≠ Autonomy**：前者是组织权力，后者是"AI 能否无人确认执行"；M2.3 只冻结边界，且对 `requires_confirmation` **拒绝执行** | 用户拍板 §11；比"先放行、以后再补确认"安全 |
 | **M2-ADR-27** | Side-effect 分三级 `READ / WRITE / HIGH_IMPACT`；M2.3 **不注册**任何 high_impact 工具 | 用户拍板 §9/§10；不为完整列表写空业务 |
+| **M2-ADR-28** | 三层不混：`DecisionRecord`（意图）/ `ToolAudit`（执行事实）/ domain state（真相）各自独立成层，互相不复制 | 用户拍板方案 3 + Envelope；一次决策 → N 个动作，所以 tool call 不能等于 decision |
+| **M2-ADR-29** | 关联**单向**：`ToolAudit.decision_id → DecisionRecord.id`；不建 `audit_ids[]` 反向数组 | 用户拍板 §2；同一关系存两处就一定会有对不上的那一天（DR3）|
+| **M2-ADR-30** | Decision Envelope：Agent 一次提交 `{type, reason, intended_outcome, scope, context, actions}`，执行面负责落记录 + 执行 + 聚合状态 | 用户拍板 §3；`submit_decision()` 之后再逐个调工具是无意义仪式 |
+| **M2-ADR-31** | `decision_semantics`（none/optional/required）是**工具属性**且注册时强制；管理动作必须隶属决策 | 用户拍板 §6；写动作不允许"不知道自己算不算决策"（DR7）|
+| **M2-ADR-32** | 决策**不授予权限**；每个动作重新做 Authority 校验；`authority_json` 只是当时的证据 | 用户拍板 §10 = DR4；决策是 intent，不是 authorization |
+| **M2-ADR-33** | 决策状态必须能表达 `PARTIALLY_APPLIED`；执行面用 **SAVEPOINT** 隔离失败的动作，不裸 rollback | 用户拍板 §8/§9；一个决策的多个动作不一定都成功，四舍五入就是用谎言覆盖事实 |
+| **M2-ADR-34** | 决策上下文是**有界键集**快照 + 稳定引用 + 哈希，不是数据库副本 | 用户拍板 §11；"顺手把整张表塞进 JSON" 会让哈希失去意义（DR9）|
+| **M2-ADR-35** | 工具执行事实落 `tool_audits` 而不是 `audit_logs`；`audit_logs` 继续承载人/领域动作 | 需要按 `decision_id` 反查，JSON blob 里没有可索引列；同一事实不留两个落点 |
 
 ---
 
@@ -969,3 +1033,6 @@ AutonomyPolicy = **AI** 是否允许在无人确认下执行该动作      （M2
 | **Tool Registry** | 自描述的管理工具清单（含副作用等级与所需授权） |
 | **Tool Executor** | 唯一执行面：参数校验 → Authority → Autonomy 门禁 → 应用 → 审计 |
 | **TRUSTED ACTOR** | actor 身份只能来自 WorkSession / 系统上下文，不来自工具参数 |
+| **Decision Envelope** | 一次提交的决策意图 + N 个动作（`decision_records` + `tool_audits`）|
+| **Tool Audit** | 一次工具调用的执行事实（入参 / 授权结果 / 出参 / 错误）；可挂 `decision_id` |
+| **Decision Semantics** | 工具与决策的关系：none / optional / required |

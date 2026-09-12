@@ -512,18 +512,19 @@ def test_spec_questions_are_declared_as_a_machine_checkable_list():
 # ---------------------------------------------------------------------------
 
 
-def _decision(**overrides) -> C.DecisionRecord:
+def _intent(**overrides) -> C.DecisionIntent:
     payload = {
         "actor_person_id": 7,
         "acting_employee_id": 11,
         "decision": C.DecisionKind.assign_task,
         "scope": "task:34",
         "reason": "Bob 的 Rust Fit 88%，有网络经验，负载 20%",
-        "context_snapshot": {"project": 3, "candidates": [11, 12]},
+        "intended_outcome": "任务由 Bob 接手",
+        "context_snapshot": {"project_id": 3, "candidate_employee_ids": [11, 12]},
         "actions": (C.DecisionAction(tool="assign_task", args={"task_id": 34, "employee_id": 57}),),
     }
     payload.update(overrides)
-    return C.DecisionRecord(**payload)  # type: ignore[arg-type]
+    return C.DecisionIntent(**payload)  # type: ignore[arg-type]
 
 
 def test_decision_validation_never_judges_intent():
@@ -532,53 +533,64 @@ def test_decision_validation_never_judges_intent():
     所以一个明显草率的理由必须被接受 —— 这是特性不是疏漏。若哪天有人给这里加上
     "理由质量"校验，这条测试会转红，提醒他那是中央判断。
     """
-    sloppy = _decision(reason="I felt like it")
-    assert C.validate_decision_record(sloppy) is sloppy
+    sloppy = _intent(reason="I felt like it")
+    assert C.validate_decision_intent(sloppy) is sloppy
 
     # 反面对照：**结构**问题必须被拒绝（否则"只校验结构"就成了什么都不校验）。
     with pytest.raises(C.WorkContractError):
-        C.validate_decision_record(_decision(reason="   "))
+        C.validate_decision_intent(_intent(reason="   "))
     with pytest.raises(C.WorkContractError):
-        C.validate_decision_record(_decision(scope="task"))
+        C.validate_decision_intent(_intent(scope="task"))
     with pytest.raises(C.WorkContractError):
-        C.validate_decision_record(_decision(scope="galaxy:1"))
+        C.validate_decision_intent(_intent(scope="galaxy:1"))
     with pytest.raises(C.WorkContractError):
-        C.validate_decision_record(_decision(actor_person_id=0))
+        C.validate_decision_intent(_intent(actor_person_id=0))
     with pytest.raises(C.WorkContractError):
-        C.validate_decision_record(_decision(decision="promote_myself"))  # type: ignore[arg-type]
+        C.validate_decision_intent(_intent(decision="promote_myself"))  # type: ignore[arg-type]
 
 
 def test_decision_validation_checks_provided_ids():
     with pytest.raises(C.WorkContractError):
-        C.validate_decision_record(_decision(acting_position_definition_id=-1))
-    record = C.validate_decision_record(_decision(acting_position_definition_id=5))
+        C.validate_decision_intent(_intent(acting_position_definition_id=-1))
+    record = C.validate_decision_intent(_intent(acting_position_definition_id=5))
     assert record.acting_position_definition_id == 5
+    # 决策树：父决策 id 必须是正整数
+    assert C.validate_decision_intent(_intent(parent_decision_id=9)).parent_decision_id == 9
+    with pytest.raises(C.WorkContractError):
+        C.validate_decision_intent(_intent(parent_decision_id=0))
 
 
-def test_decision_record_is_frozen_as_append_only():
-    """W28：决策不可重写；结果只能**追加**。
+def test_decision_intent_is_frozen_and_carries_no_execution_details():
+    """W28（冻结）+ DR5（意图不复制执行细节）。
 
-    - 数据类必须 frozen（结构上不可就地改写）；
-    - `outcome` / `outcome_ref` 必须是**独立字段**（回填是追加一条事实，不是改理由）；
-    - 不允许出现"修订后的理由"这类字段。
+    意图是**提交前的形状**：frozen（不可就地改写）、不含 outcome（结果属于持久化记录），
+    也不含 tool 入参/出参（那属于 `ToolAudit`）。
     """
-    params = C.DecisionRecord.__dataclass_params__
-    assert params.frozen, "DecisionRecord 必须是 frozen dataclass（W28 append-only）"
-    names = {f.name for f in dataclasses.fields(C.DecisionRecord)}
-    assert {"outcome", "outcome_ref"} <= names
+    params = C.DecisionIntent.__dataclass_params__
+    assert params.frozen, "DecisionIntent 必须是 frozen dataclass（W28）"
+    names = {f.name for f in dataclasses.fields(C.DecisionIntent)}
+    assert {"reason", "intended_outcome", "parent_decision_id"} <= names
+    # 结果与执行细节都不在意图上
+    assert not (names & {"outcome", "outcome_ref", "status", "tool_name", "result"})
     assert not (names & {"revised_reason", "edited_reason", "amended_reason", "deleted_at"})
     with pytest.raises(dataclasses.FrozenInstanceError):
-        _decision().reason = "changed"  # type: ignore[misc]
+        _intent().reason = "changed"  # type: ignore[misc]
 
 
-def test_decision_record_allows_backfilling_an_outcome():
-    pending = _decision()
-    assert pending.outcome is None
-    settled = dataclasses.replace(
-        pending, outcome=C.DecisionOutcome.succeeded, outcome_ref="project:3"
-    )
-    assert settled.reason == pending.reason  # 理由没被改写
-    assert C.validate_decision_record(settled).outcome is C.DecisionOutcome.succeeded
+def test_decision_outcome_lives_in_decision_status_not_a_second_enum():
+    """结果语义只有一处：`DecisionStatus`（M2.0 的 DecisionOutcome 已退役）。
+
+    同一个概念留两个枚举 = 两个真相；`PARTIALLY_APPLIED` 必须能表达（DR6）。
+    """
+    assert {s.value for s in C.DecisionStatus} == {
+        "PROPOSED",
+        "EXECUTING",
+        "APPLIED",
+        "PARTIALLY_APPLIED",
+        "FAILED",
+        "SUPERSEDED",
+    }
+    assert not hasattr(C, "DecisionOutcome"), "DecisionOutcome 应已被 DecisionStatus 取代"
 
 
 # ---------------------------------------------------------------------------
@@ -856,6 +868,7 @@ M2_TEST_MODULES = (
     "test_m2_project_spec",
     "test_m2_role_context",
     "test_m2_tools",
+    "test_m2_decisions",
 )
 
 
@@ -887,7 +900,7 @@ def test_invariant_ids_are_unique_and_sequential_per_family():
         families.setdefault(re.sub(r"\d", "", invariant_id), []).append(
             int(re.sub(r"\D", "", invariant_id))
         )
-    assert set(families) == {"W", "T"}, f"未知的不变量家族：{sorted(families)}"
+    assert set(families) == {"W", "T", "DR"}, f"未知的不变量家族：{sorted(families)}"
     for prefix, numbers in families.items():
         assert sorted(numbers) == list(range(1, len(numbers) + 1)), (
             f"{prefix} 家族编号不连续：{sorted(numbers)}"
@@ -897,7 +910,9 @@ def test_invariant_ids_are_unique_and_sequential_per_family():
 def test_invariant_ids_and_texts_match_the_design_document():
     """W 表是**设计文档与代码的同一份事实**：任一侧改动而另一侧没跟就转红。"""
     design = DESIGN_DOC.read_text(encoding="utf-8")
-    rows = re.findall(r"^\|\s*\*\*([WT]\d+)\*\*\s*\|\s*(.+?)\s*\|", design, flags=re.MULTILINE)
+    rows = re.findall(
+        r"^\|\s*\*\*((?:W|T|DR)\d+)\*\*\s*\|\s*(.+?)\s*\|", design, flags=re.MULTILINE
+    )
     documented = {wid: text for wid, text in rows}
     assert documented, "设计文档里没有解析到不变量表（§14 的格式可能被改了）"
     code = {invariant.id: invariant.text for invariant in C.INVARIANTS}

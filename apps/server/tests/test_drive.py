@@ -60,7 +60,8 @@ def test_project_creation_creates_drive_tree(client):
         assert (Path(settings.data_root) / "drive" / "projects" / "drive-tree-check" / sub).is_dir()
 
 
-def test_workflow_artifacts_land_in_drive(client):
+def test_workflow_artifacts_land_in_drive(client, monkeypatch):
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     project = _create_project(client, "drive-workflow")
 
     def done():

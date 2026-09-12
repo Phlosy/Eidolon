@@ -1,14 +1,18 @@
-"""M2.3 **工具执行面**（T4 / T5 / T7 / T10 / T12）。
+"""M2.3 起的**工具执行面**（T4 / T5 / T7 / T10 / T12 + M2.4 的 DR1–DR10）。
 
-一次调用固定走这五步，顺序不可交换：
+一次调用固定走六步，顺序不可交换：
 
 ```text
 ① 解析 spec            —— 未注册的工具直接拒绝
 ② 参数校验             —— 含"身份字段不得出现在参数里"（T5）
 ③ Authority 校验       —— 内部面**同样**做；default-deny，随任职生效失效（T4 / T8）
+③b 决策语义门禁        —— required 必须在决策信封内；none 不许挂 decision_id（DR7）
 ④ Autonomy 门禁        —— 该副作用等级当前是否允许无人确认执行（用户拍板 §11）
-⑤ 应用 + 审计 + 事件   —— 真正调用领域 service；每次调用都留审计（T12）
+⑤ 应用 + 执行事实留档  —— 调既有领域 service；每次调用写一条 `tool_audits`（T12 / DR1）
 ```
+
+`decision_id` 只是**执行事实的一个字段**（DR3）：它把这次调用挂到某条决策上，
+本身**不提供任何权限** —— 授权每一步都重新算（DR4）。
 
 **Transport 不代表信任**（T10）：`transport` 只影响"这个到达方式是否被允许"，
 不影响任何领域不变量；`debug_cli` 还额外要求显式开关（默认关）。
@@ -23,12 +27,14 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.lifecycle import audit as audit_service
-from app.models.enums import AutonomyLevel, ToolTransport
+from app.models.base import utcnow
+from app.models.decision import ToolAudit
+from app.models.enums import AutonomyLevel, DecisionSemantics, ToolTransport
 from app.models.organization import Employee
 from app.models.project import Task, WorkSession
 from app.work import authority as authority_service
@@ -170,7 +176,7 @@ def _args_digest(args: dict) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _write_audit(
+def _record_tool_audit(
     db: Session,
     *,
     spec: tool_machinery.ToolSpec,
@@ -181,39 +187,51 @@ def _write_audit(
     result: dict | None,
     authority_snapshot: dict | None,
     error: str = "",
+    decision_id: int | None = None,
+    started_at: datetime | None = None,
 ) -> int:
-    """每次工具调用都留一条审计（读也留 —— T12 是字面要求）。
+    """每次工具调用都留一条**执行事实**（T12 / DR1）。
 
-    读调用量大时审计表会增长，这是已知取舍：**宁可多记，不要少记**。
-    将来若要降噪，应该在观测层做聚合，而不是让某些调用变成不可追溯。
+    M2.3 把工具审计写进 `audit_logs.after_json`（复用既有表的最小改动）。
+    M2.4 改为写 `tool_audits` —— 因为需要按 `decision_id` **反查**某条决策执行了什么，
+    而 JSON blob 里没有可索引的列（DR3）。
+
+    `audit_logs` 继续承载**人/领域**动作（入职、评审、账号…）；`tool.*` 不再写它：
+    同一个事实不留两个落点。
     """
-    entry = audit_service.record(
-        db,
-        action=f"tool.{spec.name}",
-        employee_id=ctx.employee_id,
-        before=None,
-        after={
-            "outcome": outcome,
-            "transport": transport.value,
-            "side_effect": spec.side_effect.value,
-            "autonomy": spec.autonomy.value,
-            "actor": ctx.as_dict(),
-            "arguments_digest": _args_digest(args),
-            "arguments_keys": sorted(args),
-            "authority": authority_snapshot,
-            "result_keys": sorted((result or {}).keys()),
-            "error": error,
-        },
-        reason=outcome,
-        actor="agent" if transport is ToolTransport.internal else "agent-debug",
+    snapshot = authority_snapshot or {}
+    entry = ToolAudit(
+        tool_name=spec.name,
+        decision_id=decision_id,
+        outcome=outcome,
+        side_effect=spec.side_effect.value,
+        decision_semantics=spec.decision_semantics.value,
+        autonomy=spec.autonomy.value,
+        transport=transport.value,
+        actor_employee_id=ctx.employee_id,
+        actor_person_id=ctx.person_id,
+        actor_company_id=ctx.company_id,
+        origin=ctx.origin,
+        work_session_id=ctx.work_session_id,
+        task_id=ctx.task_id,
+        project_id=ctx.project_id,
+        # 入参原样留档（执行事实；决策行里不复制它，DR5）
+        arguments_json=dict(args),
+        arguments_digest=_args_digest(args),
+        authority_json=authority_snapshot,
+        authority_allowed=(bool(snapshot["allowed"]) if "allowed" in snapshot else None),
+        authority_reason=str(snapshot.get("reason") or ""),
+        authority_grant_ids=list(snapshot.get("grant_ids") or []),
+        authority_grants_hash=str(snapshot.get("grants_hash") or ""),
+        result_json=result,
+        error=error,
+        started_at=started_at or utcnow(),
+        finished_at=utcnow(),
     )
+    db.add(entry)
+    db.flush()
     db.commit()
     return int(entry.id)
-
-
-# ---------------------------------------------------------------------------
-# 执行
-# ---------------------------------------------------------------------------
 
 
 def execute_tool(
@@ -225,12 +243,14 @@ def execute_tool(
     transport: ToolTransport = ToolTransport.internal,
     commit: bool = True,
     registry_override: tool_machinery.ToolRegistry | None = None,
+    decision_id: int | None = None,
 ) -> ToolResult:
     """执行一次工具调用（唯一入口）。
 
     内部面与调试口走**同一段代码**：唯一的差别是调试口多一道开关检查（T10）。
     """
     arguments = dict(args or {})
+    started_at = utcnow()
     active_registry = registry_override or registry
     try:
         spec = active_registry.get(name)
@@ -255,7 +275,7 @@ def execute_tool(
     }
 
     def fail(reason: str, message: str, *, snapshot: dict | None = None) -> ToolResult:
-        audit_id = _write_audit(
+        audit_id = _record_tool_audit(
             db,
             spec=spec,
             ctx=context,
@@ -265,6 +285,8 @@ def execute_tool(
             result=None,
             authority_snapshot=snapshot,
             error=message,
+            decision_id=decision_id,
+            started_at=started_at,
         )
         return ToolResult(
             ok=False,
@@ -310,6 +332,20 @@ def execute_tool(
         if not decision.allowed:
             return fail("not_authorized", f"not authorized: {decision.reason}", snapshot=snapshot)
 
+    # ③b 决策语义门禁（DR7）—— 放在 Authority **之后**：安全边界先判，
+    # 否则"这个工具需要决策"会盖住"你没权限"这个更重要的回答。
+    if spec.decision_semantics is DecisionSemantics.required and decision_id is None:
+        return fail(
+            "decision_required",
+            f"{spec.name} is a management action and must belong to a decision "
+            "(submit it inside a decision envelope)",
+        )
+    if spec.decision_semantics is DecisionSemantics.none and decision_id is not None:
+        return fail(
+            "decision_not_allowed",
+            f"{spec.name} is not a decision action (semantics=none)",
+        )
+
     # ④ Autonomy 门禁（Authority ≠ Autonomy，用户拍板 §11）
     if spec.autonomy is not AutonomyLevel.auto_allowed:
         return fail(
@@ -320,15 +356,25 @@ def execute_tool(
         )
 
     # ⑤ 应用 + 审计
+    #
+    # **SAVEPOINT 而不是 `db.rollback()`**：执行面跑在调用方的事务里（决策信封就是这种情况），
+    # 裸回滚会把**调用方已经落下的东西**一起抹掉 —— 实测踩到过：一个动作在 handler 里
+    # 被领域拒绝，整个 DecisionRecord（以及此前已成功的动作）全被回滚掉。
+    # SAVEPOINT 只丢弃**这个 handler**写了一半的东西，调用方的上下文原封不动。
+    savepoint = db.begin_nested()
     try:
         data = spec.handler(db, context, arguments)
     except tool_machinery.ToolError as exc:
-        db.rollback()
+        if savepoint.is_active:
+            savepoint.rollback()
         return fail("domain_rejected", str(exc), snapshot=snapshot)
     except Exception as exc:  # pragma: no cover - 防御：领域异常不能悄悄吞掉
-        db.rollback()
+        if savepoint.is_active:
+            savepoint.rollback()
         logger.exception("tool handler failed", extra={"tool": spec.name})
         return fail("handler_failed", f"{type(exc).__name__}: {exc}", snapshot=snapshot)
+    if savepoint.is_active:
+        savepoint.commit()
 
     result = data if isinstance(data, dict) else {"result": data}
     if spec.is_read:
@@ -336,7 +382,7 @@ def execute_tool(
     if not spec.is_read and snapshot is not None:
         result["authority"] = snapshot
 
-    audit_id = _write_audit(
+    audit_id = _record_tool_audit(
         db,
         spec=spec,
         ctx=context,
@@ -345,6 +391,8 @@ def execute_tool(
         outcome="applied" if not spec.is_read else "read",
         result=result,
         authority_snapshot=snapshot,
+        decision_id=decision_id,
+        started_at=started_at,
     )
     if commit and not spec.is_read:  # 读工具不写业务状态；handler 自己负责提交写入
         db.commit()

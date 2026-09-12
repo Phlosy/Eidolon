@@ -23,7 +23,13 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from app.models.enums import AuthorityKind, AutonomyLevel, ToolSideEffect, ToolTransport
+from app.models.enums import (
+    AuthorityKind,
+    AutonomyLevel,
+    DecisionSemantics,
+    ToolSideEffect,
+    ToolTransport,
+)
 from app.work import contracts as C
 
 
@@ -164,6 +170,9 @@ class ToolSpec:
     authority_target: TargetFn | None = None
     #: 参数里允许出现的、需要额外授权的"金额"键（只有 high_impact 才可能有）
     amount_arg: str | None = None
+    #: 与「管理决策」的关系（M2.4，用户拍板 §6）：none | optional | required。
+    #: 写动作**必须**显式声明 —— 不允许"不知道自己算不算决策"。
+    decision_semantics: DecisionSemantics = DecisionSemantics.none
 
     def __post_init__(self) -> None:
         if not self.name.strip():
@@ -176,7 +185,17 @@ class ToolSpec:
                     f"{self.name}: read tools must not declare authority "
                     "(facts inside the company scope need no management authority)"
                 )
+            if self.decision_semantics is not DecisionSemantics.none:
+                raise ToolError(
+                    f"{self.name}: read tools must declare decision_semantics=none "
+                    "(a fact query is not a management decision, DR7)"
+                )
             return
+        if self.decision_semantics is DecisionSemantics.none:
+            raise ToolError(
+                f"{self.name}: write tools must declare decision_semantics "
+                "as optional or required — 写动作不允许静默地'不知道自己算不算决策'（DR7）"
+            )
         if self.required_authority is None:
             raise ToolError(
                 f"{self.name}: {self.side_effect.value} tools must declare required_authority (T4)"
@@ -219,6 +238,7 @@ class ToolSpec:
             "required_authority": (
                 self.required_authority.value if self.required_authority else None
             ),
+            "decision_semantics": self.decision_semantics.value,
             "input_schema": self.input_schema,
             "output_schema": self.output_schema,
             "transports": sorted(t.value for t in self.transports),

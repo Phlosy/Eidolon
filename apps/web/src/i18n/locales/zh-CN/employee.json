@@ -326,5 +326,25 @@
     "resolved": "已就绪",
     "advisory": "参考项",
     "missing": "尚未发布"
+  },
+  "decisionKind": {
+    "accept_project": "承接项目",
+    "decline_project": "拒绝项目",
+    "decompose_project": "拆解项目",
+    "delegate_management": "委派管理",
+    "assign_task": "分配任务",
+    "reassign_task": "改派任务",
+    "create_dependency": "声明依赖",
+    "request_review": "请求评审",
+    "request_rework": "要求返工",
+    "mark_blocked": "标记阻塞",
+    "replan": "重新规划",
+    "accept_delivery": "接受交付",
+    "recruit": "招募",
+    "purchase_agent": "购买 Agent",
+    "assign_position": "任命职位",
+    "release_position": "解任职位",
+    "enroll_learning": "安排学习",
+    "offboard": "办理离职"
   }
 }

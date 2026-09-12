@@ -24,6 +24,7 @@ from sqlalchemy.orm import Session
 from app.events.bus import bus
 from app.models.base import utcnow
 from app.models.enums import (
+    DecisionSemantics,
     LifecycleStatus,
     TaskKind,
     TaskStatus,
@@ -152,6 +153,8 @@ def _update_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         raise tools.ToolError("nothing to update (no mutable field provided)")
     db.commit()
     db.refresh(task)
+    # refresh 会开一个读事务；SQLite 单写者下它挡住 bus.publish 的写事务 —— 先释放
+    db.commit()
     bus.publish(
         "work.task_updated",
         {"task_id": int(task.id), "fields": changed, "via": "agent_tool"},
@@ -194,6 +197,9 @@ def _create_dependency(db: Session, ctx: tools.ToolCallContext, args: dict) -> d
         raise tools.ToolError(f"task graph would become invalid: {report.error}")
 
     project_repo.add_dependency(db, task_id=int(task.id), depends_on_id=depends_on_id)
+    # **提交后不要再查库**：SQLite 是单写者，读事务会挡住 `bus.publish` 的写事务
+    # （实测：`database is locked`）。依赖清单用提交前就算好的 `deps_by_task`。
+    dependencies = sorted({*deps_by_task.get(int(task.id), ()), depends_on_id})
     db.commit()
     bus.publish(
         "work.dependency_created",
@@ -206,13 +212,7 @@ def _create_dependency(db: Session, ctx: tools.ToolCallContext, args: dict) -> d
     return {
         "task_id": int(task.id),
         "depends_on_id": depends_on_id,
-        "dependencies": sorted(
-            [
-                int(row.depends_on_id)
-                for row in project_repo.list_dependencies(db, int(task.project_id))
-                if int(row.task_id) == int(task.id)
-            ]
-        ),
+        "dependencies": dependencies,
         "graph_ready": list(report.ready),
     }
 
@@ -225,6 +225,7 @@ def _mark_task_blocked(db: Session, ctx: tools.ToolCallContext, args: dict) -> d
         raise tools.ToolError(str(exc)) from exc
     db.commit()
     db.refresh(task)
+    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     bus.publish(
         "work.task_blocked",
         {
@@ -248,6 +249,7 @@ def _cancel_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         raise tools.ToolError(str(exc)) from exc
     db.commit()
     db.refresh(task)
+    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     bus.publish(
         "work.task_cancelled",
         {"task_id": int(task.id), "reason": str(args.get("reason") or ""), "via": "agent_tool"},
@@ -283,6 +285,7 @@ def _assign_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
     task.assignee_id = int(employee.id)
     db.commit()
     db.refresh(task)
+    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     bus.publish(
         "task.assigned",
         {
@@ -333,6 +336,7 @@ def _delegate_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> di
     project.management_assigned_at = utcnow()
     db.commit()
     db.refresh(project)
+    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     projected = {
         "project_id": int(project.id),
         "management_employee_id": project.management_employee_id,
@@ -368,6 +372,7 @@ def _request_review(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
         raise tools.ToolError(str(exc)) from exc
     db.commit()
     db.refresh(task)
+    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     bus.publish(
         "work.review_requested",
         {
@@ -409,6 +414,7 @@ def _request_rework(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
         task.assignee_id = int(new_assignee.id)
     db.commit()
     db.refresh(task)
+    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     bus.publish(
         "task.rework_requested",
         {
@@ -481,6 +487,8 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
     return (
         tools.ToolSpec(
             name="create_task",
+            # 决策语义 REQUIRED：这是真正的管理动作，必须隶属于一条决策（DR7）
+            decision_semantics=DecisionSemantics.required,
             description="在项目里新建一个任务（可选依赖与初始指派；不自动执行）",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.plan_project_work,
@@ -504,6 +512,8 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
         ),
         tools.ToolSpec(
             name="update_task",
+            # 决策语义 OPTIONAL：状态推进/维护类（用户拍板 §6）
+            decision_semantics=DecisionSemantics.optional,
             description="改任务的字段或做一次合法状态迁移（状态机强制）",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.plan_project_work,
@@ -524,6 +534,8 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
         ),
         tools.ToolSpec(
             name="create_dependency",
+            # 决策语义 REQUIRED：这是真正的管理动作，必须隶属于一条决策（DR7）
+            decision_semantics=DecisionSemantics.required,
             description="声明任务依赖（系统校验 DAG 正确性：环/自环/悬空一律拒绝）",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.plan_project_work,
@@ -536,6 +548,8 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
         ),
         tools.ToolSpec(
             name="assign_task",
+            # 决策语义 REQUIRED：这是真正的管理动作，必须隶属于一条决策（DR7）
+            decision_semantics=DecisionSemantics.required,
             description="把任务派给某位 active 员工（是否最合适由 Agent 自己判断）",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.assign_task,
@@ -548,6 +562,8 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
         ),
         tools.ToolSpec(
             name="delegate_project",
+            # 决策语义 REQUIRED：这是真正的管理动作，必须隶属于一条决策（DR7）
+            decision_semantics=DecisionSemantics.required,
             description="把项目交给另一位管理 Agent 负责（只改当前管理指针）",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.delegate_management,
@@ -561,6 +577,8 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
         ),
         tools.ToolSpec(
             name="request_review",
+            # 决策语义 OPTIONAL：状态推进/维护类（用户拍板 §6）
+            decision_semantics=DecisionSemantics.optional,
             description="请人评审一件已完成的工作（状态推进到 in_review + 留痕）",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.plan_project_work,
@@ -573,6 +591,8 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
         ),
         tools.ToolSpec(
             name="request_rework",
+            # 决策语义 REQUIRED：这是真正的管理动作，必须隶属于一条决策（DR7）
+            decision_semantics=DecisionSemantics.required,
             description="要求返工（必须给理由；可同时改派）",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.request_rework,
@@ -585,6 +605,8 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
         ),
         tools.ToolSpec(
             name="mark_task_blocked",
+            # 决策语义 OPTIONAL：状态推进/维护类（用户拍板 §6）
+            decision_semantics=DecisionSemantics.optional,
             description="把任务标记为阻塞（等外部输入 / 等依赖 / 等人），并记下原因",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.plan_project_work,
@@ -595,6 +617,8 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
         ),
         tools.ToolSpec(
             name="cancel_task",
+            # 决策语义 REQUIRED：这是真正的管理动作，必须隶属于一条决策（DR7）
+            decision_semantics=DecisionSemantics.required,
             description="取消任务（计划变了）。终态任务不可取消 —— 历史不改写",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.plan_project_work,

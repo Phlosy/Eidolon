@@ -224,7 +224,10 @@ def test_learning_off_is_runtime_only_and_yields_default_policy(db, employees_by
 # ---- 条件 1-4：真实派发链路（mock runtime + 真 orchestrator + 真 reflection）----
 
 
-def test_high_curiosity_projection_reaches_prompt_learning_and_usage(client, db, employees_by_slug):
+def test_high_curiosity_projection_reaches_prompt_learning_and_usage(
+    client, db, employees_by_slug, monkeypatch
+):
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     alice = employees_by_slug["alice"]
     marker = int(time.time() * 1000)
     patched = client.patch(f"/api/v1/employees/{alice['id']}/brain", json={"curiosity": 0.92})
@@ -300,7 +303,10 @@ def test_high_curiosity_projection_reaches_prompt_learning_and_usage(client, db,
     assert benchmarks["useful_rate"] is None or 0.0 <= benchmarks["useful_rate"] <= 1.0
 
 
-def test_low_curiosity_shrinks_quotas_and_skips_questions(client, db, employees_by_slug):
+def test_low_curiosity_shrinks_quotas_and_skips_questions(
+    client, db, employees_by_slug, monkeypatch
+):
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     bob = employees_by_slug["bob"]
     marker = int(time.time() * 1000)
     patched = client.patch(f"/api/v1/employees/{bob['id']}/brain", json={"curiosity": 0.05})

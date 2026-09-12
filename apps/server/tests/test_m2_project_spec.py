@@ -419,7 +419,9 @@ def test_missing_work_intake_manager_enters_waiting_not_fallback(client, db, no_
     assert event.payload["work_intake_status"] == "no_position"
 
 
-def test_managed_project_does_not_plan_itself(client, db, default_company_id):
+def test_managed_project_does_not_plan_itself(client, db, default_company_id, monkeypatch):
+    # 要观察"接收任务真的跑完"这件事 ⇒ 显式打开派发
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     """W34 / B11：Manager 接了活之后，系统**不**生成任何执行图。"""
     created = _post_project(
         client, name="自主管理的项目", description="交给 CEO 决定怎么组织", work_mode="managed"

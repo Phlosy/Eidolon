@@ -365,5 +365,20 @@
     "title": "还没有人负责接收这个项目",
     "hint": "系统不会替公司做规划，也不会随便挑一个人顶上。请先任命承担 Work Intake 责任的职位（默认 CEO），或由 Owner 手动处理。",
     "reason": "原因"
+  },
+  "decisions": {
+    "title": "管理决策",
+    "description": "谁、为什么、结果如何 —— 系统只记录与校验，不评价决策内容",
+    "empty": "还没有管理决策记录",
+    "details": "执行动作",
+    "intended": "意图"
+  },
+  "decisionStatus": {
+    "PROPOSED": "已登记",
+    "EXECUTING": "执行中",
+    "APPLIED": "已生效",
+    "PARTIALLY_APPLIED": "部分生效",
+    "FAILED": "失败",
+    "SUPERSEDED": "已被取代"
   }
 }

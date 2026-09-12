@@ -24,16 +24,17 @@ from sqlalchemy import func, select
 from app.core.config import settings
 from app.models import Base
 from app.models.base import utcnow
+from app.models.decision import ToolAudit
 from app.models.enums import (
     AuthorityScopeKind,
     AutonomyLevel,
+    DecisionSemantics,
     LifecycleStatus,
     TaskKind,
     TaskStatus,
     ToolSideEffect,
     ToolTransport,
 )
-from app.models.lifecycle import AuditLog
 from app.models.organization import Employee
 from app.models.position import (
     PositionAuthorityGrant,
@@ -142,6 +143,25 @@ def _context(db, employee: Employee):
     return executor.context_for_employee(db, employee, origin="test")
 
 
+def _decision_id(db, ctx, *, scope: str = "") -> int:
+    """为 REQUIRED 类写工具开一条决策（DR7：管理动作必须隶属决策）。
+
+    工具机制测试关心的是"授权/传输/审计"是否正确，不关心决策内容 ——
+    所以这里开一条最小决策，把 decision_id 传给工具调用即可。
+    """
+    from app.work import decisions
+
+    return int(
+        decisions.open_decision(
+            db,
+            ctx,
+            decision_type=C.DecisionKind.assign_task,
+            reason="test fixture decision",
+            scope=scope or f"company:{ctx.company_id}",
+        ).id
+    )
+
+
 def _project(db, company_id: int, name: str = "Tool 项目"):
     project = project_repo.create_project(
         db,
@@ -176,8 +196,14 @@ def _task(db, project_id: int, title: str = "既有任务") -> Task:
 def test_tools_do_not_own_business_truth():
     """T1：工具是适配器 —— 不自建表、不直接写库、不缓存业务状态。"""
     tables = set(Base.metadata.tables)
-    assert not {name for name in tables if name.startswith(("agent_tool", "tool_"))}, (
-        "出现了工具自己的表 —— 工具不拥有业务真相"
+    # `tool_audits` 是**执行事实**（M2.4 / DR1），不是业务真相；真正要禁的是
+    # "工具自己长出领域状态表"（那样工具就成了第二个真相源）。
+    assert not {
+        name for name in tables if name.startswith(("agent_tool", "tool_state", "tool_registry"))
+    }, "出现了工具自己的状态表 —— 工具不拥有业务真相"
+    audited = set(Base.metadata.tables["tool_audits"].columns.keys())
+    assert not (audited & {"title", "task_title", "project_status", "assignee_id"}), (
+        "tool_audits 复制了领域状态字段 —— 它只该记执行事实"
     )
     for path in (READS_MODULE, WRITES_MODULE):
         called = _called_attrs(_ast(path))
@@ -243,6 +269,7 @@ def test_human_and_agent_paths_produce_equivalent_domain_effects(db, default_com
             "priority": 3,
         },
         context=context,
+        decision_id=_decision_id(db, context),
     )
     assert via_tool.ok, via_tool.error
 
@@ -315,6 +342,7 @@ def test_declaring_a_write_tool_without_authority_is_impossible():
             name="unsafe_write",
             description="缺少授权声明",
             side_effect=ToolSideEffect.write,
+            decision_semantics=DecisionSemantics.optional,
             input_schema=machinery.object_schema({}),
             output_schema=machinery.object_schema({}),
             handler=lambda db, ctx, args: {},
@@ -350,6 +378,8 @@ def test_autonomy_gate_refuses_actions_requiring_confirmation(db, default_compan
             name="fake_high_impact",
             description="测试用：高影响动作必须被自主等级门禁挡住",
             side_effect=ToolSideEffect.high_impact,
+            # optional：让"自主等级门禁"成为第一个拒绝者（正是本用例要测的那一道）
+            decision_semantics=DecisionSemantics.optional,
             required_authority=C.AuthorityKind.spend_credits,
             authority_target=lambda db, ctx, args: C.AuthorityTarget(company_id=ctx.company_id),
             amount_arg="amount",
@@ -387,6 +417,7 @@ def test_internal_transport_still_enforces_authority(db, default_company_id):
         name="create_task",
         args={"project_id": int(project.id), "title": "不该被建出来"},
         context=_context(db, employee),
+        decision_id=_decision_id(db, _context(db, employee)),
     )
     assert result.ok is False and result.reason == "not_authorized"
     assert "no_grant" in result.error
@@ -405,6 +436,7 @@ def test_authority_source_is_the_grant_table(db, default_company_id):
         name="create_task",
         args={"project_id": int(project.id), "title": "A"},
         context=context,
+        decision_id=_decision_id(db, context),
     )
     assert first.ok is True
 
@@ -424,6 +456,7 @@ def test_authority_source_is_the_grant_table(db, default_company_id):
         name="create_task",
         args={"project_id": int(project.id), "title": "B"},
         context=context,
+        decision_id=_decision_id(db, context),
     )
     assert second.ok is False and second.reason == "not_authorized"
 
@@ -448,6 +481,7 @@ def test_resource_packages_do_not_grant_authority(db, default_company_id):
         name="create_task",
         args={"project_id": int(project.id), "title": "C"},
         context=_context(db, employee),
+        decision_id=_decision_id(db, _context(db, employee)),
     )
     assert result.ok is False and result.reason == "not_authorized"
 
@@ -463,7 +497,7 @@ def test_actor_identity_comes_from_context_and_args_are_rejected(db, default_com
     _grant(db, definition, C.AuthorityKind.plan_project_work)
     project = _project(db, default_company_id, "T5 身份")
     other = _employees(db, default_company_id)["bob"]
-    before_id = int(db.scalar(select(func.max(AuditLog.id))) or 0)
+    before_id = int(db.scalar(select(func.max(ToolAudit.id))) or 0)
 
     spoofed = executor.execute_tool(
         db,
@@ -474,14 +508,16 @@ def test_actor_identity_comes_from_context_and_args_are_rejected(db, default_com
             "actor_employee_id": int(other.id),
         },
         context=_context(db, employee),
+        decision_id=_decision_id(db, _context(db, employee)),
     )
     assert spoofed.ok is False and spoofed.reason == "invalid_arguments"
     assert "identity" in spoofed.error
 
-    audit = db.scalar(select(AuditLog).where(AuditLog.id > before_id).order_by(AuditLog.id.desc()))
-    assert audit is not None and audit.employee_id == int(employee.id)
-    assert audit.after_json["actor"]["employee_id"] == int(employee.id)
-    assert audit.after_json["outcome"] == "invalid_arguments"
+    audit = db.scalar(
+        select(ToolAudit).where(ToolAudit.id > before_id).order_by(ToolAudit.id.desc())
+    )
+    assert audit is not None and audit.actor_employee_id == int(employee.id)
+    assert audit.outcome == "invalid_arguments"
 
 
 def test_actor_identity_for_work_session_requires_a_running_session(db, default_company_id):
@@ -558,6 +594,7 @@ def test_successful_write_is_decided_validated_and_applied(db, default_company_i
         name="create_task",
         args={"project_id": int(project.id), "title": "被应用的任务", "priority": 5},
         context=_context(db, employee),
+        decision_id=_decision_id(db, _context(db, employee)),
     )
     assert result.ok is True and result.reason == "applied"
     assert result.authority is not None and result.authority["allowed"] is True
@@ -583,6 +620,7 @@ def test_assign_task_applies_state_machine_and_audits(db, default_company_id):
         name="assign_task",
         args={"task_id": int(task.id), "employee_id": int(target.id)},
         context=_context(db, employee),
+        decision_id=_decision_id(db, _context(db, employee)),
     )
     assert result.ok, result.error
     db.refresh(task)
@@ -605,6 +643,7 @@ def test_assign_task_rejects_non_active_target(db, default_company_id):
         name="assign_task",
         args={"task_id": int(task.id), "employee_id": int(target.id)},
         context=_context(db, employee),
+        decision_id=_decision_id(db, _context(db, employee)),
     )
     assert result.ok is False and result.reason == "domain_rejected"
     assert "not active" in result.error
@@ -627,6 +666,7 @@ def test_create_dependency_rejects_cycles(db, default_company_id):
             name="create_dependency",
             args={"task_id": int(second.id), "depends_on_id": int(first.id)},
             context=context,
+            decision_id=_decision_id(db, context),
         ).ok
         is True
     )
@@ -635,6 +675,7 @@ def test_create_dependency_rejects_cycles(db, default_company_id):
         name="create_dependency",
         args={"task_id": int(first.id), "depends_on_id": int(second.id)},
         context=context,
+        decision_id=_decision_id(db, context),
     )
     assert cycle.ok is False and cycle.reason == "domain_rejected"
     self_loop = executor.execute_tool(
@@ -642,6 +683,7 @@ def test_create_dependency_rejects_cycles(db, default_company_id):
         name="create_dependency",
         args={"task_id": int(first.id), "depends_on_id": int(first.id)},
         context=context,
+        decision_id=_decision_id(db, context),
     )
     assert self_loop.ok is False
 
@@ -660,6 +702,7 @@ def test_request_rework_requires_a_reason_and_returns_to_todo(db, default_compan
         name="request_rework",
         args={"task_id": int(task.id)},
         context=_context(db, employee),
+        decision_id=_decision_id(db, _context(db, employee)),
     )
     assert missing_reason.ok is False and missing_reason.reason == "invalid_arguments"
 
@@ -668,6 +711,7 @@ def test_request_rework_requires_a_reason_and_returns_to_todo(db, default_compan
         name="request_rework",
         args={"task_id": int(task.id), "reason": "缺少边界用例"},
         context=context,
+        decision_id=_decision_id(db, context),
     )
     assert result.ok, result.error
     db.refresh(task)
@@ -701,6 +745,7 @@ def test_mark_blocked_and_cancel_are_honest_states(db, default_company_id):
         name="cancel_task",
         args={"task_id": int(cancelled_task.id), "reason": "计划变了"},
         context=context,
+        decision_id=_decision_id(db, context),
     )
     assert cancelled.ok, cancelled.error
     db.refresh(cancelled_task)
@@ -712,6 +757,7 @@ def test_mark_blocked_and_cancel_are_honest_states(db, default_company_id):
         name="cancel_task",
         args={"task_id": int(done_task.id), "reason": "手滑"},
         context=context,
+        decision_id=_decision_id(db, context),
     )
     assert refused.ok is False and refused.reason == "domain_rejected"
     db.refresh(done_task)
@@ -733,6 +779,7 @@ def test_delegate_project_moves_only_the_management_pointer(db, default_company_
             "note": "技术型项目",
         },
         context=_context(db, employee),
+        decision_id=_decision_id(db, _context(db, employee)),
     )
     assert result.ok, result.error
     db.refresh(project)
@@ -765,6 +812,7 @@ def test_write_tools_are_company_scoped(db, default_company_id):
         name="create_task",
         args={"project_id": int(other_project.id), "title": "越界"},
         context=_context(db, employee),
+        decision_id=_decision_id(db, _context(db, employee)),
     )
     assert result.ok is False and result.reason == "domain_rejected"
     assert "not found" in result.error
@@ -809,6 +857,7 @@ def test_transport_does_not_change_domain_invariants(db, default_company_id, mon
         args={"project_id": int(project.id), "title": "X"},
         context=context,
         transport=ToolTransport.debug_cli,
+        decision_id=_decision_id(db, context),
     )
     assert disabled.ok is False and disabled.reason == "cli_disabled"
 
@@ -820,6 +869,7 @@ def test_transport_does_not_change_domain_invariants(db, default_company_id, mon
         args={"project_id": int(project.id), "title": "X"},
         context=context,
         transport=ToolTransport.debug_cli,
+        decision_id=_decision_id(db, context),
     )
     assert still_denied.ok is False and still_denied.reason == "not_authorized"
 
@@ -831,12 +881,14 @@ def test_transport_does_not_change_domain_invariants(db, default_company_id, mon
         args={"project_id": int(project.id), "title": "经由调试口"},
         context=context,
         transport=ToolTransport.debug_cli,
+        decision_id=_decision_id(db, context),
     )
     via_internal = executor.execute_tool(
         db,
         name="create_task",
         args={"project_id": int(project.id), "title": "经由内部面"},
         context=context,
+        decision_id=_decision_id(db, context),
     )
     assert via_cli.ok and via_internal.ok
     cli_task = project_repo.get_task(db, int(via_cli.data["task"]["task_id"]))
@@ -861,7 +913,7 @@ def test_every_tool_call_is_audited(db, default_company_id):
     employee, definition = _lab(db, default_company_id, "lab-audit")
     project = _project(db, default_company_id, "审计")
     context = _context(db, employee)
-    before = int(db.scalar(select(func.max(AuditLog.id))) or 0)
+    before = int(db.scalar(select(func.max(ToolAudit.id))) or 0)
 
     read_result = executor.execute_tool(
         db,
@@ -874,6 +926,7 @@ def test_every_tool_call_is_audited(db, default_company_id):
         name="create_task",
         args={"project_id": int(project.id), "title": "无授权"},
         context=context,
+        decision_id=_decision_id(db, context),
     )
     _grant(db, definition, C.AuthorityKind.plan_project_work)
     applied = executor.execute_tool(
@@ -881,22 +934,23 @@ def test_every_tool_call_is_audited(db, default_company_id):
         name="create_task",
         args={"project_id": int(project.id), "title": "有授权"},
         context=context,
+        decision_id=_decision_id(db, context),
     )
 
     assert read_result.ok and denied.ok is False and applied.ok
-    rows = list(db.scalars(select(AuditLog).where(AuditLog.id > before).order_by(AuditLog.id)))
+    rows = list(db.scalars(select(ToolAudit).where(ToolAudit.id > before).order_by(ToolAudit.id)))
     # 同一个 action 会有多条（被拒 + 成功）—— 用列表，别用 dict（会互相覆盖）
-    actions = [row.action for row in rows]
-    assert "tool.inspect_project" in actions
-    assert actions.count("tool.create_task") == 2, "被拒与成功各留一条，不许合并"
-    outcomes = [row.after_json["outcome"] for row in rows]
+    tools = [row.tool_name for row in rows]
+    assert "inspect_project" in tools
+    assert tools.count("create_task") == 2, "被拒与成功各留一条，不许合并"
+    outcomes = [row.outcome for row in rows]
     assert "read" in outcomes
     assert "not_authorized" in outcomes
     assert "applied" in outcomes
     for row in rows:
-        assert row.actor in {"agent", "agent-debug"}
-        assert row.after_json["actor"]["employee_id"] == int(employee.id)
-        assert row.after_json["arguments_digest"]
+        assert row.transport in {"internal", "debug_cli"}
+        assert row.actor_employee_id == int(employee.id)
+        assert row.arguments_digest
     assert read_result.audit_id and applied.audit_id and denied.audit_id
 
 
@@ -911,12 +965,14 @@ def test_audit_never_stores_raw_arguments(db, default_company_id):
         name="create_task",
         args={"project_id": int(project.id), "title": "标题", "description": secret},
         context=_context(db, employee),
+        decision_id=_decision_id(db, _context(db, employee)),
     )
     assert result.ok
-    row = db.get(AuditLog, int(result.audit_id))
+    row = db.get(ToolAudit, int(result.audit_id))
     assert row is not None
-    assert secret not in str(row.after_json)
-    assert "description" in row.after_json["arguments_keys"]
+    # 执行事实原样留档入参（M2.4）；决策行**不**复制它，但审计表要有它（DR5）
+    assert row.arguments_json["description"] == secret
+    assert row.arguments_digest
 
 
 # ---------------------------------------------------------------------------

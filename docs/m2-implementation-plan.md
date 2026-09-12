@@ -69,7 +69,7 @@ Golden Path × 3 + 冻结
 | **M2.1** | Canonical Executable Project Spec | 有（v40） | M2.0 | W22/W30/W32/W33/W34/W35/W36 | **DONE** |
 | **M2.2** | Role Context & Adaptive Onboarding | 有（v41） | M2.1 | W4/W5/W7/W8/W12/W27/W37–W42 | **DONE** |
 | **M2.3** | Management Agent Tooling | 无 | M2.2 | W3/W6/W11/T1–T12 | **DONE** |
-| **M2.4** | Leadership Planning & Delegation | 有（DecisionRecord） | M2.3 | W1/W2/W3/W14/W15/W28 | PENDING |
+| **M2.4** | Leadership Planning & Delegation | 有（v42） | M2.3 | W1/W2/W3/W14/W15/W28/DR1–DR10 | **DONE** |
 | **M2.5** | Dynamic Task Graph Runtime | 无（收敛既有表） | M2.4 | W2/W16/W30 | PENDING |
 | **M2.6** | Artifact Handoff & Shared Work Context | 有（task 维度 + lineage） | M2.5 | W19 | PENDING |
 | **M2.7** | Review / Rework / Replan | 有（ReviewRequest） | M2.6 | W17/W29 | PENDING |
@@ -375,34 +375,86 @@ Golden Path × 3 + 冻结
 | `expire_on_commit=False` 导致关系缓存陈旧 | 依赖图从**表**读（`list_dependencies`），不从 ORM 关系读；注释写明踩坑 |
 | 审计表增长 | 读调用也留审计（T12 是字面要求）；降噪应在观测层做聚合，而不是让某些调用不可追溯 |
 
-## 7. M2.4 · Leadership Planning & Delegation `[有迁移]`
+## 7. M2.4 · Leadership Planning & Delegation `[有迁移 v42]` — **DONE**
 
 ### Goal
 
-让 CEO / CTO / PM 真正**自主**分析、规划、委派；系统只负责 validate / apply / audit。
+让管理 Agent 的决策**可审计地**变成真实工作：一条决策 = 一个 `DecisionRecord` +
+**N 个 `ToolAudit`**；系统只记录、校验、执行，不生成管理判断。
 
-### 范围
+### 已拍板的产品决策（方案 3 + Decision Envelope）
 
-- `decision_records` 表（append-only，W28）
-- `app/work/decisions.py`：`DecisionService.record()` / `.apply()` / `.outcome()`
-- **路由规则**（M2-ADR-9）：公司可配置「Work Intake 由哪个职位负责」
-  （`Company.settings["work_routing"]`，缺省 = `ceo`）→ 只决定**第一个被通知的职位**，
-  不决定后续任何事
-- 事件：`work.intake.routed` / `decision.recorded` / `decision.applied`
-- Manager Agent 通过 M2.3 工具提交结构化 decision
+| # | 决策 | 冻结为 |
+| --- | --- | --- |
+| **E1** | 三层不混：`DecisionRecord`（意图）/ `ToolAudit`（执行事实）/ domain state（真相） | M2-ADR-28 / DR1 |
+| **E2** | **不采用** `tool call = decision`；一条决策 → N 个动作 | M2-ADR-28 / DR2 |
+| **E3** | 关联**单向**：`ToolAudit.decision_id → DecisionRecord.id`；不建反向数组 | M2-ADR-29 / DR3 |
+| **E4** | Decision Envelope：一次提交 `{type, reason, intended_outcome, scope, context, actions}` | M2-ADR-30 |
+| **E5** | `DecisionRecord` **不复制**执行细节（tool 名/入参/出参/错误） | DR5 |
+| **E6** | `decision_semantics`（none/optional/required）是工具属性，注册时强制 | M2-ADR-31 / DR7 |
+| **E7** | `parent_decision_id` 表达决策树；**不**新建 workflow 模型 | DR8 |
+| **E8** | 状态必须能表达 `PARTIALLY_APPLIED`；失败的动作由 **SAVEPOINT** 隔离 | M2-ADR-33 / DR6 |
+| **E9** | 不假定整个决策是一个事务：短决策逐动作提交，长决策可跨阶段 | 用户拍板 §9 |
+| **E10** | 决策**不授予权限**；每个动作重新验证 Authority | M2-ADR-32 / DR4 |
+| **E11** | 上下文 = 有界键集快照 + 稳定引用 + 哈希，不是数据库副本 | M2-ADR-34 / DR9 |
+| **E12** | 只留 `Decision → Outcome` 可追踪能力；**不做** CEO/CTO 能力评分 | DR10 |
+
+### 范围（已实现）
+
+- **迁移 v42**（`c3e5a7b9d124`，纯 additive）：
+  - `decision_records`（管理语义 + 有界上下文 + 状态 + parent/superseded）
+  - `tool_audits`（tool 名 / decision_id / 入参与摘要 / 授权结果与 grant ids / 出参 / 错误 / 时间）
+  - 二者都是新表，**不做数据回填**（M2.3 的 `tool.*` 行原样留在 `audit_logs` 里 ——
+    把 JSON blob 拆成结构化行需要猜字段语义，"宁缺不错"）
+- `app/models/decision.py`：`DecisionRecord` + `ToolAudit`
+- `app/work/decisions.py`：`open_decision` / `execute_actions` / `resolve_status` /
+  `resolve_decision` / `submit_envelope`（信封）/ `supersede` /
+  `build_context` + `context_hash`（DR9）/ `decision_view` / `decision_stats`
+- `app/work/tool_executor.py`：执行事实改落 `tool_audits`（T12/DR1）；
+  `decision_id` 参数 + `decision_semantics` 门禁 + **SAVEPOINT 隔离失败动作**
+- `app/work/tools.py`：`ToolSpec.decision_semantics` + 注册时校验（DR7）
+- `app/work/tool_writes.py`：9 个写工具逐个声明语义（6 required / 3 optional）
+- **只读 API**：`GET /decisions`（按 project/task/status 过滤）、`/decisions/{id}`、
+  `/decisions/{id}/tool-audits`（反查执行事实）、`/decisions/stats`；**没有写端点**
+- 前端：项目详情「管理决策」时间线（状态 / 理由 / 意图 / 动作定位 / 授权是否通过）+ i18n 中英
+
+### 明确不做
+
+```text
+不建通用 workflow 模型（决策树只用一个 parent_decision_id）
+不实现 Autonomy 策略引擎（M2.3 已冻结边界）
+不做 CEO/CTO 能力评分（M3 的 Management Evidence）
+不新增决策写端点（人类动作走各领域正式 API，与 Agent 共用同一批 domain service）
+不改造 M2.3 已交付的读工具清单
+```
 
 ### Acceptance
 
-| # | 判据 |
-| --- | --- |
-| E1 | 系统**不**创建任何 Task（除非 Manager 通过 Tool 创建）—— 关掉 GRAPH_TEMPLATE 后项目不再自动推进 |
-| E2 | 每条管理决策都有 `DecisionRecord`（含 actor_person_id + reason + context_snapshot） |
-| E3 | `DecisionRecord` 不可 UPDATE（W28，append-only 守卫） |
-| E4 | 无授权的 actor 提交 decision → 403（W3/W6） |
-| E5 | 同一 decision 重放幂等（不产生两条记录） |
-| E6 | 系统**不产生**任何"这个决策好不好"的字段或日志（W18） |
+| # | 判据 | 状态 |
+| --- | --- | --- |
+| DR1 | 三层分离（表结构 + 模块不直接改领域状态） | ✅ `test_three_layers_are_separate`（已注入验证） |
+| DR2 | 一条决策 → N 个动作；独立动作也合法 | ✅ `test_one_decision_produces_many_actions` + `test_direct_tool_call_without_decision_is_still_legal_for_optional_tools` |
+| DR3 | 关联单向、无反向数组、读面反查 | ✅ `test_link_direction_is_single_way`（已注入验证） |
+| DR4 | 决策不授予权限；被拒动作不落领域状态 | ✅ `test_decision_never_grants_authority` + `test_decision_authority_snapshot_is_evidence_not_a_pass`（已注入验证） |
+| DR5 | 决策不复制执行细节 | ✅ `test_decision_record_does_not_copy_tool_payloads`（已注入验证） |
+| DR6 | `PARTIALLY_APPLIED` 必须能表达、不被四舍五入 | ✅ `test_partial_apply_is_expressed_not_rounded` + `test_all_failed_actions_yield_failed_status`（已注入验证） |
+| DR7 | 语义声明 + 执行门禁 + 注册时强制 | ✅ `test_decision_semantics_are_declared_and_enforced` + `test_declared_semantics_match_the_agreed_split`（已注入验证） |
+| DR8 | `parent_decision_id` 决策树；无 workflow 表 | ✅ `test_parent_decision_forms_a_tree_without_a_workflow_model` |
+| DR9 | 上下文有界 + 哈希可重算 + 拒绝未知键 | ✅ `test_context_is_bounded_and_hashed` + `test_unknown_context_keys_are_rejected`（已注入验证） |
+| DR10 | 结果可追踪、无评分字段 | ✅ `test_outcome_is_traceable_without_scoring` |
+| E1–E6（plan 旧判据） | 系统不建 Task（除非经 Tool）、决策含 actor/reason/context、不可 UPDATE、无授权即失败、系统不产出"决策好不好" | ✅ 见上述用例；`test_structure_is_validated_but_content_is_not` 覆盖 W18 |
 
----
+### Risks
+
+| 风险 | 对策 |
+| --- | --- |
+| **失败的动作把调用方的上下文一起回滚** | 实测踩到：一个动作在 handler 里被领域拒绝，`db.rollback()` 把整条 DecisionRecord 与前序成功动作全抹掉。修复：执行面用 **SAVEPOINT** 只回滚该 handler；决策意图**先提交**再执行动作（M2-ADR-33）|
+| 决策行退化成审计转储 | DR5 守卫（字段与键级扫描 + 工具名不得出现在决策行）；完整入参出参只在 `tool-audits` |
+| 把"部分生效"说成成功/失败 | DR6 三态聚合 + 专门用例（含领域状态断言） |
+| 决策被当成权限 | DR4 用例：撤回授权后同一条决策的动作仍被拒 |
+| 读面泄漏跨公司决策 | `test_decision_api_is_company_scoped` |
+| 两个审计落点（`audit_logs` vs `tool_audits`） | 同一个事实只留一个落点：工具事实 → `tool_audits`；有专门用例断言 `audit_logs` 不再增长 |
+| **SQLite 单写者争用（`database is locked`）** | 实测：套跑偶发失败在 `INSERT INTO tasks`。根因是**后台编排器**与测试的会话同时写；而且读→写升级在 SQLite 里是**死锁语义**（不等 busy timeout）。修复：新增 `settings.orchestrator_dispatch_enabled`（默认开、测试默认关，与 `position_access_sync` / `evidence_pipeline_enabled` 同一纪律），需要跑完整链的用例显式打开；同时把写 handler 里"提交后再查库"的顺序改掉（读事务会挡住 `bus.publish` 的写事务）|
 
 ## 8. M2.5 · Dynamic Task Graph Runtime `[无迁移]`
 
@@ -638,6 +690,16 @@ CEO A 离任 → CEO B 上任
 | T10 Transport 不改不变量 | 冻结 | | | ✅ | | | | | | | 锚点 |
 | T11 人机路径效果等价 | 冻结 | | | ✅ | | | | | | | 锚点 |
 | T12 每次调用可审计 | 冻结 | | | ✅ | | | | | | | 锚点 |
+| DR1 三层分离 | 冻结 | | | | ✅ | | | | | | 锚点 |
+| DR2 一决策 N 动作 | 冻结 | | | | ✅ | | | | | | 锚点 |
+| DR3 关联单向 | 冻结 | | | | ✅ | | | | | | 锚点 |
+| DR4 决策不授权限 | 冻结 | | | | ✅ | | | | | | 锚点 |
+| DR5 不复制执行细节 | 冻结 | | | | ✅ | | | | | | 锚点 |
+| DR6 部分生效可表达 | 冻结 | | | | ✅ | | | | | | 锚点 |
+| DR7 决策语义声明+门禁 | 冻结 | | | | ✅ | | | | | | 锚点 |
+| DR8 决策树 | 冻结 | | | | ✅ | | | | | | 锚点 |
+| DR9 上下文有界+哈希 | 冻结 | | | | ✅ | | | | | | 锚点 |
+| DR10 结果可追踪、无评分 | 冻结 | | | | ✅ | | | | | | 锚点 |
 | W31 未开通不可执行 | 冻结 | | | | | | | | ✅ | | 锚点 |
 
 ---
@@ -666,6 +728,7 @@ CEO A 离任 → CEO B 上任
 | M2.1 Canonical Executable Project Spec | **DONE**（2026-09-11） | `01060ab` | 迁移 **v40**；单一立项入口 + 两轴路由 + Work Intake 责任路由 + Canonical Spec 读面；W32–W36 强制 |
 | M2.2 Role Context & Adaptive Onboarding | **DONE**（2026-09-11） | `164272c` | 迁移 **v41**；Authority Projection（default-deny / 有限作用域 / append-only 双摘要）+ RoleContext 投影 + Role Resource Index；W37–W42 强制 |
 | M2.3 Management Agent Tooling | **DONE**（2026-09-11） | `e402c06` | 无迁移；Read Shared / Write Internal + Tool Registry + 执行五步 + 调试口；T1–T12 强制 |
+| M2.4 Leadership Planning & Delegation | **DONE**（2026-09-11） | 见 §17.0d | 迁移 **v42**；Decision Envelope + 三层分离 + 决策树 + 只读决策面；DR1–DR10 强制 |
 
 ### Progress Log
 
@@ -770,17 +833,52 @@ CEO A 离任 → CEO B 上任
   - **踩坑记录**：`SessionLocal(expire_on_commit=False)` 下 ORM 关系会保持旧值 ——
     依赖图必须从**表**读（`list_dependencies`），否则同一会话里第二次建边时环检测会漏
 
-### 下一步（M2.4，不在 M2.3 范围）
+- **2026-09-11 · M2.4 DONE —— Leadership Planning & Delegation**
+  - **拍板落地（方案 3 + Decision Envelope）**：三层不混（意图/执行事实/真相）；
+    一条决策 → N 个动作；关联单向；`decision_semantics`（none/optional/required）注册时强制；
+    决策不授予权限；状态必须能表达 `PARTIALLY_APPLIED`；上下文是有界快照 + 哈希；
+    决策树只用一个 `parent_decision_id`；只留 Decision → Outcome 可追踪能力
+  - **迁移**：**v42** `c3e5a7b9d124`（纯 additive：2 张新表 + 索引，无回填）；
+    `upgrade → downgrade -1 → upgrade` 实测；`alembic check` 无漂移
+  - **代码**：`app/models/decision.py`、`app/work/decisions.py`（信封 + 聚合 + 读模型）、
+    `app/work/tool_executor.py`（执行事实改落 `tool_audits` + `decision_id` + 语义门禁 +
+    **SAVEPOINT 隔离**）、`app/work/{tools,tool_writes,contracts}.py`、
+    `app/api/v1/decisions.py`（只读）、`app/schemas/work.py`
+  - **契约**：`DecisionRecord` → `DecisionIntent`（提交前的意图形状）；
+    `DecisionOutcome` **退役**（结果只由 `DecisionStatus` 表达）；新增 `DecisionStatus` /
+    `DecisionSemantics` / `DECISION_CONTEXT_KEYS`；不变量 **DR1–DR10**（注册表 64 条）
+  - **前端**：项目详情「管理决策」时间线 + types/api/hook + i18n 中英
+  - **测试**：新增 `tests/test_m2_decisions.py`（**27 个**，DR1–DR10 全覆盖）；
+    M2.3 的 32 个用例适配"写动作必须隶属决策"；`test_m2_contract.py` 50 个
+  - **门禁**：pytest **1179 passed / 6 deselected**（连跑 3 次全绿）；ruff check 全绿；
+    ruff format 仅既有 5 个 WIP 红；alembic check 无漂移（head = v42）；
+    web tsc / eslint / prettier / vitest(351) / build 全绿
+  - **守卫反例注入已验证（6/6 转红后撤回）**：决策行复制工具名 / 部分生效四舍五入成成功 /
+    决策授予权限 / 建反向关联数组 / 写工具不声明语义 / 放过未知上下文键
+  - **踩坑记录（真实 bug）**：执行面原来的 `db.rollback()` 会把**调用方**（决策信封）
+    已写下的东西一起抹掉 —— 一个动作被领域拒绝，整条 `DecisionRecord` 与前序成功动作全部消失。
+    修复：**SAVEPOINT** 只回滚该 handler + 决策意图先提交再执行动作。
+    对应的用例也补强了"成功的动作必须真的留在领域状态里"
 
-Leadership Planning & Delegation：`decision_records` 表 + `DecisionService`；
-写工具产出的 `authority_snapshot()`（`grants_hash` / `position_grants_hash`）直接落进
-`DecisionRecord.context_snapshot`，让"谁在什么时候以什么授权做了什么"可长期审计。
+### 下一步（M2.5，不在 M2.4 范围）
+
+Dynamic Task Graph Runtime：`GRAPH_TEMPLATE` 退出业务真相；
+`Orchestrator` 变成**纯调度器**（不再生成 Task、不再决定 assignee）；
+`validate_task_graph` / `resolve_ready_tasks` 从契约接进运行时；
+Manager Agent 经 `create_task` / `create_dependency` / `assign_task` 建图，
+系统只回答"哪些 Task 现在可以执行"。
 
 ### ~~交付后暂停点~~ → **已拍板（2026-09-11，D1/D2/D3）**
 
 1. **默认 Work Intake = CEO，但公司可配**（负责路由，不是 CEO 特权）→ M2-ADR-11 / B6
 2. **新公司默认 guided**；首次真实项目完成后公司默认转 managed；`work_mode` 项目级快照 → M2-ADR-13/15 / B7/B12
 3. **确定性模板保留**，但只作 Test/Tutorial/CI Fixture，生产**永不** fallback，且必须显式请求 + 部署门控 → M2-ADR-12 / B9/B10
+
+---
+
+## 17.0d M2.4 交付证据
+
+见本轮汇报与 §16 Progress Log（commit hash 由收尾提交补记）。
 
 ---
 

@@ -2141,3 +2141,90 @@ export interface EmployeeRoleContextPage {
   has_management_authority: boolean;
   authority_grant_count: number;
 }
+
+/* -------------------------------------------------------------------------
+ * M2.4 · 管理决策（GET /decisions）
+ *
+ * DecisionRecord = 管理 Agent **为什么**做出这个决定；
+ * ToolAudit      = 为执行它，系统**实际执行了什么**（入参出参在 tool-audits 端点）。
+ * 三层不混：这里第一层给管理语义，执行事实只给定位信息。
+ * ---------------------------------------------------------------------- */
+
+export interface DecisionActionRef {
+  audit_id: number;
+  tool_name: string;
+  outcome: string;
+  decision_semantics: "none" | "optional" | "required" | string;
+  authority_allowed: boolean | null;
+  created_at: string | null;
+}
+
+export interface DecisionActionSummary {
+  total: number;
+  applied: number;
+  by_outcome: Record<string, number>;
+}
+
+export interface DecisionView {
+  decision_id: number;
+  company_id: number;
+  actor_person_id: number | null;
+  actor_employee_id: number;
+  acting_position_assignment_id: number | null;
+  acting_position_definition_id: number | null;
+  acting_position_code: string | null;
+  decision_type: string;
+  scope: string;
+  project_id: number | null;
+  task_id: number | null;
+  reason: string;
+  intended_outcome: string;
+  /** PROPOSED / EXECUTING / APPLIED / PARTIALLY_APPLIED / FAILED / SUPERSEDED */
+  status: string;
+  outcome_note: string;
+  parent_decision_id: number | null;
+  superseded_by_id: number | null;
+  context_version: number;
+  context_hash: string;
+  context: Record<string, unknown>;
+  authority_at_decision: Record<string, unknown>;
+  action_summary: DecisionActionSummary;
+  actions: DecisionActionRef[];
+  child_decision_ids: number[];
+  created_at: string | null;
+  resolved_at: string | null;
+}
+
+export interface ToolAuditView {
+  audit_id: number;
+  tool_name: string;
+  decision_id: number | null;
+  outcome: string;
+  side_effect: string;
+  decision_semantics: string;
+  autonomy: string;
+  transport: string;
+  origin: string;
+  actor_employee_id: number | null;
+  actor_person_id: number | null;
+  actor_company_id: number | null;
+  work_session_id: number | null;
+  task_id: number | null;
+  project_id: number | null;
+  arguments: Record<string, unknown>;
+  arguments_digest: string;
+  authority_allowed: boolean | null;
+  authority_reason: string;
+  authority_grant_ids: number[];
+  authority_grants_hash: string;
+  result: Record<string, unknown> | null;
+  error: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface DecisionStats {
+  decisions_by_status: Record<string, number>;
+  tool_audits_by_outcome: Record<string, number>;
+  tool_audits_by_decision_semantics: Record<string, number>;
+}
