@@ -47,7 +47,7 @@ Codex / Claude Code / OpenCode / Custom 新 Runtime（保持 placeholder）
 
 | 阶段 | 主题 | 迁移 | 状态 |
 | --- | --- | --- | --- |
-| M3.0 | Production Agent Contract Freeze | 零 | **IN_PROGRESS** |
+| M3.0 | Production Agent Contract Freeze | 零 | **DONE**（`6f4e97b`） |
 | M3.1 | Real Runtime Provisioning | 可能 1 | PLANNED |
 | M3.2 | Ready-to-Work & Runtime Readiness | 无 | PLANNED |
 | M3.3 | Capability Gap Actions | 可能 1 | PLANNED |
@@ -621,16 +621,26 @@ docs/m3-freeze.md（机器可检：形态 / 不变量 / 唯一写入路径 / 模
 
 ---
 
-## 18. 交付证据（M3.0，完成后填）
+## 18. 交付证据（M3.0）
 
 ```text
-pytest（固定序）          待填
-pytest（真随机序）         待填（当前既有缺陷见 R1）
-M2 freeze anchors         待填
-M1 / T2 anchors           待填（若触碰）
-ruff check / format       待填
-alembic check / heads     待填（期望：无新操作；head 不变）
-前端四件套 + build          待填（未改前端 ⇒ 仅确认）
-反例注入                   待填（M3.0 守卫逐条）
-commit                    待填
+pytest（固定序）          1305 passed / 6 deselected（M2.10 为 1251，+54 条 M3.0 守卫）
+pytest（真随机序）         ⚠️ 未过：6 次 5 红（既有缺陷，R1；M3.1 先修）
+M2 freeze anchors        116 passed（m1 golden/invariants + t2 golden + market×5 + recruitment +
+                                     evidence_invariants + m2 golden）
+M1 / T2 anchors（额外）   91 passed（m1 economy contract / hardening / economy contracts / ledger / npc economy）
+ruff check .             All checks passed
+ruff format --check .    5 files would be reformatted（既有 WIP：auth / providers / test_authentication /
+                         test_employee_providers / test_providers —— 未触碰；417 files already formatted）
+alembic check            No new upgrade operations detected
+alembic heads            325887b7109a（唯一 head；M2 最后一个迁移 v45）
+前端 tsc/eslint/prettier 全绿；vitest 83 files / 351 passed；build ✓（5.60s）
+反例注入                  26/26“注入转红 → 还原转绿”
+  · 文件级 20 条：遥测撞领域 / execution_mode / mock 折扣 / provenance 造假与欠账清空 /
+    幽灵动作 / 步骤漂移 / 就绪项无阶段 / 自动动作 / 履历无来源 / 两轴重叠 / 能力键 /
+    对账删除 / M2 事件集 / 文档漂移 / 锚点改名 / 派发改派 / 运行时 import 领域写路径 /
+    幂等破坏 / Person 口径盘点造假
+  · 元数据级 6 条：agent_profiles 表 / agent_id 列 / power 列 / task_graphs 表 /
+    employees.ready 列 / work_sessions 缺 model 列
+commit                   6f4e97b（M3.0 主体）+ 本次 Progress/证据记录
 ```
