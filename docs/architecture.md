@@ -390,6 +390,12 @@ WorkOrder ACCEPTED（M1 经济事实；状态机不动 —— 手写快照 + 导
 > **M2 已冻结（2026-09-12）**：工作与组织运行域的形态 / 不变量 / 唯一写入路径 / 模块边界
 > 见 `docs/m2-freeze.md`；设计全文见 `docs/m2-agent-work-runtime-design.md`。
 
+> **M3 已冻契约（M3.0，2026-09-13）**：Agent 生产运行与成长的形态 / P1–P36 不变量 /
+> 就绪四层 / provisioning 与对账 / 真实 vs 模拟 / provenance / 能力缺口动作 /
+> 遥测 vs 领域事件 / 履历与资产读模型 —— 见 `docs/m3-agent-production-growth-design.md`；
+> 契约代码：`app/work/production.py`；守卫：`tests/test_m3_contract.py`；
+> 执行基线：`docs/m3-implementation-plan.md`。M2 契约（P28）与 M1/T2 冻结面不变。
+
 ## 6. Learning 与 Knowledge
 
 ### 6.1 Reflection（Project Learning）

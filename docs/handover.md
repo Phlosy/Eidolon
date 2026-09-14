@@ -618,13 +618,42 @@ C 新 CEO 接任：CEO A 离任 → CEO B 上任 → B 不继承 A 的技能/私
 
 ---
 
+## 5o. M3.0 Production Agent Contract Freeze（**DONE**，2026-09-13）
+
+- **零迁移**（head 仍 v45 `325887b7109a`）；M2 契约不动（P28）
+- **落盘**：`docs/m3-agent-production-growth-design.md`（含 P1–P36 / 12 条 M3-ADR / 13 条技术债）、
+  `docs/m3-implementation-plan.md`（M3.0–M3.10 / K1–K10 / R1–R12 / Progress）、
+  `app/work/production.py`（M3 纯契约层）、`tests/test_m3_contract.py`（54 条）
+- **M3 冻结的核心边界**：
+  - Agent = **Product Aggregate**（不新建 SoT；`AgentProfile` 是读模型）
+  - 就绪 = **四层派生事实**（Employment / Provisioning / Runtime / Execution）+ **两个口径**
+    （严格 `ready_to_work` 面向人 / `blocking_gaps` 面向派发，position 是软契约不进执行门禁）
+  - Provisioning：步骤顺序 == 就绪必答项；**幂等**；对账只有 detect/mark/repair（**不静默删除**）
+  - 真实 vs 模拟：判定链唯一（runtime_type → evidence environment）；mock 继续打折
+  - Provenance：写一次；**欠账显式登记**（`deployment_mode` 快照 → M3.1）
+  - 能力缺口：7 条动作，每条有真实工具或 owner 阶段；**零自动动作**
+  - 遥测 ≠ 领域事件（词表不重叠）；技术重试（系统）≠ 管理 replan（Manager）
+  - 履历 = 派生读模型；可靠性指标必须可归因（禁神秘总战力）
+- **实测**：pytest **1305 passed / 6 deselected**（M2.10 为 1251，+54 条 M3.0 守卫）；M2 冻结锚点 116 passed；
+  前端 tsc / eslint / prettier / vitest（351）/ build 全绿；
+  ruff check 全绿；ruff format 仅 5 个既有 WIP；alembic check 无新操作；
+  反例注入 **26/26 转红 → 还原转绿**（20 条文件注入 + 6 条元数据注入）
+- **复审计顺带查实的技术债**：技术重试计数器无承载列（M3.4）、`career_events` 缺 Person 口径
+  （M3.5）、工具面缺 learn/market 动作（M3.3）
+- 下一步：**M3.1 Real Runtime Provisioning**（先修套件级测试隔离 —— R1）
+
+---
+
 ## 6. 下一步建议（按优先级）
 
-1. **M3**：先读 `docs/m2-freeze.md` §6（留给 M3 的 11 项，**前两项建议优先：真实运行时拉起 / 测试隔离**）。M2 已冻结 —— 改冻结面需要显式理由 + 先跑对应锚点。
-2. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
-3. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
-4. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。
-5. P6.1 flaky 的根因排查（注入时钟 / 事件循环生命周期 fixture）。
+1. **M3.1 Real Runtime Provisioning**：先读 `docs/m3-agent-production-growth-design.md`
+   §6（provisioning 契约）与 `docs/m3-implementation-plan.md` §4；
+   第一件事是修**套件级 per-test 测试隔离**（真随机序当前 6 次 5 红，已在 M3.0 登记为技术债 1）。
+2. **M2 冻结面改动纪律**：碰 M1/T2/M2 面前先跑对应锚点（M3 计划 §2 第 4 条）。
+3. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
+4. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
+5. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。
+6. P6.1 flaky 的根因排查（注入时钟 / 事件循环生命周期 fixture）—— 与 M3.1 的测试隔离同批处理。
 
 ---
 
