@@ -122,7 +122,7 @@ app/work/             M2 契约与域逻辑（**不拥有**业务真相：写操
 app/api/v1/          HTTP 面（与工具**共用**同一 application service —— T2/T11）
 app/services/*       领域服务（经济 / 项目 / 任务 / 驱动 / 人员 …）—— 真相所在
 app/lifecycle/       开通与资源（provisioning 计划与执行）
-app/models/*         表结构（**只加必要列/表**；M2 的 5 个迁移见 §5）
+app/models/*         表结构（**只加必要列/表**；M2 的 6 个迁移见下表）
 ```
 
 **依赖方向**（禁止反向）：
@@ -134,7 +134,7 @@ services/*  ✗→  work/*（例外：`services/projects.py` 只调用 fixture �
                       `services/artifacts.py` 提供中性引用解析给经济域复用）
 ```
 
-**M2 的 5 个迁移**（全部 additive + 事实驱动回填）：
+**M2 的 6 个迁移**（全部 additive + 事实驱动回填）：
 
 | 版本 | 内容 |
 | --- | --- |
@@ -182,6 +182,7 @@ M2 的裁决记录见 `docs/m2-agent-work-runtime-design.md` §17（M2-ADR-1..35
 | 8 | 历史脏值清理（`work_orders.project_id` 无效引用等）| M2 的纪律是"不猜、不美化"；清理要人工立项 |
 | 9 | 经济/资产/复杂金融扩展（股权、买卖、融资…）| 用户明令不做（设计 §15）|
 | 10 | 中央 Planner / 自动组队 / 自动辞退 / 个人化 prompt 注入 | 用户明令不做（W1/W2/W13/W26）|
+| 11 | **测试隔离（真随机序不稳定）** | M2.10 复审计实测：打乱文件序 **6 次里 5 次转红**（`test_market_npc` NPC 计数 9≠2 / `test_architecture_guards` person-only 行 / `test_m2_golden_path` 场景 A / `test_economy_ledger` escrow ×5 / `test_m2_project_spec` ×2）。根因：session 级 `client` + 同一个 SQLite 库，**只有部分模块自带快照夹具**，跨模块公共行累积；在冻结态 `42a9d0f` 同样复现。修法：套件级 per-test 事务回滚或统一清理夹具 —— 碰 M1 冻结测试基建，单独立项 |
 
 **M3 开工前的三条纪律（沿用 M2）**：
 

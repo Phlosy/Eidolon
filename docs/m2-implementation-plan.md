@@ -745,7 +745,7 @@ WorkOrder ACCEPTED（状态机不动）
 
 ### 冻结面（`docs/m2-freeze.md`）
 
-形态 / 不变量（105 条，全部 enforced）/ 唯一写入路径 / 模块边界 / 关键裁决 / 留给 M3 的清单（10 项）。
+形态 / 不变量（105 条，全部 enforced）/ 唯一写入路径 / 模块边界 / 关键裁决 / 留给 M3 的清单（11 项）。
 
 ### Acceptance
 
@@ -756,9 +756,14 @@ WorkOrder ACCEPTED（状态机不动）
 | K3 | 反例注入验证：抽掉任一条守卫 → 对应测试转红 | ✅ M2.10 **7/7**；加上 M2.5–M2.9 共 **64 条**注入全部被拦住 |
 | K4 | M1 / T2 / T1 / R1 冻结锚点全绿 | ✅ `test_m1_golden_path` / `test_m1_invariants` / `test_t2_golden_path` / `test_market_*` / `test_recruitment` / `test_evidence_invariants` |
 | K5 | 完整门禁全绿（含 build）| ✅ pytest / ruff check / ruff format / alembic check / tsc / eslint / prettier / vitest / build |
-| K6 | 冻结面落盘 | ✅ `docs/m2-freeze.md`（含机器可检的章节与条数断言）|
+| K6 | 冻结面落盘 | ✅ `docs/m2-freeze.md`（机器可检：章节 / 不变量条数 / **迁移表条数·版本号·head**）|
 
 ### 本阶段修掉的两个真实问题
+
+> 追加（冻结后复审计）：冻结面正文写“M2 的 5 个迁移”（实际 **6 个**，v40–v45），
+> 而当时的冻结面守卫只数章节标题 ⇒ 漂移不红。修：正文改 6 + 新增
+> `test_freeze_surface_declares_the_migration_set`（条数 / 版本号真实存在 / 末版=head；`43a70cd19cc7`
+> 就是靠它发现迁移文件用了带注解的 `revision: str = …` 写法）。三条注入各自转红 → 还原转绿。
 
 1. **结论推进不触发项目终态**：M2.7 的 `submit_verdict` 只发 `dispatch` 信号，
    而"全部任务完成 ⇒ 交付"的判断在 `Orchestrator._advance` 里 ——
@@ -859,6 +864,14 @@ WorkOrder ACCEPTED（状态机不动）
 ## 16. M2 Progress
 
 > 每完成一个阶段更新本表；新 Agent 从这里恢复上下文。
+
+> ⚠️ **门禁口径更正（M2.10 复审计）**：本文件历史进度块里的“pytest（默认随机序）”是**误标**——
+> 仓库没有装 `pytest-randomly`，`pytest apps/server/tests -q` 的收集顺序是**字典序（确定性）**。
+> 真随机（打乱文件序）实测 **6 次里 5 次转红**（`test_market_npc` / `test_architecture_guards` /
+> `test_m2_golden_path` 场景 A / `test_economy_ledger` escrow / `test_m2_project_spec`），
+> 且在冻结态 `42a9d0f` 同样复现 ⇒ 既有缺陷，非 M2.10 引入。修法留给 M3
+> （`docs/m2-freeze.md` §6 第 11 项：套件级 per-test 隔离）。
+> 结论：M2 各阶段**实际过关的是固定序**；随机序不算已验。
 
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |

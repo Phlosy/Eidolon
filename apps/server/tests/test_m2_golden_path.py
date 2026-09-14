@@ -17,6 +17,7 @@ C 新 CEO 接任：CEO A 离任 → CEO B 上任 → B **不继承** A 的人级
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -626,6 +627,47 @@ def test_freeze_surface_is_declared_and_consistent():
 def invariant_anchor_has(name: str) -> bool:
     """这个模块里存在同名测试（K1 的自检：锚点不能只写在文档里）。"""
     return name in globals()
+
+
+def test_freeze_surface_declares_the_migration_set():
+    """K6：冻结面里的迁移表必须和仓库真实迁移一致（条数 / 版本号 / head）。
+
+    M2.10 复审计抓到过一次漂移：表里 6 行、正文写"5 个迁移"，而守卫只数章节标题，
+    于是照样绿。这条守卫把"条数与真实迁移对齐"变成机器事实（抽掉即红）。
+    """
+    freeze = (SERVER_ROOT.parents[1] / "docs" / "m2-freeze.md").read_text(encoding="utf-8")
+    rows = re.findall(r"^\| (v\d+) `([0-9a-f]{12})` \|", freeze, flags=re.MULTILINE)
+    assert rows, "冻结面缺 M2 迁移表"
+
+    declared = re.search(r"\*\*M2 的 (\d+) 个迁移\*\*", freeze)
+    assert declared, "冻结面缺迁移条数声明"
+    assert int(declared.group(1)) == len(rows), "冻结面声明的迁移条数与表格行数不一致"
+
+    versions = SERVER_ROOT / "migrations" / "versions"
+    sources = {path: path.read_text(encoding="utf-8") for path in versions.glob("*.py")}
+    revisions = {
+        head.group(1)
+        for source in sources.values()
+        if (
+            head := re.search(
+                r'^revision(?:\s*:\s*[^=]+)?\s*=\s*"([0-9a-f]+)"', source, re.MULTILINE
+            )
+        )
+    }
+    down_revisions = {
+        down.group(1)
+        for source in sources.values()
+        if (
+            down := re.search(
+                r'^down_revision(?:\s*:\s*[^=]+)?\s*=\s*"([0-9a-f]+)"', source, re.MULTILINE
+            )
+        )
+    }
+    for version, revision in rows:
+        assert revision in revisions, f"冻结面声明的迁移不存在：{version} {revision}"
+
+    # 最后一版必须是当前 head（没有任何迁移把它当 down_revision）
+    assert rows[-1][1] not in down_revisions, f"冻结面最后一版不是 head：{rows[-1][1]}"
 
 
 def test_work_order_bridge_is_part_of_the_frozen_surface(db, default_company_id):
