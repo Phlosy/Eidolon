@@ -1,4 +1,6 @@
 from datetime import datetime
+from decimal import Decimal
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -31,6 +33,36 @@ class RuntimeTypeInfoOut(BaseModel):
     supported_providers: list[str]
 
 
+class RuntimeProbeFactOut(BaseModel):
+    state: Literal["passed", "failed", "unknown"]
+    reason: str
+    checked_at: datetime | None = None
+    expires_at: datetime | None = None
+    docker_state: str | None = None
+    docker_health: str | None = None
+    http_status: int | None = None
+    present: list[str] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+
+
+class RuntimeModelProbeRequest(BaseModel):
+    """Explicit paid opt-in; one request, no retry/fallback or arbitrary prompts."""
+
+    model_config = {"extra": "forbid"}
+    allow_paid: Literal[True]
+    idempotency_key: str = Field(min_length=1, max_length=120)
+    max_requests: Literal[1] = 1
+    max_cost_usd: Decimal = Field(gt=0, le=1)
+    timeout_seconds: float = Field(default=20, ge=1, le=30)
+    max_output_tokens: int = Field(default=32, ge=1, le=128)
+
+
+class RuntimeModelProbeOut(BaseModel):
+    id: int
+    state: str
+    result: dict
+
+
 class RuntimeInstanceOut(BaseModel):
     id: int
     employee_id: int
@@ -58,6 +90,7 @@ class RuntimeInstanceOut(BaseModel):
     employee_slug: str | None = None
     provider_name: str | None = None
     model: str | None = None
+    probes: dict[str, RuntimeProbeFactOut] = Field(default_factory=dict)
 
 
 class RuntimeLogsOut(BaseModel):

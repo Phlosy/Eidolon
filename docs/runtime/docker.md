@@ -29,8 +29,9 @@ eidolon-{type}-{slug}-{6hex}
 
 ## 网络
 
-- 所有 runtime 容器加入专用 bridge 网络 **`eidolon-runtime-net`**，Eidolon Backend 也在同一网络中。
-- **不 publish 任何 host 端口**（无 `-p` 映射）：runtime 容器对外不可达，只有 Backend 通过 **docker DNS**（容器名解析，如 `http://eidolon-hermes-charlie-a1b2c3:8642`）访问。
+- 所有 runtime 容器加入专用 bridge 网络 **`eidolon-runtime-net`**；使用 Docker DNS 的容器化 Backend 也须加入同一网络。
+- 宿主机后端默认使用 `EIDOLON_RUNTIME_CONTROL_MODE=loopback`：数据库预留 26900–26989 范围内的唯一端口（跳过 Gitea 26922），只绑定 127.0.0.1，控制面仍须每实例 token。端口耗尽或被其他程序占用时报告失败，不抢占已有监听。
+- 容器化后端使用 `docker` 模式，不发布 Runtime host 端口，通过同一私有网络的 Docker DNS 访问。必须将后端加入 Runtime 网络；基础 compose 的 mock 部署不会自动授予 Docker daemon 权限。
 - 这同时满足 ports.md 的规则：宿主机上唯一对外端口仍是 Web 26880；runtime gateway 端口（8642 / 18789）只在容器网络内存在。
 
 ## Per-Employee 持久化目录

@@ -34,7 +34,7 @@ Eidolon Backend 需要访问 Docker daemon（docker.sock）来编排 runtime 容
 ## 网络面
 
 - **Backend API 仅绑 loopback（`127.0.0.1:26881`）**；浏览器访问一律经 Web（26880）反向代理 `/api`、`/ws`。
-- Runtime 容器**不 publish 任何 host 端口**，只在 `eidolon-runtime-net` 内由 Backend 经 docker DNS 访问。
+- Runtime 的 `loopback` 模式仅在已登记范围内绑定 `127.0.0.1`，由宿主后端携带独立 token 访问；`docker` 模式不发布端口，由同网后端经 Docker DNS 访问。禁止绑定公网地址。
 - 宿主机上唯一对外监听端口是 Web 26880（见 docs/ports.md）。
 - Hermes dashboard（9119）等辅助 UI 默认不启用；启用时不得绑定非 loopback 且无认证的地址。
 

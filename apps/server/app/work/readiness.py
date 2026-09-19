@@ -32,7 +32,6 @@ from sqlalchemy.orm import Session
 
 from app.models.enums import (
     DeploymentMode,
-    HealthStatus,
     LifecycleStatus,
     ProvisioningJobOwner,
     ProvisioningJobStatus,
@@ -46,7 +45,9 @@ from app.models.position import PositionAssignment, PositionDefinition, Position
 from app.repositories import lifecycle as lifecycle_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
+from app.runtimes.probe import runtime_facts
 from app.work import contracts as C
+from app.work.runtime_readiness import provider_facts
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +59,8 @@ STEP_PROVIDER = "provider"
 #: 运行时实例的"可用"状态集合（其余状态一律视为不可用，不做善意假设）
 INSTANCE_OK_STATUSES: frozenset[str] = frozenset(
     {
-        RuntimeInstanceStatus.created.value,
-        RuntimeInstanceStatus.starting.value,
         RuntimeInstanceStatus.running.value,
         RuntimeInstanceStatus.idle.value,
-        RuntimeInstanceStatus.stopped.value,
     }
 )
 
@@ -340,20 +338,25 @@ def _runtime_item(db: Session, employee: Employee, policy: RuntimePolicy) -> Rea
             source=C.READINESS_FACT_SOURCES["runtime"],
             facts={"required": True, "instance_id": None},
         )
+    probes = runtime_facts(instance)
     healthy = (
         str(instance.status) in INSTANCE_OK_STATUSES
-        and str(instance.health_status) != HealthStatus.unhealthy.value
+        and instance.runtime_type == policy.runtime_type
+        and instance.deployment_mode == policy.deployment_mode
+        and all(item["state"] == "passed" for item in probes.values())
     )
     return ReadinessItem(
         item="runtime",
         ready=healthy,
-        detail=f"实例状态 {instance.status} / 健康 {instance.health_status}",
+        detail=f"实例状态 {instance.status} / 健康 {instance.health_status} / "
+        + ", ".join(item["reason"] for item in probes.values() if item["state"] != "passed"),
         source=C.READINESS_FACT_SOURCES["runtime"],
         facts={
             "required": True,
             "instance_id": int(instance.id),
             "status": str(instance.status),
             "health_status": str(instance.health_status),
+            "probes": probes,
             "runtime_type": str(instance.runtime_type),
             "model_binding_id": (
                 int(instance.model_binding_id) if instance.model_binding_id else None
@@ -380,13 +383,15 @@ def _provider_item(db: Session, employee: Employee, policy: RuntimePolicy) -> Re
             source=C.READINESS_FACT_SOURCES["provider"],
             facts={"required": True, "binding_id": None},
         )
-    provider = provider_repo.get_provider(db, int(binding.provider_id))
+    provider = provider_repo.get_provider_visible(db, int(binding.provider_id), employee.id)
     enabled = bool(provider is not None and provider.enabled)
+    probes = provider_facts(db, employee, runtime_repo.get_instance_for_employee(db, employee.id))
     return ReadinessItem(
         item="provider",
-        ready=enabled,
+        ready=all(item["state"] == "passed" for item in probes.values()),
         detail=(
-            f"主绑定 {binding.model}（provider {binding.provider_id}）"
+            f"主绑定 {binding.model}（provider {binding.provider_id}）："
+            + ", ".join(item["reason"] for item in probes.values())
             if enabled
             else f"绑定的 provider {binding.provider_id} 不存在或已停用"
         ),
@@ -397,6 +402,7 @@ def _provider_item(db: Session, employee: Employee, policy: RuntimePolicy) -> Re
             "provider_id": int(binding.provider_id),
             "model": binding.model,
             "provider_enabled": enabled,
+            "probes": probes,
         },
     )
 

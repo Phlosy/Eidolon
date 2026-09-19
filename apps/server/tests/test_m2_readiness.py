@@ -62,7 +62,29 @@ def _provision(client, db, employee):
     db.expire_all()
     from app.models.lifecycle import ProvisioningJob
 
-    return readiness.orchestration_result(db, db.get(ProvisioningJob, queued.job_id))
+    result = readiness.orchestration_result(db, db.get(ProvisioningJob, queued.job_id))
+    if result.ok and employee.runtime_type != "mock":
+        # M2 gate tests use explicit observation fixtures, not real model evidence.
+        # U4 tests separately prove that provisioning alone never opens the gate.
+        from app.runtimes.probe import fact, instance_fingerprint
+
+        instance = runtime_repo.get_instance_for_employee(db, employee.id)
+        metadata = dict(instance.metadata_json)
+        metadata["runtime_probe"] = {
+            "instance_fingerprint": instance_fingerprint(instance),
+            "facts": {
+                key: fact("passed", "m2_test_fixture")
+                for key in ("container", "process", "application_health", "control", "capabilities")
+            },
+        }
+        for key in ("provider_connectivity", "selected_model"):
+            metadata[key + "_probe"] = {
+                "fingerprint": metadata["applied_model_fingerprint"],
+                "fact": fact("passed", "m2_test_fixture"),
+            }
+        instance.metadata_json = metadata
+        db.commit()
+    return result
 
 
 def _employees(db, company_id: int) -> dict[str, Employee]:

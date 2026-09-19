@@ -8,7 +8,7 @@ so replacing an instance never touches them.
 
 from datetime import datetime
 
-from sqlalchemy import JSON, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import JSON, ForeignKey, Index, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -70,6 +70,13 @@ class RuntimeInstance(TimestampMixin, Base):
     __tablename__ = "runtime_instances"
     __table_args__ = (
         Index("uq_runtime_instances_resource_key", "resource_key", unique=True),
+        Index(
+            "uq_runtime_loopback_port",
+            "internal_port",
+            unique=True,
+            sqlite_where=text("internal_host = '127.0.0.1'"),
+            postgresql_where=text("internal_host = '127.0.0.1'"),
+        ),
         # R1.4（docs/person-core-migration.md D4 批次 4）：一人一实例在 person 口径上的
         # 镜像（employee_id unique 的对应物）。必须写进模型，否则 alembic check 报漂移。
         Index(
@@ -137,3 +144,31 @@ class RuntimeImage(TimestampMixin, Base):
     )
     update_status: Mapped[str] = mapped_column(String(50), default=ImageUpdateStatus.idle.value)
     last_checked_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+
+class RuntimeModelProbe(TimestampMixin, Base):
+    """One explicitly budgeted model request; retries read its durable receipt."""
+
+    __tablename__ = "runtime_model_probes"
+    __table_args__ = (
+        UniqueConstraint(
+            "runtime_instance_id", "idempotency_key", name="uq_runtime_model_probe_key"
+        ),
+        Index(
+            "uq_runtime_model_probe_running",
+            "runtime_instance_id",
+            unique=True,
+            sqlite_where=text("state = 'running'"),
+            postgresql_where=text("state = 'running'"),
+        ),
+    )
+
+    company_id: Mapped[int] = mapped_column(ForeignKey("companies.id"))
+    employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"))
+    # Keep the cost/attempt fact after a runtime instance is explicitly removed.
+    runtime_instance_id: Mapped[int] = mapped_column(Integer)
+    idempotency_key: Mapped[str] = mapped_column(String(120))
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(30), default="running")
+    request_json: Mapped[dict] = mapped_column(JSON)
+    result_json: Mapped[dict] = mapped_column(JSON, default=dict)

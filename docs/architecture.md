@@ -571,7 +571,7 @@ v0.2 把 "One Employee = One Persistent Agent" 落地为持久容器化 Runtime�
 
 ### 15.2 Runtime 实例与能力
 
-- **DockerRuntimeInstanceManager**：docker-py 编排；容器命名 `eidolon-{type}-{slug}-{6hex}`；专用网络 `eidolon-runtime-net`，**不 publish host port**，Backend 走 docker DNS；per-employee 目录 `data/employees/{id}/{workspace,brain,runtime/...}` 单容器独占；默认资源限制 CPU 2 / 内存 4GB；non-privileged，禁挂 `/` 与 docker.sock。
+- **DockerRuntimeInstanceManager**：docker-py 编排；容器名称绑定持久资源标识；专用网络 `eidolon-runtime-net`。宿主后端默认使用固定范围内的 loopback 控制端口，容器化后端可选不发布端口的 Docker DNS 模式；均使用每实例凭证。工作区以 Employee.workspace_path 为源，brain/runtime 状态按员工隔离；默认 CPU 2 / 内存 4GB，non-privileged，禁挂 `/` 与 docker.sock。
 - 实例生命周期状态：`provisioning → stopped → starting → running → stopping → stopped`，`error` 保留现场；managed update 期间 `updating`，失败 `rolled_back`。
 - **RuntimeCapabilities**：adapter 声明 + 运行时探测校正；不支持的能力如实返回 Unsupported，前端置灰，业务层调用前先查能力。
 

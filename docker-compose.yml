@@ -12,6 +12,7 @@ services:
       EIDOLON_DATABASE_URL: sqlite:///./data/eidolon.db
       EIDOLON_WORKSPACE_ROOT: ./data/workspaces
       EIDOLON_RUNTIME_MODE: mock
+      EIDOLON_RUNTIME_CONTROL_MODE: docker
       EIDOLON_CORS_ORIGINS: http://localhost:26880
     volumes:
       - eidolon-data:/app/data

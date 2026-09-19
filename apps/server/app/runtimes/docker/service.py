@@ -3,10 +3,9 @@
 Hard safety rules for runtime containers:
 - never privileged, never host PID/network mode;
 - never mount ``/`` or ``/var/run/docker.sock`` into a runtime container;
-- no host port publishing for runtime containers — the backend reaches them
-  over the private ``eidolon-runtime-net`` docker network via container-name
-  DNS. Loopback-only (127.0.0.1) port bindings are allowed for builtin
-  services Eidolon itself manages (e.g. the optional Gitea container).
+- runtime control ports may bind only to loopback for a host backend;
+  containerized backends can instead use private Docker-network DNS without
+  publishing ports. Builtin services use the same loopback restriction.
 
 Every method degrades gracefully when the Docker daemon is unavailable: the
 process must keep booting and runtime types simply report docker_available=false.
@@ -125,8 +124,7 @@ class DockerService:
         """Create (not start) a hardened runtime container. Returns container id.
 
         ``ports`` (docker-py style ``{"3000/tcp": ("127.0.0.1", 26990)}``) is
-        restricted to loopback bindings — runtime containers must never publish
-        ports; only builtin services (Gitea) may bind to 127.0.0.1.
+        restricted to loopback bindings for runtime control and builtin services.
         """
         self._validate_volumes(volumes or {})
         self._validate_ports(ports or {})
@@ -216,6 +214,16 @@ class DockerService:
         status = state.get("Status", "unknown")
         health = (state.get("Health") or {}).get("Status", "none")
         return status, health
+
+    def list_managed_containers(self) -> list[dict] | None:
+        """Read-only inventory. None means daemon failure, never an empty inventory."""
+        try:
+            containers = self._get_client().containers.list(
+                all=True, filters={"label": "eidolon.managed=true"}
+            )
+            return [dict(container.attrs) for container in containers]
+        except (DockerException, DockerUnavailableError):
+            return None
 
     def get_logs(self, container_id: str, tail: int = 200) -> list[str]:
         """Last ``tail`` log lines, redacted."""

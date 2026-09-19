@@ -59,9 +59,9 @@ class HermesProviderConfigurator(RuntimeProviderConfigurator):
             base_url = base_url.rstrip("/") + "/v1"
 
         model_block: dict = {"provider": native or "custom", "model": model}
+        if base_url and (native is None or provider.base_url):
+            model_block["base_url"] = base_url.rstrip("/")
         if native is None:
-            if base_url:
-                model_block["base_url"] = base_url.rstrip("/")
             # custom providers read the key from the model block; "none" when keyless
             model_block["api_key"] = credential or "none"
         config = yaml.safe_dump({"model": model_block}, sort_keys=False)

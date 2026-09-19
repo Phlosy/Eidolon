@@ -12,6 +12,8 @@ from app.schemas.runtime import (
     RuntimeImageOut,
     RuntimeInstanceOut,
     RuntimeLogsOut,
+    RuntimeModelProbeOut,
+    RuntimeModelProbeRequest,
     RuntimeTypeInfoOut,
 )
 from app.services import runtimes as runtime_service
@@ -37,6 +39,19 @@ def get_runtime(instance_id: int, db: Session = Depends(get_db)) -> RuntimeInsta
 @router.post("/runtimes/{instance_id}/start", response_model=RuntimeInstanceOut)
 async def start_runtime(instance_id: int, db: Session = Depends(get_db)) -> RuntimeInstanceOut:
     return await runtime_service.instance_action(db, instance_id, "start")
+
+
+@router.post("/runtimes/{instance_id}/probe", response_model=RuntimeInstanceOut)
+async def probe_runtime(instance_id: int, db: Session = Depends(get_db)) -> RuntimeInstanceOut:
+    """Refresh inexpensive control facts; never start a model call."""
+    return await runtime_service.probe_runtime(db, instance_id)
+
+
+@router.post("/runtimes/{instance_id}/validate-model", response_model=RuntimeModelProbeOut)
+async def validate_runtime_model(
+    instance_id: int, payload: RuntimeModelProbeRequest, db: Session = Depends(get_db)
+):
+    return await runtime_service.validate_runtime_model(db, instance_id, payload)
 
 
 @router.post("/runtimes/{instance_id}/stop", response_model=RuntimeInstanceOut)

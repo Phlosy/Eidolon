@@ -42,7 +42,7 @@ from app.runtimes.manager.base import RuntimeInstanceManager
 
 logger = get_logger(__name__)
 
-# Container-internal control-plane ports (never published to the host).
+# Container-internal control ports; loopback mode reserves a separate host port.
 RUNTIME_PORTS = {RuntimeType.hermes.value: 8642, RuntimeType.openclaw.value: 18789}
 
 # Default commands: the bare hermes image is an interactive chat, so the
@@ -197,6 +197,8 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
         """Env + volumes + image for the employee's container (shared by create
         and recreate — provider keys are re-rendered from the secret store each
         time, so no plaintext credential is ever persisted in the DB)."""
+        from .connection import port_bindings
+
         runtime_type = instance.runtime_type
         dirs = employee_dirs(employee.id, runtime_type)
         runtime_dir = dirs["runtime"]
@@ -226,6 +228,12 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
         # Hermes 自身 profile 并发改写，见 docs/research.md:13）。brain 目录本身不挂载。
         if write_files:
             self._mirror_behavior(db, instance, employee, runtime_dir)
+            from app.runtimes.probe import model_fingerprint
+
+            instance.metadata_json = {
+                **(instance.metadata_json or {}),
+                "applied_model_fingerprint": model_fingerprint(provider, model),
+            }
 
         image = self._image_for(runtime_type)
         if runtime_type == RuntimeType.hermes.value:
@@ -295,6 +303,7 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
             "command": self._commands.get(runtime_type),
             "user": f"{uid}:{gid}" if runtime_type == RuntimeType.openclaw.value else None,
             "workspace_mount": workspace_mount,
+            "ports": port_bindings(instance),
         }
 
     def _mirror_behavior(
@@ -352,13 +361,12 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
             },
             command=spec.get("command"),
             user=spec.get("user"),
+            ports=spec.get("ports"),
         )
         if container_id is None:
             raise RuntimeManagerError("docker create_container failed")
 
         instance.container_id = container_id
-        instance.internal_host = instance.container_name  # docker network DNS
-        instance.internal_port = RUNTIME_PORTS.get(instance.runtime_type)
         if not spec["image"].startswith("sha256:"):
             # rollback recreates by digest; keep the human-readable image/tag
             instance.image = spec["image"].rsplit(":", 1)[0]
@@ -399,7 +407,20 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
                 **instance.metadata_json,
                 "api_key_ref": self._secrets.store(db, api_token),
             }
+        if instance.runtime_type == RuntimeType.openclaw.value and not (
+            instance.metadata_json or {}
+        ).get("device_key_ref"):
+            from app.runtimes.openclaw.identity import new_device_key
+
+            instance.metadata_json = {
+                **(instance.metadata_json or {}),
+                "device_key_ref": self._secrets.store(db, new_device_key()),
+            }
         provider, model = self._current_binding(db, instance)
+        from .connection import reserve_connection
+
+        reserve_connection(db, instance, replace=True)
+        db.commit()
         spec = self._container_spec(db, instance, employee, provider, model, api_token)
         if image:
             spec["image"] = image
@@ -530,6 +551,8 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
     # ---- healthcheck ----
 
     async def start_healthcheck_loop(self) -> None:
+        if not settings.runtime_reconciliation_enabled:
+            return
         if self._loop_task is None or self._loop_task.done():
             self._loop_task = asyncio.create_task(
                 self._healthcheck_loop(), name="runtime-healthcheck"
@@ -542,46 +565,9 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
             self._loop_task = None
 
     async def healthcheck_once(self) -> None:
-        with SessionLocal() as db:
-            rows = [
-                row
-                for row in runtime_repo.list_instances_by_status(db, list(_ACTIVE_STATUSES))
-                if row.deployment_mode == DeploymentMode.docker.value and row.container_id
-            ]
-            for row in rows:
-                await self._check_row(db, row)
-            db.commit()
+        from app.work.runtime_reconciliation import reconcile_once
 
-    async def _check_row(self, db: Session, instance: RuntimeInstance) -> None:
-        result = await asyncio.to_thread(self._docker.healthcheck_container, instance.container_id)
-        instance.last_healthcheck_at = datetime.now(UTC)
-        previous = instance.status
-        if result is None:
-            state, health = "missing", "none"
-        else:
-            state, health = result
-        if state in ("exited", "dead", "missing"):
-            if previous in _ACTIVE_STATUSES:
-                instance.status = RuntimeInstanceStatus.crashed.value
-                instance.health_status = HealthStatus.unhealthy.value
-                instance.stopped_at = datetime.now(UTC)
-                db.commit()
-                self._publish(db, "runtime.crashed", instance, extra={"container_state": state})
-            return
-        if state == "running":
-            if health == "unhealthy":
-                if previous != RuntimeInstanceStatus.unhealthy.value:
-                    instance.status = RuntimeInstanceStatus.unhealthy.value
-                    instance.health_status = HealthStatus.unhealthy.value
-                    db.commit()
-                    self._publish(db, "runtime.unhealthy", instance)
-            else:
-                instance.status = RuntimeInstanceStatus.running.value
-                instance.health_status = (
-                    HealthStatus.healthy.value
-                    if health == "healthy"
-                    else HealthStatus.unknown.value
-                )
+        await reconcile_once(self)
 
     async def _healthcheck_loop(self) -> None:
         while True:

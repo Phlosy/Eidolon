@@ -66,17 +66,25 @@ class OpenClawProviderConfigurator(RuntimeProviderConfigurator):
             "plugins": {"entries": {"admin-http-rpc": {"enabled": True}}},
         }
         base_url = effective_base_url(provider)
+        key_env = key_env_for(provider)
         if provider.provider_type in _NON_NATIVE and base_url:
             config["models"] = {
                 "providers": {
                     provider.provider_type: {
                         "baseUrl": base_url.rstrip("/"),
                         "api": "openai-completions",
+                        "models": [{"id": model, "name": model}],
+                        **({"apiKey": "${" + key_env + "}"} if credential and key_env else {}),
                     }
                 }
             }
+        elif provider.base_url:
+            # Built-in providers support endpoint overlays. Do not record the
+            # desired URL as applied while silently using the vendor default.
+            config["models"] = {
+                "providers": {provider.provider_type: {"baseUrl": provider.base_url.rstrip("/")}}
+            }
         env: dict[str, str] = {}
-        key_env = key_env_for(provider)
         if credential and key_env:
             env[key_env] = credential
         return ProviderRenderResult(
@@ -103,6 +111,7 @@ class OpenClawProviderConfigurator(RuntimeProviderConfigurator):
         config["gateway"] = {
             **config.get("gateway", {}),
             "mode": "local",
+            "bind": "lan",
             "auth": {"mode": "token", "token": gateway_token},
         }
         config.setdefault("agents", {"defaults": {}})

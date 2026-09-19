@@ -679,7 +679,7 @@ docs/m3-freeze.md（机器可检：形态 / 不变量 / 唯一写入路径 / 模
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
 | M3.0 | **DONE** | `6f4e97b` | 设计 + 契约 + 54 条新增守卫；零迁移。详细历史证据见 §18 |
-| M3.1 | IN_PROGRESS | `d838823`（U1）、`146dca3`（U2）；U3 见本次提交 | U1–U3 已完成；U3 默认序 + 5 个实际随机序各 1431 passed，真实 Docker 7 项、v47 往返及 lint 通过；[U1 证据](m3-u1-test-isolation.md)、[U2 证据](m3-u2-provisioning-intent.md)、[U3 证据](m3-u3-runtime-ensure.md)。U4 探测对账与 U5 历史快照待完成，尚无真实模型调用验收 |
+| M3.1 | IN_PROGRESS | `d838823`（U1）、`146dca3`（U2）、`d814476`（U3）；U4 见本次提交 | U1–U4 已完成；U4 默认序 + 5 个实际随机序各 1490 passed，两种 Runtime 各一次真实模型调用、控制与 Docker 回归、v48/v49 往返、lint、前端 390 项及构建通过。[U1](m3-u1-test-isolation.md)、[U2](m3-u2-provisioning-intent.md)、[U3](m3-u3-runtime-ensure.md)、[U4 证据](m3-u4-runtime-probes.md)。U5 历史快照待完成，仍未开始真实业务派发 |
 | M3.2 | PLANNED | — | |
 | M3.3 | PLANNED | — | |
 | M3.4 | PLANNED | — | |

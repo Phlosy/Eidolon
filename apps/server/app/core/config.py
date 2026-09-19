@@ -1,6 +1,7 @@
 """Application configuration (pydantic-settings, EIDOLON_ prefix). See docs/architecture.md §9."""
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -12,8 +13,10 @@ class Settings(BaseSettings):
     api_port: int = 26881
     web_port: int = 26880
     metrics_port: int = 26890  # reserved
-    runtime_debug_port_start: int = 26900  # reserved
-    runtime_debug_port_end: int = 26999  # reserved
+    runtime_debug_port_start: int = 26900
+    runtime_debug_port_end: int = 26989
+    runtime_control_mode: Literal["loopback", "docker"] = "loopback"
+    runtime_reconciliation_enabled: bool = True
     database_url: str = "sqlite:///./data/eidolon.db"
     workspace_root: str = "./data/workspaces"
     data_root: str = "./data"  # data/employees/{id}/..., data/projects/{id}/...

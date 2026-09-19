@@ -48,6 +48,7 @@ os.environ["EIDOLON_ROLE_CONTEXT_EVENTS"] = "false"
 os.environ["EIDOLON_ORCHESTRATOR_DISPATCH_ENABLED"] = "false"
 # Runtime jobs are driven explicitly by provisioning tests, avoiding a competing writer.
 os.environ["EIDOLON_RUNTIME_PROVISIONING_ENABLED"] = "false"
+os.environ["EIDOLON_RUNTIME_RECONCILIATION_ENABLED"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -334,6 +335,12 @@ class FakeDockerService:
                 for source, volume in c["volumes"].items()
             ],
             "NetworkSettings": {"Networks": {c["network"]: {}}},
+            "HostConfig": {
+                "PortBindings": {
+                    port: [{"HostIp": host, "HostPort": str(number)}]
+                    for port, (host, number) in c["ports"].items()
+                }
+            },
             "State": {"Status": c["state"], "Health": {"Status": c["health"]}},
         }
 
@@ -343,6 +350,9 @@ class FakeDockerService:
         if c is None:
             return None
         return c["state"], c["health"]
+
+    def list_managed_containers(self):
+        return [self.inspect_container(cid) for cid in self.containers]
 
     def get_logs(self, container_id: str, tail: int = 200) -> list[str]:
         cid = self.resolve(container_id)

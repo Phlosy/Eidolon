@@ -26,6 +26,7 @@ from app.models.runtime import RuntimeInstance
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
 
+from .connection import reserve_connection
 from .docker_manager import RUNTIME_PORTS, RuntimeManagerError, employee_dirs, runtime_user_ids
 
 
@@ -115,8 +116,18 @@ def _claim(
                         "recorded container has no control credential; repair configuration first"
                     )
                 metadata["api_key_ref"] = manager._secrets.store(db, uuid4().hex + uuid4().hex)
-                instance.metadata_json = metadata
-        db.commit()
+            if runtime_type == RuntimeType.openclaw.value and not metadata.get("device_key_ref"):
+                from app.runtimes.openclaw.identity import new_device_key
+
+                metadata["device_key_ref"] = manager._secrets.store(db, new_device_key())
+            instance.metadata_json = metadata
+            reserve_connection(db, instance)
+        try:
+            db.commit()
+        except IntegrityError:
+            # A concurrent instance may have reserved this loopback port first.
+            db.rollback()
+            return None
         db.expunge(instance)
         return instance
 
@@ -193,6 +204,11 @@ def _matches(attrs, instance, spec):
             raise RuntimeManagerError(f"container mount does not match runtime: {volume['bind']}")
     if settings.runtime_network not in attrs.get("NetworkSettings", {}).get("Networks", {}):
         raise RuntimeManagerError("container is not on the configured runtime network")
+    if spec.get("ports"):
+        bindings = attrs.get("HostConfig", {}).get("PortBindings") or {}
+        for container_port, (host, port) in spec["ports"].items():
+            if bindings.get(container_port) != [{"HostIp": host, "HostPort": str(port)}]:
+                raise RuntimeManagerError("container control port does not match runtime")
 
 
 async def ensure_instance(
@@ -277,6 +293,7 @@ async def ensure_instance(
                     },
                     command=spec.get("command"),
                     user=spec.get("user"),
+                    ports=spec.get("ports"),
                 )
                 # A timed-out create may have succeeded. Inspect the stable name
                 # and validate its ownership before adopting the external fact.
@@ -293,8 +310,6 @@ async def ensure_instance(
                 instance.id,
                 token,
                 container_id=instance.container_id,
-                internal_host=instance.container_name,
-                internal_port=RUNTIME_PORTS[runtime_type],
             )
             state = attrs.get("State", {})
             unhealthy = (

@@ -11,12 +11,10 @@ degrade to status events instead of crashing the stream.
 """
 
 import asyncio
-import json
 import uuid
 from collections.abc import AsyncIterator
 
 import httpx
-import websockets
 
 from app.brain.projection import append_behavior_block
 from app.core.logging import get_logger
@@ -36,11 +34,11 @@ from app.runtimes.base import (
 )
 from app.runtimes.container_common import refresh_status, resolve_container_instance
 from app.runtimes.docker.service import get_docker_service
+from app.runtimes.openclaw.rpc import GatewayClient
 
 logger = get_logger(__name__)
 
 _HTTP_TIMEOUT = 10.0
-_HANDSHAKE_TIMEOUT = 15.0
 _DEFAULT_RUN_TIMEOUT = 900.0
 _SESSION_KEY = "agent:main:main"
 
@@ -206,12 +204,16 @@ class OpenClawAdapter(RuntimeAdapter):
 
     # ---- run pump ----
 
-    def _connect(self, instance: RuntimeInstance) -> "_RpcClient":
+    def _connect(self, instance: RuntimeInstance) -> "GatewayClient":
         base_url = instance.details.get("base_url")
         if not base_url:
             raise RuntimeError("openclaw instance has no base_url (not provisioned?)")
         url = base_url.replace("http://", "ws://").replace("https://", "wss://")
-        return _RpcClient(url, instance.details.get("api_key") or "")
+        return GatewayClient(
+            url,
+            instance.details.get("api_key") or "",
+            device_key=instance.details.get("device_key"),
+        )
 
     async def _pump(self, session: RuntimeSession, prompt: str, timeout: float) -> None:
         instance = session.instance
@@ -306,82 +308,3 @@ class OpenClawAdapter(RuntimeAdapter):
         if name.startswith("session."):
             return RuntimeEvent(RuntimeEventKind.status, {"detail": name})
         return None  # ignore device.pair.*, sessions.changed, etc.
-
-
-class _RpcClient:
-    """One WS connection with token-auth handshake, a single reader task,
-    res-frame dispatch to pending calls, and an event frame queue."""
-
-    def __init__(self, url: str, token: str) -> None:
-        self._url = url
-        self._token = token
-        self._ws = None
-        self._reader: asyncio.Task | None = None
-        self._pending: dict[str, asyncio.Future] = {}
-        self.events: asyncio.Queue = asyncio.Queue()
-
-    async def __aenter__(self) -> "_RpcClient":
-        self._ws = await websockets.connect(self._url, max_size=25 * 1024 * 1024)
-        connect_req = {
-            "type": "req",
-            "id": "connect-0",
-            "method": "connect",
-            "params": {
-                "auth": {"token": self._token},
-                "client": {"mode": "backend", "name": "eidolon", "version": "0.2.0"},
-            },
-        }
-        async with asyncio.timeout(_HANDSHAKE_TIMEOUT):
-            # The server may push a pre-connect challenge event first; we always
-            # answer with the connect req carrying the shared-secret token.
-            await self._ws.send(json.dumps(connect_req))
-            async for raw in self._ws:
-                message = json.loads(raw)
-                mtype = message.get("type")
-                if mtype == "hello-ok":
-                    break
-                if mtype == "res" and message.get("id") == "connect-0":
-                    if message.get("ok") is False or message.get("error"):
-                        raise RuntimeError(
-                            f"openclaw connect failed: {str(message.get('error'))[:300]}"
-                        )
-                    break
-        self._reader = asyncio.create_task(self._read_loop(), name="openclaw-ws-reader")
-        return self
-
-    async def __aexit__(self, *exc) -> None:
-        if self._reader is not None:
-            self._reader.cancel()
-            await asyncio.gather(self._reader, return_exceptions=True)
-        for future in self._pending.values():
-            if not future.done():
-                future.cancel()
-        self._pending.clear()
-        if self._ws is not None:
-            await self._ws.close()
-
-    async def _read_loop(self) -> None:
-        async for raw in self._ws:
-            message = json.loads(raw)
-            if message.get("type") == "res" and message.get("id") in self._pending:
-                future = self._pending.pop(message["id"])
-                if not future.done():
-                    future.set_result(message)
-            elif message.get("type") == "event":
-                await self.events.put(message)
-
-    async def call(self, method: str, params: dict, timeout: float = 60.0) -> dict:
-        """Send one req frame and await its matching res frame."""
-        request_id = f"eidolon-{uuid.uuid4().hex[:10]}"
-        future = asyncio.get_running_loop().create_future()
-        self._pending[request_id] = future
-        await self._ws.send(
-            json.dumps({"type": "req", "id": request_id, "method": method, "params": params})
-        )
-        try:
-            message = await asyncio.wait_for(future, timeout=timeout)
-        finally:
-            self._pending.pop(request_id, None)
-        if message.get("ok") is False or message.get("error"):
-            raise RuntimeError(f"{method} failed: {str(message.get('error'))[:300]}")
-        return message.get("result") or {}

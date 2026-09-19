@@ -22,7 +22,9 @@ from app.services.providers import provider_service
 
 
 @pytest.fixture()
-def manager(fake_docker):
+def manager(fake_docker, monkeypatch):
+    # This existing lifecycle contract exercises the private Docker-network mode.
+    monkeypatch.setattr(settings, "runtime_control_mode", "docker")
     return DockerRuntimeInstanceManager(docker=fake_docker)
 
 

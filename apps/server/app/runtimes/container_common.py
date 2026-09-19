@@ -46,6 +46,9 @@ def resolve_container_instance(employee_id: int, runtime_type: str) -> RuntimeIn
                 "container_name": row.container_name,
                 "base_url": base_url,
                 "api_key": token,
+                "device_key": get_secret_store().retrieve(
+                    db, (row.metadata_json or {}).get("device_key_ref")
+                ),
                 "runtime_version": row.runtime_version,
             },
         )

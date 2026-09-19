@@ -24,6 +24,7 @@ from app.runtimes.manager.docker_manager import (
     RuntimeManagerError,
     get_manager,
 )
+from app.runtimes.probe import runtime_facts
 from app.runtimes.updates.service import get_update_service
 from app.schemas.runtime import (
     EmployeeBrainOut,
@@ -38,6 +39,8 @@ from app.schemas.runtime import (
 
 
 def instance_out(db: Session, instance: RuntimeInstance) -> RuntimeInstanceOut:
+    from app.work.runtime_readiness import provider_facts
+
     employee = org_repo.get_employee(db, instance.employee_id)
     provider_name = None
     model = None
@@ -75,6 +78,10 @@ def instance_out(db: Session, instance: RuntimeInstance) -> RuntimeInstanceOut:
         employee_slug=employee.slug if employee else None,
         provider_name=provider_name,
         model=model,
+        probes={
+            **runtime_facts(instance),
+            **(provider_facts(db, employee, instance) if employee else {}),
+        },
     )
 
 
@@ -91,6 +98,24 @@ def list_instances(db: Session) -> list[RuntimeInstanceOut]:
 
 def get_instance(db: Session, instance_id: int) -> RuntimeInstanceOut:
     return instance_out(db, _get_instance_or_404(db, instance_id))
+
+
+async def probe_runtime(db: Session, instance_id: int) -> RuntimeInstanceOut:
+    from app.work.runtime_reconciliation import probe_instance
+
+    _get_instance_or_404(db, instance_id)  # Authorization before any external access.
+    db.rollback()  # This read-only API phase must not span control/SDK calls.
+    await probe_instance(get_manager(), instance_id, repair_control=True)
+    db.expire_all()
+    return get_instance(db, instance_id)
+
+
+async def validate_runtime_model(db: Session, instance_id: int, limits):
+    from app.work.model_validation import validate_model
+
+    _get_instance_or_404(db, instance_id)
+    db.rollback()
+    return await validate_model(get_manager(), instance_id, limits)
 
 
 def get_employee_runtime(db: Session, employee: Employee) -> RuntimeInstanceOut | None:
