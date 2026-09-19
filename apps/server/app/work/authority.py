@@ -26,11 +26,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from app.models.base import utcnow
-from app.models.enums import AssignmentType, AuthorityScopeKind
+from app.models.base import as_utc, utcnow
+from app.models.enums import AuthorityScopeKind
 from app.models.organization import Department, Employee
 from app.models.position import PositionAssignment, PositionAuthorityGrant, PositionDefinition
 from app.models.position import PositionSlot as SlotModel
@@ -47,10 +47,10 @@ def _naive(moment: datetime) -> datetime:
 
     `DateTime` 列没有时区：库里读回来是 naive，而 `utcnow()` 是 aware ——
     两者一比直接 `TypeError: can't compare offset-naive and offset-aware datetimes`
-    （`position_service.py` 里已经踩过同一个坑）。所以时间在进入比较前抹平一次，
-    不把雷埋给调用方。系统里所有时间都是 UTC，抹掉 tzinfo 不丢信息。
+    （`position_service.py` 里已经踩过同一个坑）。带偏移的输入先换算为 UTC，
+    再移除时区；直接去掉偏移会把同一时刻误读为另一个时间。
     """
-    return moment.replace(tzinfo=None) if moment.tzinfo is not None else moment
+    return as_utc(moment).replace(tzinfo=None)
 
 
 @dataclass(frozen=True)
@@ -101,17 +101,14 @@ class ActorAuthority:
 # ---------------------------------------------------------------------------
 
 
-def _active_primary_assignment(db: Session, employee_id: int) -> PositionAssignment | None:
-    """生效中的主职 —— 与 `position_repo` 用同一把尺（不另写条件）。"""
-    for assignment in position_repo.active_assignments(db, int(employee_id)):
-        if (
-            assignment.assignment_type == AssignmentType.primary.value
-            and assignment.is_primary
-            and assignment.effective_to is None
-            and assignment.position_slot_id is not None
-        ):
-            return assignment
-    return None
+def _active_primary_assignment(
+    db: Session, employee_id: int, *, at: datetime | None
+) -> PositionAssignment | None:
+    """授权任职复用 repository 的时间窗，不以“尚未关闭”代替已经生效。"""
+    assignment = position_repo.primary_assignment_at(db, int(employee_id), at=at)
+    return (
+        assignment if assignment is not None and assignment.position_slot_id is not None else None
+    )
 
 
 def _grant_rows(
@@ -128,35 +125,42 @@ def _grant_rows(
         .where(
             PositionAuthorityGrant.position_definition_id == int(definition_id),
             PositionAuthorityGrant.effective_from <= moment,
+            or_(
+                PositionAuthorityGrant.effective_to.is_(None),
+                PositionAuthorityGrant.effective_to > moment,
+            ),
         )
         .order_by(PositionAuthorityGrant.id)
+        .execution_options(populate_existing=True)
     )
-    rows = list(db.scalars(stmt))
-    return [row for row in rows if row.effective_to is None or row.effective_to > moment]
+    return list(db.scalars(stmt))
 
 
 def resolve_actor_authority(
     db: Session, employee_id: int, *, at: datetime | None = None
 ) -> ActorAuthority:
     """解析"这个人在 `at` 时刻以哪个职位持有哪些授权"（只读，无副作用）。"""
-    employee = db.get(Employee, int(employee_id))
+    moment = at or utcnow()
+    employee = db.get(Employee, int(employee_id), populate_existing=True)
     if employee is None or employee.company_id is None:  # pragma: no cover - 防御
         raise AuthorityError(f"employee {employee_id} not found or has no company")
     company_id = int(employee.company_id)
-    assignment = _active_primary_assignment(db, int(employee_id))
+    assignment = _active_primary_assignment(db, int(employee_id), at=moment)
     if assignment is None:
         # W38：没有生效主职 ⇒ 没有职位 ⇒ 没有授权（不是"回溯到上一任"）
         return ActorAuthority(employee_id=int(employee_id), company_id=company_id)
 
-    slot = db.get(SlotModel, int(assignment.position_slot_id))
-    if slot is None:  # pragma: no cover - 防御：任职指向缺失编制
+    slot = db.get(SlotModel, int(assignment.position_slot_id), populate_existing=True)
+    if slot is None or slot.company_id != company_id:
         return ActorAuthority(
             employee_id=int(employee_id),
             company_id=company_id,
             slot_id=int(assignment.position_slot_id),
         )
-    definition = db.get(PositionDefinition, int(slot.position_definition_id))
-    if definition is None:  # pragma: no cover - 防御
+    definition = db.get(
+        PositionDefinition, int(slot.position_definition_id), populate_existing=True
+    )
+    if definition is None or definition.company_id not in (None, company_id):
         return ActorAuthority(
             employee_id=int(employee_id),
             company_id=company_id,
@@ -174,7 +178,7 @@ def resolve_actor_authority(
             effective_from=row.effective_from,
             position_definition_id=int(definition.id),
         )
-        for row in _grant_rows(db, int(definition.id), at=at)
+        for row in _grant_rows(db, int(definition.id), at=moment)
     )
     return ActorAuthority(
         employee_id=int(employee_id),

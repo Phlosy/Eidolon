@@ -103,8 +103,9 @@ def _actor_position(db: Session, employee_id: int) -> dict:
     **任职行 id** 是关键：换人之后历史仍指向"当时那一段任职"，
     而不是拿今天的组织去解释昨天的决定。
     """
-    actor = authority_service.resolve_actor_authority(db, employee_id)
-    active = position_repo.active_primary_assignment(db, int(employee_id))
+    moment = utcnow()
+    actor = authority_service.resolve_actor_authority(db, employee_id, at=moment)
+    active = position_repo.primary_assignment_at(db, int(employee_id), at=moment)
     return {
         "acting_position_assignment_id": int(active.id) if active is not None else None,
         "acting_position_definition_id": actor.position_definition_id,

@@ -24,10 +24,11 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core.request_context import get_request_identity
+from app.models.base import as_utc, utcnow
 from app.models.enums import (
     AssignmentType,
     OccupancyStatus,
@@ -328,6 +329,36 @@ def active_primary_assignment(db: Session, employee_id: int) -> PositionAssignme
         .order_by(PositionAssignment.effective_from.desc(), PositionAssignment.id.desc())
         .limit(1)
     ).first()
+
+
+def primary_assignment_at(
+    db: Session, employee_id: int, *, at: datetime | None = None
+) -> PositionAssignment | None:
+    """Authority's time-window view, including closed historical assignments.
+
+    The ordinary staffing queries above describe unclosed occupancy. Authorization
+    must additionally honor the start time and the requested instant. Ambiguous
+    overlapping primary assignments cannot establish authority.
+    """
+    moment = as_utc(at or utcnow()).replace(tzinfo=None)
+    rows = list(
+        db.scalars(
+            select(PositionAssignment)
+            .where(
+                PositionAssignment.employee_id == employee_id,
+                PositionAssignment.assignment_type == AssignmentType.primary.value,
+                PositionAssignment.is_primary.is_(True),
+                PositionAssignment.effective_from <= moment,
+                or_(
+                    PositionAssignment.effective_to.is_(None),
+                    PositionAssignment.effective_to > moment,
+                ),
+            )
+            .execution_options(populate_existing=True)
+            .limit(2)
+        )
+    )
+    return rows[0] if len(rows) == 1 else None
 
 
 def active_primaries_by_employee(
