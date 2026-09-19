@@ -296,6 +296,32 @@ DR6 的 PARTIALLY_APPLIED 继续按真实结果聚合，不引入整份信封的
 新增反例覆盖效果与审计原子性、真实 SQLite 外层回滚、嵌套事务通知、部分成功、公司隔离、
 过期身份、参数冲突和响应丢失后的回执恢复。U8 的会话用途扩展另行登记。
 
+### U8：管理与评审会话用途（实施前登记，2026-09-20）
+
+依据 M3 实施计划 KTD4，WorkSession 增加 `worker`、`management`、`review` 用途和目标引用。
+旧会话统一解释为 worker，仍必须关联真实 Task；旧历史快照不从当前资料回填。管理会话绑定
+既有 Project，评审会话绑定既有 ReviewRequest，并通过该请求指向被评任务。两种非 worker
+会话不伪造业务 Task，也不进入 Worker 的产物收集和任务收尾路径。
+
+用途与目标属于创建时的出处，沿用不可变守卫。放宽 task_id 空值仅适用于具有合法目标的
+management/review；数据库约束和创建入口共同拒绝缺目标、用途冲突及跨公司关联。
+管理/评审会话结束只保存其执行事实，不能因 Runtime 正常退出或自然语言“通过”推进目标状态。
+目标仍只由既有 DecisionEnvelope、ReviewVerdict 和领域服务改变。
+
+DECISION_NEEDED 和 `task.review_named` 消费已有持久 Event/ReviewRequest；接收人来自已指定
+的管理者或评审人。消费保存来源引用、去重与等待原因，不自动选团队、改派或改变领域事件词表。
+接收人缺失、失效或环境未就绪时保留等待事实；每次执行仍重查身份、当前目标和权限。
+
+实施前 M2 契约、Project/RoleContext/Decision/DAG/Handoff/Review/WorkOrder 黄金路径及
+Worker 收尾、M3 契约与出处迁移锚点 **356 passed**。`test_review_task_lifecycle`、
+`test_m2_dag_runtime`、`test_m2_review`、`test_m3_provenance` 和相关迁移测试保留原业务断言；
+新增用途、独立结束与事件唤醒反例归入 `test_m3_management_sessions`，迁移另测旧行兼容、
+up/down/up 及模型/迁移约束一致。U8 的实现及真实验收完成后再记录结果，不将本登记算作通过。
+
+迁移锚点保留 v50 自身的 `task_id NOT NULL` 验证；升到当前 head 后，改验 worker 的
+条件性非空约束、合法用途/目标和既有历史不可变守卫。v52 回执迁移测试保留其父版本断言，
+head 断言随唯一新版本推进。上述调整仅反映已登记的用途增补，不降低旧 worker 归属约束。
+
 **M3 开工前的三条纪律（沿用 M2）**：
 
 ```text

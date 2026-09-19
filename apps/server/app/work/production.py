@@ -64,6 +64,7 @@ __all__ = [
     "execution_mode",
     "EVIDENCE_ENVIRONMENT_REAL",
     "EVIDENCE_ENVIRONMENT_MOCK",
+    "WorkSessionPurpose",
     "RuntimeProvenance",
     "PROVENANCE_SNAPSHOT_FIELDS",
     "PROVENANCE_PRESENT_FIELDS",
@@ -241,6 +242,18 @@ EVIDENCE_ENVIRONMENT_MOCK = "mock"
 # ---------------------------------------------------------------------------
 # § 4. Runtime Provenance（P14 / P34）
 # ---------------------------------------------------------------------------
+
+
+class WorkSessionPurpose(StrEnum):
+    """KTD4: worker targets Task; management targets Project; review targets ReviewRequest.
+
+    Purpose and target are creation-time provenance. Ending a non-worker session
+    records execution only; domain decisions remain the business writers.
+    """
+
+    worker = "worker"
+    management = "management"
+    review = "review"
 
 
 @dataclass(frozen=True)

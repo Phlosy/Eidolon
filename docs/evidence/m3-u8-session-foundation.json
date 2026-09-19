@@ -1,0 +1,111 @@
+{
+  "unit": "U8",
+  "slice": "session purpose, target provenance and v53 migration",
+  "slice_status": "locally_verified",
+  "unit_status": "in_progress",
+  "recorded_at": "2026-09-19T21:49:41.265721+00:00",
+  "base_commit": "cbaa771",
+  "raw_directory": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id",
+  "limits": [
+    "No event consumer or management runner is claimed by this slice.",
+    "No real Runtime or model call was performed for this slice.",
+    "Development database and existing services/containers were not changed.",
+    "Full U8 simplification/review and real manager/reviewer acceptance remain pending."
+  ],
+  "evidence_strategy": {
+    "behavior_changed": true,
+    "prechange_anchors": {
+      "passed": 356,
+      "seconds": 27.84
+    },
+    "worker_red_before_production": {
+      "failed": 59,
+      "passed": 2,
+      "seconds": 7.02,
+      "reason": "Missing purpose/target schema, creation arguments and migration guards"
+    },
+    "purpose_contract_red": "AttributeError: production.WorkSessionPurpose absent; then 1 passed",
+    "legacy_anchor_red": "2 failed/2 passed: head task_id nullability and exact v52 head assertion",
+    "legacy_anchor_resolution": "Retain v50 NOT NULL at v50 and enforce purpose-dependent worker non-null at head; 4 passed",
+    "new_foundation_cases": 68,
+    "worker_focused": {
+      "passed": 129,
+      "warnings": 1,
+      "seconds": 8.91
+    },
+    "shared_fixtures_modified": false,
+    "random_order_repeated": false,
+    "random_order_reason": "No shared fixture changes; U1 isolation retained, U31 final seeds pending."
+  },
+  "authoritative_verification": {
+    "backend": {
+      "command": "python -m pytest -q --test-order-output=<raw>/foundation-order-default.json",
+      "cwd": "apps/server",
+      "passed": 1980,
+      "deselected": 14,
+      "warnings": 118,
+      "seconds": 160.04,
+      "exit_code": 0
+    },
+    "lint": {
+      "command": "make lint",
+      "formatted_python_files": 473,
+      "exit_code": 0
+    },
+    "frontend_tests": {
+      "command": "make test-web",
+      "files": 88,
+      "passed": 390,
+      "exit_code": 0
+    },
+    "frontend_build": {
+      "command": "make build",
+      "vite_seconds": 5.47,
+      "exit_code": 0,
+      "known_warning": "Existing chunks exceed 500 kB."
+    }
+  },
+  "migration": {
+    "revision": "53d82fa710bc",
+    "parent": "52c94fd1a807",
+    "checks": [
+      "Temporary SQLite upgrade/downgrade/upgrade",
+      "Alembic check and single head",
+      "Original row values and snapshot bytes unchanged",
+      "Artifact/runtime operation/audit references preserved",
+      "Purpose/target SQL and ORM guards with SQLite FKs disabled",
+      "All v50 provenance guards restored",
+      "Fresh metadata and migration columns/defaults/checks/indexes/FKs/triggers exactly match",
+      "Non-worker downgrade refuses before DDL",
+      "FK-enabled connection refuses before DDL"
+    ]
+  },
+  "source_sha256": {
+    "apps/server/app/models/project.py": "41b2f925d34a448cc27ed1f187138fe92baaa341d12ff09c3b0542d716cec3f2",
+    "apps/server/app/repositories/project.py": "f7b52fae0406b7ff4ebfb9d071f29340bfb064e439c7246372c287e69dfb40bf",
+    "apps/server/app/schemas/project.py": "24592cd79a859ccd4fd0bd9b61803569a5a721cbf5b3483b5f076c20a5d8b964",
+    "apps/server/app/work/production.py": "e01617d38877a7d9458871e56898abfb8564f77983d09575ad684a283b260d3e",
+    "apps/server/app/work/provenance.py": "18a0338aae8922bdfa2d5a74bb0e87365ca95bb2260eb174142a73dbc355ffb3",
+    "apps/server/tests/test_m3_contract.py": "c561f6de7d635ee2ffcb4a5c6cbf24c0c64fa8e2f7bc5b2a9e0220a62f48a48f",
+    "apps/server/tests/test_m3_provenance_migration.py": "ea6d63246fd1deecd97ae7b6d4696c6b3036bbaffebfb9b0528d75446c9ce983",
+    "apps/server/tests/test_m3_runtime_operation_migration.py": "1109d87317ac1d888f480b8481720851b0db823cd7e833985fe447c2ac156b9c",
+    "apps/web/src/types/index.ts": "adb33ed70a3cef1e84ddf25d95e5ecd004a37b42b1db4f2cdd877d890cf38482",
+    "apps/server/migrations/versions/53d82fa710bc_v53_session_purpose.py": "b87fbff14fed71d7d44c1afbe0ec818a49859ff3e4cf4524309cd1f4e1030f69",
+    "apps/server/tests/test_m3_management_sessions.py": "16ca03e30ceb090fe88f2124c1369c26a7dba75e107d5d6ee2b9c2c2d8db2b44",
+    "apps/server/tests/test_m3_session_purpose_migration.py": "b1610a292c686adb73d39ea3a261871c34057b6e32679c6fb4d9a3a08a2b9c28"
+  },
+  "log_sha256": {
+    "pre-u8-freeze-anchors.log": "116b7e1a7f2acc2f52b2ad69602e090a17728f58197284eb5358b08c643d1079",
+    "foundation-red.log": "770dd1ddc3ef4faacb7d7ad4caa9ca6836ba29ce3b7cbb88a867806beca54256",
+    "foundation-focused-final.log": "a708f1dc558155307ee3a67323a49a172220708ecc0971587e744c3bc0b6cb5d",
+    "purpose-contract-red.log": "b093f6c7aea6c28e711fe0cc5299caa2f40a12912a4c80951fa062048515312f",
+    "purpose-contract-green.log": "ade0494404cd38dcacbcd64a63b07b9f46471ecb6f9698e621bff5a7bb5d9f46",
+    "legacy-migration-anchor-red.log": "68fcb19aa6e64d54a6fbea005b7e443b7b0e68c38e77b05b3785dca61e66a865",
+    "legacy-migration-anchor-green.log": "9aa06d007bb360010c43f345faae9cf783b39e6da9155628b542c6f6bee4a58c",
+    "foundation-full-default.log": "566125fc7988de6dc13fdbae714534f91361a5e9e1528e9c05668d741f43f8da",
+    "foundation-order-default.json": "7b377d8475e7e2ef245f9344f25579204f74b1841489e40cb6701f7c7cf633fb",
+    "foundation-lint.log": "7f8982a10f10d107bcef36f04a0e4e1e527e1172f0ea35009de5b325bbc1e938",
+    "foundation-web-tests.log": "214519e9b8ff97a92765ad08fd531a8fdb37922759e57483ca8bedcb1be0a273",
+    "foundation-web-build.log": "e72955c8982f32fdd5d5dae039fdd177924f9fb00b73badda871f4306024187c"
+  }
+}

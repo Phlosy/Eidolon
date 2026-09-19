@@ -5,7 +5,7 @@ See docs/architecture.md §3.2.
 
 from datetime import datetime
 
-from sqlalchemy import DDL, JSON, Boolean, ForeignKey, Integer, String, Text, event
+from sqlalchemy import DDL, JSON, Boolean, CheckConstraint, ForeignKey, Integer, String, Text, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -130,14 +130,36 @@ class TaskDependency(Base):
 
 class WorkSession(TimestampMixin, Base):
     __tablename__ = "work_sessions"
+    __table_args__ = (
+        CheckConstraint(
+            "(purpose = 'worker' AND task_id IS NOT NULL AND project_id IS NULL "
+            "AND review_request_id IS NULL) OR "
+            "(purpose = 'management' AND task_id IS NULL AND project_id IS NOT NULL "
+            "AND review_request_id IS NULL) OR "
+            "(purpose = 'review' AND task_id IS NULL AND project_id IS NOT NULL "
+            "AND review_request_id IS NOT NULL)",
+            name="ck_work_session_purpose_target",
+        ),
+    )
 
-    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"))
+    # task_id means Worker execution, never "the task being reviewed". Review
+    # targets resolve through ReviewRequest, with task facts captured at creation.
+    purpose: Mapped[str] = mapped_column(String(20), default="worker", server_default="worker")
+    task_id: Mapped[int | None] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    project_id: Mapped[int | None] = mapped_column(
+        ForeignKey("projects.id", name="fk_work_sessions_project"), nullable=True, index=True
+    )
+    review_request_id: Mapped[int | None] = mapped_column(
+        ForeignKey("review_requests.id", name="fk_work_sessions_review_request"),
+        nullable=True,
+        index=True,
+    )
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"))
     runtime_type: Mapped[str] = mapped_column(String(50))
     runtime_session_ref: Mapped[str] = mapped_column(String(200), default="")
     # P11：本次会话使用的行为策略快照（可解释"为什么这次主动请求 Peer Review"）
     behavior_snapshot_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    behavior_snapshot_hash: Mapped[str] = mapped_column(String(64), default="")
+    behavior_snapshot_hash: Mapped[str] = mapped_column(String(64), default="", server_default="")
     status: Mapped[str] = mapped_column(String(50), default=WorkSessionStatus.running.value)
     summary: Mapped[str] = mapped_column(Text, default="")
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
@@ -157,12 +179,15 @@ class WorkSession(TimestampMixin, Base):
     deployment_mode: Mapped[str | None] = mapped_column(String(50), nullable=True)
     provenance_snapshot_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
-    task: Mapped[Task] = relationship(back_populates="sessions")
+    task: Mapped[Task | None] = relationship(back_populates="sessions")
 
 
 # SQLite is the supported deployment database. Install the same guards on fresh
-# metadata schemas as migration v50; direct SQL and bulk updates must also obey them.
+# metadata schemas as migrations v50/v53; direct SQL and bulk updates obey them.
 _PROVENANCE_COLUMNS = (
+    "purpose",
+    "project_id",
+    "review_request_id",
     "task_id",
     "employee_id",
     "person_id",
@@ -194,6 +219,35 @@ for _name, _condition in (
             "BEGIN SELECT RAISE(ABORT, 'work session provenance is immutable'); END"
         ).execute_if(dialect="sqlite"),
     )
+
+
+# SQLite FKs are disabled in this deployment. New non-worker targets therefore
+# need an explicit creation guard; later domain changes do not rewrite history.
+_INVALID_SESSION_TARGET = (
+    "(NEW.purpose = 'management' AND NOT EXISTS ("
+    "SELECT 1 FROM projects p JOIN companies c ON c.id = p.company_id "
+    "JOIN employees e ON e.id = NEW.employee_id "
+    "WHERE p.id = NEW.project_id AND p.company_id = NEW.company_id "
+    "AND e.company_id = p.company_id AND e.lifecycle_status = 'active' "
+    "AND p.management_employee_id = e.id)) OR "
+    "(NEW.purpose = 'review' AND NOT EXISTS ("
+    "SELECT 1 FROM review_requests r JOIN projects p ON p.id = r.project_id "
+    "JOIN companies c ON c.id = p.company_id JOIN tasks t ON t.id = r.task_id "
+    "JOIN employees e ON e.id = NEW.employee_id "
+    "WHERE r.id = NEW.review_request_id AND p.id = NEW.project_id "
+    "AND t.project_id = p.id AND r.company_id = p.company_id "
+    "AND NEW.company_id = p.company_id AND e.company_id = p.company_id "
+    "AND e.lifecycle_status = 'active' AND r.reviewer_employee_id = e.id))"
+)
+event.listen(
+    WorkSession.__table__,
+    "after_create",
+    DDL(
+        "CREATE TRIGGER work_session_target_valid BEFORE INSERT ON work_sessions "
+        f"WHEN {_INVALID_SESSION_TARGET} "
+        "BEGIN SELECT RAISE(ABORT, 'invalid work session target'); END"
+    ).execute_if(dialect="sqlite"),
+)
 
 
 class Artifact(TimestampMixin, Base):

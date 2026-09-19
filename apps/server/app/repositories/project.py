@@ -133,9 +133,13 @@ def list_dependencies(db: Session, project_id: int) -> list[TaskDependency]:
 
 def create_work_session(db: Session, **fields) -> WorkSession:
     from app.work import provenance
+    from app.work.production import WorkSessionPurpose
 
     if {"person_id", "company_id", "deployment_mode", "provenance_snapshot_json"} & fields.keys():
         raise ValueError("work session provenance is captured by the creation path")
+    # ORM column defaults run on INSERT, after capture. Keep omitted legacy
+    # callers worker-shaped while rejecting an explicitly invalid purpose.
+    fields.setdefault("purpose", WorkSessionPurpose.worker.value)
     session = WorkSession(**fields)
     provenance.capture(db, session)
     db.add(session)

@@ -7,18 +7,60 @@ from sqlalchemy.orm import Session
 
 from app.core.request_context import get_request_identity
 from app.models.base import as_utc, utcnow
-from app.models.enums import DeploymentMode, RuntimeType
+from app.models.enums import DeploymentMode, LifecycleStatus, RuntimeType
 from app.models.organization import Company, Department, Employee
 from app.models.position import PositionDefinition, PositionSlot
 from app.models.project import Milestone, Project, Task, WorkSession
 from app.models.project_delivery import ProjectPhase
+from app.models.review import ReviewRequest
 from app.models.runtime import RuntimeInstance
 from app.repositories import persons, position, providers
-from app.work.production import REAL_RUNTIME_TYPES, execution_mode
+from app.work.production import REAL_RUNTIME_TYPES, WorkSessionPurpose, execution_mode
 
 
 def _named(row) -> dict | None:
     return {"id": row.id, "name": row.name} if row is not None else None
+
+
+def _target(
+    db: Session, work: WorkSession
+) -> tuple[Project | None, Task | None, ReviewRequest | None]:
+    """Resolve existing targets without making a non-worker run a task executor."""
+    if work.purpose == WorkSessionPurpose.worker.value:
+        if (
+            work.task_id is None
+            or work.project_id is not None
+            or work.review_request_id is not None
+        ):
+            raise ValueError("worker session requires only a task target")
+        task = db.get(Task, work.task_id)
+        return db.get(Project, task.project_id) if task else None, task, None
+    if work.purpose == WorkSessionPurpose.management.value:
+        if (
+            work.project_id is None
+            or work.task_id is not None
+            or work.review_request_id is not None
+        ):
+            raise ValueError("management session requires only a project target")
+        return db.get(Project, work.project_id), None, None
+    if work.purpose == WorkSessionPurpose.review.value:
+        if work.review_request_id is None or work.task_id is not None:
+            raise ValueError("review session requires a review request, not a worker task target")
+        review = db.get(ReviewRequest, work.review_request_id)
+        task = db.get(Task, review.task_id) if review else None
+        project = db.get(Project, review.project_id) if review else None
+        if (
+            review is None
+            or task is None
+            or project is None
+            or task.project_id != project.id
+            or review.company_id != project.company_id
+            or (work.project_id is not None and work.project_id != project.id)
+        ):
+            raise ValueError("review session requires a coherent review request target")
+        work.project_id = project.id
+        return project, task, review
+    raise ValueError("work session purpose must be worker, management or review")
 
 
 def capture(db: Session, work: WorkSession) -> None:
@@ -30,18 +72,20 @@ def capture(db: Session, work: WorkSession) -> None:
     if work.runtime_type not in {RuntimeType.mock.value, *REAL_RUNTIME_TYPES}:
         raise ValueError("work session requires an implemented runtime type")
     employee = db.get(Employee, work.employee_id) if work.employee_id is not None else None
-    task = db.get(Task, work.task_id) if work.task_id is not None else None
-    project = db.get(Project, task.project_id) if task else None
+    project, task, review = _target(db, work)
     company = db.get(Company, project.company_id) if project else None
     identity = get_request_identity()
     if (
         employee is None
-        or task is None
         or company is None
         or employee.company_id != company.id
         or (identity is not None and identity.company_id != company.id)
     ):
-        raise ValueError("work session requires task and employee in the same company")
+        raise ValueError("work session requires target and employee in the same company")
+    if work.purpose != WorkSessionPurpose.worker.value:
+        designated = review.reviewer_employee_id if review else project.management_employee_id
+        if employee.lifecycle_status != LifecycleStatus.active.value or designated != employee.id:
+            raise ValueError("work session requires the active designated manager or reviewer")
     person_id = persons.resolve_person_id(db, employee.id)
     person = persons.get_person(db, person_id) if person_id is not None else None
     instance = (
@@ -124,8 +168,8 @@ def capture(db: Session, work: WorkSession) -> None:
                 "department": _named(department),
             }
         )
-    milestone = db.get(Milestone, task.milestone_id) if task.milestone_id else None
-    phase = db.get(ProjectPhase, task.phase_id) if task.phase_id else None
+    milestone = db.get(Milestone, task.milestone_id) if task and task.milestone_id else None
+    phase = db.get(ProjectPhase, task.phase_id) if task and task.phase_id else None
     if (milestone and milestone.project_id != project.id) or (
         phase and phase.project_id != project.id
     ):
@@ -142,6 +186,7 @@ def capture(db: Session, work: WorkSession) -> None:
     )
     work.provenance_snapshot_json = {
         "version": 1,
+        "purpose": work.purpose,
         "captured_at": utcnow().isoformat(),
         "person": {**_named(person), "slug": person.slug} if person else None,
         "employee": {**_named(employee), "slug": employee.slug},
@@ -160,7 +205,20 @@ def capture(db: Session, work: WorkSession) -> None:
             "milestone": _named(milestone),
             "phase_id": task.phase_id,
             "phase": _named(phase),
-        },
+        }
+        if task
+        else None,
+        "review_request": {
+            "id": review.id,
+            "project_id": review.project_id,
+            "task_id": review.task_id,
+            "requested_by_employee_id": review.requested_by_employee_id,
+            "reviewer_employee_id": review.reviewer_employee_id,
+            "reason": review.reason,
+            "requested_at": as_utc(review.requested_at).isoformat(),
+        }
+        if review
+        else None,
         "runtime": {
             "type": work.runtime_type,
             "execution_mode": execution_mode(work.runtime_type),

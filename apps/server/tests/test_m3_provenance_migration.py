@@ -10,7 +10,7 @@ from app.core.database import _alembic_config
 from app.models.base import Base
 
 
-def _legacy_session(connection):
+def _legacy_session(connection, *, task_id=1):
     # Existing non-null task/employee ownership remains unchanged by v50. SQLite
     # does not enforce this project's FKs; this fixture isolates the session table.
     connection.execute(
@@ -18,9 +18,10 @@ def _legacy_session(connection):
         INSERT INTO work_sessions
         (task_id, employee_id, runtime_type, runtime_session_ref, status, summary,
          cost, behavior_snapshot_hash, created_at, updated_at, ended_at)
-        VALUES (1, 2, 'hermes', 'legacy-run', 'completed', 'legacy result', '{}', '',
+        VALUES (:task_id, 2, 'hermes', 'legacy-run', 'completed', 'legacy result', '{}', '',
                 '2026-01-01', '2026-01-01', '2026-01-01')
-    """)
+    """),
+        {"task_id": task_id},
     )
 
 
@@ -40,7 +41,7 @@ def test_v50_up_down_up_preserves_legacy_unknowns_and_constraints(tmp_path):
             config.attributes["connection"] = connection
             (command.downgrade if downgrade else command.upgrade)(config, revision)
 
-    def verify():
+    def verify(*, at_v50=False):
         with engine.begin() as connection:
             row = connection.execute(text("SELECT * FROM work_sessions")).mappings().one()
             assert row["summary"] == "legacy result" and row["runtime_session_ref"] == "legacy-run"
@@ -48,15 +49,28 @@ def test_v50_up_down_up_preserves_legacy_unknowns_and_constraints(tmp_path):
             for field in ("person_id", "company_id", "deployment_mode", "provenance_snapshot_json"):
                 assert row[field] is None
             columns = {c["name"]: c for c in inspect(connection).get_columns("work_sessions")}
-            assert not columns["task_id"]["nullable"] and not columns["employee_id"]["nullable"]
+            assert not columns["employee_id"]["nullable"]
+            if at_v50:
+                assert not columns["task_id"]["nullable"]
+                constraint = "NOT NULL"
+            else:
+                assert columns["task_id"]["nullable"]
+                assert row["purpose"] == "worker"
+                assert row["project_id"] is None and row["review_request_id"] is None
+                constraint = "ck_work_session_purpose_target"
+            with pytest.raises(IntegrityError, match=constraint):
+                _legacy_session(connection, task_id=None)
             _assert_guard(connection)
-            config.attributes["connection"] = connection
-            command.check(config)
+            if not at_v50:
+                config.attributes["connection"] = connection
+                command.check(config)
 
     try:
         migrate("49f90481d32a")
         with engine.begin() as connection:
             _legacy_session(connection)
+        migrate("50a7816c2e90")
+        verify(at_v50=True)
         migrate("head")
         verify()
         migrate("49f90481d32a", downgrade=True)
@@ -70,6 +84,8 @@ def test_v50_up_down_up_preserves_legacy_unknowns_and_constraints(tmp_path):
                     "AND tbl_name = 'work_sessions'"
                 )
             )
+        migrate("50a7816c2e90")
+        verify(at_v50=True)
         migrate("head")
         verify()
         script = ScriptDirectory.from_config(config)

@@ -286,7 +286,10 @@ export interface KnowledgeItem {
 
 export interface WorkSession {
   id: number;
-  task_id: number;
+  purpose: "worker" | "management" | "review";
+  task_id: number | null;
+  project_id: number | null;
+  review_request_id: number | null;
   employee_id: number;
   runtime_type: RuntimeType;
   runtime_session_ref: string | null;

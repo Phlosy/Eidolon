@@ -885,6 +885,12 @@ def test_market_transaction_truth_is_not_redefined_in_work_layer():
 # ---------------------------------------------------------------------------
 
 
+def test_work_session_purposes_are_explicit_without_new_business_states():
+    """KTD4: session purpose is separate from the unchanged Task/Project lifecycle."""
+    assert {item.value for item in P.WorkSessionPurpose} == {"worker", "management", "review"}
+    assert P.WorkSessionPurpose.worker.value == "worker"
+
+
 def test_provenance_fields_match_work_session_columns():
     """P14：provenance 现存字段必须真的在 `work_sessions` 上（别名会静默丢历史）。"""
     columns = _columns("work_sessions")

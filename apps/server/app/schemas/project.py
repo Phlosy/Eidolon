@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -240,7 +241,10 @@ class ProjectGraph(BaseModel):
 
 class WorkSessionOut(ORMModel):
     id: int
-    task_id: int
+    purpose: Literal["worker", "management", "review"] = "worker"
+    task_id: int | None
+    project_id: int | None = None
+    review_request_id: int | None = None
     employee_id: int
     runtime_type: str
     runtime_session_ref: str
