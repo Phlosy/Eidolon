@@ -13,11 +13,14 @@ from app.providers.secrets.store import get_secret_store
 from app.repositories import runtimes as runtime_repo
 from app.runtimes.base import RuntimeInstance, RuntimeStatus
 from app.runtimes.manager.docker_manager import RuntimeManagerError
+from app.runtimes.probe import instance_fingerprint
 
 
-def resolve_container_instance(employee_id: int, runtime_type: str) -> RuntimeInstance:
+def resolve_container_instance(
+    employee_id: int, runtime_type: str, *, session_factory=SessionLocal
+) -> RuntimeInstance:
     """Load the employee's provisioned runtime row into a RuntimeInstance handle."""
-    with SessionLocal() as db:
+    with session_factory() as db:
         row = runtime_repo.get_instance_for_employee(db, employee_id)
         if row is None or row.runtime_type != runtime_type:
             raise RuntimeManagerError(
@@ -50,6 +53,8 @@ def resolve_container_instance(employee_id: int, runtime_type: str) -> RuntimeIn
                     db, (row.metadata_json or {}).get("device_key_ref")
                 ),
                 "runtime_version": row.runtime_version,
+                "resource_key": row.resource_key,
+                "instance_fingerprint": instance_fingerprint(row),
             },
         )
 

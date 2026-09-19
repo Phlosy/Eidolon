@@ -80,6 +80,8 @@ class RuntimeSession:
     remote_run_id: str | None = None
     cancel_confirmed: bool | None = None
     completed_turns: dict[str, tuple[str, "RuntimeReply"]] = field(default_factory=dict, repr=False)
+    # One finite host loop per local session. Durable attempts/recovery are separate.
+    conversation_started: bool = False
 
 
 class RuntimeProtocolError(RuntimeError):
