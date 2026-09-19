@@ -54,6 +54,7 @@ from app.schemas.project_delivery import (
 from app.services import auth as auth_service
 from app.services import drive as drive_service
 from app.services import position_compat
+from app.services import tasks as task_service
 from app.services.document_generation import (
     DocumentSection,
     DocumentSource,
@@ -230,13 +231,32 @@ def complete_phase(db: Session, project: Project, phase: ProjectPhase) -> Projec
         raise HTTPException(status_code=409, detail="phase is not active")
     if phase.gate_required or phase.phase_type == ProjectPhaseType.project_archive.value:
         raise HTTPException(status_code=409, detail="this phase cannot be completed directly")
+    phase_tasks = [
+        task for task in project_repo.list_tasks(db, project.id) if task.phase_id == phase.id
+    ]
+    # Guided completion is an explicit batch action. Validate the whole batch before
+    # touching the phase or any task, so it cannot erase an exception or terminal fact.
+    for task in phase_tasks:
+        if task.status in {
+            TaskStatus.failed.value,
+            TaskStatus.cancelled.value,
+            TaskStatus.blocked.value,
+        }:
+            raise HTTPException(
+                status_code=409,
+                detail=f"cannot complete phase with {task.status} task: {task.id}",
+            )
     phase.status = ProjectPhaseStatus.completed.value
     phase.completed_at = utcnow()
-    for task in project_repo.list_tasks(db, project.id):
-        if task.phase_id == phase.id and task.status != TaskStatus.done.value:
-            task.status = TaskStatus.done.value
+    completed_tasks = []
+    for task in phase_tasks:
+        if task.status != TaskStatus.done.value:
             task.actual_start_at = task.actual_start_at or phase.started_at or utcnow()
+            # Preserve intentional guided batch completion, including draft tasks,
+            # while keeping transition_task the sole task-state writer.
+            task_service.transition_task(db, task, TaskStatus.done.value, force=True)
             task.actual_end_at = phase.completed_at
+            completed_tasks.append(task)
     _apply_traceability(db, project.id, phase.phase_type)
 
     if phase.phase_type in REVIEW_FOR_SOURCE:
@@ -264,6 +284,20 @@ def complete_phase(db: Session, project: Project, phase: ProjectPhase) -> Projec
         company_id=project.company_id,
         project_id=project.id,
     )
+    for task in completed_tasks:
+        bus.publish(
+            "task.updated",
+            {"id": task.id, "status": task.status, "assignee_id": task.assignee_id},
+            company_id=project.company_id,
+            project_id=project.id,
+            task_id=task.id,
+            actor_employee_id=task.assignee_id,
+        )
+    # Only reconsider dispatch here: guided phase progression remains owned by
+    # this service, not the task_finished path that can finish the entire project.
+    from app.workflow.orchestrator import orchestrator
+
+    orchestrator.notify({"type": "dispatch"})
     return get_lifecycle(db, project)
 
 

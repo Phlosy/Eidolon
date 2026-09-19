@@ -46,7 +46,7 @@ from app.models.enums import (
     TaskStatus,
     WorkSessionStatus,
 )
-from app.models.project import Milestone
+from app.models.project import Milestone, WorkSession
 from app.models.provider import ModelBinding
 from app.repositories import knowledge as knowledge_repo
 from app.repositories import organization as org_repo
@@ -242,6 +242,7 @@ class Orchestrator:
 
     async def _run_task(self, task_id: int) -> None:
         employee_id: int | None = None
+        work_session_id: int | None = None
         started = datetime.now(UTC)
         try:
             with SessionLocal() as db:
@@ -252,6 +253,10 @@ class Orchestrator:
                     TaskStatus.backlog.value,
                     TaskStatus.todo.value,
                 ):
+                    return
+                # A manager may requeue/reassign a task before its executor exits.
+                # The new assignee starts only after that session has finished.
+                if project_repo.get_running_session_for_task(db, task_id) is not None:
                     return
                 employee = org_repo.get_employee(db, task.assignee_id)
                 if employee is None or employee.status != EmployeeStatus.idle.value:
@@ -279,7 +284,7 @@ class Orchestrator:
                     if runtime_instance and runtime_instance.model_binding_id
                     else None
                 )
-                project_repo.create_work_session(
+                ws = project_repo.create_work_session(
                     db,
                     task_id=task.id,
                     employee_id=employee.id,
@@ -300,6 +305,7 @@ class Orchestrator:
                     if milestone and milestone.status == MilestoneStatus.pending.value:
                         milestone.status = MilestoneStatus.in_progress.value
                 db.commit()
+                work_session_id = int(ws.id)
                 runtime_config = dict(employee.runtime_config or {})
                 # v0.2: inject the assignee's own relevant learning into the task context
                 # v1: 额度由 BehaviorPolicy 决定；解析/检索异常时本任务回落 DEFAULT_POLICY
@@ -355,7 +361,7 @@ class Orchestrator:
             adapter = gateway.adapter_for(employee_snapshot.runtime_type)
             session = await adapter.create_session(instance, task_ctx)
             with SessionLocal() as db:
-                ws = project_repo.get_running_session_for_task(db, task_id)
+                ws = db.get(WorkSession, work_session_id)
                 if ws:
                     ws.runtime_session_ref = session.id
                     # M2.6（H3/G5）：**使用事实**在会话建立的那一刻落库 ——
@@ -416,52 +422,79 @@ class Orchestrator:
                     break
             produced = await adapter.get_artifacts(session) if success else []
             duration = (datetime.now(UTC) - started).total_seconds()
-            self._finalize(task_id, success, produced, error, duration)
+            self._finalize(
+                task_id, success, produced, error, duration, work_session_id=work_session_id
+            )
         except asyncio.CancelledError:
             logger.info("work session cancelled", extra={"task_id": task_id})
-            self._finalize(task_id, False, [], "cancelled", 0.0)
+            if work_session_id is not None:
+                self._finalize(
+                    task_id, False, [], "cancelled", 0.0, work_session_id=work_session_id
+                )
             raise
         except Exception as exc:
             logger.exception("work session crashed", extra={"task_id": task_id})
-            self._finalize(task_id, False, [], f"internal error: {exc}", 0.0)
+            if work_session_id is not None:
+                self._finalize(
+                    task_id,
+                    False,
+                    [],
+                    f"internal error: {exc}",
+                    0.0,
+                    work_session_id=work_session_id,
+                )
 
     # ---- finalization & reflection ----
 
     def _finalize(
-        self, task_id: int, success: bool, produced: list, error: str | None, duration: float
+        self,
+        task_id: int,
+        success: bool,
+        produced: list,
+        error: str | None,
+        duration: float,
+        *,
+        work_session_id: int | None = None,
     ) -> None:
         with SessionLocal() as db:
             task = project_repo.get_task(db, task_id)
             if task is None:
                 return
+            ws = (
+                db.get(WorkSession, work_session_id)
+                if work_session_id is not None
+                else project_repo.get_running_session_for_task(db, task_id)
+            )
+            # A post-commit failure or repeated callback must not record effects again,
+            # nor finalize a later session belonging to the task's new assignee.
+            if ws is None or ws.task_id != task_id or ws.status != WorkSessionStatus.running.value:
+                return
             project = project_repo.get_project(db, task.project_id)
-            employee = org_repo.get_employee(db, task.assignee_id) if task.assignee_id else None
+            employee = org_repo.get_employee(db, ws.employee_id)
             company_id = project.company_id if project else None
 
-            ws = project_repo.get_running_session_for_task(db, task_id)
-            if ws is not None:
-                ws.status = (
-                    WorkSessionStatus.completed.value if success else WorkSessionStatus.failed.value
-                )
-                ws.ended_at = datetime.now(UTC)
-                ws.summary = error or f"产出 {len(produced)} 个交付物"
-                ws.error = error
-                ws.cost = {**(ws.cost or {}), "duration_sec": round(duration, 3), "tokens": 0}
-                # M1.5：算力成本（Sink）—— **计量总是发生**，扣款尽力而为（余额不足记 unpaid）。
-                # 放在这里的原因：会话结束才有时长这个事实；计量失败绝不能影响任务终态，
-                # 所以只记录日志（unpaid/异常都会在成本报表与日志里暴露）。
-                try:
-                    from app.services.economy.costs import ComputeCostService
+            ws.status = (
+                WorkSessionStatus.completed.value if success else WorkSessionStatus.failed.value
+            )
+            ws.ended_at = datetime.now(UTC)
+            ws.summary = error or f"产出 {len(produced)} 个交付物"
+            ws.error = error
+            ws.cost = {**(ws.cost or {}), "duration_sec": round(duration, 3), "tokens": 0}
+            # M1.5：算力成本（Sink）—— **计量总是发生**，扣款尽力而为（余额不足记 unpaid）。
+            # 放在这里的原因：会话结束才有时长这个事实；计量失败绝不能影响任务终态，
+            # 所以只记录日志（unpaid/异常都会在成本报表与日志里暴露）。
+            try:
+                from app.services.economy.costs import ComputeCostService
 
-                    if company_id is not None:
-                        ComputeCostService(db).record_for_session(
-                            ws, company_id=company_id, model=ws.model or ""
-                        )
-                except Exception:
-                    logger.exception("compute cost recording failed for work_session=%s", ws.id)
-                # §10.2：success 是客观事实，与"人是否评价过"无关，都必须落库
-                for usage in knowledge_repo.list_skill_usages_for_task(db, task_id):
-                    usage.success = success
+                if company_id is not None:
+                    ComputeCostService(db).record_for_session(
+                        ws, company_id=company_id, model=ws.model or ""
+                    )
+            except Exception:
+                logger.exception("compute cost recording failed for work_session=%s", ws.id)
+            # §10.2：success 是客观事实，与"人是否评价过"无关，都必须落库
+            for usage in knowledge_repo.list_skill_usages_for_task(db, task_id):
+                usage.success = success
 
             artifact_ids = []
             # v0.3: artifacts are drive documents in the project folder
@@ -473,14 +506,17 @@ class Orchestrator:
                     title=item.title,
                     content=item.content,
                     author_id=employee.id if employee else None,
-                    work_session_id=ws.id if ws else None,
+                    work_session_id=ws.id,
                     # M2.6（H2）：产出归属 = 这个 Task。写在这里、此后不变。
                     task_id=task_id,
                 )
                 artifact_ids.append((node.id, node.doc_type, node.name))
 
             fixture_review_enabled = False
-            if success:
+            # Administrative changes own task state; runtime outcome owns the session.
+            # Reassignment changes the next executor, never this session's attribution.
+            advance_task = task.status == TaskStatus.in_progress.value
+            if advance_task and success:
                 # M2.7（RV2 / 设计 §12.3）：**删除 in_review → done 的自动连跳**。
                 # 工作做完了就停在 `in_review`：通过与否是 Reviewer Agent 的判断，
                 # 系统只负责把事实摆出来（`review_facts`）。
@@ -490,9 +526,10 @@ class Orchestrator:
                 # 写结论），塞进这个事务里会让 SQLite 的单写者窗口变长（实测：
                 # 并发的 HTTP 读会吃 `database is locked`）。
                 fixture_review_enabled = review_fixture.enabled_for(project)
-            else:
+            elif advance_task:
                 task_service.transition_task(db, task, TaskStatus.failed.value)
-            if employee is not None:
+            released_employee = employee is not None and employee.current_task_id == task_id
+            if released_employee:
                 employee.status = EmployeeStatus.idle.value
                 employee.current_task_id = None
             employee_id = employee.id if employee else None
@@ -522,7 +559,7 @@ class Orchestrator:
                 project_id=task_project_id,
                 task_id=task_id,
             )
-        if success:
+        if advance_task and success:
             # M2.7：工作干完了，进入"等评审"（事实）
             bus.publish(
                 "task.in_review",
@@ -555,25 +592,30 @@ class Orchestrator:
                     project_id=task_project_id,
                     task_id=task_id,
                 )
-        bus.publish(
-            "task.completed" if success else "task.failed",
-            {"id": task_id, "title": task_title, "kind": task_kind, "error": error},
-            company_id=company_id,
-            actor_employee_id=employee_id,
-            project_id=task.project_id,
-            task_id=task_id,
-        )
-        if employee_id is not None:
+        if advance_task:
+            bus.publish(
+                "task.completed" if success else "task.failed",
+                {"id": task_id, "title": task_title, "kind": task_kind, "error": error},
+                company_id=company_id,
+                actor_employee_id=employee_id,
+                project_id=task_project_id,
+                task_id=task_id,
+            )
+        if released_employee:
             bus.publish(
                 "employee.status_changed",
                 {"id": employee_id, "to": EmployeeStatus.idle.value},
                 company_id=company_id,
                 actor_employee_id=employee_id,
-                project_id=task.project_id,
+                project_id=task_project_id,
                 task_id=task_id,
             )
+        if employee_id is not None:
             reflection.reflect(task_id, employee_id, success, duration, error)
-        self._advance(task_id, success)
+        if advance_task:
+            self._advance(task_id, success)
+        else:
+            self.notify({"type": "dispatch"})
 
     def _finalize_external(self, task_id: int, success: bool) -> None:
         """Manual PATCH-driven completion: reflection + workflow advance, no artifacts."""
