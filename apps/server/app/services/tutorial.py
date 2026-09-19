@@ -113,7 +113,7 @@ def get_progress(db: Session, tutorial_id: str = CORE_TUTORIAL_ID) -> TutorialPr
     progress = delivery_repo.get_tutorial(db, user.id, tutorial_id)
     if progress is None:
         first = _steps(tutorial_id)[0]
-        progress = delivery_repo.create_tutorial(
+        progress = delivery_repo.create_tutorial_if_missing(
             db,
             user_id=user.id,
             company_id=company.id,

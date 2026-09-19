@@ -1,6 +1,7 @@
 """Persistence helpers for the formal project delivery domain."""
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.request_context import get_request_identity
@@ -252,3 +253,15 @@ def get_tutorial(
 
 def create_tutorial(db: Session, **fields) -> TutorialProgress:
     return _create(db, TutorialProgress, **fields)
+
+
+def create_tutorial_if_missing(db: Session, **fields) -> TutorialProgress:
+    """Concurrent first reads reuse the winner without resetting its progress."""
+    try:
+        with db.begin_nested():
+            return create_tutorial(db, **fields)
+    except IntegrityError:
+        existing = get_tutorial(db, fields["user_id"], fields["tutorial_id"])
+        if existing is None:
+            raise
+        return existing

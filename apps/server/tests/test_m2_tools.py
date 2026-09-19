@@ -44,11 +44,12 @@ from app.models.position import (
 from app.models.project import Task
 from app.repositories import organization as org_repo
 from app.repositories import project as project_repo
+from app.repositories import review as review_repo
 from app.schemas.position import AssignmentIn, PositionDefinitionIn, SlotIn
 from app.services import position_service
 from app.services import tasks as task_service
 from app.work import authority as authority_service
-from app.work import authority_seed, tool_reads, tool_writes
+from app.work import authority_seed, reviews, tool_reads, tool_writes
 from app.work import contracts as C
 from app.work import tool_executor as executor
 from app.work import tools as machinery
@@ -688,14 +689,18 @@ def test_create_dependency_rejects_cycles(db, default_company_id):
     assert self_loop.ok is False
 
 
-def test_request_rework_requires_a_reason_and_returns_to_todo(db, default_company_id):
-    employee, definition = _lab(db, default_company_id, "lab-rework")
+@pytest.mark.parametrize("status", [TaskStatus.in_review.value, TaskStatus.rejected.value])
+def test_request_rework_requires_a_reason_and_returns_to_todo(db, default_company_id, status):
+    employee, definition = _lab(db, default_company_id, f"lab-rework-{status}")
     _grant(db, definition, C.AuthorityKind.request_rework)
     project = _project(db, default_company_id, "返工")
     task = _task(db, int(project.id))
-    task.status = TaskStatus.in_review.value
+    task.status = status
+    task.actual_end_at = utcnow()
+    task.assignee_id = int(employee.id)
     db.commit()
     context = _context(db, employee)
+    replacement = _employees(db, default_company_id)["bob"]
 
     missing_reason = executor.execute_tool(
         db,
@@ -709,13 +714,90 @@ def test_request_rework_requires_a_reason_and_returns_to_todo(db, default_compan
     result = executor.execute_tool(
         db,
         name="request_rework",
-        args={"task_id": int(task.id), "reason": "缺少边界用例"},
+        args={
+            "task_id": int(task.id),
+            "reason": "缺少边界用例",
+            "assignee_id": int(replacement.id),
+        },
         context=context,
         decision_id=_decision_id(db, context),
     )
     assert result.ok, result.error
     db.refresh(task)
     assert task.status == TaskStatus.todo.value
+    assert task.rework_count == 1
+    assert task.actual_end_at is None
+    assert task.assignee_id == int(replacement.id)
+    assert result.data["previous_assignee_id"] == int(employee.id)
+
+    repeated = executor.execute_tool(
+        db,
+        name="request_rework",
+        args={"task_id": int(task.id), "reason": "重复请求"},
+        context=context,
+        decision_id=_decision_id(db, context),
+    )
+    assert repeated.ok is False and repeated.reason == "domain_rejected"
+    db.refresh(task)
+    assert task.status == TaskStatus.todo.value
+    assert task.rework_count == 1
+
+
+def test_request_rework_preserves_open_review_and_assignee(db, default_company_id, monkeypatch):
+    manager, definition = _lab(db, default_company_id, "lab-rework-open-review")
+    _grant(db, definition, C.AuthorityKind.request_rework)
+    employees = _employees(db, default_company_id)
+    project = _project(db, default_company_id, "待评审返工")
+    task = _task(db, int(project.id))
+    task.status = TaskStatus.in_review.value
+    task.assignee_id = int(manager.id)
+    task.actual_end_at = utcnow()
+    db.commit()
+    request = reviews.open_review_request(
+        db,
+        task=task,
+        requester_employee_id=int(manager.id),
+        reviewer_employee_id=int(employees["dana"].id),
+    )
+    db.refresh(task)
+    original_end = task.actual_end_at
+    original_facts = [
+        (fact.id, fact.payload_json) for fact in review_repo.list_facts(db, request.id)
+    ]
+    published = []
+    monkeypatch.setattr(
+        tool_writes.bus, "publish", lambda event, *args, **kwargs: published.append(event)
+    )
+    context = _context(db, manager)
+
+    result = executor.execute_tool(
+        db,
+        name="request_rework",
+        args={
+            "task_id": int(task.id),
+            "reason": "改派返工",
+            "assignee_id": int(employees["bob"].id),
+        },
+        context=context,
+        decision_id=_decision_id(db, context),
+    )
+
+    assert result.ok is False and result.reason == "domain_rejected"
+    assert f"open review {request.id}" in result.error
+    assert "assigned reviewer" in result.error
+    assert "REWORK" in result.error
+    db.refresh(task)
+    db.refresh(request)
+    assert task.status == TaskStatus.in_review.value
+    assert task.assignee_id == int(manager.id)
+    assert task.actual_end_at == original_end
+    assert task.rework_count == 0
+    assert request.status == C.REVIEW_REQUEST_OPEN
+    assert request.verdict is None and request.decided_at is None
+    assert [
+        (fact.id, fact.payload_json) for fact in review_repo.list_facts(db, request.id)
+    ] == original_facts
+    assert "task.rework_requested" not in published
 
 
 def test_mark_blocked_and_cancel_are_honest_states(db, default_company_id):

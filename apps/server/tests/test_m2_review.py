@@ -373,6 +373,72 @@ def test_rework_returns_to_todo_and_counts(db, default_company_id):
     db.rollback()
 
 
+def test_next_review_captures_new_session_after_manager_and_reviewer_rework(db, default_company_id):
+    project = _project(db, default_company_id)
+    worker = _employees(db, default_company_id)["charlie"]
+    reviewer = _reviewer(db, default_company_id)
+    task = _task(db, project, "两轮返工", assignee_id=int(worker.id))
+    _finish_work(db, task)
+    reviews.request_rework(db, task=task)
+    db.commit()
+    _finish_work(db, task)
+    first_session = project_repo.create_work_session(
+        db,
+        task_id=int(task.id),
+        employee_id=int(worker.id),
+        runtime_type="mock",
+        status="completed",
+        summary="第一轮产物",
+        cost={"duration_sec": 1.0, "tokens": 0},
+    )
+    db.commit()
+    first = reviews.open_review_request(
+        db,
+        task=task,
+        requester_employee_id=int(worker.id),
+        reviewer_employee_id=int(reviewer.id),
+    )
+    first_facts = _facts(int(first.id), db)
+    assert first_facts["rework"]["rework_count"] == 1
+    assert first_facts["session"]["work_session_id"] == int(first_session.id)
+
+    reviews.submit_verdict(
+        db,
+        request=first,
+        reviewer_employee_id=int(reviewer.id),
+        verdict=ReviewVerdict.rework,
+        notes="补齐边界用例",
+    )
+    assert task.status == TaskStatus.todo.value and task.rework_count == 2
+    _finish_work(db, task)
+    latest_session = project_repo.create_work_session(
+        db,
+        task_id=int(task.id),
+        employee_id=int(worker.id),
+        runtime_type="mock",
+        status="completed",
+        summary="第二轮产物已补齐",
+        cost={"duration_sec": 2.0, "tokens": 0},
+    )
+    db.commit()
+    latest = reviews.open_review_request(
+        db,
+        task=task,
+        requester_employee_id=int(worker.id),
+        reviewer_employee_id=int(reviewer.id),
+    )
+
+    assert latest.id != first.id
+    assert first.status == C.REVIEW_REQUEST_DECIDED
+    assert first.verdict == ReviewVerdict.rework.value
+    assert latest.status == C.REVIEW_REQUEST_OPEN
+    latest_facts = _facts(int(latest.id), db)
+    assert latest_facts["rework"]["rework_count"] == 2
+    assert latest_facts["session"]["work_session_id"] == int(latest_session.id)
+    assert latest_facts["session"]["summary"] == "第二轮产物已补齐"
+    assert _facts(int(first.id), db) == first_facts
+
+
 def test_escalate_has_no_automatic_target(db, default_company_id):
     """RV6（= H5）：ESCALATE 不迁移状态、不被系统自动处理，只叫醒人/管理层。"""
     assert C.REVIEW_VERDICT_TARGETS[ReviewVerdict.escalated.value] is None

@@ -450,6 +450,7 @@ def _request_rework(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
     """要求返工：`in_review → rejected → todo`（状态机两步，理由记入审计）。
 
     可以选择同时改派（`assignee_id`）；不传则保持原负责人。
+    已有未结束的评审时，由指定评审人提交 REWORK，不能绕过原评审开始新一轮。
     """
     task, _ = _task_in_company(db, ctx, int(args["task_id"]))
     reason = str(args.get("reason") or "").strip()
@@ -458,9 +459,8 @@ def _request_rework(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
     assignee_id = args.get("assignee_id")
     new_assignee = _active_employee(db, ctx, int(assignee_id)) if assignee_id is not None else None
     try:
-        task_service.transition_task(db, task, TaskStatus.rejected.value)
-        task_service.transition_task(db, task, TaskStatus.todo.value)
-    except task_service.InvalidTransitionError as exc:
+        reviews.request_rework(db, task=task)
+    except (reviews.ReviewError, task_service.InvalidTransitionError) as exc:
         raise tools.ToolError(str(exc)) from exc
     previous_assignee = task.assignee_id
     if new_assignee is not None:
@@ -801,7 +801,7 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
             name="request_rework",
             # 决策语义 REQUIRED：这是真正的管理动作，必须隶属于一条决策（DR7）
             decision_semantics=DecisionSemantics.required,
-            description="要求返工（必须给理由；可同时改派）",
+            description="要求返工（必须给理由；可同时改派；有未结束评审时请指定评审人提交 REWORK）",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.request_rework,
             authority_target=_target_rework,

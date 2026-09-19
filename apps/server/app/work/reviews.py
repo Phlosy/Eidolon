@@ -301,6 +301,23 @@ def submit_verdict(
     return request
 
 
+def request_rework(db: Session, *, task: Task) -> Task:
+    """管理层发起返工；已指定评审人的请求必须先由其给出结论。
+
+    与 REWORK 结论共用状态迁移和计数，事务由调用者提交。
+    """
+    existing = open_request_for_task(db, int(task.id))
+    if existing is not None:
+        raise ReviewError(
+            f"task {task.id} has open review {existing.id}: "
+            f"the assigned reviewer {existing.reviewer_employee_id} must submit REWORK"
+        )
+    if str(task.status) not in {TaskStatus.in_review.value, TaskStatus.rejected.value}:
+        raise ReviewError(f"task {task.id} is {task.status}: cannot request rework")
+    _apply_target(db, task, TaskStatus.todo.value)
+    return task
+
+
 def _apply_target(db: Session, task: Task, target: str) -> str:
     """把结论映射到状态迁移（**只走状态机**，不越权改别的列）。"""
     current = str(task.status)
@@ -452,6 +469,7 @@ __all__ = [
     "latest_request_for_task",
     "open_request_for_task",
     "open_review_request",
+    "request_rework",
     "replan_project",
     "review_view",
     "submit_verdict",
