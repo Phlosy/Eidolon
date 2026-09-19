@@ -527,8 +527,6 @@ def test_resend_verification_invalidates_previous_link(client):
 
 
 def test_resend_verification_does_not_leak_unknown_email(client):
-    response = client.post(
-        "/api/v1/auth/verify-email/resend", json={"email": "ghost@example.com"}
-    )
+    response = client.post("/api/v1/auth/verify-email/resend", json={"email": "ghost@example.com"})
     assert response.status_code == 200
     assert response.json()["development_verification_token"] is None

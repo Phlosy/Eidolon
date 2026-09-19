@@ -9,13 +9,19 @@ interface EventStreamState {
   /** Live events pushed by the WS, newest first, capped. */
   events: StreamEvent[];
   connection: ConnectionState;
+  /** Advances when the authenticated user/company changes. */
+  generation: number;
   pushEvent: (event: StreamEvent) => void;
   setConnection: (state: ConnectionState) => void;
+  reset: () => void;
 }
 
 export const useEventStreamStore = create<EventStreamState>()((set) => ({
   events: [],
-  connection: "connecting",
+  connection: "closed",
+  generation: 0,
   pushEvent: (event) => set((state) => ({ events: [event, ...state.events].slice(0, MAX_EVENTS) })),
   setConnection: (connection) => set({ connection }),
+  reset: () =>
+    set((state) => ({ events: [], connection: "closed", generation: state.generation + 1 })),
 }));

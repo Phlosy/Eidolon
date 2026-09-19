@@ -19,6 +19,7 @@ import {
   startTutorial,
 } from "../api/tutorial";
 import type { TutorialProgress } from "../api/tutorial";
+import { useEventStreamStore } from "../stores/events";
 
 /**
  * 教程数据 hooks。
@@ -84,11 +85,13 @@ export function usePracticePreview(enabled: boolean) {
  */
 function useTutorialAction<TArg = void>(action: (arg: TArg) => Promise<TutorialProgress>) {
   const queryClient = useQueryClient();
-  return useMutation<TutorialProgress, Error, TArg | undefined>({
+  return useMutation<TutorialProgress, Error, TArg | undefined, number>({
     // 教程自己的 mutation 已经把返回值写进缓存了，让全局 mutationCache 跳过它
     meta: { tutorialOwned: true },
     mutationFn: (arg) => action(arg as TArg),
-    onSuccess: (progress) => {
+    onMutate: () => useEventStreamStore.getState().generation,
+    onSuccess: (progress, _arg, generation) => {
+      if (generation !== useEventStreamStore.getState().generation) return;
       queryClient.setQueryData(TUTORIAL_QUERY_KEY, progress);
       queryClient.invalidateQueries({ queryKey: TUTORIAL_QUERY_KEY });
     },

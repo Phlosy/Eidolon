@@ -171,8 +171,18 @@ def test_provider_presets_cover_mainstream_vendors(client):
     assert response.status_code == 200
     presets = {p["provider_type"]: p for p in response.json()}
     # 主流厂商都在，且非 custom/ollama 一律需要 key
-    for vendor in ("openai", "anthropic", "deepseek", "moonshot", "zhipu", "qwen",
-                   "groq", "mistral", "openrouter", "gemini"):
+    for vendor in (
+        "openai",
+        "anthropic",
+        "deepseek",
+        "moonshot",
+        "zhipu",
+        "qwen",
+        "groq",
+        "mistral",
+        "openrouter",
+        "gemini",
+    ):
         assert vendor in presets
         assert presets[vendor]["requires_api_key"] is True
         assert presets[vendor]["default_base_url"]

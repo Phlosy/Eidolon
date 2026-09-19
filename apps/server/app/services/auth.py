@@ -185,9 +185,7 @@ def resend_verification(
     60 秒内只允许重发一次（覆盖式重发，旧链接立即失效）。
     """
     email = email.strip().lower()
-    enforce_rate_limit(
-        f"resend-verify:{_client_ip(request)}:{email}", limit=1, window_seconds=60
-    )
+    enforce_rate_limit(f"resend-verify:{_client_ip(request)}:{email}", limit=1, window_seconds=60)
     expires_at = utcnow() + timedelta(minutes=settings.email_verification_ttl_minutes)
     token = ""
     pending = db.scalar(select(PendingRegistration).where(PendingRegistration.email == email))
@@ -210,9 +208,7 @@ def resend_verification(
         )
         record_audit_event(db, "user.verification_resent", request=request)
         db.commit()
-        _deliver(
-            lambda: send_verification_email(email, token, locale=pending.locale), background
-        )
+        _deliver(lambda: send_verification_email(email, token, locale=pending.locale), background)
     return {
         "email": email,
         "verification_required": True,
@@ -299,9 +295,7 @@ def authenticate_password(
     db: Session, payload, request: Request, response: Response
 ) -> AuthStateOut:
     identifier = str(payload.identifier or payload.email or payload.username or "").strip().lower()
-    enforce_rate_limit(
-        f"login:{_client_ip(request)}:{identifier}", limit=8, window_seconds=300
-    )
+    enforce_rate_limit(f"login:{_client_ip(request)}:{identifier}", limit=8, window_seconds=300)
     if "@" in identifier:
         user = db.scalar(select(User).where(User.email == identifier))
     else:
@@ -451,9 +445,7 @@ def _anonymize(user: User) -> None:
 
 def _revoke_all_sessions(db: Session, user_id: int) -> None:
     for session in db.scalars(
-        select(UserSession).where(
-            UserSession.user_id == user_id, UserSession.revoked_at.is_(None)
-        )
+        select(UserSession).where(UserSession.user_id == user_id, UserSession.revoked_at.is_(None))
     ):
         session.revoked_at = utcnow()
 
@@ -462,9 +454,7 @@ def confirm_account_action(
     db: Session, token: str, request: Request, response: Response | None = None
 ) -> dict:
     """执行邮件确认的动作。令牌是一次性的"邮箱所有权"证明，不要求会话。"""
-    row = db.scalar(
-        select(AccountActionToken).where(AccountActionToken.token_hash == _hash(token))
-    )
+    row = db.scalar(select(AccountActionToken).where(AccountActionToken.token_hash == _hash(token)))
     if row is None or row.used_at is not None:
         raise HTTPException(status_code=409, detail="verification link is invalid or already used")
     if _is_expired(row.expires_at):

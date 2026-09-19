@@ -155,7 +155,8 @@ async def ws_events(websocket: WebSocket) -> None:
     try:
         while True:
             message = await queue.get()
-            if company_id is not None and message.get("company_id") not in {None, company_id}:
+            # Missing ownership is not a declaration that an event is public.
+            if company_id is not None and message.get("company_id") != company_id:
                 continue
             await websocket.send_text(json.dumps(message, default=str))
     except WebSocketDisconnect:

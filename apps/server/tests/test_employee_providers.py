@@ -134,22 +134,32 @@ def test_multi_model_create_and_primary_switching(client, employees_by_slug):
     assert dup.status_code == 409
 
     # 删掉当前默认模型 → 自动顶上剩下按 position 最靠前的一条
-    current_primary = [b for b in client.get(f"/api/v1/employees/{bob['id']}/bindings").json()
-                       if b["is_primary"] and b["provider_id"] == provider_id][0]
-    assert client.delete(
-        f"/api/v1/employees/{bob['id']}/bindings/{current_primary['id']}"
-    ).status_code == 204
+    current_primary = [
+        b
+        for b in client.get(f"/api/v1/employees/{bob['id']}/bindings").json()
+        if b["is_primary"] and b["provider_id"] == provider_id
+    ][0]
+    assert (
+        client.delete(f"/api/v1/employees/{bob['id']}/bindings/{current_primary['id']}").status_code
+        == 204
+    )
     # 测试库是 session 级共享的（bob 可能有别的绑定），断言只盯本次建的 provider
-    rest = [b for b in client.get(f"/api/v1/employees/{bob['id']}/bindings").json()
-            if b["provider_id"] == provider_id]
+    rest = [
+        b
+        for b in client.get(f"/api/v1/employees/{bob['id']}/bindings").json()
+        if b["provider_id"] == provider_id
+    ]
     assert len(rest) == 2
     all_bindings = client.get(f"/api/v1/employees/{bob['id']}/bindings").json()
     assert sum(1 for b in all_bindings if b["is_primary"]) == 1
 
     # 别人的绑定动不了
-    assert client.post(
-        f"/api/v1/employees/{employees_by_slug['alice']['id']}/bindings/{rest[0]['id']}/primary"
-    ).status_code == 404
+    assert (
+        client.post(
+            f"/api/v1/employees/{employees_by_slug['alice']['id']}/bindings/{rest[0]['id']}/primary"
+        ).status_code
+        == 404
+    )
 
 
 def test_probe_unsaved_provider_config(client):

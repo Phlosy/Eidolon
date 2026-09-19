@@ -108,6 +108,7 @@ class GitService:
                 "name": connection.name,
                 "platform_type": connection.platform_type,
             },
+            company_id=connection.company_id,
         )
         return connection_out(connection)
 
@@ -129,7 +130,11 @@ class GitService:
             metadata["credential_mask"] = mask_secret(token)
             connection.metadata_json = metadata
         db.commit()
-        bus.publish("git.connection_updated", {"id": connection.id, "name": connection.name})
+        bus.publish(
+            "git.connection_updated",
+            {"id": connection.id, "name": connection.name},
+            company_id=connection.company_id,
+        )
         return connection_out(connection)
 
     def delete_connection(self, db: Session, connection_id: int) -> None:
@@ -139,7 +144,11 @@ class GitService:
         self._secrets.delete(db, connection.credential_ref)
         git_repo.delete_connection(db, connection)
         db.commit()
-        bus.publish("git.connection_deleted", {"id": connection_id, "name": connection.name})
+        bus.publish(
+            "git.connection_deleted",
+            {"id": connection_id, "name": connection.name},
+            company_id=connection.company_id,
+        )
 
     async def test_connection(self, db: Session, connection_id: int) -> GitConnectionTestOut:
         connection = git_repo.get_connection(db, connection_id)
@@ -155,6 +164,7 @@ class GitService:
                 "ok": result["ok"],
                 "error": result["error"],
             },
+            company_id=connection.company_id,
         )
         return GitConnectionTestOut(**result)
 

@@ -3,6 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.request_context import get_request_identity
 from app.models.lifecycle import (
     AccessPackage,
     AccessPackageItem,
@@ -17,6 +18,7 @@ from app.models.lifecycle import (
     ResourceAsset,
     ResourceProvider,
 )
+from app.models.organization import Employee
 from app.repositories import position as position_repo
 
 # ---- positions ----
@@ -221,11 +223,22 @@ def create_job(db: Session, **fields) -> ProvisioningJob:
 
 
 def get_job(db: Session, job_id: int) -> ProvisioningJob | None:
-    return db.get(ProvisioningJob, job_id)
+    stmt = select(ProvisioningJob).where(ProvisioningJob.id == job_id)
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Employee, ProvisioningJob.employee_id == Employee.id).where(
+            Employee.company_id == identity.company_id
+        )
+    return db.scalar(stmt)
 
 
 def list_jobs(db: Session, employee_id: int | None = None) -> list[ProvisioningJob]:
     stmt = select(ProvisioningJob).order_by(ProvisioningJob.id.desc())
+    identity = get_request_identity()
+    if identity is not None:
+        stmt = stmt.join(Employee, ProvisioningJob.employee_id == Employee.id).where(
+            Employee.company_id == identity.company_id
+        )
     if employee_id is not None:
         stmt = stmt.where(ProvisioningJob.employee_id == employee_id)
     return list(db.scalars(stmt))

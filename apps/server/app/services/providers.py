@@ -143,6 +143,7 @@ class ProviderService:
         bus.publish(
             "provider.created",
             {"id": provider.id, "name": provider.name, "provider_type": provider.provider_type},
+            company_id=provider.company_id,
             actor_employee_id=provider.owner_employee_id,
         )
         return provider_out(db, provider)
@@ -221,10 +222,9 @@ class ProviderService:
             raise HTTPException(status_code=404, detail="model binding not found")
         return binding
 
-    def add_binding(
-        self, db: Session, employee_id: int, payload: BindingCreate
-    ) -> ModelBindingOut:
-        if org_repo.get_employee(db, employee_id) is None:
+    def add_binding(self, db: Session, employee_id: int, payload: BindingCreate) -> ModelBindingOut:
+        employee = org_repo.get_employee(db, employee_id)
+        if employee is None:
             raise HTTPException(status_code=404, detail="employee not found")
         # 员工只能绑自己看得见的 provider（自有或公司共享）
         provider = provider_repo.get_provider_visible(db, payload.provider_id, employee_id)
@@ -236,10 +236,13 @@ class ProviderService:
                 raise HTTPException(status_code=409, detail="this model binding already exists")
         if payload.make_primary:
             provider_repo.clear_primary_flags(db, employee_id)
-        position = max(
-            (b.position for b in provider_repo.list_bindings_for_employee(db, employee_id)),
-            default=-1,
-        ) + 1
+        position = (
+            max(
+                (b.position for b in provider_repo.list_bindings_for_employee(db, employee_id)),
+                default=-1,
+            )
+            + 1
+        )
         provider_repo.create_binding(
             db,
             employee_id=employee_id,
@@ -253,6 +256,7 @@ class ProviderService:
         bus.publish(
             "provider.binding_added",
             {"employee_id": employee_id, "provider_id": payload.provider_id, "model": model},
+            company_id=employee.company_id,
             actor_employee_id=employee_id,
         )
         return [b for b in self.list_bindings(db, employee_id) if b.model == model][-1]
@@ -269,6 +273,9 @@ class ProviderService:
     def set_primary_binding(
         self, db: Session, employee_id: int, binding_id: int
     ) -> list[ModelBindingOut]:
+        employee = org_repo.get_employee(db, employee_id)
+        if employee is None:
+            raise HTTPException(status_code=404, detail="employee not found")
         binding = self._own_binding(db, employee_id, binding_id)
         provider_repo.clear_primary_flags(db, employee_id)
         binding.is_primary = True
@@ -276,6 +283,7 @@ class ProviderService:
         bus.publish(
             "provider.binding_primary",
             {"employee_id": employee_id, "binding_id": binding_id, "model": binding.model},
+            company_id=employee.company_id,
             actor_employee_id=employee_id,
         )
         return self.list_bindings(db, employee_id)
@@ -343,6 +351,7 @@ class ProviderService:
         bus.publish(
             "provider.updated",
             {"id": provider.id, "name": provider.name},
+            company_id=provider.company_id,
             actor_employee_id=provider.owner_employee_id,
         )
         return provider_out(db, provider)
@@ -372,6 +381,7 @@ class ProviderService:
         bus.publish(
             "provider.tested" if result["ok"] else "provider.failed",
             {"id": provider.id, "name": provider.name, "error": result["error"]},
+            company_id=provider.company_id,
             actor_employee_id=provider.owner_employee_id,
         )
         return ProviderTestResultOut(**result)

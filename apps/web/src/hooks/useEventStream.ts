@@ -62,22 +62,28 @@ export function useEventStream(): void {
   const setConnection = useEventStreamStore((s) => s.setConnection);
 
   useEffect(() => {
+    const generation = useEventStreamStore.getState().generation;
     let socket: WebSocket | null = null;
     let attempts = 0;
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    const isCurrent = () => !stopped && useEventStreamStore.getState().generation === generation;
 
     const connect = () => {
-      if (stopped) return;
+      if (!isCurrent()) return;
       setConnection("connecting");
-      socket = new WebSocket(wsUrl("/ws/events"));
+      const currentSocket = new WebSocket(wsUrl("/ws/events"));
+      socket = currentSocket;
+      const isCurrentSocket = () => isCurrent() && socket === currentSocket;
 
       socket.onopen = () => {
+        if (!isCurrentSocket()) return;
         attempts = 0;
         setConnection("open");
       };
 
       socket.onmessage = (msg: MessageEvent<string>) => {
+        if (!isCurrentSocket()) return;
         try {
           const event = JSON.parse(msg.data) as StreamEvent;
           pushEvent(event);
@@ -90,21 +96,22 @@ export function useEventStream(): void {
       };
 
       socket.onclose = () => {
+        if (!isCurrentSocket()) return;
         setConnection("closed");
-        if (stopped) return;
         const delay = Math.min(RECONNECT_MAX_MS, RECONNECT_BASE_MS * 2 ** attempts);
         attempts += 1;
         timer = setTimeout(connect, delay);
       };
 
       socket.onerror = () => {
-        socket?.close();
+        if (isCurrentSocket()) currentSocket.close();
       };
     };
 
     connect();
 
     return () => {
+      if (isCurrent()) setConnection("closed");
       stopped = true;
       if (timer) clearTimeout(timer);
       socket?.close();

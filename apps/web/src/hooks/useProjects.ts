@@ -15,6 +15,7 @@ import {
 import { listDecisions } from "../api/decisions";
 import type { CreateProjectInput } from "../types";
 import type { ReviewDecisionInput } from "../types";
+import { useEventStreamStore } from "../stores/events";
 
 export function useProjects() {
   return useQuery({ queryKey: ["projects"], queryFn: listProjects });
@@ -77,7 +78,9 @@ export function useCompleteProjectPhase(projectId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (phaseId: number) => completeProjectPhase(projectId, phaseId),
-    onSuccess: (data) => {
+    onMutate: () => useEventStreamStore.getState().generation,
+    onSuccess: (data, _phaseId, generation) => {
+      if (generation !== useEventStreamStore.getState().generation) return;
       queryClient.setQueryData(["projects", projectId, "lifecycle"], data);
       void queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
       void queryClient.invalidateQueries({ queryKey: ["projects", "portfolio"] });
@@ -97,7 +100,9 @@ export function useDecideReview(reviewId: number, projectId: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ReviewDecisionInput) => decideReview(reviewId, input),
-    onSuccess: (data) => {
+    onMutate: () => useEventStreamStore.getState().generation,
+    onSuccess: (data, _input, generation) => {
+      if (generation !== useEventStreamStore.getState().generation) return;
       queryClient.setQueryData(["projects", projectId, "lifecycle"], data);
       void queryClient.invalidateQueries({ queryKey: ["reviews", reviewId] });
       void queryClient.invalidateQueries({ queryKey: ["projects", projectId] });
