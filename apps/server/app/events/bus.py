@@ -11,9 +11,12 @@ from datetime import UTC, datetime
 from threading import Lock
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
 from app.core.redaction import redact_data
+from app.core.transaction_effects import after_commit
 from app.models.event import Event
 from app.repositories import persons as person_repo
 
@@ -53,6 +56,7 @@ class EventBus:
         actor_employee_id: int | None = None,
         project_id: int | None = None,
         task_id: int | None = None,
+        db: Session | None = None,
     ) -> None:
         # Secrets must never reach the events table or WS clients.
         data = redact_data(data)
@@ -64,6 +68,17 @@ class EventBus:
             task_id=task_id,
             payload=data,
         )
+        if db is not None:
+            # The caller owns durability: an event is part of the same fact as
+            # its domain mutation. Persistence errors must reject that action.
+            if actor_employee_id is not None:
+                event.actor_person_id = person_repo.write_person_id(db, actor_employee_id)
+            db.add(event)
+            db.flush()
+            event_id = int(event.id)
+            after_commit(db, lambda: self.publish_persisted(event_id))
+            return
+
         event_id = None
         try:
             with SessionLocal() as db:

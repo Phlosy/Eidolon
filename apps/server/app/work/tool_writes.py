@@ -153,9 +153,7 @@ def _create_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         )
     except C.WorkContractError as exc:
         raise tools.ToolError(str(exc)) from exc
-    db.commit()
-    db.refresh(task)
-    task_service.publish_task_created(task, ctx.company_id)
+    task_service.publish_task_created(task, ctx.company_id, db=db)
     bus.publish(
         "work.task_created",
         {"task_id": int(task.id), "project_id": project_id, "via": "agent_tool"},
@@ -163,6 +161,7 @@ def _create_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         actor_employee_id=ctx.employee_id,
         project_id=project_id,
         task_id=int(task.id),
+        db=db,
     )
     return {"task": _task_snapshot(task), "applied": "created"}
 
@@ -186,10 +185,6 @@ def _update_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         changed.append("status")
     if not changed:
         raise tools.ToolError("nothing to update (no mutable field provided)")
-    db.commit()
-    db.refresh(task)
-    # refresh 会开一个读事务；SQLite 单写者下它挡住 bus.publish 的写事务 —— 先释放
-    db.commit()
     bus.publish(
         "work.task_updated",
         {"task_id": int(task.id), "fields": changed, "via": "agent_tool"},
@@ -197,6 +192,7 @@ def _update_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         actor_employee_id=ctx.employee_id,
         project_id=int(task.project_id),
         task_id=int(task.id),
+        db=db,
     )
     return {"task": _task_snapshot(task), "before": before, "changed": changed}
 
@@ -232,10 +228,8 @@ def _create_dependency(db: Session, ctx: tools.ToolCallContext, args: dict) -> d
         raise tools.ToolError(f"task graph would become invalid: {report.error}")
 
     project_repo.add_dependency(db, task_id=int(task.id), depends_on_id=depends_on_id)
-    # **提交后不要再查库**：SQLite 是单写者，读事务会挡住 `bus.publish` 的写事务
-    # （实测：`database is locked`）。依赖清单用提交前就算好的 `deps_by_task`。
+    # 依赖清单沿用本次校验的图；事务由 ToolExecutor 统一提交。
     dependencies = sorted({*deps_by_task.get(int(task.id), ()), depends_on_id})
-    db.commit()
     bus.publish(
         "work.dependency_created",
         {"task_id": int(task.id), "depends_on_id": depends_on_id, "via": "agent_tool"},
@@ -243,6 +237,7 @@ def _create_dependency(db: Session, ctx: tools.ToolCallContext, args: dict) -> d
         actor_employee_id=ctx.employee_id,
         project_id=int(task.project_id),
         task_id=int(task.id),
+        db=db,
     )
     return {
         "task_id": int(task.id),
@@ -258,9 +253,6 @@ def _mark_task_blocked(db: Session, ctx: tools.ToolCallContext, args: dict) -> d
         task_service.transition_task(db, task, TaskStatus.blocked.value)
     except task_service.InvalidTransitionError as exc:
         raise tools.ToolError(str(exc)) from exc
-    db.commit()
-    db.refresh(task)
-    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     bus.publish(
         "work.task_blocked",
         {
@@ -272,6 +264,7 @@ def _mark_task_blocked(db: Session, ctx: tools.ToolCallContext, args: dict) -> d
         actor_employee_id=ctx.employee_id,
         project_id=int(task.project_id),
         task_id=int(task.id),
+        db=db,
     )
     return {"task": _task_snapshot(task), "applied": "blocked"}
 
@@ -282,9 +275,6 @@ def _cancel_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         task_service.transition_task(db, task, TaskStatus.cancelled.value)
     except task_service.InvalidTransitionError as exc:
         raise tools.ToolError(str(exc)) from exc
-    db.commit()
-    db.refresh(task)
-    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     bus.publish(
         "work.task_cancelled",
         {"task_id": int(task.id), "reason": str(args.get("reason") or ""), "via": "agent_tool"},
@@ -292,6 +282,7 @@ def _cancel_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         actor_employee_id=ctx.employee_id,
         project_id=int(task.project_id),
         task_id=int(task.id),
+        db=db,
     )
     return {"task": _task_snapshot(task), "applied": "cancelled"}
 
@@ -318,9 +309,6 @@ def _assign_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         task_service.transition_task(db, task, TaskStatus.todo.value)
     previous = task.assignee_id
     task.assignee_id = int(employee.id)
-    db.commit()
-    db.refresh(task)
-    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     bus.publish(
         "task.assigned",
         {
@@ -334,6 +322,7 @@ def _assign_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
         actor_employee_id=ctx.employee_id,
         project_id=int(task.project_id),
         task_id=int(task.id),
+        db=db,
     )
     return {
         "task": _task_snapshot(task),
@@ -369,9 +358,6 @@ def _delegate_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> di
     project.management_employee_id = int(employee.id)
     project.management_person_id = int(employee.person_id) if employee.person_id else None
     project.management_assigned_at = utcnow()
-    db.commit()
-    db.refresh(project)
-    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     projected = {
         "project_id": int(project.id),
         "management_employee_id": project.management_employee_id,
@@ -383,6 +369,7 @@ def _delegate_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> di
         company_id=ctx.company_id,
         actor_employee_id=ctx.employee_id,
         project_id=int(project.id),
+        db=db,
     )
     return {"project": projected, "before": before, "applied": "delegated"}
 
@@ -421,9 +408,6 @@ def _request_review(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
         )
     except C.WorkContractError as exc:
         raise tools.ToolError(str(exc)) from exc
-    db.commit()
-    db.refresh(task)
-    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     bus.publish(
         "work.review_requested",
         {
@@ -436,6 +420,7 @@ def _request_review(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
         actor_employee_id=ctx.employee_id,
         project_id=int(task.project_id),
         task_id=int(task.id),
+        db=db,
     )
     return {
         "task": _task_snapshot(task),
@@ -465,9 +450,6 @@ def _request_rework(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
     previous_assignee = task.assignee_id
     if new_assignee is not None:
         task.assignee_id = int(new_assignee.id)
-    db.commit()
-    db.refresh(task)
-    db.commit()  # 释放 refresh 的读事务（SQLite 单写者）
     bus.publish(
         "task.rework_requested",
         {
@@ -481,6 +463,7 @@ def _request_rework(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
         actor_employee_id=ctx.employee_id,
         project_id=int(task.project_id),
         task_id=int(task.id),
+        db=db,
     )
     return {
         "task": _task_snapshot(task),
@@ -554,7 +537,6 @@ def _consume_artifact(db: Session, ctx: tools.ToolCallContext, args: dict) -> di
         )
     except C.WorkContractError as exc:
         raise tools.ToolError(str(exc)) from exc
-    db.commit()
     bus.publish(
         "work.artifact_consumed",
         {
@@ -566,6 +548,7 @@ def _consume_artifact(db: Session, ctx: tools.ToolCallContext, args: dict) -> di
         actor_employee_id=ctx.employee_id,
         project_id=int(task.project_id),
         task_id=int(task.id),
+        db=db,
     )
     return {
         "task_id": int(task.id),
@@ -599,9 +582,6 @@ def _submit_review_verdict(db: Session, ctx: tools.ToolCallContext, args: dict) 
     except C.WorkContractError as exc:
         # 契约违规（状态不对 / 不是评审人 / 结论缺理由）⇒ 具体原因，不是 500
         raise tools.ToolError(str(exc)) from exc
-    db.commit()
-    db.refresh(request)
-    db.refresh(request.task if hasattr(request, "task") else request)
     return {
         "review_request_id": int(request.id),
         "task_id": int(request.task_id),
@@ -629,8 +609,6 @@ def _replan_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
         )
     except C.WorkContractError as exc:
         raise tools.ToolError(str(exc)) from exc
-    db.commit()
-    db.refresh(project)
     return {
         "project_id": int(project.id),
         "status": project.status,

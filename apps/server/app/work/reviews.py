@@ -26,6 +26,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from app.core.transaction_effects import after_commit
 from app.events.bus import bus
 from app.models.base import utcnow
 from app.models.enums import LifecycleStatus, ProjectStatus, ReviewVerdict, TaskStatus
@@ -211,8 +212,6 @@ def open_review_request(
             payload=payload,
             source=review_facts.FACT_SOURCE,
         )
-    if commit:
-        db.commit()
     bus.publish(
         "task.review_named",
         {
@@ -224,7 +223,10 @@ def open_review_request(
         actor_employee_id=int(requester.id),
         project_id=int(task.project_id),
         task_id=int(task.id),
+        db=db,
     )
+    if commit:
+        db.commit()
     return row
 
 
@@ -283,8 +285,6 @@ def submit_verdict(
     if target is not None:
         applied = _apply_target(db, task, target)
     # ESCALATE 没有目标（RV6）：任务**留在原地**，只是多了一条"需要人/管理层"的结论
-    if commit:
-        db.commit()
     _publish_verdict(db, request=request, task=task, applied=applied, target=target)
     if applied is not None:
         from app.workflow.orchestrator import orchestrator
@@ -294,10 +294,13 @@ def submit_verdict(
             # （"全部任务完成 ⇒ 交付"的判断在 `_advance` 里；只发 dispatch 会漏掉它 ——
             #  M2.10 黄金路径实测：最后一个任务是被结论推进 done 的，项目因此停在 in_progress）。
             # `_finalize_external` 只做"反思 + 推进"，不碰状态机，正好是这一步要的语义。
-            orchestrator.notify({"type": "task_finished", "task_id": int(task.id), "success": True})
+            notification = {"type": "task_finished", "task_id": int(task.id), "success": True}
         else:
             # REWORK / REJECT：任务回到可执行/终态，交给调度器重新安排
-            orchestrator.notify({"type": "dispatch"})
+            notification = {"type": "dispatch"}
+        after_commit(db, lambda: orchestrator.notify(notification))
+    if commit:
+        db.commit()
     return request
 
 
@@ -359,6 +362,7 @@ def _publish_verdict(
             actor_employee_id=int(request.reviewer_employee_id),
             project_id=int(request.project_id),
             task_id=int(task.id),
+            db=db,
         )
         return
     if request.verdict == ReviewVerdict.escalated.value:
@@ -378,6 +382,7 @@ def _publish_verdict(
             actor_employee_id=int(request.reviewer_employee_id),
             project_id=int(request.project_id),
             task_id=int(task.id),
+            db=db,
         )
         return
     bus.publish(
@@ -396,6 +401,7 @@ def _publish_verdict(
         actor_employee_id=int(request.reviewer_employee_id),
         project_id=int(request.project_id),
         task_id=int(task.id),
+        db=db,
     )
 
 
@@ -438,8 +444,6 @@ def replan_project(
         )
 
     project.status = ProjectStatus.planning.value
-    if commit:
-        db.commit()
     bus.publish(
         "project.replan_required",
         {
@@ -457,7 +461,10 @@ def replan_project(
         company_id=int(project.company_id),
         actor_employee_id=int(actor_employee_id),
         project_id=int(project.id),
+        db=db,
     )
+    if commit:
+        db.commit()
     return project
 
 

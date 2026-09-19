@@ -258,7 +258,7 @@ def execute_actions(
             context=ctx,
             transport=transport,
             decision_id=int(decision.id),
-            commit=False,
+            commit=True,
         )
         outcomes.append(
             ActionOutcome(

@@ -115,7 +115,7 @@ def create_task(
     return task
 
 
-def publish_task_created(task: Task, company_id: int) -> None:
+def publish_task_created(task: Task, company_id: int, *, db: Session | None = None) -> None:
     bus.publish(
         "task.created",
         {"id": task.id, "title": task.title, "kind": task.kind, "status": task.status},
@@ -123,6 +123,7 @@ def publish_task_created(task: Task, company_id: int) -> None:
         project_id=task.project_id,
         task_id=task.id,
         actor_employee_id=task.assignee_id,
+        db=db,
     )
     if task.assignee_id is not None:
         bus.publish(
@@ -132,6 +133,7 @@ def publish_task_created(task: Task, company_id: int) -> None:
             project_id=task.project_id,
             task_id=task.id,
             actor_employee_id=task.assignee_id,
+            db=db,
         )
 
 

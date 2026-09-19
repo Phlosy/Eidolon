@@ -116,6 +116,7 @@ def test_finalization_preserves_manager_state_and_releases_executor(
             tool_executor.context_for_employee(db, executor, origin="test"),
             {"task_id": task.id, "reason": "Manager changed the plan"},
         )
+        db.commit()  # Private handlers leave transaction ownership to their caller.
     db.expire_all()
     previous_end = task.actual_end_at
     effects.events.clear()
@@ -174,6 +175,7 @@ def test_reassignment_keeps_session_author_and_preserves_next_assignee(
             tool_executor.context_for_employee(db, executor, origin="test"),
             {"task_id": task.id, "employee_id": next_assignee.id},
         )
+        db.commit()  # Match the ToolExecutor boundary around this private handler.
     effects.events.clear()
 
     execution.runner._finalize(task.id, True, _produced(), None, 2.0)

@@ -208,7 +208,9 @@ def test_tools_do_not_own_business_truth():
     )
     for path in (READS_MODULE, WRITES_MODULE):
         called = _called_attrs(_ast(path))
-        offenders = called & {"add", "delete", "flush", "commit_stub"}
+        # U7: shims also leave transaction ownership to ToolExecutor, so a
+        # domain effect cannot commit before its execution receipt.
+        offenders = called & {"add", "delete", "flush", "commit", "rollback", "commit_stub"}
         assert not offenders, f"{path.name} 直接写库（应经 `: {sorted(offenders)}`）"
     # 写工具必须调用既有领域服务（而不是自己实现规则）
     assert _imports_service("app.services", "tasks", WRITES_MODULE), "写工具必须复用 task service"

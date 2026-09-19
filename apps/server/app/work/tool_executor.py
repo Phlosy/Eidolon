@@ -32,6 +32,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.transaction_effects import ensure_sqlite_transaction
 from app.models.base import utcnow
 from app.models.decision import ToolAudit
 from app.models.enums import AutonomyLevel, DecisionSemantics, ToolTransport
@@ -232,7 +233,6 @@ def _record_tool_audit(
     )
     db.add(entry)
     db.flush()
-    db.commit()
     return int(entry.id)
 
 
@@ -250,6 +250,7 @@ def execute_tool(
     """执行一次工具调用（唯一入口）。
 
     内部面与调试口走**同一段代码**：唯一的差别是调试口多一道开关检查（T10）。
+    一次动作的领域写入、ToolAudit 和来源 Event 共用事务；commit=False 由调用者提交。
     """
     arguments = dict(args or {})
     started_at = utcnow()
@@ -277,19 +278,23 @@ def execute_tool(
     }
 
     def fail(reason: str, message: str, *, snapshot: dict | None = None) -> ToolResult:
-        audit_id = _record_tool_audit(
-            db,
-            spec=spec,
-            ctx=context,
-            transport=transport,
-            args=arguments,
-            outcome=reason,
-            result=None,
-            authority_snapshot=snapshot,
-            error=message,
-            decision_id=decision_id,
-            started_at=started_at,
-        )
+        ensure_sqlite_transaction(db)
+        with db.begin_nested():
+            audit_id = _record_tool_audit(
+                db,
+                spec=spec,
+                ctx=context,
+                transport=transport,
+                args=arguments,
+                outcome=reason,
+                result=None,
+                authority_snapshot=snapshot,
+                error=message,
+                decision_id=decision_id,
+                started_at=started_at,
+            )
+        if commit:
+            db.commit()
         return ToolResult(
             ok=False,
             reason=reason,
@@ -362,41 +367,45 @@ def execute_tool(
     # **SAVEPOINT 而不是 `db.rollback()`**：执行面跑在调用方的事务里（决策信封就是这种情况），
     # 裸回滚会把**调用方已经落下的东西**一起抹掉 —— 实测踩到过：一个动作在 handler 里
     # 被领域拒绝，整个 DecisionRecord（以及此前已成功的动作）全被回滚掉。
-    # SAVEPOINT 只丢弃**这个 handler**写了一半的东西，调用方的上下文原封不动。
-    savepoint = db.begin_nested()
-    try:
-        data = spec.handler(db, context, arguments)
-    except tool_machinery.ToolError as exc:
-        if savepoint.is_active:
+    # SAVEPOINT 丢弃本动作的领域写入、来源事件和成功审计；拒绝审计另行记录。
+    # SQLite 的虚拟 Session 事务不足以包住 SAVEPOINT，必须先有物理 BEGIN。
+    ensure_sqlite_transaction(db)
+    handler_failure: tuple[str, str] | None = None
+    with db.begin_nested() as savepoint:
+        try:
+            data = spec.handler(db, context, arguments)
+        except tool_machinery.ToolError as exc:
             savepoint.rollback()
-        return fail("domain_rejected", str(exc), snapshot=snapshot)
-    except Exception as exc:  # pragma: no cover - 防御：领域异常不能悄悄吞掉
-        if savepoint.is_active:
+            handler_failure = ("domain_rejected", str(exc))
+        except Exception as exc:
             savepoint.rollback()
-        logger.exception("tool handler failed", extra={"tool": spec.name})
-        return fail("handler_failed", f"{type(exc).__name__}: {exc}", snapshot=snapshot)
-    if savepoint.is_active:
-        savepoint.commit()
+            logger.exception("tool handler failed", extra={"tool": spec.name})
+            handler_failure = ("handler_failed", f"{type(exc).__name__}: {exc}")
 
-    result = data if isinstance(data, dict) else {"result": data}
-    if spec.is_read:
-        result.setdefault("result_kind", "facts_only")
-    if not spec.is_read and snapshot is not None:
-        result["authority"] = snapshot
+        if handler_failure is None:
+            result = data if isinstance(data, dict) else {"result": data}
+            if spec.is_read:
+                result.setdefault("result_kind", "facts_only")
+            if not spec.is_read and snapshot is not None:
+                result["authority"] = snapshot
 
-    audit_id = _record_tool_audit(
-        db,
-        spec=spec,
-        ctx=context,
-        transport=transport,
-        args=arguments,
-        outcome="applied" if not spec.is_read else "read",
-        result=result,
-        authority_snapshot=snapshot,
-        decision_id=decision_id,
-        started_at=started_at,
-    )
-    if commit and not spec.is_read:  # 读工具不写业务状态；handler 自己负责提交写入
+            # Audit failure must escape the savepoint and roll back the applied
+            # effect too. It is not a business rejection with a missing receipt.
+            audit_id = _record_tool_audit(
+                db,
+                spec=spec,
+                ctx=context,
+                transport=transport,
+                args=arguments,
+                outcome="applied" if not spec.is_read else "read",
+                result=result,
+                authority_snapshot=snapshot,
+                decision_id=decision_id,
+                started_at=started_at,
+            )
+    if handler_failure is not None:
+        return fail(*handler_failure, snapshot=snapshot)
+    if commit:
         db.commit()
     return ToolResult(
         ok=True,
