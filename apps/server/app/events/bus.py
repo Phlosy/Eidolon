@@ -8,6 +8,7 @@ handlers (threadpool) and the orchestrator (event loop) can emit.
 
 import asyncio
 from datetime import UTC, datetime
+from threading import Lock
 from typing import Any
 
 from app.core.database import SessionLocal
@@ -22,6 +23,10 @@ logger = get_logger(__name__)
 class EventBus:
     def __init__(self) -> None:
         self._subscribers: set[asyncio.Queue] = set()
+        # Protect the subscription cutoff and enqueue scheduling together. A
+        # publisher must not retain a subscriber and schedule its put after
+        # unsubscribe has returned (the engine drains at that boundary).
+        self._subscription_lock = Lock()
         self._loop: asyncio.AbstractEventLoop | None = None
         #: 订阅者队列满被丢弃的消息数（事件引擎 stats().queue_dropped 的数据源）。
         self.dropped = 0
@@ -31,11 +36,13 @@ class EventBus:
 
     def subscribe(self) -> asyncio.Queue:
         queue: asyncio.Queue = asyncio.Queue(maxsize=1000)
-        self._subscribers.add(queue)
+        with self._subscription_lock:
+            self._subscribers.add(queue)
         return queue
 
     def unsubscribe(self, queue: asyncio.Queue) -> None:
-        self._subscribers.discard(queue)
+        with self._subscription_lock:
+            self._subscribers.discard(queue)
 
     def publish(
         self,
@@ -77,8 +84,9 @@ class EventBus:
         loop = self._loop
         if loop is None or not loop.is_running():
             return
-        for queue in list(self._subscribers):
-            loop.call_soon_threadsafe(self._safe_put, queue, message)
+        with self._subscription_lock:
+            for queue in self._subscribers:
+                loop.call_soon_threadsafe(self._safe_put, queue, message)
 
     def _safe_put(self, queue: asyncio.Queue, message: dict) -> None:
         try:

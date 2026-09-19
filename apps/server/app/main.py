@@ -1,10 +1,12 @@
 """FastAPI assembly: routers, CORS, WS, startup. See docs/architecture.md §8/§11."""
 
+import asyncio
 import json
 import secrets
 from contextlib import asynccontextmanager
 
 import uvicorn
+from anyio import CancelScope
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -82,11 +84,12 @@ async def lifespan(app: FastAPI):
     await update_service.start_update_loop()
     logger.info("eidolon server started (runtime_mode=%s)", settings.runtime_mode)
     yield
-    await engine_module.engine.stop()
+    # Stop producers first so their final events enter the engine's graceful drain.
     await orchestrator.stop()
     await manager.stop_healthcheck_loop()
     await update_service.stop_update_loop()
     await gateway.stop_all()
+    await engine_module.engine.stop()
 
 
 app = FastAPI(title="Eidolon Server", version=application_version(), lifespan=lifespan)
@@ -152,17 +155,37 @@ async def ws_events(websocket: WebSocket) -> None:
             company_id = company.id
     await websocket.accept()
     queue = bus.subscribe()
-    try:
+
+    async def send_events() -> None:
         while True:
             message = await queue.get()
             # Missing ownership is not a declaration that an event is public.
             if company_id is not None and message.get("company_id") != company_id:
                 continue
             await websocket.send_text(json.dumps(message, default=str))
+
+    async def wait_for_disconnect() -> None:
+        while True:
+            message = await websocket.receive()
+            if message["type"] == "websocket.disconnect":
+                return
+
+    # An idle subscription never sends, so send errors alone cannot reveal that
+    # its client disconnected. Observe incoming disconnects independently.
+    tasks = (asyncio.create_task(send_events()), asyncio.create_task(wait_for_disconnect()))
+    try:
+        done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        for task in done:
+            task.result()
     except WebSocketDisconnect:
         pass
     finally:
         bus.unsubscribe(queue)
+        for task in tasks:
+            task.cancel()
+        # Finish child cleanup even when the ASGI request's cancel scope is active.
+        with CancelScope(shield=True):
+            await asyncio.gather(*tasks, return_exceptions=True)
 
 
 def main() -> None:

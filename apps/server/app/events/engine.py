@@ -29,6 +29,7 @@ logger = get_logger(__name__)
 Handler = Callable[[dict], Any | Awaitable[Any]]
 #: 分区键提取：返回 None 的事件走该 handler 的全局分区。
 KeyOf = Callable[[dict], Hashable | None]
+_STOP = object()
 
 
 @dataclass(frozen=True)
@@ -48,11 +49,16 @@ class EventEngine:
         event_bus: EventBus = default_bus,
         *,
         retry_backoff: tuple[float, ...] = (0.5, 2.0),
+        shutdown_timeout: float = 30.0,
     ) -> None:
+        if shutdown_timeout <= 0:
+            raise ValueError("shutdown_timeout 必须 > 0")
         self._bus = event_bus
         # 第 n 次重试前的退避：retry_backoff[min(n-1, len-1)]，默认 0.5s → 2s。
         # 分区并发后 "database is locked" 瞬时冲突会变多，重试就是吃这类冲突的。
         self._retry_backoff = retry_backoff
+        self._shutdown_timeout = shutdown_timeout
+        self._lifecycle_lock = asyncio.Lock()
         self._handlers: list[_Registration] = []
         self._names: set[str] = set()
         self._tails: dict[tuple[str, Hashable | None], asyncio.Task] = {}
@@ -91,33 +97,62 @@ class EventEngine:
     # ------------------------------------------------------------ 生命周期
 
     async def start(self) -> None:
-        if self._task is not None:
-            return
-        self._queue = self._bus.subscribe()
-        self._task = asyncio.create_task(self._dispatch_loop())
-        logger.info("事件引擎已启动（%d 个处理器）", len(self._handlers))
+        async with self._lifecycle_lock:
+            if self._task is not None:
+                return
+            self._queue = self._bus.subscribe()
+            self._task = asyncio.create_task(self._dispatch_loop())
+            logger.info("事件引擎已启动（%d 个处理器）", len(self._handlers))
 
     async def stop(self) -> None:
-        if self._task is not None:
-            self._task.cancel()
+        """Drain accepted in-memory events, then finish handlers within the grace period.
+
+        Producers should stop first. Events accepted before unsubscribe are
+        dispatched in order; existing queue overflow and process crashes still
+        require separate recovery. Events published after the cutoff are not
+        accepted by this engine, including new events emitted by a draining handler.
+        Timeout cancellation is cooperative; it cannot preempt synchronous work
+        or work already running in a handler's worker thread.
+        """
+        async with self._lifecycle_lock:
+            if self._task is None:
+                return
+            queue, dispatcher = self._queue, self._task
+            assert queue is not None
+            self._bus.unsubscribe(queue)
             try:
-                await self._task
-            except asyncio.CancelledError:
-                pass
-            self._task = None
-        if self._queue is not None:
-            self._bus.unsubscribe(self._queue)
-            self._queue = None
-        # 排空在飞的分区链，停机/测试 teardown 都不留悬挂任务。
-        tails = list(self._tails.values())
-        if tails:
-            await asyncio.gather(*tails, return_exceptions=True)
-        logger.info(
-            "事件引擎已停止（processed=%d retried=%d dead_lettered=%d）",
-            self._processed,
-            self._retried,
-            self._dead_lettered,
-        )
+                async with asyncio.timeout(self._shutdown_timeout):
+                    # publish() schedules puts with call_soon_threadsafe. The bus
+                    # lock makes unsubscribe a cutoff; one loop turn lets every
+                    # put accepted before that cutoff run before our FIFO marker.
+                    await asyncio.sleep(0)
+                    await queue.put(_STOP)
+                    await dispatcher
+                    # Dispatch has finished, so no new partition tails can appear.
+                    await asyncio.gather(*list(self._tails.values()), return_exceptions=True)
+            except TimeoutError:
+                logger.warning(
+                    "事件引擎停机排空超时（timeout=%.1fs queued=%d partitions=%d）",
+                    self._shutdown_timeout,
+                    queue.qsize(),
+                    len(self._tails),
+                )
+            finally:
+                # On timeout or caller cancellation, cancel the whole remaining
+                # chain, including predecessors awaited by each partition tail.
+                pending = [dispatcher, *self._tails.values()]
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+                self._tails.clear()
+                self._queue = None
+                self._task = None
+            logger.info(
+                "事件引擎已停止（processed=%d retried=%d dead_lettered=%d）",
+                self._processed,
+                self._retried,
+                self._dead_lettered,
+            )
 
     # ------------------------------------------------------------ 分发
 
@@ -125,6 +160,8 @@ class EventEngine:
         assert self._queue is not None
         while True:
             message = await self._queue.get()
+            if message is _STOP:
+                return
             if not isinstance(message, dict):
                 continue
             event_type = message.get("type")
@@ -146,13 +183,17 @@ class EventEngine:
         message: dict,
         partition: tuple[str, Hashable | None],
     ) -> None:
-        if previous is not None:
-            try:
-                await previous
-            except (Exception, asyncio.CancelledError):
-                # 前一个 tail 的失败/取消不能断链：同 key 保序只管顺序，不管成败。
-                pass
         try:
+            if previous is not None:
+                try:
+                    await previous
+                except asyncio.CancelledError:
+                    # A cancelled predecessor may not break this partition, but
+                    # this task's own shutdown cancellation must not start work.
+                    if asyncio.current_task().cancelling():
+                        raise
+                except Exception:
+                    pass
             await self._execute(registration, message)
         finally:
             if self._tails.get(partition) is asyncio.current_task():
