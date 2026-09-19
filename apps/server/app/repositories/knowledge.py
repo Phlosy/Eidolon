@@ -22,8 +22,9 @@ scope / department_id 分层语义不动。公司隔离的 join 链**保留经 o
 """
 
 import logging
+from collections.abc import Collection
 
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import Select, func, or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, aliased
 
@@ -77,14 +78,14 @@ def create_memory_entry(db: Session, employee_id: int | None, **fields) -> Memor
 # ---- knowledge ----
 
 
-def list_knowledge_items(
+def _knowledge_items_statement(
     db: Session,
     scope: str | None = None,
     topic: str | None = None,
     employee_id: int | None = None,
     company_id: int | None = None,
-) -> list[KnowledgeItem]:
-    stmt = select(KnowledgeItem).order_by(KnowledgeItem.id.desc())
+) -> Select[tuple[KnowledgeItem]]:
+    stmt = select(KnowledgeItem)
     identity = get_request_identity()
     # 请求内以 identity 为准；非请求上下文（identity None）回落到显式 company_id。
     effective_company_id = identity.company_id if identity is not None else company_id
@@ -119,7 +120,41 @@ def list_knowledge_items(
                 db, employee_id, KnowledgeItem.owner_person_id, KnowledgeItem.owner_employee_id
             )
         )
-    return list(db.scalars(stmt))
+    return stmt
+
+
+def list_knowledge_items(
+    db: Session,
+    scope: str | None = None,
+    topic: str | None = None,
+    employee_id: int | None = None,
+    company_id: int | None = None,
+) -> list[KnowledgeItem]:
+    stmt = _knowledge_items_statement(db, scope, topic, employee_id, company_id)
+    return list(db.scalars(stmt.order_by(KnowledgeItem.id.desc())))
+
+
+def visible_knowledge_item_ids(
+    db: Session,
+    item_ids: Collection[int],
+    *,
+    employee_id: int,
+    company_id: int,
+) -> set[int]:
+    """Check cited IDs with the shared read predicates without loading knowledge text."""
+    if not item_ids:
+        return set()
+    visible: set[int] = set()
+    for scope in ("company", "department", "private"):
+        stmt = (
+            _knowledge_items_statement(
+                db, scope=scope, employee_id=employee_id, company_id=company_id
+            )
+            .with_only_columns(KnowledgeItem.id)
+            .where(KnowledgeItem.id.in_(item_ids))
+        )
+        visible.update(db.scalars(stmt))
+    return visible
 
 
 def get_knowledge_item(db: Session, item_id: int) -> KnowledgeItem | None:

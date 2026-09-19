@@ -9,7 +9,7 @@ from threading import Barrier
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import func, select, update
+from sqlalchemy import event, func, select, update
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import SessionLocal, engine
@@ -785,6 +785,73 @@ def test_foreign_scope_parent_and_context_rejected_before_any_writes(world, fore
         _send(world, request)
     assert error.value.reason == "invalid_reference"
     assert _counts() == before
+
+
+def test_knowledge_references_do_not_hydrate_the_corpus_for_each_action(db, world):
+    items = [
+        KnowledgeItem(
+            owner_employee_id=world.actor.id,
+            owner_person_id=world.actor.person_id,
+            scope="company",
+            title=f"Reference corpus {index}",
+            content="x" * 4096,
+        )
+        for index in range(128)
+    ]
+    db.add_all(items)
+    db.commit()
+    request = _decision(world)
+    request["decision"]["context"]["knowledge_refs"] = [items[0].id]
+    loaded = []
+
+    def record_load(item, context):
+        loaded.append(item.id)
+
+    event.listen(KnowledgeItem, "load", record_load)
+    try:
+        result = _send(world, request)
+    finally:
+        event.remove(KnowledgeItem, "load", record_load)
+
+    assert result["decision_status"] == "APPLIED"
+    assert len(result["results"]) == 2 and all(row["ok"] for row in result["results"])
+    assert not loaded, f"Reference checks hydrated {len(loaded)} full knowledge rows"
+
+
+@pytest.mark.parametrize(
+    "scope,owner,person_only,allowed",
+    [
+        ("company", "colleague", False, True),
+        ("department", "colleague", False, True),
+        ("private", "actor", False, True),
+        ("private", "actor", True, True),
+        ("private", "colleague", False, False),
+        ("private", "colleague", True, False),
+    ],
+)
+def test_knowledge_references_preserve_scope_and_person_ownership(
+    db, world, scope, owner, person_only, allowed
+):
+    employee = getattr(world, owner)
+    item = KnowledgeItem(
+        owner_employee_id=None if person_only else employee.id,
+        owner_person_id=employee.person_id,
+        department_id=employee.department_id,
+        scope=scope,
+        title="Knowledge reference visibility",
+    )
+    db.add(item)
+    db.commit()
+    request = _decision(world)
+    request["decision"]["context"]["knowledge_refs"] = [item.id, item.id]
+    if allowed:
+        assert _send(world, request)["decision_status"] == "APPLIED"
+    else:
+        before = _counts()
+        with pytest.raises(BridgeError) as error:
+            _send(world, request)
+        assert error.value.reason == "invalid_reference"
+        assert _counts() == before
 
 
 def test_scope_moving_to_another_company_mid_envelope_interrupts_missing_work(

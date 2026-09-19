@@ -310,15 +310,11 @@ def _validate_references(db, ctx, decision):
         if artifact is None or artifact.company_id != ctx.company_id:
             raise tools.ToolError("artifact not found in this company")
     if context.get("knowledge_refs"):
-        visible = set()
-        for scope in ("company", "department", "private"):
-            visible.update(
-                row.id
-                for row in knowledge_repo.list_knowledge_items(
-                    db, scope=scope, employee_id=ctx.employee_id, company_id=ctx.company_id
-                )
-            )
-        if not set(context["knowledge_refs"]) <= visible:
+        references = set(context["knowledge_refs"])
+        visible = knowledge_repo.visible_knowledge_item_ids(
+            db, references, employee_id=ctx.employee_id, company_id=ctx.company_id
+        )
+        if not references <= visible:
             raise tools.ToolError("knowledge not found in this company")
 
 
