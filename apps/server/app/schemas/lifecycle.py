@@ -200,6 +200,7 @@ class ProvisioningStepOut(ORMModel):
     status: str
     attempts: int
     error: str | None
+    result_json: dict = Field(default_factory=dict)
     started_at: datetime | None
     completed_at: datetime | None
 
@@ -207,6 +208,8 @@ class ProvisioningStepOut(ORMModel):
 class JobOut(ORMModel):
     id: int
     employee_id: int
+    owner: str
+    source: str
     kind: str
     status: str
     total_steps: int

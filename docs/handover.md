@@ -653,11 +653,21 @@ C 新 CEO 接任：CEO A 离任 → CEO B 上任 → B 不继承 A 的技能/私
 
 ---
 
+## 5q. M3.1 U2 Provisioning Intent（DONE，2026-09-20）
+
+- 招聘事务只记录 pending 开通意图；独立后台执行者按 owner 领取，分步保存结果，失败保留招聘。
+- v46 `46c2d8109a7b` 增加归属、来源、领取与回执；历史任务按已记录来源分类，原生命周期任务保持原执行路径。
+- 新进程启动扫描、并发唯一领取、过期恢复、陈旧写入防护及取消后续跑已有行为测试；partial 仅显式重试失败步骤。
+- 默认序及 `20260920`–`20260924` 每轮 **1415 passed / 6 deselected**；临时库 up/down/up、alembic check、lint、前端 390 项及构建通过。
+- [验收记录](m3-u2-provisioning-intent.md)包含迁移和真实顺序证据。实际开发库未迁移；真实容器开通、探测及最小历史快照仍由 U3–U5 完成。
+
+---
+
 ## 6. 下一步建议（按优先级）
 
 1. **M3.1 Real Runtime Provisioning**：先读 `docs/m3-agent-production-growth-design.md`
    §6（provisioning 契约）与 `docs/m3-implementation-plan.md` §4；
-   U1 测试隔离已完成；按 U2–U5 继续开通意图、真实幂等执行、探测对账与最小历史快照。
+   U1 测试隔离、U2 提交后开通意图已完成；按 U3–U5 继续真实幂等执行、探测对账与最小历史快照。
 2. **M2 冻结面改动纪律**：碰 M1/T2/M2 面前先跑对应锚点（M3 计划 §2 第 4 条）。
 3. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
 4. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。

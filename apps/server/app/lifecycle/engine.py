@@ -30,6 +30,7 @@ from app.models.enums import (
     DeploymentMode,
     LifecycleStatus,
     ProvisioningJobKind,
+    ProvisioningJobOwner,
     ProvisioningJobStatus,
     ProvisioningStepStatus,
     ResourceAccountStatus,
@@ -275,6 +276,8 @@ class ProvisioningEngine:
         job = lifecycle_repo.create_job(
             db,
             employee_id=employee_id,
+            owner=ProvisioningJobOwner.lifecycle.value,
+            source="app.lifecycle.engine",
             kind=kind,
             status=ProvisioningJobStatus.pending.value,
             total_steps=len(plan),
@@ -306,6 +309,8 @@ class ProvisioningEngine:
     ) -> ProvisioningJob:
         """Execute all pending steps in order; failed steps are recorded and
         execution continues with independent resources."""
+        if job.owner != ProvisioningJobOwner.lifecycle.value:
+            raise ProvisionerError(f"job {job.id} belongs to {job.owner}, not lifecycle")
         employee = org_repo.get_employee(db, job.employee_id)
         if employee is None:
             raise ProvisionerError(f"employee {job.employee_id} not found for job {job.id}")
@@ -319,6 +324,8 @@ class ProvisioningEngine:
 
     async def retry(self, db: Session, job: ProvisioningJob) -> ProvisioningJob:
         """Re-run ONLY failed steps (§5)."""
+        if job.owner != ProvisioningJobOwner.lifecycle.value:
+            raise ProvisionerError(f"job {job.id} belongs to {job.owner}, not lifecycle")
         steps = lifecycle_repo.list_steps(db, job.id)
         if not any(s.status == ProvisioningStepStatus.failed.value for s in steps):
             return job

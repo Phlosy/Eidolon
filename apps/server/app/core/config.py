@@ -93,6 +93,8 @@ class Settings(BaseSettings):
     # 进程启动等）万一挂起，超时后该步强制 failed 并记录原因 —— 绝不无限 running；
     # 配套启动补收敛（workforce/access.sweep_stale_provisioning_jobs）兜底进程死亡。
     provisioning_step_timeout_seconds: float = 120.0
+    runtime_provisioning_enabled: bool = True
+    runtime_provisioning_poll_seconds: float = 1.0
 
     # P6 — 真实工作 → Evidence → Assessment 的自动流水线（docs/evidence-pipeline.md）。
     # 关掉之后：业务事件不再自动收证据、项目结束不自动跑考核（回滚锚点）。

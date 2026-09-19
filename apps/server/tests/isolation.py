@@ -23,6 +23,7 @@ from app.runtimes.manager import docker_manager
 from app.runtimes.updates import service as update_service
 from app.services import auth
 from app.services.git import git_service
+from app.work.runtime_provisioning import runtime_provisioner
 from app.workflow.orchestrator import orchestrator
 
 
@@ -71,6 +72,7 @@ class TestEnvironment:
         bus.__init__()
         event_engine.__init__(bus)
         orchestrator.__init__()
+        runtime_provisioner.__init__()
         gateway.__init__()
         docker_manager._manager = None
         update_service._update_service = None

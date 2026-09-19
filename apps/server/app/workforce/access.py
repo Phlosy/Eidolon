@@ -23,6 +23,7 @@ from app.lifecycle import access
 from app.lifecycle.engine import ProvisioningEngine
 from app.models.enums import (
     ProvisioningJobKind,
+    ProvisioningJobOwner,
     ProvisioningJobStatus,
     ProvisioningStepStatus,
 )
@@ -205,9 +206,10 @@ def sweep_stale_provisioning_jobs() -> list[dict]:
     with SessionLocal() as db:
         jobs = db.scalars(
             select(ProvisioningJob).where(
+                ProvisioningJob.owner == ProvisioningJobOwner.lifecycle.value,
                 ProvisioningJob.status.in_(
                     (ProvisioningJobStatus.pending.value, ProvisioningJobStatus.running.value)
-                )
+                ),
             )
         ).all()
         healed = []

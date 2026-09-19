@@ -17,8 +17,8 @@
 3. **编排失败不是招募失败**（RD5/I2）：环境步骤失败 ⇒ 员工还在、job 记 `partial` +
    明确原因、人就绪为 false；系统**绝不**把"没配好"四舍五入成"可以干活了"。
 
-`orchestrate()` 刻意**不 commit**：招募路径把它放进**同一个事务**里
-（招募失败 ⇒ 整笔回滚，E13/E14/E15 的既有纪律）；调用方自己决定事务边界。
+`orchestrate()` 在招募事务中只保存持久开通意图，不产生外部资源。
+提交后的执行由 runtime_provisioning 领取；调用方回滚时意图与招聘一起消失。
 """
 
 from __future__ import annotations
@@ -35,13 +35,16 @@ from app.models.enums import (
     DeploymentMode,
     HealthStatus,
     LifecycleStatus,
+    ProvisioningJobOwner,
     ProvisioningJobStatus,
+    ProvisioningStepStatus,
     RuntimeInstanceStatus,
     RuntimeType,
 )
-from app.models.lifecycle import ProvisioningJob, ProvisioningStep
+from app.models.lifecycle import ProvisioningJob
 from app.models.organization import Company, Employee
 from app.models.position import PositionAssignment, PositionDefinition, PositionSlot
+from app.repositories import lifecycle as lifecycle_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
 from app.work import contracts as C
@@ -469,7 +472,7 @@ class OrchestrationResult:
 
     @property
     def ok(self) -> bool:
-        return not self.failed_steps
+        return self.job_status == ProvisioningJobStatus.done.value
 
     def as_dict(self) -> dict:
         return {
@@ -481,29 +484,6 @@ class OrchestrationResult:
             "ok": self.ok,
             "readiness": self.report.as_dict(),
         }
-
-
-def _step_record(
-    db: Session, job_id: int, *, seq: int, resource_type: str, provider_key: str, action: str
-) -> ProvisioningStep:
-    step = ProvisioningStep(
-        job_id=int(job_id),
-        seq=seq,
-        resource_type=resource_type,
-        provider_key=provider_key,
-        action=action,
-        description=f"{action} {resource_type}",
-        status="pending",
-    )
-    db.add(step)
-    db.flush()
-    return step
-
-
-def _finish_step(step: ProvisioningStep, *, ok: bool, error: str = "") -> None:
-    step.status = "done" if ok else "failed"
-    step.error = error or None
-    step.attempts = int(step.attempts or 0) + 1
 
 
 def ensure_workspace(employee: Employee) -> tuple[bool, str]:
@@ -586,107 +566,86 @@ def ensure_provider_binding(
     return True, "primary binding created", int(binding.id)
 
 
+def orchestration_result(db: Session, job: ProvisioningJob) -> OrchestrationResult:
+    """Read current step receipts and derive readiness from current domain facts."""
+    employee = db.get(Employee, job.employee_id)
+    if employee is None:
+        raise ReadinessError(f"employee {job.employee_id} not found")
+    steps = lifecycle_repo.list_steps(db, int(job.id))
+    return OrchestrationResult(
+        employee_id=int(employee.id),
+        job_id=int(job.id),
+        job_status=str(job.status),
+        steps=tuple(
+            {
+                "step": step.resource_type,
+                "status": step.status,
+                "ok": step.status == ProvisioningStepStatus.done.value,
+                "detail": (step.result_json or {}).get("detail") or step.error or step.status,
+                "reason_code": (step.result_json or {}).get("reason_code"),
+            }
+            for step in steps
+        ),
+        failed_steps=tuple(
+            step.resource_type
+            for step in steps
+            if step.status == ProvisioningStepStatus.failed.value
+        ),
+        report=readiness_report(db, employee),
+    )
+
+
 def orchestrate(
     db: Session,
     employee: Employee,
     *,
     policy: RuntimePolicy | None = None,
     reason: str = "ready_to_work",
+    source: str = "app.work.readiness",
     commit: bool = False,
 ) -> OrchestrationResult:
-    """招募之后的**环境**编排：工作区 → 运行时 → 供应商 → 逐项事实。
-
-    纪律（RD5/I2）：单步失败**不抛**，记在步骤与 job 状态里（`partial`），
-    人就绪为 false 并给出原因。**不 commit**（事务由调用方持有，见模块文档）。
-    """
+    """Save an intent in the caller's transaction; external work starts after commit."""
     resolved = policy or resolve_runtime_policy(
         db, company_id=int(employee.company_id or 0), employee=employee
     )
-    job = ProvisioningJob(
+    job = lifecycle_repo.create_job(
+        db,
         employee_id=int(employee.id),
+        owner=ProvisioningJobOwner.runtime.value,
+        source=source,
         kind="onboarding",
-        status=ProvisioningJobStatus.running.value,
+        status=ProvisioningJobStatus.pending.value,
+        total_steps=3,
         reason=reason,
-        metadata_json={"source": "app.work.readiness", "policy": resolved.as_dict()},
+        metadata_json={
+            # Retain the persisted v45 writer marker for upgrade/downgrade classification.
+            "source": "app.work.readiness",
+            "requested_by": source,
+            "company_id": int(employee.company_id),
+            "policy": resolved.as_dict(),
+        },
     )
-    db.add(job)
-    db.flush()
-
-    steps: list[dict] = []
-    failed: list[str] = []
-
-    # ① 工作区
-    step = _step_record(
-        db,
-        int(job.id),
-        seq=1,
-        resource_type=STEP_WORKSPACE,
-        provider_key="local",
-        action="provision",
-    )
-    ok, detail = ensure_workspace(employee)
-    _finish_step(step, ok=ok, error="" if ok else detail)
-    steps.append({"step": STEP_WORKSPACE, "ok": ok, "detail": detail})
-    if not ok:
-        failed.append(STEP_WORKSPACE)
-
-    # ② 运行时（mock 也要登记实例：它是"这个人的执行环境"的事实载体）
-    step = _step_record(
-        db,
-        int(job.id),
-        seq=2,
-        resource_type=STEP_RUNTIME,
-        provider_key=resolved.runtime_type,
-        action="start",
-    )
-    ok, detail, instance = ensure_runtime_instance(db, employee, resolved)
-    _finish_step(step, ok=ok, error="" if ok else detail)
-    steps.append({"step": STEP_RUNTIME, "ok": ok, "detail": detail})
-    if not ok:
-        failed.append(STEP_RUNTIME)
-
-    # ③ 供应商
-    step = _step_record(
-        db,
-        int(job.id),
-        seq=3,
-        resource_type=STEP_PROVIDER,
-        provider_key=str(resolved.provider_id or "none"),
-        action="provision",
-    )
-    ok, detail, binding_id = ensure_provider_binding(db, employee, resolved)
-    _finish_step(step, ok=ok, error="" if ok else detail)
-    steps.append({"step": STEP_PROVIDER, "ok": ok, "detail": detail})
-    if not ok:
-        failed.append(STEP_PROVIDER)
-    if binding_id is not None and instance is not None and instance.model_binding_id is None:
-        instance.model_binding_id = int(binding_id)
-        db.flush()
-
-    db.refresh(job)
-    job.done_steps = len([item for item in steps if item["ok"]])
-    job.total_steps = len(steps)
-    job.status = (
-        ProvisioningJobStatus.done.value if not failed else ProvisioningJobStatus.partial.value
-    )
-    job.reason = reason if not failed else f"{reason}: failed steps {', '.join(failed)}"
-    if not failed:
-        from app.models.base import utcnow
-
-        job.completed_at = utcnow()
-    db.flush()
-
-    report = readiness_report(db, employee)
+    for seq, (resource_type, provider_key, action) in enumerate(
+        (
+            (STEP_WORKSPACE, "local", "provision"),
+            (STEP_RUNTIME, resolved.runtime_type, "start"),
+            (STEP_PROVIDER, str(resolved.provider_id or "none"), "provision"),
+        ),
+        start=1,
+    ):
+        lifecycle_repo.create_step(
+            db,
+            job_id=int(job.id),
+            seq=seq,
+            resource_type=resource_type,
+            provider_key=provider_key,
+            action=action,
+            description=f"{action} {resource_type}",
+            status=ProvisioningStepStatus.pending.value,
+        )
     if commit:
         db.commit()
-    return OrchestrationResult(
-        employee_id=int(employee.id),
-        job_id=int(job.id),
-        job_status=str(job.status),
-        steps=tuple(steps),
-        failed_steps=tuple(failed),
-        report=report,
-    )
+    return orchestration_result(db, job)
 
 
 # ---------------------------------------------------------------------------
@@ -708,7 +667,9 @@ def provision_employee(
         raise ReadinessError(
             f"employee {employee.id} is {employee.lifecycle_status}: cannot provision"
         )
-    result = orchestrate(db, employee, reason="manual_provision", commit=False)
+    result = orchestrate(
+        db, employee, reason="manual_provision", source="manual_provision", commit=False
+    )
     if commit:
         db.commit()
     return result
@@ -727,6 +688,7 @@ __all__ = [
     "ensure_runtime_instance",
     "ensure_workspace",
     "orchestrate",
+    "orchestration_result",
     "provision_employee",
     "readiness_items",
     "readiness_report",

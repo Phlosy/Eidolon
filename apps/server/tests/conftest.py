@@ -46,6 +46,8 @@ os.environ["EIDOLON_ROLE_CONTEXT_EVENTS"] = "false"
 # 表现为随机失败的 flaky。需要"真的跑完一条链"的用例用
 # `monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)` 显式打开。
 os.environ["EIDOLON_ORCHESTRATOR_DISPATCH_ENABLED"] = "false"
+# Runtime jobs are driven explicitly by provisioning tests, avoiding a competing writer.
+os.environ["EIDOLON_RUNTIME_PROVISIONING_ENABLED"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

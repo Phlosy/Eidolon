@@ -20,7 +20,7 @@ COMMIT
 - **不新建 Person**（I1/I3）；`identity_id`、traits、knowledge、evidence、assessment、
   education_events 全部留在原地（I2/I4）；
 - **不改写历史 provenance**（I5：`assessment_runs.company_id` 等公司快照不动）；
-- **不做 runtime/provider 全链开通**（沿用既有员工 runtime 流程）—— 招募只建人与任职；
+- 招募只建人与任职并记录开通意图，Runtime owner 在提交后执行环境步骤；
 - 重复/并发招募被拒：listing 条件关闭（rowcount=0 → 409）+ `uq_employees_person_id`
   （一人一 employee）+ 任一部分唯一索引兜底（I8）。
 """
@@ -42,6 +42,7 @@ from app.models.enums import (
     LifecycleStatus,
     MarketListingStatus,
 )
+from app.models.lifecycle import ProvisioningJob
 from app.models.organization import Department
 from app.models.position import PositionSlot
 from app.repositories import cultivation as cultivation_repo
@@ -65,8 +66,7 @@ class RecruitmentResult:
     listing_id: int
     position_slot_id: int | None
     assignment_id: int | None
-    #: M2.8：招募后的**就绪摘要**（逐项事实 + 缺口；`commit=False` 路径为 None ——
-    #: 那时事务还没提交，环境编排由调用方决定要不要跑）。
+    #: 开通意图及当前就绪事实。pending 不表示已完成开通。
     readiness: dict | None = None
 
 
@@ -116,7 +116,7 @@ class RecruitmentService:
         `commit=False`（M1.7 人才交易接入）：**事务由调用方持有** —— 本方法不 commit、
         不 rollback、不发事件（事件由调用方在提交后补发）。这样 `TalentTradeService` 能把
         "锁资 → 招募 → 放款"放进同一个事务：招募失败 ⇒ 整笔回滚，钱不动（E13/E14/E15）。
-        默认 `commit=True` 时行为与历史完全一致（tests/test_recruitment.py 覆盖）。
+        默认 `commit=True` 时提交招聘与开通意图，返回 pending 和当前就绪事实。
         """
         # ---- 1. listing：未知 404 / 非 active 409（陈旧页面语义，plan §9）----
         listing = market_repo.get_listing(db, listing_id)
@@ -219,14 +219,13 @@ class RecruitmentService:
             # listing 自身记录 "被谁招走"（同一事务；行已由 CAS 归本事务）
             listing.recruited_employee_id = int(employee.id)
 
-            # ---- 5b. M2.8：环境编排（工作区 / 运行时实例 / 供应商绑定）----
-            # **同一事务**：招募失败 ⇒ 整笔回滚（E13/E14/E15）。
-            # 单步失败**不抛**：员工成立、job 记 partial、就绪为 false（RD5/I2）。
+            # 意图与招聘同一事务；外部资源由提交后的 runtime owner 领取开通。
             orchestration = readiness.orchestrate(
                 db,
                 employee,
                 policy=runtime_policy,
                 reason="recruit",
+                source="app.services.recruitment",
                 commit=False,
             )
 
@@ -242,6 +241,11 @@ class RecruitmentService:
                         assigned_by=actor_user_id,
                     ),
                     commit=False,
+                )
+
+            if assignment is not None:
+                orchestration = readiness.orchestration_result(
+                    db, db.get(ProvisioningJob, orchestration.job_id)
                 )
 
             # ---- 7. 履历 + 审计 ----
@@ -284,7 +288,7 @@ class RecruitmentService:
 
         if not commit:
             # 调用方持有事务 ⇒ 事件也由调用方在提交后发（与 M1.5 的 post(commit=False) 同一约定）
-            # M2.8：环境编排同样由调用方在同一事务里决定何时跑（见 `readiness.orchestrate`）
+            # 开通意图已写入；调用方提交前，后台执行者无法看见或领取它。
             return RecruitmentResult(
                 person_id=person_id,
                 employee_id=int(employee.id),
@@ -294,6 +298,7 @@ class RecruitmentService:
                 listing_id=int(listing.id),
                 position_slot_id=int(slot.id) if slot is not None else None,
                 assignment_id=int(assignment.id) if assignment is not None else None,
+                readiness=orchestration.as_dict(),
             )
 
         # ---- 8. 事件（只在事务成功提交后发）----

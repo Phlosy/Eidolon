@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.enums import ProvisioningJobOwner
 from app.models.organization import Employee
 from app.repositories import events as event_repo
 from app.repositories import lifecycle as lifecycle_repo
@@ -38,6 +39,7 @@ from app.schemas.lifecycle import (
 )
 from app.schemas.organization import EmployeeOut
 from app.services import lifecycle as lifecycle_service
+from app.work import runtime_provisioning
 
 router = APIRouter(tags=["lifecycle"])
 
@@ -272,7 +274,12 @@ async def retry_job(job_id: int, db: Session = Depends(get_db)) -> JobOut:
     job = lifecycle_repo.get_job(db, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="provisioning job not found")
-    job = await lifecycle_service.engine.retry(db, job)
+    if job.owner == ProvisioningJobOwner.runtime.value:
+        job = runtime_provisioning.retry_job(db, job)
+    elif job.owner == ProvisioningJobOwner.lifecycle.value:
+        job = await lifecycle_service.engine.retry(db, job)
+    else:
+        raise HTTPException(status_code=422, detail="unsupported provisioning owner")
     return _job_detail(db, job)
 
 

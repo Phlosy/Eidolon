@@ -78,6 +78,16 @@ without rewriting any stored `traits` (kill switch, see `docs/employee-brain-beh
 Key ones: `EIDOLON_DATABASE_URL`, `EIDOLON_WORKSPACE_ROOT`, `EIDOLON_RUNTIME_MODE` (`mock`),
 `EIDOLON_MOCK_TASK_SECONDS`, `EIDOLON_CORS_ORIGINS`.
 
+招聘在同一事务中记录 Runtime 开通意图，响应中的 `pending` 表示等待后台处理。
+`EIDOLON_RUNTIME_PROVISIONING_ENABLED` 默认开启；执行者启动时及每隔
+`EIDOLON_RUNTIME_PROVISIONING_POLL_SECONDS`（默认 1 秒）扫描已提交意图。
+关闭该开关会暂停后台领取，保留待办和查询结果。测试默认关闭并显式驱动执行。
+
+`GET /api/v1/provisioning-jobs/{id}` 返回任务 owner/source 和分步回执；`partial` 保留
+已成功步骤，修复原因后可通过既有 retry 端点重新排队失败步骤。进程中断后的过期领取会
+被扫描恢复，默认领取有效期为单步超时的三倍加 30 秒。U2 只接通意图与现有环境步骤，
+Hermes/OpenClaw 的真实幂等容器开通和主动探测继续在 U3/U4 完成。
+
 ## Migrations
 
 Alembic lives in `migrations/` (initial revision included):

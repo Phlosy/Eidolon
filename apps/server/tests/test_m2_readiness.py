@@ -32,7 +32,7 @@ from app.repositories import runtimes as runtime_repo
 from app.services import tasks as task_service
 from app.work import contracts as C
 from app.work import dispatch as D
-from app.work import readiness
+from app.work import readiness, runtime_provisioning
 
 SERVER_ROOT = Path(__file__).resolve().parents[1]
 APP = SERVER_ROOT / "app"
@@ -48,6 +48,16 @@ def _restore_org_state(org_snapshot):
 @pytest.fixture(autouse=True)
 def _no_background_dispatch(monkeypatch):
     monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", False)
+
+
+def _provision(client, db, employee):
+    queued = readiness.provision_employee(db, employee)
+    assert queued.job_status == "pending" and not queued.ok
+    client.portal.call(runtime_provisioning.run_job, queued.job_id)
+    db.expire_all()
+    from app.models.lifecycle import ProvisioningJob
+
+    return readiness.orchestration_result(db, db.get(ProvisioningJob, queued.job_id))
 
 
 def _employees(db, company_id: int) -> dict[str, Employee]:
@@ -180,7 +190,12 @@ def test_readiness_is_per_item_and_names_the_gaps(client, db, default_company_id
 def test_not_ready_agent_is_never_dispatched(client, db, default_company_id):
     """RD3（= I1 的另一半）：执行环境没配齐 ⇒ 不派发，交管理层。"""
     # 真实运行时 + 工作区不存在 ⇒ 未就绪
-    employee = _hire(db, default_company_id, "ready-real", workspace="/tmp/definitely-missing-ws")
+    employee = _hire(
+        db,
+        default_company_id,
+        "ready-real",
+        workspace=f"{settings.workspace_root}/definitely-missing-ws",
+    )
     employee.runtime_type = RuntimeType.claude_code.value
     db.commit()
 
@@ -211,7 +226,7 @@ def test_not_ready_agent_is_never_dispatched(client, db, default_company_id):
 
     # 配齐之后（公司策略给供应商 + 编排一次）⇒ 环境事实齐备，门禁放行
     _grant_real_runtime(db, default_company_id)
-    result = readiness.provision_employee(db, employee)
+    result = _provision(client, db, employee)
     assert result.ok is True, result.steps
     db.expire_all()
     assert readiness.blocking_gaps(db, employee) == ()
@@ -294,9 +309,14 @@ def test_runtime_policy_is_environment_only(client, db, default_company_id):
 # ---------------------------------------------------------------------------
 
 
-def test_provisioning_failure_is_partial_and_explicit(db, default_company_id):
+def test_provisioning_failure_is_partial_and_explicit(client, db, default_company_id):
     """RD5（= I2）：单步失败 ⇒ job `partial` + 明确原因；人就绪为 false。"""
-    employee = _hire(db, default_company_id, "ready-noprovider", workspace="/tmp/m28-no-provider")
+    employee = _hire(
+        db,
+        default_company_id,
+        "ready-noprovider",
+        workspace=f"{settings.workspace_root}/no-provider",
+    )
     employee.runtime_type = RuntimeType.claude_code.value
     db.commit()
 
@@ -306,7 +326,7 @@ def test_provisioning_failure_is_partial_and_explicit(db, default_company_id):
         default_company_id,
         {"runtime_type": "claude_code", "provider_id": 999_999, "model": "ghost-model"},
     )
-    result = readiness.provision_employee(db, employee)
+    result = _provision(client, db, employee)
     assert result.ok is False
     assert result.job_status == "partial"
     assert result.failed_steps == ("provider",)
@@ -326,7 +346,7 @@ def test_provisioning_failure_is_partial_and_explicit(db, default_company_id):
 
     # 换成一个**真的存在**的供应商 ⇒ 再跑一次就齐了（同一个员工，同一套事实）
     _grant_real_runtime(db, default_company_id)
-    again = readiness.provision_employee(db, employee)
+    again = _provision(client, db, employee)
     assert again.ok is True, again.steps
     db.expire_all()
     report = readiness.readiness_report(db, org_repo.get_employee(db, int(employee.id)))
@@ -391,7 +411,7 @@ def test_readiness_is_company_scoped(db, default_company_id, monkeypatch):
 # ---------------------------------------------------------------------------
 
 
-def test_onboarding_leaves_person_assets_untouched(db, default_company_id):
+def test_onboarding_leaves_person_assets_untouched(client, db, default_company_id):
     """RD7（= I5/W7/W8/W10）：开通前开通后，人级资产**逐行**不变。"""
     employee = _hire(db, default_company_id, "ready-assets")
     db.add(
@@ -417,7 +437,7 @@ def test_onboarding_leaves_person_assets_untouched(db, default_company_id):
 
     before = _snapshot()
     Path(employee.workspace_path).mkdir(parents=True, exist_ok=True)
-    result = readiness.provision_employee(db, employee)
+    result = _provision(client, db, employee)
     assert result.ok is True, result.steps
     after = _snapshot()
     assert before == after, "开通路径改写了人级资产（W7/W8/W10）"
@@ -434,7 +454,7 @@ def test_onboarding_leaves_person_assets_untouched(db, default_company_id):
 def test_orchestration_is_transactional_on_rollback(db, default_company_id):
     """I4：`orchestrate` 不自己 commit ⇒ 调用方回滚后什么都不留（E13/E14/E15）。"""
     employee = _hire(db, default_company_id, "ready-rollback")
-    Path(employee.workspace_path).mkdir(parents=True, exist_ok=True)
+    assert not Path(employee.workspace_path).exists()
     project_repo.create_project(
         db,
         company_id=default_company_id,
@@ -449,11 +469,11 @@ def test_orchestration_is_transactional_on_rollback(db, default_company_id):
 
     with SessionLocal() as other:
         jobs_before = len(list(other.scalars(select(ProvisioningJob))))
-        instances_before = len(list(other.scalars(select(ProvisioningJob.id))))
 
     result = readiness.orchestrate(db, employee, commit=False)
-    assert result.ok is True
+    assert result.ok is False and result.job_status == "pending"
     assert result.job_id is not None
+    assert not Path(employee.workspace_path).exists()
     db.rollback()
 
     with SessionLocal() as other:
@@ -462,7 +482,7 @@ def test_orchestration_is_transactional_on_rollback(db, default_company_id):
         assert runtime_repo.get_instance_for_employee(other, int(employee.id)) is None, (
             "回滚后还留着运行时实例"
         )
-    _ = instances_before
+    assert not Path(employee.workspace_path).exists()
 
 
 # ---------------------------------------------------------------------------
@@ -507,8 +527,8 @@ def test_recruitment_uses_the_policy_and_reports_readiness(client, db, default_c
 
     # ① 响应带就绪摘要（未达 READY 时能说清差什么）
     assert body["readiness"] is not None
-    assert body["readiness"]["ok"] is True, body["readiness"]["steps"]
-    assert body["readiness"]["job_status"] == "done"
+    assert body["readiness"]["ok"] is False
+    assert body["readiness"]["job_status"] == "pending"
     assert [item["item"] for item in body["readiness"]["readiness"]["items"]] == list(
         C.READINESS_ITEMS
     )
@@ -518,7 +538,10 @@ def test_recruitment_uses_the_policy_and_reports_readiness(client, db, default_c
     assert employee.runtime_type == RuntimeType.mock.value
     assert employee.runtime_config.get(marker) is True, employee.runtime_config
 
-    # ③ 环境事实齐备：工作区真的在磁盘上、运行时实例真的建出来了、job 步骤全 done
+    # ③ 提交后领取并执行，才产生工作区/实例和成功回执。
+    assert not Path(employee.workspace_path).exists()
+    client.portal.call(runtime_provisioning.run_job, body["readiness"]["job_id"])
+    db.expire_all()
     assert Path(employee.workspace_path).is_dir()
     assert runtime_repo.get_instance_for_employee(db, int(employee.id)) is not None
     from app.models.lifecycle import ProvisioningJob

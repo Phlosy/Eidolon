@@ -145,6 +145,9 @@ services/*  ✗→  work/*（例外：`services/projects.py` 只调用 fixture �
 | v44 `b3aee926425c` | `review_requests` / `review_facts` / `tasks.rework_count` |
 | v45 `325887b7109a` | `work_order_project_links` + `ix_work_orders_project_id` |
 
+M3 可以在 v45 之后追加迁移。冻结守卫继续校验上述六个迁移存在、父子顺序不变、
+v45 是 M2 最后一版且处于当前唯一 head 的祖先链中；不再要求历史 v45 永远等于仓库 head。
+
 ---
 
 ## 5. 关键裁决
@@ -183,6 +186,25 @@ M2 的裁决记录见 `docs/m2-agent-work-runtime-design.md` §17（M2-ADR-1..35
 | 9 | 经济/资产/复杂金融扩展（股权、买卖、融资…）| 用户明令不做（设计 §15）|
 | 10 | 中央 Planner / 自动组队 / 自动辞退 / 个人化 prompt 注入 | 用户明令不做（W1/W2/W13/W26）|
 | 11 | **测试隔离（真随机序不稳定）** | 历史：M2.10 打乱文件序 **6 次里 5 次转红**，冻结态 `42a9d0f` 同样复现，原因为 session 级 `client` 和共享 SQLite 写入累积。**M3.1 U1 已关闭**：每例应用生命周期、数据库/目录基线与全局状态隔离；保留真实独立连接及 M1 冻结锚点，默认序 + 5 个实际随机序全部通过。单纯外层事务回滚不能覆盖独立 SessionLocal 提交。[验收证据](m3-u1-test-isolation.md) |
+
+## 7. M3 兼容增补
+
+### U2：招聘提交与环境开通分离（2026-09-20）
+
+依据 M3 实施计划 KTD2，`work/readiness.orchestrate()` 保留环境意图的唯一入口，
+在调用方事务内只创建 `ProvisioningJob/Step`，不创建磁盘目录、容器或外部 Provider 资源。
+提交前、事务回滚后的意图均不可被后台执行者领取。招聘成功的响应可以为 `pending`，
+其 `ok` 只有在开通 job 完成时才为 true；失败以持久 `partial` 和分步原因查询，不撤销招聘。
+
+新 Runtime 执行者只领取 `owner=runtime` 的已提交意图，旧生命周期引擎和启动补偿只处理
+`owner=lifecycle`。来源、领取标识与时间、分步结果随 v46 一起落库；启动扫描补偿提交后
+未执行的意图，运行中的过期领取可恢复，正常关闭释放本执行者的领取。不会自动重试 partial。
+现有 Job 查询/重试入口按 owner 路由，显式重试只重置失败步骤。
+
+RD1–RD7 的派生就绪、环境策略、人级资产不变及失败不等于招聘失败仍保留。
+`test_m2_readiness` 的同步完成断言改为“先 pending、提交后执行、再查询真实分步结果”；
+事务守卫增加磁盘与外部调用断言，原测试名称保留。新增 `test_m3_provisioning` 覆盖提交、
+回滚、重启扫描、领取竞争、失败/取消、owner 路由及迁移回填。
 
 **M3 开工前的三条纪律（沿用 M2）**：
 

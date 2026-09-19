@@ -27,6 +27,7 @@ from app.services.drive_migration import migrate_artifacts_to_drive
 from app.services.seed import seed_default_company
 from app.work import authority_seed
 from app.work import role_events as role_context_events
+from app.work.runtime_provisioning import runtime_provisioner
 from app.workflow.orchestrator import orchestrator
 from app.workforce import access as workforce_access
 
@@ -82,9 +83,11 @@ async def lifespan(app: FastAPI):
     await manager.start_healthcheck_loop()
     update_service = get_update_service()
     await update_service.start_update_loop()
+    runtime_provisioner.start()
     logger.info("eidolon server started (runtime_mode=%s)", settings.runtime_mode)
     yield
     # Stop producers first so their final events enter the engine's graceful drain.
+    await runtime_provisioner.stop()
     await orchestrator.stop()
     await manager.stop_healthcheck_loop()
     await update_service.stop_update_loop()

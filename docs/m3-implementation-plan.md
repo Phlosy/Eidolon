@@ -122,7 +122,7 @@ Codex / Claude Code / OpenCode / Custom 新 Runtime（保持 placeholder）
 | 阶段 | 主题 | 迁移 | 状态 |
 | --- | --- | --- | --- |
 | M3.0 | Production Agent Contract Freeze | 零 | **DONE**（`6f4e97b`） |
-| M3.1 | Real Runtime Provisioning | 开通归属、出处快照按需 | PLANNED |
+| M3.1 | Real Runtime Provisioning | 开通归属、出处快照按需 | IN_PROGRESS |
 | M3.2 | Ready-to-Work & Runtime Readiness | 管理会话 / 调用幂等按需 | PLANNED |
 | M3.3 | Capability Gap Actions | 动作确认记录按需 | PLANNED |
 | M3.4 | Execution Telemetry & Recovery | 遥测 / 恢复元数据按需 | PLANNED |
@@ -679,7 +679,7 @@ docs/m3-freeze.md（机器可检：形态 / 不变量 / 唯一写入路径 / 模
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
 | M3.0 | **DONE** | `6f4e97b` | 设计 + 契约 + 54 条新增守卫；零迁移。详细历史证据见 §18 |
-| M3.1 | IN_PROGRESS | — | U1 隔离完成，默认序 + 5 个实际随机序均为 1401 passed；[证据](m3-u1-test-isolation.md)。U2–U5 及真实开通验收待完成 |
+| M3.1 | IN_PROGRESS | `d838823`（U1） | U1 隔离与 U2 提交后意图已完成；U2 默认序 + 5 个实际随机序均为 1415 passed，迁移往返、lint、前端测试及构建通过；[U1 证据](m3-u1-test-isolation.md)、[U2 证据](m3-u2-provisioning-intent.md)。U3–U5 及真实开通验收待完成 |
 | M3.2 | PLANNED | — | |
 | M3.3 | PLANNED | — | |
 | M3.4 | PLANNED | — | |

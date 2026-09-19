@@ -357,6 +357,11 @@ class ProvisioningJobKind(StrEnum):
     offboarding = "offboarding"
 
 
+class ProvisioningJobOwner(StrEnum):
+    lifecycle = "lifecycle"
+    runtime = "runtime"
+
+
 class ProvisioningJobStatus(StrEnum):
     pending = "pending"
     running = "running"

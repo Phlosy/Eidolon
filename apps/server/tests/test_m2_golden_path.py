@@ -21,9 +21,11 @@ import re
 from pathlib import Path
 
 import pytest
+from alembic.script import ScriptDirectory
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.database import _alembic_config
 from app.evidence import pipeline as evidence_pipeline
 from app.models.decision import DecisionRecord, ToolAudit
 from app.models.enums import AuthorityScopeKind, DecisionStatus, EvaluationMode
@@ -654,20 +656,17 @@ def test_freeze_surface_declares_the_migration_set():
             )
         )
     }
-    down_revisions = {
-        down.group(1)
-        for source in sources.values()
-        if (
-            down := re.search(
-                r'^down_revision(?:\s*:\s*[^=]+)?\s*=\s*"([0-9a-f]+)"', source, re.MULTILINE
-            )
-        )
-    }
     for version, revision in rows:
         assert revision in revisions, f"冻结面声明的迁移不存在：{version} {revision}"
 
-    # 最后一版必须是当前 head（没有任何迁移把它当 down_revision）
-    assert rows[-1][1] not in down_revisions, f"冻结面最后一版不是 head：{rows[-1][1]}"
+    # M3 may append revisions; the frozen M2 chain must remain intact under one head.
+    script = ScriptDirectory.from_config(_alembic_config())
+    assert len(script.get_heads()) == 1, "迁移必须只有一个 head"
+    assert rows[-1] == ("v45", "325887b7109a"), "M2 最后一版不能改写"
+    ancestors = {revision.revision for revision in script.walk_revisions()}
+    assert all(revision in ancestors for _, revision in rows)
+    for (_, previous), (_, revision) in zip(rows, rows[1:], strict=False):
+        assert script.get_revision(revision).down_revision == previous, "M2 迁移顺序被改写"
 
 
 def test_work_order_bridge_is_part_of_the_frozen_surface(db, default_company_id):

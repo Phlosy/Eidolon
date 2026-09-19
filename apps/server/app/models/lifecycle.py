@@ -8,13 +8,14 @@ Employment history is append-only: a transfer closes the old row with
 
 from datetime import datetime
 
-from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy import JSON, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, utcnow
 from app.models.enums import (
     EntitlementType,
     PackageSource,
+    ProvisioningJobOwner,
     ProvisioningJobStatus,
     ResourceAccountStatus,
 )
@@ -113,8 +114,17 @@ class EmployeePackage(TimestampMixin, Base):
 
 class ProvisioningJob(TimestampMixin, Base):
     __tablename__ = "provisioning_jobs"
+    __table_args__ = (Index("ix_provisioning_jobs_owner_status", "owner", "status"),)
 
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
+    owner: Mapped[str] = mapped_column(
+        String(50), default=ProvisioningJobOwner.lifecycle.value, server_default="lifecycle"
+    )
+    source: Mapped[str] = mapped_column(
+        String(100), default="app.lifecycle.engine", server_default="app.lifecycle.engine"
+    )
+    claim_token: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     kind: Mapped[str] = mapped_column(String(50))  # ProvisioningJobKind
     status: Mapped[str] = mapped_column(String(50), default=ProvisioningJobStatus.pending.value)
     total_steps: Mapped[int] = mapped_column(default=0)
@@ -139,6 +149,7 @@ class ProvisioningStep(Base):
     status: Mapped[str] = mapped_column(String(50), default="pending")
     attempts: Mapped[int] = mapped_column(default=0)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    result_json: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
     entitlement_id: Mapped[int | None] = mapped_column(ForeignKey("entitlements.id"), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
