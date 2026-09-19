@@ -61,7 +61,7 @@ export function DashboardPage() {
         />
         <ActiveProjectBoard
           projects={projectsQuery.data ?? []}
-          details={stats.projectDetails}
+          summaries={stats.projectSummaries}
           employees={employees}
         />
       </div>

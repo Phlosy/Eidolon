@@ -1,23 +1,23 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, CircleDotDashed, FolderKanban, Target } from "lucide-react";
-import type { Employee, Project, ProjectDetail } from "../../types";
-import { deriveProjectProgress } from "../../utils/company-metrics";
+import type { DashboardProjectSummary } from "../../api/dashboard";
+import type { Employee, Project } from "../../types";
 import { enumLabel } from "../../utils/labels";
 import { ProgressTrack } from "../game/progress-track";
 import { Panel, SectionHeader } from "../shared/panel";
 
 export function ActiveProjectBoard({
   projects,
-  details,
+  summaries,
   employees,
 }: {
   projects: Project[];
-  details: ProjectDetail[];
+  summaries: DashboardProjectSummary[];
   employees: Employee[];
 }) {
   const { t } = useTranslation();
-  const detailById = new Map(details.map((detail) => [detail.id, detail]));
+  const summaryById = new Map(summaries.map((summary) => [summary.project_id, summary]));
   const employeeById = new Map(employees.map((employee) => [employee.id, employee]));
   const active = projects
     .filter((project) => !["completed", "cancelled", "rejected"].includes(project.status))
@@ -46,11 +46,15 @@ export function ActiveProjectBoard({
           </div>
         ) : (
           active.map((project) => {
-            const detail = detailById.get(project.id);
-            const progress = deriveProjectProgress(detail?.tasks ?? []);
-            const blockers =
-              detail?.tasks.filter((task) => task.status === "failed" || task.status === "rejected")
-                .length ?? 0;
+            const summary = summaryById.get(project.id);
+            const completed = summary?.tasks_completed ?? 0;
+            const total = summary?.tasks_total ?? 0;
+            const progress = {
+              completed,
+              total,
+              percent: total === 0 ? 0 : Math.round((completed / total) * 100),
+            };
+            const blockers = summary?.blockers ?? 0;
             return (
               <Link
                 key={project.id}

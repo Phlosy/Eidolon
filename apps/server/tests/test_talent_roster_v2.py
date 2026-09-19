@@ -6,7 +6,7 @@
 - unrated 员工可见，top 能力不因低置信而出现（置信≥0.4 才算 Top）；
 - 能力筛选强制同时给 confidence（防止 Score90/Conf5% 误导）；
 - trait 筛选独立于能力筛选（Behavioral Preference ≠ Competency）；
-- N+1 守卫：一页 N 人的富化查询数固定（~9 条），不随 N 线性增长；
+- N+1 守卫：一页 N 人的富化查询数固定，不随 N 或不同编制数线性增长；
 - 无跨公司统计（company-scoped）。
 """
 
@@ -14,12 +14,21 @@ from __future__ import annotations
 
 import threading
 
+import pytest
 import sqlalchemy as sa
 from factories import make_employee, person_id_of
+from sqlalchemy.orm import Session
 
+from app.core.request_context import (
+    RequestIdentity,
+    reset_request_identity,
+    set_request_identity,
+)
 from app.models.competency import EmployeeCompetency
-from app.models.organization import Company
+from app.models.organization import Company, Department, Employee
+from app.models.position import PositionAssignment, PositionDefinition, PositionSlot
 from app.services import talent_roster as roster_service
+from app.workforce.status import WorkforceStatusResolver
 
 _seq = 0
 
@@ -158,21 +167,60 @@ def test_status_filter_and_available_scope(client, db, default_company_id):
     assert {entry["workforce_status"] for entry in assigned} <= {"assigned"}
 
 
-def test_roster_enrichment_does_not_fan_out_per_employee(db, default_company_id):
-    """N+1 守卫：员工数翻倍，富化查询数基本不变（按编制数收敛，绝不随人数线性爆炸）。"""
+@pytest.mark.parametrize("query_target", ["views", "roster"])
+def test_roster_enrichment_does_not_fan_out_per_employee(db, query_target, record_property):
+    """冷 Session + 独立编制/定义：已分配人数增长不能增加名册富化查询数。"""
     from app.models.event import Event
 
-    employees = [_hire(db, default_company_id) for _ in range(12)]
-    for employee_id in employees:
-        db.add(
-            Event(
-                type="task.completed",
-                company_id=default_company_id,
-                actor_employee_id=employee_id,
-                payload={},
-            )
-        )
+    company = Company(name="Batch Roster", slug=f"roster-batch-{query_target}-{_seq}")
+    db.add(company)
+    db.flush()
+    department = Department(company_id=company.id, name="Batch", slug="batch")
+    db.add(department)
     db.commit()
+    company_id = int(company.id)
+    department_id = int(department.id)
+    assigned_slots: dict[int, int] = {}
+
+    def _grow(count: int) -> None:
+        for _ in range(count):
+            employee_id = _hire(db, company_id)
+            definition = PositionDefinition(
+                company_id=company_id,
+                code=f"roster-{employee_id}",
+                name=f"Position {employee_id}",
+            )
+            db.add(definition)
+            db.flush()
+            slot = PositionSlot(
+                company_id=company_id,
+                department_id=department_id,
+                position_definition_id=definition.id,
+                slot_code=f"ROSTER-{employee_id}",
+                administrative_status="active",
+            )
+            db.add(slot)
+            db.flush()
+            db.add(
+                PositionAssignment(
+                    employee_id=employee_id,
+                    department_id=department_id,
+                    position_slot_id=slot.id,
+                    assignment_type="primary",
+                    is_primary=True,
+                )
+            )
+            db.add(
+                Event(
+                    type="task.completed",
+                    company_id=company_id,
+                    actor_employee_id=employee_id,
+                    actor_person_id=person_id_of(db, employee_id),
+                    payload={},
+                )
+            )
+            assigned_slots[employee_id] = int(slot.id)
+        db.commit()
 
     def _run() -> int:
         owner = threading.get_ident()
@@ -186,19 +234,42 @@ def test_roster_enrichment_does_not_fan_out_per_employee(db, default_company_id)
 
         sa_event.listen(engine, "before_cursor_execute", _count)
         try:
-            result = roster_service.roster_query(db, default_company_id, limit=100)
+            # 每次新建 Session，防止 fixture/上一次读取的 identity map 掩盖逐行查询。
+            with Session(engine) as cold_db:
+                if query_target == "views":
+                    people = list(
+                        cold_db.scalars(
+                            sa.select(Employee).where(Employee.company_id == company_id)
+                        )
+                    )
+                    result = WorkforceStatusResolver(cold_db).views(people)
+                    assert set(result) == set(assigned_slots)
+                    for employee_id, view in result.items():
+                        assert view.workforce_status.value == "assigned"
+                        assert view.position_slot_id == assigned_slots[employee_id]
+                else:
+                    result = roster_service.roster_query(cold_db, company_id, limit=100)
+                    assert result["total"] == len(assigned_slots)
+                    assert len(result["items"]) == len(assigned_slots)
+                    for entry in result["items"]:
+                        assert entry["workforce_status"] == "assigned"
+                        assert (
+                            entry["current_position"]["slot_id"]
+                            == assigned_slots[entry["employee_id"]]
+                        )
         finally:
             sa_event.remove(engine, "before_cursor_execute", _count)
-        assert len(result["items"]) >= 12
         return len(statements)
 
+    _grow(4)
     base = _run()
-    for _ in range(24):
-        _hire(db, default_company_id)
-    db.commit()
+    _grow(12)
     grown = _run()
-    # 基数里有按编制数收敛的固定查询（integrity 等）；员工数翻三倍增量应 ≤ 3
-    assert grown <= base + 3, f"名册富化随员工数爆炸：{base} → {grown}"
+    record_property("small_assigned_count", 4)
+    record_property("large_assigned_count", 16)
+    record_property("small_query_count", base)
+    record_property("large_query_count", grown)
+    assert grown == base, f"{query_target} 查询数随已分配人数增长：{base} → {grown}"
 
 
 def test_company_isolation_and_no_global_totals(client, db, default_company_id):
@@ -208,3 +279,74 @@ def test_company_isolation_and_no_global_totals(client, db, default_company_id):
     foreign = _hire(db, int(other.id))
     default_ids = {entry["employee_id"] for entry in client.get("/api/v1/talent-roster").json()}
     assert foreign not in default_ids, "Company A 名册绝不能包含 Company B 员工"
+
+
+@pytest.mark.parametrize("scope", ["explicit", "request_identity"])
+def test_assigned_roster_references_and_integrity_stay_with_selected_people(
+    db, default_company_id, scope
+):
+    other = Company(name="Scoped roster", slug=f"roster-scope-{scope}-{_seq}")
+    db.add(other)
+    db.commit()
+    other_id = int(other.id)
+    employees = [_hire(db, company_id) for company_id in [default_company_id, other_id]]
+    broken_employee = _hire(db, default_company_id)
+    selected_slot_id = None
+    for company_id, employee_id in zip([default_company_id, other_id], employees, strict=True):
+        department = Department(company_id=company_id, name="Scoped", slug=f"scope-{_seq}")
+        definition = PositionDefinition(
+            company_id=company_id,
+            code=f"shared-code-{_seq}",
+            name=f"Company {company_id} position",
+        )
+        db.add_all([department, definition])
+        db.flush()
+        slot = PositionSlot(
+            company_id=company_id,
+            department_id=department.id,
+            position_definition_id=definition.id,
+            slot_code=f"SCOPE-{employee_id}",
+        )
+        db.add(slot)
+        db.flush()
+        db.add(
+            PositionAssignment(
+                employee_id=employee_id,
+                department_id=department.id,
+                position_slot_id=slot.id,
+                assignment_type="primary",
+                is_primary=True,
+            )
+        )
+        if company_id == other_id:
+            selected_slot_id = int(slot.id)
+    # 别家的人有历史无坑任职；诊断不能混进这次名册或导致富化 KeyError。
+    db.add(
+        PositionAssignment(
+            employee_id=broken_employee,
+            position_slot_id=None,
+            assignment_type="primary",
+            is_primary=True,
+        )
+    )
+    db.flush()
+    token = set_request_identity(
+        RequestIdentity(
+            user_id=1,
+            company_id=default_company_id if scope == "explicit" else other_id,
+            membership_role="OWNER",
+            session_id=1,
+        )
+    )
+    try:
+        result = roster_service.roster_query(db, other_id if scope == "explicit" else None)
+        assert result["total"] == 1
+        entry = result["items"][0]
+        assert entry["employee_id"] == employees[1]
+        assert entry["workforce_status"] == "assigned"
+        assert entry["current_position"]["slot_id"] == selected_slot_id
+        assert entry["current_position"]["code"] == f"shared-code-{_seq}"
+        assert entry["current_position"]["name"] == f"Company {other_id} position"
+        assert entry["integrity"] == []
+    finally:
+        reset_request_identity(token)

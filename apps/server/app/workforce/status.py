@@ -194,9 +194,22 @@ class WorkforceStatusResolver:
         )
 
     def views(self, employees: Sequence[Employee]) -> dict[int, WorkforceView]:
-        """名册批量：1 次取全量生效主职 + 每个坑至多 1 次定义解析（实例内缓存）。"""
+        """名册批量：主职、坑、定义各至多一次查询，缺失引用也缓存。"""
         ids = [int(employee.id) for employee in employees]
         primaries = position_repo.active_primaries_by_employee(self.db, ids)
+        uncached_slot_ids = {
+            int(primary.position_slot_id)
+            for primary in primaries.values()
+            if primary.position_slot_id is not None
+            and primary.position_slot_id not in self._slot_positions
+        }
+        references = position_repo.slots_with_definitions(self.db, list(uncached_slot_ids))
+        for slot_id in uncached_slot_ids:
+            reference = references.get(slot_id)
+            definition = reference[1] if reference is not None else None
+            self._slot_positions[slot_id] = (
+                None if definition is None else (definition.id, definition.code, definition.name)
+            )
         result: dict[int, WorkforceView] = {}
         for employee in employees:
             primary = primaries.get(int(employee.id))

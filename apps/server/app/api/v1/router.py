@@ -13,6 +13,7 @@ from app.api.v1 import (
     competencies,
     contracts,
     cultivation,
+    dashboard,
     decisions,
     drive,
     economy,
@@ -45,6 +46,7 @@ api_router = APIRouter()
 api_router.include_router(auth.router)
 protected = APIRouter(dependencies=[Depends(require_user)])
 protected.include_router(company.router)
+protected.include_router(dashboard.router)
 protected.include_router(contracts.router)
 protected.include_router(employees.router)
 protected.include_router(projects.router)

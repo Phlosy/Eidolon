@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -760,16 +761,23 @@ def organization(db: Session, company_id: int) -> dict:
     }
 
 
-def integrity_by_employee(db: Session) -> dict[int, list[str]]:
+def integrity_by_employee(
+    db: Session, *, employee_ids: Sequence[int] | None = None
+) -> dict[int, list[str]]:
     """只读诊断（员工 → 问题种类）。用于名册区分"正常待分配"与"历史悬空引用"。"""
-    report = integrity(db)
+    report = integrity(db, employee_ids=employee_ids)
     grouped: dict[int, list[str]] = {}
     for item in report["items"]:
         grouped.setdefault(item.employee_id, []).append(item.kind)
     return grouped
 
 
-def integrity(db: Session, company_id: int | None = None) -> dict:
+def integrity(
+    db: Session,
+    company_id: int | None = None,
+    *,
+    employee_ids: Sequence[int] | None = None,
+) -> dict:
     """`AssignmentIntegrity` 诊断：报告问题，**不修问题**，也不新增状态列。
 
     种类含义：
@@ -779,25 +787,21 @@ def integrity(db: Session, company_id: int | None = None) -> dict:
       - `SLOT_DEPARTMENT_MISMATCH`：任职行的部门与坑的部门不一致。
       - `MULTIPLE_ACTIVE_PRIMARY`：同一员工多条生效主职（唯一索引之后不该出现，留着兜底）。
     """
-    assignments = list(
-        db.scalars(
-            select(PositionAssignment)
-            .where(
-                PositionAssignment.effective_to.is_(None),
-                PositionAssignment.assignment_type == AssignmentType.primary.value,
-            )
-            .order_by(PositionAssignment.employee_id, PositionAssignment.id)
-        )
+    assignments = position_repo.active_primary_assignments_with_employees(
+        db, company_id, employee_ids=employee_ids
     )
-    slots: dict[int, PositionSlot | None] = {}
-    definitions: dict[int, PositionDefinition | None] = {}
+    references = position_repo.slots_with_definitions(
+        db,
+        [
+            int(assignment.position_slot_id)
+            for assignment, _employee in assignments
+            if assignment.position_slot_id is not None
+        ],
+    )
     items: list[IntegrityItemOut] = []
     per_employee: dict[int, int] = {}
 
-    for assignment in assignments:
-        employee = db.get(Employee, assignment.employee_id)
-        if company_id is not None and (employee is None or employee.company_id != company_id):
-            continue
+    for assignment, employee in assignments:
         slug = employee.slug if employee is not None else None
         per_employee[assignment.employee_id] = per_employee.get(assignment.employee_id, 0) + 1
         if assignment.position_slot_id is None:
@@ -812,10 +816,8 @@ def integrity(db: Session, company_id: int | None = None) -> dict:
             )
             continue
         slot_id = int(assignment.position_slot_id)
-        if slot_id not in slots:
-            slots[slot_id] = position_repo.get_slot(db, slot_id)
-        slot = slots[slot_id]
-        if slot is None:
+        reference = references.get(slot_id)
+        if reference is None:
             items.append(
                 IntegrityItemOut(
                     assignment_id=assignment.id,
@@ -826,10 +828,9 @@ def integrity(db: Session, company_id: int | None = None) -> dict:
                 )
             )
             continue
+        slot, definition = reference
         definition_id = int(slot.position_definition_id)
-        if definition_id not in definitions:
-            definitions[definition_id] = position_repo.get_definition(db, definition_id)
-        if definitions[definition_id] is None:
+        if definition is None:
             items.append(
                 IntegrityItemOut(
                     assignment_id=assignment.id,

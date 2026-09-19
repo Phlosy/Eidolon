@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 import pytest
+import sqlalchemy as sa
 from factories import make_employee
 from sqlalchemy.orm import Session
 
@@ -17,7 +18,7 @@ from app.models.enums import AssignmentType, EmployeeRole, LifecycleStatus, Work
 from app.models.organization import Department, Employee
 from app.models.position import PositionAssignment, PositionDefinition, PositionSlot
 from app.repositories import position as position_repo
-from app.services import position_compat
+from app.services import position_compat, position_service
 from app.workforce.status import (
     WorkforceStatusResolver,
     derive_workforce_status,
@@ -236,9 +237,92 @@ def test_batch_views_never_disagree_with_single_resolve(db: Session, roster: dic
     people = list(roster["people"].values())
     batch = resolver.views(people)
     for person in people:
-        single = resolver.resolve(person)
+        single = WorkforceStatusResolver(db).resolve(person)
         assert batch[int(person.id)].workforce_status == single, person.slug
+        assert batch[int(person.id)] == WorkforceStatusResolver(db).view(person), person.slug
     assert sum(1 for view in batch.values() if view.has_primary_assignment) == 2
+
+
+@pytest.mark.parametrize(
+    "reference", ["no_assignment", "no_slot", "dangling_slot", "missing_definition", "valid"]
+)
+@pytest.mark.parametrize("lifecycle", ["active", "pending", "suspended", "transferring"])
+def test_batch_views_preserve_missing_reference_and_lifecycle_semantics(
+    db: Session, roster: dict, reference: str, lifecycle: str
+):
+    person = roster["people"]["free-a"]
+    person.lifecycle_status = lifecycle
+    slot = roster["slots"][2]
+    if reference == "missing_definition":
+        slot.position_definition_id = 999_999_999
+    if reference != "no_assignment":
+        assignment = _assignment(
+            slot_id=(
+                None
+                if reference == "no_slot"
+                else 999_999_999
+                if reference == "dangling_slot"
+                else slot.id
+            )
+        )
+        assignment.employee_id = person.id
+        assignment.department_id = roster["department"].id
+        db.add(assignment)
+    db.flush()
+
+    healthy = roster["people"]["assigned-a"]
+    batch = WorkforceStatusResolver(db).views([person, healthy])
+    assert set(batch) == {person.id, healthy.id}
+    view = batch[person.id]
+    assert view == WorkforceStatusResolver(db).view(person)
+    assert view.workforce_status == WorkforceStatusResolver(db).resolve(person)
+    assert view.has_primary_assignment is (reference != "no_assignment")
+    assert view.occupies_establishment is (reference == "valid")
+    assert view.position_slot_id == (slot.id if reference == "valid" else None)
+    assert view.definition_code == (roster["custom"].code if reference == "valid" else None)
+    assert view.definition_name == (roster["custom"].name if reference == "valid" else None)
+    assert (
+        view.workforce_status.value
+        == {
+            "active": "assigned" if reference == "valid" else "available",
+            "pending": "onboarding",
+            "suspended": "suspended",
+            "transferring": "transferring",
+        }[lifecycle]
+    )
+    assert batch[healthy.id] == WorkforceStatusResolver(db).view(healthy)
+    current = position_repo.employee_current_position(db, person.id)
+    assert (current is not None) is (reference == "valid")
+    if current is not None:
+        assert current.slot_id == view.position_slot_id
+        assert current.code == view.definition_code
+    expected_issue = {
+        "no_slot": "NO_SLOT_HISTORICAL",
+        "dangling_slot": "DANGLING_SLOT",
+        "missing_definition": "MISSING_DEFINITION",
+    }.get(reference)
+    assert position_service.integrity_by_employee(db, employee_ids=[person.id]) == (
+        {person.id: [expected_issue]} if expected_issue else {}
+    )
+
+
+def test_empty_batch_views_and_counts_do_not_query(db: Session):
+    statements: list[str] = []
+
+    def _count(conn, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+
+    connection = db.connection()
+    sa.event.listen(connection, "before_cursor_execute", _count)
+    try:
+        resolver = WorkforceStatusResolver(db)
+        assert resolver.views([]) == {}
+        assert resolver.counts([]) == {"on_roster": 0}
+        assert position_repo.current_positions_by_employee(db, []) == {}
+        assert position_service.integrity_by_employee(db, employee_ids=[]) == {}
+    finally:
+        sa.event.remove(connection, "before_cursor_execute", _count)
+    assert statements == []
 
 
 def test_counts_report_available_as_a_subset_not_a_sibling(db: Session, roster: dict):

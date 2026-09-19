@@ -5,8 +5,8 @@ Competencies / Assessment / Activity 聚合成统一人才视图 —— 全部�
 出口（WorkforceStatusResolver / position_repo / BrainTraits / EmployeeCompetency），
 **不建第二真相**。
 
-批量纪律：一页内所有人才共走 ~9 条一次性查询（人 / 状态视图 / 主职 / 完整性 /
-runtime / 绑定+provider / brain / competencies / 最近事件），不逐人 SQL（有守卫）。
+批量纪律：人 / 状态视图 / 主职 / 完整性 / runtime / 绑定+provider / brain /
+competencies / 最近事件各批量读取，查询次数不随人数、编制数增长（有守卫）。
 默认排除历史/离职（offboarded、pending）—— 不混入默认列表；`status` 可显式带它。
 """
 
@@ -143,7 +143,7 @@ def _batch_derived(db: Session, people: list[Employee]):
     for employee_id, position in positions.items():
         derived[employee_id].current_position = _current_payload(position)
 
-    issues = position_service.integrity_by_employee(db)
+    issues = position_service.integrity_by_employee(db, employee_ids=ids)
     for employee_id, kinds in issues.items():
         derived[employee_id].integrity = kinds
 

@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, waitFor } from "@testing-library/react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AUTH_QUERY_KEY, AuthProvider, useAuth } from "../features/auth/auth-context";
 import { useEventStreamStore } from "../stores/events";
 import type { AuthState, StreamEvent } from "../types";
 import { useEventStream } from "./useEventStream";
+import { useDashboardStats } from "./useDashboardStats";
 
 class TestWebSocket {
   static instances: TestWebSocket[] = [];
@@ -61,6 +63,93 @@ describe("useEventStream identity boundaries", () => {
   });
 
   afterEach(() => vi.unstubAllGlobals());
+
+  it.each([
+    "employee.status_changed",
+    "runtime.stopped",
+    "provider.updated",
+    "project.created",
+    "task.completed",
+    "artifact.created",
+    "drive.document_created",
+    "document.updated",
+    "review.completed",
+    "git.updated",
+    "skill.updated",
+    "learning.completed",
+    "knowledge.updated",
+  ])("invalidates the dashboard aggregate after %s", (type) => {
+    const { client } = renderStream();
+    const invalidate = vi.spyOn(client, "invalidateQueries");
+    act(() => {
+      TestWebSocket.instances[0].onmessage?.({ data: JSON.stringify({ ...eventA, type }) });
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["dashboard"] });
+  });
+
+  it("refetches a mounted dashboard after a task event and retains data while refreshing", async () => {
+    const summary = {
+      company_id: 1,
+      employees_online: 1,
+      employees_total: 1,
+      active_projects: 1,
+      completed_projects: 0,
+      tasks_in_progress: 1,
+      tasks_total: 2,
+      tasks_completed: 1,
+      documents_count: 1,
+      total_attempts: 1,
+      project_summaries: [{ project_id: 1, tasks_total: 2, tasks_completed: 1, blockers: 0 }],
+    };
+    let finishRefresh!: (value: Response) => void;
+    const pendingRefresh = new Promise<Response>((resolve) => (finishRefresh = resolve));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(summary)))
+      .mockReturnValueOnce(pendingRefresh);
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+    client.setQueryData(AUTH_QUERY_KEY, identityA);
+    const { result } = renderHook(
+      () => {
+        useEventStream();
+        return useDashboardStats();
+      },
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryClientProvider client={client}>
+            <AuthProvider>{children}</AuthProvider>
+          </QueryClientProvider>
+        ),
+      },
+    );
+    await waitFor(() => expect(result.current.tasksCompleted).toBe(1));
+    act(() =>
+      TestWebSocket.instances[0].onmessage?.({
+        data: JSON.stringify({ ...eventA, type: "task.completed" }),
+      }),
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(result.current).toMatchObject({ isLoading: false, tasksCompleted: 1 });
+    await act(async () =>
+      finishRefresh(
+        new Response(
+          JSON.stringify({
+            ...summary,
+            tasks_in_progress: 0,
+            tasks_completed: 2,
+            total_attempts: 2,
+            project_summaries: [{ project_id: 1, tasks_total: 2, tasks_completed: 2, blockers: 0 }],
+          }),
+        ),
+      ),
+    );
+    await waitFor(() => expect(result.current.tasksCompleted).toBe(2));
+    expect(result.current).toMatchObject({ tasksInProgress: 0, runtimeCostUsd: 0.1 });
+    expect(fetchMock.mock.calls.every(([path]) => path === "/api/v1/dashboard/summary")).toBe(true);
+  });
 
   it("ignores all callbacks from A immediately at logout and after B connects", async () => {
     const { client } = renderStream();

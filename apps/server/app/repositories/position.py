@@ -34,7 +34,7 @@ from app.models.enums import (
     SlotAdministrativeStatus,
 )
 from app.models.lifecycle import AccessPackage
-from app.models.organization import Department
+from app.models.organization import Department, Employee
 from app.models.position import (
     PositionAssignment,
     PositionDefinition,
@@ -178,6 +178,29 @@ def list_slots(
 
 def get_slot(db: Session, slot_id: int) -> PositionSlot | None:
     return db.get(PositionSlot, slot_id)
+
+
+def slots_with_definitions(
+    db: Session, slot_ids: Sequence[int]
+) -> dict[int, tuple[PositionSlot, PositionDefinition | None]]:
+    """批量解析指定坑的定义：缺坑不返回，缺定义保留 None，至多两次查询。
+
+    按调用方给的 id 解析，和 get_slot/get_definition 一样不重选请求公司。
+    名册的人选范围由上游决定；这里不把相同 code 的别家公司定义混进来。
+    """
+    if not slot_ids:
+        return {}
+    slots = list(db.scalars(select(PositionSlot).where(PositionSlot.id.in_(set(slot_ids)))))
+    if not slots:
+        return {}
+    definition_ids = {slot.position_definition_id for slot in slots}
+    definitions = {
+        definition.id: definition
+        for definition in db.scalars(
+            select(PositionDefinition).where(PositionDefinition.id.in_(definition_ids))
+        )
+    }
+    return {slot.id: (slot, definitions.get(slot.position_definition_id)) for slot in slots}
 
 
 def require_slot(db: Session, slot_id: int) -> PositionSlot:
@@ -330,6 +353,31 @@ def active_primaries_by_employee(
     return picked
 
 
+def active_primary_assignments_with_employees(
+    db: Session,
+    company_id: int | None = None,
+    *,
+    employee_ids: Sequence[int] | None = None,
+) -> list[tuple[PositionAssignment, Employee | None]]:
+    """诊断用生效 PRIMARY 行与员工一次取完，保留缺员工及 is_primary 异常行。"""
+    if employee_ids is not None and not employee_ids:
+        return []
+    stmt = (
+        select(PositionAssignment, Employee)
+        .outerjoin(Employee, Employee.id == PositionAssignment.employee_id)
+        .where(
+            PositionAssignment.effective_to.is_(None),
+            PositionAssignment.assignment_type == AssignmentType.primary.value,
+        )
+        .order_by(PositionAssignment.employee_id, PositionAssignment.id)
+    )
+    if company_id is not None:
+        stmt = stmt.where(Employee.company_id == company_id)
+    if employee_ids is not None:
+        stmt = stmt.where(PositionAssignment.employee_id.in_(set(employee_ids)))
+    return [(assignment, employee) for assignment, employee in db.execute(stmt)]
+
+
 def career_history(db: Session, employee_id: int) -> list[PositionAssignment]:
     """职业履历：全时间轴，含已关闭的行（本表永不删行）。"""
     return list(
@@ -344,39 +392,39 @@ def career_history(db: Session, employee_id: int) -> list[PositionAssignment]:
 def current_positions_by_employee(
     db: Session, employee_ids: Sequence[int]
 ) -> dict[int, CurrentPosition]:
-    """批量当前职位：坑与定义各自**去重后一次取**，所以一页名册不会 N+1。
+    """批量当前职位：主职、坑、定义、部门各至多一次查询，不逐行读取。
 
     没有主职、或主职的坑/定义解析不到的人，直接不出现在结果里（= `AVAILABLE`）。
     """
     primaries = active_primaries_by_employee(db, employee_ids)
-    slots: dict[int, PositionSlot | None] = {}
-    definitions: dict[int, PositionDefinition | None] = {}
-    departments: dict[int, str | None] = {}
-    for assignment in primaries.values():
-        if assignment.position_slot_id is None:
-            continue
-        slot_id = int(assignment.position_slot_id)
-        if slot_id not in slots:
-            slots[slot_id] = get_slot(db, slot_id)
-        slot = slots[slot_id]
-        if slot is None:
-            continue
-        if slot.position_definition_id not in definitions:
-            definitions[slot.position_definition_id] = get_definition(
-                db, slot.position_definition_id
+    references = slots_with_definitions(
+        db,
+        [
+            int(assignment.position_slot_id)
+            for assignment in primaries.values()
+            if assignment.position_slot_id is not None
+        ],
+    )
+    department_ids = {slot.department_id for slot, _definition in references.values()}
+    departments = (
+        {
+            department.id: department.name
+            for department in db.scalars(
+                select(Department).where(Department.id.in_(department_ids))
             )
-        if slot.department_id not in departments:
-            department = db.get(Department, slot.department_id)
-            departments[slot.department_id] = department.name if department else None
+        }
+        if department_ids
+        else {}
+    )
     result: dict[int, CurrentPosition] = {}
     for employee_id, assignment in primaries.items():
         if assignment.position_slot_id is None:
             continue
-        slot = slots.get(int(assignment.position_slot_id))
-        if slot is None:
+        reference = references.get(int(assignment.position_slot_id))
+        if reference is None:
             # 悬空引用（无 DB FK 的代价）：宁缺不错 —— 报无职位，不编一个职位。
             continue
-        definition = definitions.get(slot.position_definition_id)
+        slot, definition = reference
         if definition is None:
             continue
         result[int(employee_id)] = CurrentPosition(

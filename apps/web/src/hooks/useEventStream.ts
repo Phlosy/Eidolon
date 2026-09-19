@@ -11,6 +11,7 @@ const RECONNECT_MAX_MS = 15000;
 // 教程门禁挂在员工/runtime/provider/项目/文档/git 等真实状态上：这些域一有事件
 // 就重取教程进度，用户做完动作立刻看到推进，而不是等下一轮轮询。
 const TUTORIAL: string[] = ["tutorial"];
+const DASHBOARD: string[] = ["dashboard"];
 
 function invalidatedKeys(type: string): string[][] {
   const domain = type.split(".")[0];
@@ -18,7 +19,7 @@ function invalidatedKeys(type: string): string[][] {
     case "tutorial":
       return [TUTORIAL, ["events"]];
     case "employee":
-      return [["employees"], ["events"], ["runtimes"], TUTORIAL];
+      return [["employees"], ["events"], ["runtimes"], TUTORIAL, DASHBOARD];
     case "runtime":
       return [
         ["employees"],
@@ -27,25 +28,26 @@ function invalidatedKeys(type: string): string[][] {
         ["runtime-images"],
         ["runtime-types"],
         TUTORIAL,
+        DASHBOARD,
       ];
     case "provider":
-      return [["providers"], ["events"], TUTORIAL];
+      return [["providers"], ["events"], TUTORIAL, DASHBOARD];
     case "project":
-      return [["projects"], ["events"], TUTORIAL];
+      return [["projects"], ["events"], TUTORIAL, DASHBOARD];
     case "task":
-      return [["tasks"], ["projects"], ["employees"], ["events"], TUTORIAL];
+      return [["tasks"], ["projects"], ["employees"], ["events"], TUTORIAL, DASHBOARD];
     case "artifact":
-      return [["artifacts"], ["projects"], ["events"], TUTORIAL];
+      return [["artifacts"], ["projects"], ["events"], TUTORIAL, DASHBOARD];
     case "drive":
     case "document":
-      return [["events"], TUTORIAL];
+      return [["drive"], ["events"], TUTORIAL, DASHBOARD];
     case "git":
     case "review":
-      return [["events"], ["projects"], TUTORIAL];
+      return [["events"], ["projects"], TUTORIAL, DASHBOARD];
     case "skill":
     case "learning":
     case "knowledge":
-      return [["employees"], ["events"]];
+      return [["employees"], ["events"], DASHBOARD];
     default:
       return [["events"]];
   }

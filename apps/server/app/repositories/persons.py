@@ -11,7 +11,7 @@ services/seed.py），这里只提供 `create_person` 原语；person 本身没�
 
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.organization import Employee
@@ -93,6 +93,22 @@ def read_criterion(db: Session, employee_id: int, person_column, employee_column
         "person_id 解析失败（employee_id=%s），读口径回落 employee_id 旧口径", employee_id
     )
     return employee_column == employee_id
+
+
+def company_read_criterion(company_id: int, person_column, employee_column):
+    """Join an owned row to company employees with the same rule as read_criterion.
+
+    Aggregate readers need no per-employee lookup or growing list of bind parameters.
+    A mapped employee reads person-owned rows, including person-only history; only
+    employees missing person_id fall back to the legacy employee mirror.
+    """
+    return and_(
+        Employee.company_id == company_id,
+        or_(
+            Employee.person_id == person_column,
+            and_(Employee.person_id.is_(None), Employee.id == employee_column),
+        ),
+    )
 
 
 def matches_owner(
