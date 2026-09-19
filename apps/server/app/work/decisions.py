@@ -41,6 +41,7 @@ from dataclasses import dataclass
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.transaction_effects import ensure_sqlite_transaction
 from app.models.base import utcnow
 from app.models.decision import DecisionRecord, ToolAudit
 from app.models.enums import DecisionStatus
@@ -237,29 +238,40 @@ def execute_actions(
     *,
     transport=executor.ToolTransport.internal,
     commit: bool = True,
+    _runtime=None,
 ) -> tuple[ActionOutcome, ...]:
     """逐个执行信封里的动作，每个 `ToolAudit` 自动挂 `decision_id`（DR3/DR7）。
 
     **不做事务包裹**（用户拍板 §9）：每个动作由执行面带自己的领域事务提交；
     决策的状态是**执行完之后按事实聚合**出来的（DR6），而不是事先假定全部成功。
     """
-    if decision.status in (DecisionStatus.applied.value, DecisionStatus.superseded.value):
+    if _runtime is None and decision.status in (
+        DecisionStatus.applied.value,
+        DecisionStatus.superseded.value,
+    ):
         raise DecisionError(f"decision {decision.id} is already {decision.status}")
-    decision.status = DecisionStatus.executing.value
-    db.flush()
+    if _runtime is None:
+        decision.status = DecisionStatus.executing.value
+        db.flush()
 
     outcomes: list[ActionOutcome] = []
-    for raw in actions:
+    for index, raw in enumerate(actions):
         spec_name = str(raw.get("tool") or "")
         args = dict(raw.get("args") or {})
-        result = executor.execute_tool(
-            db,
-            name=spec_name,
-            args=args,
-            context=ctx,
-            transport=transport,
-            decision_id=int(decision.id),
-            commit=True,
+        result = (
+            _runtime.execute_action(
+                index, {"tool": spec_name, "args": args}, decision_id=int(decision.id)
+            )
+            if _runtime is not None
+            else executor.execute_tool(
+                db,
+                name=spec_name,
+                args=args,
+                context=ctx,
+                transport=transport,
+                decision_id=int(decision.id),
+                commit=True,
+            )
         )
         outcomes.append(
             ActionOutcome(
@@ -320,6 +332,7 @@ def submit_envelope(
     context: Mapping | None = None,
     parent_decision_id: int | None = None,
     transport=executor.ToolTransport.internal,
+    _runtime=None,
 ) -> DecisionEnvelopeResult:
     """**一次提交**：决策 + N 个动作（用户拍板 §3 的 Decision Envelope）。
 
@@ -331,7 +344,10 @@ def submit_envelope(
     # **先落意图、再执行动作**：决策行独立成一个短事务，动作各自由执行面提交。
     # 这样即便进程在动作中途崩掉，也已经留下"某人在某时提出了这个决定"的事实
     # （状态停在 EXECUTING，`PARTIALLY_APPLIED` 正是为这种局面准备的，DR6）。
-    decision = open_decision(
+    # Only the trusted internal bridge supplies this coordinator. Ordinary callers
+    # retain the existing envelope behavior; runtime retries reuse the same intent.
+    decision = _runtime.bound_decision(db, ctx) if _runtime is not None else None
+    decision = decision or open_decision(
         db,
         ctx,
         decision_type=decision_type,
@@ -340,10 +356,22 @@ def submit_envelope(
         intended_outcome=intended_outcome,
         context=context,
         parent_decision_id=parent_decision_id,
-        commit=True,
+        commit=_runtime is None,
     )
-    outcomes = execute_actions(db, decision, materialized, ctx, transport=transport, commit=False)
-    resolve_decision(db, decision, outcomes, commit=False)
+    if _runtime is not None:
+        _runtime.bind_decision(db, decision, len(materialized))
+    outcomes = execute_actions(
+        db, decision, materialized, ctx, transport=transport, commit=False, _runtime=_runtime
+    )
+    if _runtime is not None:
+        ensure_sqlite_transaction(db)
+        decision = db.get(DecisionRecord, decision.id, populate_existing=True)
+    if _runtime is None or (
+        decision.status == DecisionStatus.executing.value
+        and decision.resolved_at is None
+        and decision.superseded_by_id is None
+    ):
+        resolve_decision(db, decision, outcomes, commit=False)
     db.commit()
     applied = sum(1 for item in outcomes if item.ok)
     return DecisionEnvelopeResult(

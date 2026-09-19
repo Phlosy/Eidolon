@@ -117,6 +117,7 @@ class ToolAudit(TimestampMixin, Base):
         Index("ix_tool_audits_decision", "decision_id", "id"),
         Index("ix_tool_audits_tool_created", "tool_name", "id"),
         Index("ix_tool_audits_company_created", "actor_company_id", "id"),
+        Index("uq_tool_audit_runtime_action", "runtime_operation_id", "action_index", unique=True),
     )
 
     tool_name: Mapped[str] = mapped_column(String(80), index=True)
@@ -124,6 +125,10 @@ class ToolAudit(TimestampMixin, Base):
     decision_id: Mapped[int | None] = mapped_column(
         ForeignKey("decision_records.id"), nullable=True, index=True
     )
+    # Nullable for all pre-bridge callers. v52 guards validate the pair and freeze
+    # correlated rows; plain integers avoid rebuilding the legacy SQLite table.
+    runtime_operation_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    action_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # ---- 执行结果 ----
     outcome: Mapped[str] = mapped_column(String(32), index=True)
     side_effect: Mapped[str] = mapped_column(

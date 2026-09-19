@@ -106,6 +106,7 @@ from app.models.project_delivery import (
 from app.models.provider import ModelBinding, Provider, Secret
 from app.models.review import ReviewFact, ReviewRequest
 from app.models.runtime import EmployeeBrain, RuntimeImage, RuntimeInstance
+from app.models.runtime_operation import RuntimeOperation
 
 __all__ = [
     "DispatchNotice",
@@ -183,6 +184,7 @@ __all__ = [
     "ResourceProvider",
     "RuntimeImage",
     "RuntimeInstance",
+    "RuntimeOperation",
     "Secret",
     "Skill",
     "MarketListing",
