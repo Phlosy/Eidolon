@@ -7,13 +7,18 @@
   "required": "Required deliverables: {{keys}}",
   "payable": "Payable (incl. bonuses) {{amount}}",
   "submitPlaceholder": "Describe what you delivered…",
+  "summaryLabel": "Delivery summary",
+  "deliverablePlaceholder": "Enter the required content or a link…",
   "filter": {
     "mine": "Only my accepted orders",
     "all": "All open orders"
   },
   "action": {
     "accept": "Accept",
-    "submit": "Submit deliverables"
+    "submit": "Submit deliverables",
+    "resubmit": "Resubmit deliverables",
+    "accepting": "Accepting…",
+    "submitting": "Submitting…"
   },
   "badge": {
     "mine": "Accepted by us"

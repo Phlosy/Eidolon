@@ -7,6 +7,8 @@ const STATE = vi.hoisted(() => ({
   items: [] as WorkOrderView[],
   accept: vi.fn(),
   submit: vi.fn(),
+  pending: false,
+  error: null as Error | null,
 }));
 
 vi.mock("../../hooks/useWorkOrders", () => ({
@@ -18,7 +20,12 @@ vi.mock("../../hooks/useWorkOrders", () => ({
     refetch: vi.fn(),
   }),
   useAcceptWorkOrder: () => ({ mutate: STATE.accept, isPending: false }),
-  useSubmitWorkOrder: () => ({ mutate: STATE.submit, isPending: false }),
+  useSubmitWorkOrder: () => ({
+    mutate: STATE.submit,
+    isPending: STATE.pending,
+    error: STATE.error,
+    variables: { orderId: 7 },
+  }),
 }));
 
 function order(overrides: Partial<WorkOrderView> = {}): WorkOrderView {
@@ -57,6 +64,8 @@ describe("WorkOrdersPage", () => {
     STATE.items = [order()];
     STATE.accept.mockReset();
     STATE.submit.mockReset();
+    STATE.pending = false;
+    STATE.error = null;
   });
 
   it("在招订单：显示奖励与必交交付物，领取调用 accept", async () => {
@@ -71,19 +80,61 @@ describe("WorkOrdersPage", () => {
     await waitFor(() => expect(STATE.accept).toHaveBeenCalledWith(7));
   });
 
-  it("已领取订单：可提交交付物，提交带上 summary", async () => {
+  it("已领取订单：必交项和摘要都有可见标签，提交携带交付物", async () => {
     STATE.items = [order({ status: "ACCEPTED", is_mine: true, assignee_company_id: 2 })];
     render(<WorkOrdersPage />);
 
-    const textarea = screen.getByRole("textbox");
+    const textarea = screen.getByRole("textbox", { name: "Delivery summary" });
     fireEvent.change(textarea, { target: { value: "delivered the doc" } });
-    const buttons = screen.getAllByRole("button") as HTMLButtonElement[];
-    fireEvent.click(buttons[buttons.length - 1]);
+    fireEvent.change(screen.getByRole("textbox", { name: "readme" }), {
+      target: { value: "docs/readme.md" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit deliverables" }));
     await waitFor(() => expect(STATE.submit).toHaveBeenCalledTimes(1));
     expect(STATE.submit.mock.calls[0][0]).toEqual({
       orderId: 7,
-      input: { summary: "delivered the doc" },
+      input: { summary: "delivered the doc", deliverables: { readme: "docs/readme.md" } },
     });
+  });
+
+  it("未通过订单：允许补齐必交项后重新提交", async () => {
+    STATE.items = [order({ status: "REJECTED", is_mine: true, assignee_company_id: 2 })];
+    render(<WorkOrdersPage />);
+    fireEvent.change(screen.getByRole("textbox", { name: "readme" }), {
+      target: { value: "corrected readme" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Resubmit deliverables" }));
+    await waitFor(() =>
+      expect(STATE.submit).toHaveBeenCalledWith({
+        orderId: 7,
+        input: { summary: "", deliverables: { readme: "corrected readme" } },
+      }),
+    );
+  });
+
+  it("缺少必交项时保留表单且不发起提交", () => {
+    STATE.items = [order({ status: "ACCEPTED", is_mine: true })];
+    render(<WorkOrdersPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Submit deliverables" }));
+    expect(screen.getByRole("textbox", { name: "readme" })).toBeInvalid();
+    expect(STATE.submit).not.toHaveBeenCalled();
+  });
+
+  it("提交中显示状态，错误在订单旁显示且保留输入", () => {
+    STATE.items = [order({ status: "ACCEPTED", is_mine: true })];
+    const { rerender } = render(<WorkOrdersPage />);
+    fireEvent.change(screen.getByRole("textbox", { name: "readme" }), {
+      target: { value: "keep this draft" },
+    });
+    STATE.pending = true;
+    rerender(<WorkOrdersPage />);
+    expect(screen.getByRole("button", { name: "Submitting…" })).toBeDisabled();
+    STATE.pending = false;
+    STATE.error = new Error("Submission could not be saved");
+    rerender(<WorkOrdersPage />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Submission could not be saved");
+    expect(screen.getByRole("textbox", { name: "readme" })).toHaveValue("keep this draft");
+    expect(screen.getByRole("button", { name: "Submit deliverables" })).not.toBeDisabled();
   });
 
   it("空市场显示空状态", () => {

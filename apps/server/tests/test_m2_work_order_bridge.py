@@ -301,11 +301,48 @@ def test_project_reference_is_validated(client, db, default_company_id):
     assert excinfo.value.http_status == 404
     db.rollback()
 
-    # ⑤ 本公司真实项目 ⇒ 通过，并且指针指向它
+    # ⑤ 本公司真实项目 ⇒ 提交引用通过；订单绑定仍必须由管理动作建立。
     mine = _project(db, company, "Mine")
-    service.submit(order.id, company_id=int(company.id), summary="x", project_id=int(mine.id))
+    submission, _, _ = service.submit(
+        order.id, company_id=int(company.id), summary="x", project_id=int(mine.id)
+    )
     db.expire_all()
-    assert int(economy_repo.get_work_order(db, int(order.id)).project_id) == int(mine.id)
+    assert int(submission.project_id) == int(mine.id)
+    assert economy_repo.get_work_order(db, int(order.id)).project_id is None
+    assert bridge.binding_view(db, order)["bound"] is None
+
+
+@pytest.mark.parametrize("submitted_project", ["omitted", "bound", "other"])
+def test_submission_preserves_management_project_binding(db, submitted_project):
+    company = _company(db, "SubmissionBindingCo")
+    actor = _actor(db, company)
+    service, order = _accepted_order(db, company)
+    bound = _project(db, company, "Approved delivery project")
+    other = _project(db, company, "Other delivery reference")
+    bridge.bind_project(
+        db,
+        order,
+        project_id=int(bound.id),
+        actor_employee_id=int(actor.id),
+        reason="management approved",
+    )
+    binding_before = bridge.binding_view(db, order)
+    project_id = {
+        "omitted": None,
+        "bound": int(bound.id),
+        "other": int(other.id),
+    }[submitted_project]
+
+    submission, submitted, _ = service.submit(
+        order.id, company_id=int(company.id), summary="ready", project_id=project_id
+    )
+
+    db.expire_all()
+    assert submitted.project_id == bound.id
+    assert submission.project_id == (project_id if project_id is not None else bound.id)
+    binding_after = bridge.binding_view(db, submitted)
+    assert binding_after["bound"] == binding_before["bound"]
+    assert binding_after["edges"] == binding_before["edges"]
 
 
 # ---------------------------------------------------------------------------

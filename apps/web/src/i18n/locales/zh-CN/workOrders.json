@@ -7,13 +7,18 @@
   "required": "必交交付物：{{keys}}",
   "payable": "应付（含加成）{{amount}}",
   "submitPlaceholder": "简述交付内容…",
+  "summaryLabel": "交付摘要",
+  "deliverablePlaceholder": "填写必交内容或链接…",
   "filter": {
     "mine": "只看我承接的",
     "all": "看全部在招"
   },
   "action": {
     "accept": "领取",
-    "submit": "提交交付物"
+    "submit": "提交交付物",
+    "resubmit": "重新提交交付物",
+    "accepting": "领取中…",
+    "submitting": "提交中…"
   },
   "badge": {
     "mine": "我承接的"

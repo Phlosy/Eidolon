@@ -154,7 +154,7 @@ work-order-evaluate: check-env
 work-order-settle: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py settle $(WO_ARGS)
 
-## work-order-expire: 过期扫描（把过 deadline 的未终态订单推进到 EXPIRED/CANCELLED）
+## work-order-expire: 过期扫描（未领取订单过期、已领取未开工订单取消；执行中的订单保留）
 .PHONY: work-order-expire
 work-order-expire: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py expire

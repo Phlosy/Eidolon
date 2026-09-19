@@ -527,7 +527,7 @@ def test_projection_and_ledger_stay_consistent_after_market_activity(db):
 
 
 def test_execution_reuses_projects_without_copying(db):
-    """执行复用既有 Project/Task/Artifact：订单只存 `project_id` 引用。"""
+    """提交引用既有项目，不能替管理层建立订单绑定。"""
     from app.models.project import Project
 
     company = _company(db, "ProjectCo")
@@ -537,17 +537,87 @@ def test_execution_reuses_projects_without_copying(db):
     service = WorkOrderService(db)
     order = service.publish_official(title="With project", reward_amount=1_200).order
     service.accept(order.id, company_id=company.id)
-    _, settled, _ = service.submit(
+    submission, settled, _ = service.submit(
         order.id,
         company_id=company.id,
         summary="delivered",
         deliverables={"x": "1"},
         project_id=project.id,
     )
-    assert int(settled.project_id) == project.id
+    assert int(submission.project_id) == project.id
+    assert settled.project_id is None
     # 订单表里没有项目字段的副本（title/description 各归各的）
     assert settled.title == "With project"
     assert project.name == "Delivery"
+
+
+def test_expiry_refunds_unstarted_orders_and_preserves_active_work(db):
+    from app.models.enums import EscrowStatus
+    from app.services.economy.escrow import EscrowService
+    from app.services.economy.monetary import MonetaryAuthority
+
+    issuer = _company(db, "ExpiryIssuer")
+    assignee = _company(db, "ExpiryAssignee")
+    issuer_account = _account(db, issuer)
+    MonetaryAuthority(db).mint(
+        actor=EconomicActor.company(issuer.id), amount=20_000, reason="expiry regression"
+    )
+    service = WorkOrderService(db)
+    deadline = datetime.now(UTC) + timedelta(days=1)
+    orders = [
+        service.publish_player_order(
+            issuer=EconomicActor.company(issuer.id),
+            title=f"Expiry refund {reward}",
+            reward_amount=reward,
+            deadline_at=deadline,
+        ).order
+        for reward in (1_000, 2_000)
+    ]
+    service.accept(orders[1].id, company_id=assignee.id)
+
+    # Work already underway needs management decisions, not automatic cancellation.
+    preserved = {}
+    for status in (
+        WorkOrderStatus.in_progress,
+        WorkOrderStatus.submitted,
+        WorkOrderStatus.reviewing,
+        WorkOrderStatus.approved,
+        WorkOrderStatus.rejected,
+        WorkOrderStatus.disputed,
+    ):
+        order = service.publish_official(
+            title=f"Preserve overdue {status.value}", reward_amount=100, deadline_at=deadline
+        ).order
+        order.status = status.value
+        preserved[int(order.id)] = status.value
+    db.commit()
+    wallet_before = _wallet(issuer_account)
+    supply_before = _supply(db)
+    assert wallet_before["reserved"] == 3_000
+
+    moment = deadline + timedelta(seconds=1)
+    assert service.expire_overdue(now=moment) >= 2
+    db.expire_all()
+    assert service.detail(orders[0].id).status == WorkOrderStatus.expired.value
+    assert service.detail(orders[1].id).status == WorkOrderStatus.cancelled.value
+    assert {order_id: service.detail(order_id).status for order_id in preserved} == preserved
+    assert _wallet(issuer_account) == {
+        "posted": wallet_before["posted"],
+        "available": wallet_before["available"] + 3_000,
+        "reserved": 0,
+    }
+    escrow_service = EscrowService(db)
+    for order in orders:
+        escrow = escrow_service.get_for_order(int(order.id))
+        assert escrow.status == EscrowStatus.refunded.value
+        assert escrow_service.view(escrow).account_balance == 0
+
+    assert service.expire_overdue(now=moment) == 0
+    assert _wallet(issuer_account)["available"] == wallet_before["available"] + 3_000
+    supply_after = _supply(db)
+    assert supply_after.minted == supply_before.minted
+    assert supply_after.burned == supply_before.burned
+    assert verify_wallet_projection(db).ok
 
 
 def _company_artifact(db, company: Company, title: str):

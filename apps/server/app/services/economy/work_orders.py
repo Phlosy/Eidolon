@@ -360,6 +360,8 @@ class WorkOrderService:
             raise WorkOrderError("not_your_order", http_status=404)
         # ---- M2.9（WO3/WO4）：引用受校验 —— 交付指向真实的执行载体与真实的产物 ----
         # 校验放在**写之前**：不合法的提交不落库（J2 的 422 是拒绝，不是事后报错）。
+        # 提交默认引用已绑定项目；显式交付引用也不能改写管理层的订单绑定。
+        project_id = project_id if project_id is not None else order.project_id
         resolved_artifacts: list[dict] = []
         if project_id is not None:
             project = project_repo.get_project(self.db, int(project_id))
@@ -442,7 +444,6 @@ class WorkOrderService:
             from_statuses=(status,),
             to_status=WorkOrderStatus.submitted.value,
             submitted_at=utcnow(),
-            project_id=project_id,
         )
         if rowcount == 0:
             raise WorkOrderError("submit_race")
@@ -786,16 +787,18 @@ class WorkOrderService:
         return int(refunded.id)
 
     def expire_overdue(self, *, now: datetime | None = None, commit: bool = True) -> int:
-        """把过了 deadline 的未终态订单推进到 EXPIRED（幂等扫描，供 CLI/定时任务调用）。"""
+        """到期未领取订单过期，已领取未开工订单取消；执行中的订单留给管理层处理。"""
         moment = now or utcnow()
         expired = 0
-        for order in economy_repo.list_work_orders(self.db, statuses=OPEN_COMMITMENT_STATUSES):
+        for order in economy_repo.list_work_orders(
+            self.db, statuses=(WorkOrderStatus.open.value, WorkOrderStatus.accepted.value)
+        ):
             deadline = as_utc(order.deadline_at)
             if deadline is None or deadline >= moment:
                 continue
             target = (
                 WorkOrderStatus.expired.value
-                if order.status in (WorkOrderStatus.open.value, WorkOrderStatus.accepted.value)
+                if order.status == WorkOrderStatus.open.value
                 else WorkOrderStatus.cancelled.value
             )
             assert_transition(StateMachine.work_order, order.status, target)
