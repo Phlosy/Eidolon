@@ -69,6 +69,7 @@ class EmployeeBrain(TimestampMixin, Base):
 class RuntimeInstance(TimestampMixin, Base):
     __tablename__ = "runtime_instances"
     __table_args__ = (
+        Index("uq_runtime_instances_resource_key", "resource_key", unique=True),
         # R1.4（docs/person-core-migration.md D4 批次 4）：一人一实例在 person 口径上的
         # 镜像（employee_id unique 的对应物）。必须写进模型，否则 alembic check 报漂移。
         Index(
@@ -90,6 +91,9 @@ class RuntimeInstance(TimestampMixin, Base):
     deployment_mode: Mapped[str] = mapped_column(String(50), default=DeploymentMode.mock.value)
     container_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     container_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    resource_key: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    provisioning_token: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    provisioning_claimed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     image: Mapped[str] = mapped_column(String(300), default="")
     image_tag: Mapped[str] = mapped_column(String(100), default="latest")
     image_digest: Mapped[str | None] = mapped_column(String(300), nullable=True)

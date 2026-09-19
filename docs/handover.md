@@ -663,11 +663,22 @@ C 新 CEO 接任：CEO A 离任 → CEO B 上任 → B 不继承 A 的技能/私
 
 ---
 
+## 5r. M3.1 U3 Idempotent Runtime Ensure（DONE，2026-09-20）
+
+- 空实例行可补开；实例级领取、稳定资源标识和回写校验保证重复/并发开通复用同一环境。
+- 容器创建后进程退出可恢复原资源；健康环境不重建、不覆盖行为文件和版本，不健康恢复有冷却期；重复取消也等待 SDK 收尾。
+- v47 `47d50a3618ef` 增加资源标识及领取字段，旧行保留未知归属；实际开发库未迁移。
+- Employee 工作区与真实挂载、备份统一；Hermes/OpenClaw 均验证非 root 用户可写，OpenClaw 使用私有 HOME/缓存挂载。
+- 默认序及 `20260920`–`20260924` 各 **1431 passed / 8 deselected**；本包相关真实 Docker **7 passed**，迁移与 lint 通过。用户原有容器未改动。
+- [验收记录](m3-u3-runtime-ensure.md)含固定镜像版本、故障复现与实际顺序。真实模型、控制面、能力探测由 U4 接续，M3.1 保持进行中。
+
+---
+
 ## 6. 下一步建议（按优先级）
 
 1. **M3.1 Real Runtime Provisioning**：先读 `docs/m3-agent-production-growth-design.md`
    §6（provisioning 契约）与 `docs/m3-implementation-plan.md` §4；
-   U1 测试隔离、U2 提交后开通意图已完成；按 U3–U5 继续真实幂等执行、探测对账与最小历史快照。
+   U1 测试隔离、U2 提交后意图、U3 幂等真实开通已完成；按 U4–U5 继续探测对账与最小历史快照。
 2. **M2 冻结面改动纪律**：碰 M1/T2/M2 面前先跑对应锚点（M3 计划 §2 第 4 条）。
 3. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
 4. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。

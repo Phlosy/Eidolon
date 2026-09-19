@@ -267,7 +267,10 @@ class FakeDockerService:
         restart_policy="unless-stopped",
         labels=None,
         command=None,
+        user=None,
     ):
+        if self.resolve(name):
+            return None
         self._seq += 1
         cid = f"fake{self._seq:012d}"
         self.containers[cid] = {
@@ -279,6 +282,7 @@ class FakeDockerService:
             "ports": dict(ports or {}),
             "labels": dict(labels or {}),
             "command": command,
+            "user": user,
             "state": "created",
             "health": "none",
             "logs": [],
@@ -321,7 +325,15 @@ class FakeDockerService:
         return {
             "Id": cid,
             "Name": f"/{c['name']}",
-            "Config": {"Image": c["image"]},
+            "Config": {
+                "Image": c["image"],
+                "Labels": {"eidolon.managed": "true", **c["labels"]},
+            },
+            "Mounts": [
+                {"Source": source, "Destination": volume["bind"], "RW": volume["mode"] == "rw"}
+                for source, volume in c["volumes"].items()
+            ],
+            "NetworkSettings": {"Networks": {c["network"]: {}}},
             "State": {"Status": c["state"], "Health": {"Status": c["health"]}},
         }
 
@@ -339,7 +351,7 @@ class FakeDockerService:
     def stream_logs(self, container_id: str, follow: bool = False):
         yield from self.get_logs(container_id)
 
-    def exec_run(self, container_id: str, cmd: list[str]):
+    def exec_run(self, container_id: str, cmd: list[str], *, user: str | None = None):
         return 0, "fake-runtime 1.0.0"
 
     # -- test helpers --

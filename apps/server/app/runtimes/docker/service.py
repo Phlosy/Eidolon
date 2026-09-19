@@ -120,6 +120,7 @@ class DockerService:
         restart_policy: str = "unless-stopped",
         labels: dict[str, str] | None = None,
         command: str | list[str] | None = None,
+        user: str | None = None,
     ) -> str | None:
         """Create (not start) a hardened runtime container. Returns container id.
 
@@ -144,6 +145,8 @@ class DockerService:
             kwargs["ports"] = ports
         if command is not None:
             kwargs["command"] = command
+        if user is not None:
+            kwargs["user"] = user
         if cpu_limit:
             kwargs["nano_cpus"] = int(cpu_limit * 1e9)
         if memory_limit_mb:
@@ -246,9 +249,15 @@ class DockerService:
         except DockerException as exc:
             logger.warning("stream_logs(%s) failed: %s", container_id[:12], exc)
 
-    def exec_run(self, container_id: str, cmd: list[str]) -> tuple[int, str]:
+    def exec_run(
+        self, container_id: str, cmd: list[str], *, user: str | None = None
+    ) -> tuple[int, str]:
         try:
-            exit_code, output = self._get_client().containers.get(container_id).exec_run(cmd)
+            exit_code, output = (
+                self._get_client()
+                .containers.get(container_id)
+                .exec_run(cmd, **({"user": user} if user is not None else {}))
+            )
             text = (
                 output.decode("utf-8", errors="replace")
                 if isinstance(output, bytes)

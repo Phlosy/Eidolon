@@ -104,3 +104,84 @@ def test_v46_classifies_only_recorded_runtime_intents_and_roundtrips(tmp_path):
         assert not (tmp_path / "unused-workspace").exists(), "migration must not execute jobs"
     finally:
         engine.dispose()
+
+
+def test_v47_keeps_legacy_runtime_facts_unknown_and_roundtrips(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'v47.db'}")
+    config = _alembic_config()
+
+    def migrate(revision):
+        with engine.begin() as connection:
+            config.attributes["connection"] = connection
+            command.upgrade(config, revision)
+
+    try:
+        migrate("46c2d8109a7b")
+        with Session(engine) as db:
+            company = Company(name="Runtime legacy", slug="runtime-legacy")
+            db.add(company)
+            db.flush()
+            employee = Employee(
+                company_id=company.id,
+                name="Runtime legacy",
+                slug="runtime-legacy",
+                workspace_path=str(tmp_path / "unused"),
+                memory_namespace="runtime-legacy",
+            )
+            db.add(employee)
+            db.commit()
+            employee_id = employee.id
+        with engine.begin() as connection:
+            runtimes = Table("runtime_instances", MetaData(), autoload_with=connection)
+            connection.execute(
+                runtimes.insert().values(
+                    employee_id=employee_id,
+                    runtime_type="hermes",
+                    deployment_mode="docker",
+                    image="historical",
+                    image_tag="pinned",
+                    status="unhealthy",
+                    health_status="unknown",
+                    workspace_path=str(tmp_path / "unused"),
+                    data_path=str(tmp_path / "unused-data"),
+                    cpu_limit=1.0,
+                    memory_limit_mb=1024,
+                    restart_policy="unless-stopped",
+                    metadata_json={"historical": "unchanged"},
+                    created_at=utcnow(),
+                    updated_at=utcnow(),
+                )
+            )
+
+        def verify():
+            with engine.connect() as connection:
+                runtimes = Table("runtime_instances", MetaData(), autoload_with=connection)
+                row = connection.execute(select(runtimes)).mappings().one()
+                assert (
+                    row["resource_key"],
+                    row["provisioning_token"],
+                    row["provisioning_claimed_at"],
+                ) == (None, None, None)
+                assert row["status"] == "unhealthy" and row["metadata_json"] == {
+                    "historical": "unchanged"
+                }
+                config.attributes["connection"] = connection
+                command.check(config)
+
+        migrate("head")
+        verify()
+        with engine.begin() as connection:
+            config.attributes["connection"] = connection
+            command.downgrade(config, "46c2d8109a7b")
+            assert "resource_key" not in {
+                column["name"] for column in inspect(connection).get_columns("runtime_instances")
+            }
+        migrate("head")
+        verify()
+        script = ScriptDirectory.from_config(config)
+        assert len(script.get_heads()) == 1
+        assert script.get_revision("47d50a3618ef").down_revision == "46c2d8109a7b"
+        assert not (tmp_path / "unused").exists()
+        assert not (tmp_path / "unused-data").exists()
+    finally:
+        engine.dispose()

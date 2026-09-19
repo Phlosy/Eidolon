@@ -134,13 +134,14 @@ async def _apply_step(
     if resource_type == readiness.STEP_WORKSPACE:
         # employee is detached; no database connection remains open during I/O.
         return await asyncio.to_thread(readiness.ensure_workspace, employee)
+    if resource_type == readiness.STEP_RUNTIME:
+        ok, detail, _ = await readiness.ensure_runtime_instance(employee, policy)
+        return ok, detail
     with SessionLocal() as db:
         current = db.get(Employee, int(employee.id))
         if current is None or current.company_id != employee.company_id:
             raise readiness.ReadinessError("employee ownership changed during provisioning")
-        if resource_type == readiness.STEP_RUNTIME:
-            ok, detail, _ = readiness.ensure_runtime_instance(db, current, policy)
-        elif resource_type == readiness.STEP_PROVIDER:
+        if resource_type == readiness.STEP_PROVIDER:
             ok, detail, binding_id = readiness.ensure_provider_binding(db, current, policy)
             instance = runtime_repo.get_instance_for_employee(db, int(current.id))
             if (

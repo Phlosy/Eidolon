@@ -12,6 +12,7 @@ degrade gracefully when the daemon is unavailable.
 """
 
 import asyncio
+import os
 import secrets
 import tarfile
 from datetime import UTC, datetime
@@ -83,8 +84,11 @@ def employee_dirs(employee_id: int, runtime_type: str) -> dict[str, Path]:
     }
 
 
-def container_name(runtime_type: str, employee_slug: str) -> str:
-    return f"eidolon-{runtime_type}-{employee_slug}-{secrets.token_hex(3)}"
+def runtime_user_ids(runtime_type: str) -> tuple[int, int]:
+    # Bind mounts must be writable by both the local server and its runtime.
+    # A root server still launches the agent as the image's non-root identity.
+    uid = os.getuid() or (1000 if runtime_type == RuntimeType.openclaw.value else 10000)
+    return uid, os.getgid() if os.getuid() else uid
 
 
 class DockerRuntimeInstanceManager(RuntimeInstanceManager):
@@ -115,94 +119,69 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
         cpu_limit: float = 2.0,
         memory_limit_mb: int = 4096,
     ) -> RuntimeInstance:
-        existing = runtime_repo.get_instance_for_employee(db, employee.id)
-        if existing is not None:
+        if runtime_repo.get_instance_for_employee(db, employee.id) is not None:
             raise RuntimeManagerError(f"employee {employee.id} already has a runtime instance")
-
-        dirs = employee_dirs(employee.id, runtime_type)
-        for path in dirs.values():
-            path.mkdir(parents=True, exist_ok=True)
-
-        if runtime_type == RuntimeType.mock.value or deployment_mode == DeploymentMode.mock.value:
-            instance = runtime_repo.create_instance(
-                db,
-                employee_id=employee.id,
-                runtime_type=RuntimeType.mock.value,
-                deployment_mode=DeploymentMode.mock.value,
-                image="mock-runtime",
-                image_tag="latest",
-                status=RuntimeInstanceStatus.running.value,
-                health_status=HealthStatus.healthy.value,
-                workspace_path=str(dirs["workspace"]),
-                data_path=str(dirs["base"]),
-                cpu_limit=cpu_limit,
-                memory_limit_mb=memory_limit_mb,
-                started_at=datetime.now(UTC),
-            )
-            db.commit()
-            self._publish(db, "runtime.instance_created", instance)
-            self._publish(db, "runtime.started", instance)
-            return instance
-
-        if deployment_mode != DeploymentMode.docker.value:
-            raise RuntimeManagerError(f"unsupported deployment mode: {deployment_mode}")
-        if not await asyncio.to_thread(self._docker.available):
-            raise RuntimeManagerError("docker daemon is not available")
-
-        instance = runtime_repo.create_instance(
-            db,
-            employee_id=employee.id,
+        if db.new or db.dirty or db.deleted:
+            raise RuntimeManagerError("commit caller changes before provisioning a runtime")
+        ensured = await self.ensure_instance(
+            employee.id,
             runtime_type=runtime_type,
-            deployment_mode=DeploymentMode.docker.value,
-            image=self._image_for(runtime_type).rsplit(":", 1)[0],
-            image_tag=self._image_for(runtime_type).rsplit(":", 1)[-1],
-            status=RuntimeInstanceStatus.created.value,
-            health_status=HealthStatus.unknown.value,
-            workspace_path=str(dirs["workspace"]),
-            data_path=str(dirs["base"]),
+            deployment_mode=deployment_mode,
+            provider_id=provider.id if provider else None,
+            model=model,
             cpu_limit=cpu_limit,
             memory_limit_mb=memory_limit_mb,
         )
-        db.commit()
+        instance = db.get(RuntimeInstance, ensured.id, populate_existing=True)
         self._publish(db, "runtime.instance_created", instance)
-        try:
-            await self._provision_container(db, instance, employee, provider, model)
-        except Exception:
-            # never leak a half-provisioned container
-            if instance.container_id:
-                await asyncio.to_thread(self._docker.remove_container, instance.container_id)
-                instance.container_id = None
-            instance.status = RuntimeInstanceStatus.error.value
-            db.commit()
-            self._publish(db, "runtime.crashed", instance, extra={"stage": "create"})
-            raise
+        self._publish(db, "runtime.started", instance)
+        self._publish(db, "runtime.ready", instance)
         return instance
 
-    async def _provision_container(
+    async def ensure_instance(
         self,
-        db: Session,
-        instance: RuntimeInstance,
-        employee: Employee,
-        provider: Provider | None,
-        model: str | None,
-    ) -> None:
-        # per-employee control-plane credential, kept in the secret store
-        api_token = secrets.token_hex(32)
-        redaction.register_secret(api_token)
-        token_ref = self._secrets.store(db, api_token)
-        spec = self._container_spec(db, instance, employee, provider, model, api_token)
+        employee_id: int,
+        *,
+        runtime_type: str,
+        deployment_mode: str,
+        provider_id: int | None = None,
+        model: str | None = None,
+        cpu_limit: float = 2.0,
+        memory_limit_mb: int = 4096,
+    ) -> RuntimeInstance:
+        from .ensure import ensure_instance
 
-        instance.status = RuntimeInstanceStatus.starting.value
-        db.commit()
-        self._publish(db, "runtime.starting", instance)
+        return await ensure_instance(
+            self,
+            SessionLocal,
+            employee_id,
+            runtime_type=runtime_type,
+            deployment_mode=deployment_mode,
+            provider_id=provider_id,
+            model=model,
+            cpu_limit=cpu_limit,
+            memory_limit_mb=memory_limit_mb,
+        )
 
-        await self._ensure_image(spec["image"])
-        await asyncio.to_thread(self._docker.ensure_network, settings.runtime_network)
-        instance.container_name = container_name(instance.runtime_type, employee.slug)
-        await self._create_and_start(db, instance, employee, spec)
-        instance.metadata_json = {**instance.metadata_json, "api_key_ref": token_ref}
-        db.commit()
-        await self._finish_start(db, instance)
+    def _prepare_directories(self, instance: RuntimeInstance) -> None:
+        dirs = employee_dirs(instance.employee_id, instance.runtime_type)
+        dirs["workspace"] = Path(instance.workspace_path)
+        if instance.runtime_type == RuntimeType.openclaw.value:
+            dirs["auth"] = dirs["runtime"].parent / "openclaw-auth"
+            dirs["cache"] = dirs["runtime"].parent / "openclaw-cache"
+        uid, gid = runtime_user_ids(instance.runtime_type)
+        for name, path in dirs.items():
+            created = not path.exists()
+            path.mkdir(parents=True, exist_ok=True, mode=0o700)
+            owned_workspace = name == "workspace" and path.resolve().is_relative_to(
+                Path(settings.workspace_root).resolve()
+            )
+            if (
+                os.getuid() == 0
+                and (created or owned_workspace)
+                and name in {"workspace", "runtime", "auth", "cache"}
+            ):
+                os.chown(path, uid, gid)
 
     def _container_spec(
         self,
@@ -212,6 +191,8 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
         provider: Provider | None,
         model: str | None,
         api_token: str,
+        *,
+        write_files: bool = True,
     ) -> dict:
         """Env + volumes + image for the employee's container (shared by create
         and recreate — provider keys are re-rendered from the secret store each
@@ -219,6 +200,7 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
         runtime_type = instance.runtime_type
         dirs = employee_dirs(employee.id, runtime_type)
         runtime_dir = dirs["runtime"]
+        uid, gid = runtime_user_ids(runtime_type)
 
         env: dict[str, str] = {}
         credential = self._secrets.retrieve(db, provider.credential_ref) if provider else None
@@ -231,16 +213,19 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
                 raise RuntimeManagerError(f"invalid provider config: {'; '.join(errors)}")
             rendered = configurator.render_provider_config(provider, model, credential)
             env.update(rendered.env)
-            for rel_path, content in rendered.files.items():
+            for rel_path, content in rendered.files.items() if write_files else ():
                 target = runtime_dir / rel_path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(content)
                 if target.name == ".env" or (credential and credential in content):
                     target.chmod(0o600)
+                if os.getuid() == 0:
+                    os.chown(target, uid, gid)
 
         # §8 T3：把行为投影镜像进**已挂载**的 runtime 目录（只在创建/重建时写，避免与
         # Hermes 自身 profile 并发改写，见 docs/research.md:13）。brain 目录本身不挂载。
-        self._mirror_behavior(db, instance, employee, runtime_dir)
+        if write_files:
+            self._mirror_behavior(db, instance, employee, runtime_dir)
 
         image = self._image_for(runtime_type)
         if runtime_type == RuntimeType.hermes.value:
@@ -249,18 +234,22 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
                     "API_SERVER_ENABLED": "true",
                     "API_SERVER_HOST": "0.0.0.0",
                     "API_SERVER_KEY": api_token,
-                    "PUID": "10000",
-                    "PGID": "10000",
+                    "PUID": str(uid),
+                    "PGID": str(gid),
+                    "TERMINAL_CWD": f"{HERMES_MOUNT}/workspace",
                 }
             )
             volumes = {str(runtime_dir.resolve()): {"bind": HERMES_MOUNT, "mode": "rw"}}
         elif runtime_type == RuntimeType.openclaw.value:
             auth_dir = runtime_dir.parent / "openclaw-auth"
-            auth_dir.mkdir(parents=True, exist_ok=True)
-            # container runs as uid 1000; keep bind mounts writable (research §9)
-            for path in (runtime_dir, auth_dir):
-                path.chmod(0o777)
+            cache_dir = runtime_dir.parent / "openclaw-cache"
+            if write_files:
+                auth_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+                cache_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
             env["OPENCLAW_GATEWAY_TOKEN"] = api_token
+            # A local-server UID need not have an /etc/passwd entry in the
+            # image. Keep home resolution on the explicitly mounted state.
+            env["HOME"] = "/home/node"
             # the gateway refuses to boot without a config carrying
             # gateway.mode=local + auth — render it even without a provider
             configurator = provider_registry.configurator_for(runtime_type)
@@ -271,24 +260,41 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
                 gateway_token=api_token,
             )
             env.update(rendered.env)
-            for rel_path, content in rendered.files.items():
+            for rel_path, content in rendered.files.items() if write_files else ():
                 target = runtime_dir / rel_path
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_text(content)
                 if target.name == ".env" or api_token in content:
                     target.chmod(0o600)
+                if os.getuid() == 0:
+                    os.chown(target, uid, gid)
             volumes = {
                 str(runtime_dir.resolve()): {"bind": OPENCLAW_CONFIG_MOUNT, "mode": "rw"},
                 str(auth_dir.resolve()): {"bind": OPENCLAW_AUTH_MOUNT, "mode": "rw"},
+                str(cache_dir.resolve()): {
+                    "bind": f"/home/node/.cache/openclaw-{uid}",
+                    "mode": "rw",
+                },
             }
         else:
             raise RuntimeManagerError(f"unsupported runtime type: {runtime_type}")
+        workspace_mount = (
+            f"{HERMES_MOUNT}/workspace"
+            if runtime_type == RuntimeType.hermes.value
+            else f"{OPENCLAW_CONFIG_MOUNT}/workspace"
+        )
+        volumes[str(Path(instance.workspace_path).resolve())] = {
+            "bind": workspace_mount,
+            "mode": "rw",
+        }
         return {
             "env": env,
             "volumes": volumes,
             "image": image,
             "runtime_dir": runtime_dir,
             "command": self._commands.get(runtime_type),
+            "user": f"{uid}:{gid}" if runtime_type == RuntimeType.openclaw.value else None,
+            "workspace_mount": workspace_mount,
         }
 
     def _mirror_behavior(
@@ -340,8 +346,12 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
             labels={
                 "eidolon.employee_id": str(employee.id),
                 "eidolon.runtime_type": instance.runtime_type,
+                **(
+                    {"eidolon.resource_key": instance.resource_key} if instance.resource_key else {}
+                ),
             },
             command=spec.get("command"),
+            user=spec.get("user"),
         )
         if container_id is None:
             raise RuntimeManagerError("docker create_container failed")
@@ -596,6 +606,9 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
         archive = backup_dir / f"{instance.runtime_type}-{stamp}.tar.gz"
         with tarfile.open(archive, "w:gz") as tar:
             tar.add(data_path, arcname=data_path.name)
+            workspace = Path(instance.workspace_path)
+            if workspace.is_dir() and not workspace.resolve().is_relative_to(data_path.resolve()):
+                tar.add(workspace, arcname=f"{data_path.name}/workspace")
         return archive
 
     # ---- helpers ----

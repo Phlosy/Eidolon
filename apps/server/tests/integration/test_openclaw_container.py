@@ -6,6 +6,7 @@ clear reason when the image cannot be pulled. Without
 provider config (boot-level verification only, no model calls).
 """
 
+import json
 import os
 
 import pytest
@@ -20,11 +21,23 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.fixture()
-def manager(docker_service):
+def manager(docker_service, monkeypatch):
     image = settings.openclaw_image
     if docker_service.inspect_image(image) is None and docker_service.pull_image(image) is None:
         pytest.skip(f"openclaw image {image} cannot be pulled")
-    return DockerRuntimeInstanceManager(docker=docker_service)
+    monkeypatch.setattr(settings, "openclaw_image", docker_service.inspect_image(image)["Id"])
+    instance_manager = DockerRuntimeInstanceManager(docker=docker_service)
+    wait_healthy = instance_manager._wait_healthy
+
+    async def diagnose_start(db, instance):
+        try:
+            await wait_healthy(db, instance)
+        except Exception:
+            print("\n".join(docker_service.get_logs(instance.container_id, tail=80)))
+            raise
+
+    monkeypatch.setattr(instance_manager, "_wait_healthy", diagnose_start)
+    return instance_manager
 
 
 async def test_openclaw_container_boots(idb, make_employee, manager, cleanup_containers):
@@ -57,6 +70,18 @@ async def test_openclaw_container_boots(idb, make_employee, manager, cleanup_con
         assert instance.status == RuntimeInstanceStatus.running.value
         assert instance.container_name.startswith(f"eidolon-openclaw-{employee.slug}-")
         assert instance.internal_port == 18789
+        print(
+            json.dumps(
+                {
+                    "runtime": "openclaw",
+                    "image_id": instance.image_digest,
+                    "version": instance.runtime_version,
+                    "container_id": instance.container_id,
+                    "resource_key": instance.resource_key,
+                    "workspace_writable_as_runtime_user": True,
+                }
+            )
+        )
         # openclaw.json rendered into the mounted config dir
         from pathlib import Path
 

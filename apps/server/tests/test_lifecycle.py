@@ -228,13 +228,31 @@ def test_onboard_real_runtime_requires_provider(client):
     assert "provider" in response.json()["detail"]
 
 
-async def test_onboard_creates_runtime_matching_chosen_type(client, db, fake_docker, gitea_down):
+async def test_onboard_creates_runtime_matching_chosen_type(
+    client, db, fake_docker, gitea_down, monkeypatch
+):
     """入职时选的运行时必须真的开出来（回归：ada/tom/qa 曾是 hermes 偏好 + mock 实例）。"""
     company = db.scalar(select(Company))
     assert company is not None
     department = org_repo.get_department_by_slug(db, company.id, "engineering")
     assert department is not None
     manager = DockerRuntimeInstanceManager(docker=fake_docker)
+    create = manager.create_instance
+
+    async def assert_committed(caller, employee, **configuration):
+        from app.core.database import SessionLocal
+
+        assert not (caller.new or caller.dirty or caller.deleted)
+        with SessionLocal() as other:
+            committed = other.get(Employee, employee.id)
+            assert committed is not None and committed.lifecycle_status == "onboarding"
+            assert provider_repo.get_primary_binding(other, employee.id) is not None
+            # An independent write succeeds before any external Docker work.
+            committed.title = "Committed before runtime creation"
+            other.commit()
+        return await create(caller, employee, **configuration)
+
+    monkeypatch.setattr(manager, "create_instance", assert_committed)
     employee, _job = await lifecycle_service.onboard(
         db,
         OnboardRequest(

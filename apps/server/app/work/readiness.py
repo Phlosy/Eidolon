@@ -30,7 +30,6 @@ from pathlib import Path
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.models.enums import (
     DeploymentMode,
     HealthStatus,
@@ -499,42 +498,20 @@ def ensure_workspace(employee: Employee) -> tuple[bool, str]:
     return True, str(target)
 
 
-def ensure_runtime_instance(
-    db: Session, employee: Employee, policy: RuntimePolicy, *, model_binding_id: int | None = None
-) -> tuple[bool, str, object | None]:
-    """确保运行时实例存在（幂等）。失败 ⇒ 返回原因（不抛，交调用方记 `partial`）。"""
-    existing = runtime_repo.get_instance_for_employee(db, int(employee.id))
-    if existing is not None:
-        if str(existing.runtime_type) != policy.runtime_type:
-            existing.runtime_type = policy.runtime_type
-            existing.deployment_mode = policy.deployment_mode
-        if model_binding_id is not None and existing.model_binding_id is None:
-            existing.model_binding_id = int(model_binding_id)
-        if str(existing.workspace_path or "") != str(employee.workspace_path or ""):
-            existing.workspace_path = str(employee.workspace_path or "")
-        db.flush()
-        return True, "runtime instance reused", existing
-    if not str(employee.workspace_path or "").strip():
-        return False, "employee has no workspace_path", None
-    if settings.runtime_mode != "mock" and policy.is_mock is False:
-        # 真实运行时：只登记实例（不在这里拉起容器）—— 拉起是运行时管理器的职责，
-        # 本模块只保证"环境事实齐备"，`ready` 由实例状态决定。
-        logger.info(
-            "registering runtime instance for real runtime",
-            extra={"employee_id": employee.id, "runtime_type": policy.runtime_type},
-        )
-    instance = runtime_repo.create_instance(
-        db,
-        employee_id=int(employee.id),
+async def ensure_runtime_instance(
+    employee: Employee, policy: RuntimePolicy
+) -> tuple[bool, str, object]:
+    """Converge the committed employee's real environment through its owner."""
+    from app.runtimes.manager.docker_manager import get_manager
+
+    instance = await get_manager().ensure_instance(
+        int(employee.id),
         runtime_type=policy.runtime_type,
         deployment_mode=policy.deployment_mode,
-        status=RuntimeInstanceStatus.created.value,
-        health_status=HealthStatus.unknown.value,
-        workspace_path=str(employee.workspace_path or ""),
-        data_path=str(employee.workspace_path or ""),
-        model_binding_id=model_binding_id,
+        provider_id=policy.provider_id,
+        model=policy.model or None,
     )
-    return True, "runtime instance created", instance
+    return True, "runtime environment ensured", instance
 
 
 def ensure_provider_binding(

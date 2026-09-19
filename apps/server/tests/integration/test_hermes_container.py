@@ -6,6 +6,8 @@ image is unavailable; a provider key (EIDOLON_TEST_PROVIDER_KEY) is only needed
 for actual model runs, not for boot/health verification.
 """
 
+import json
+
 import pytest
 
 from app.core.config import settings
@@ -16,10 +18,11 @@ pytestmark = pytest.mark.integration
 
 
 @pytest.fixture()
-def manager(docker_service):
+def manager(docker_service, monkeypatch):
     image = settings.hermes_image
     if docker_service.inspect_image(image) is None and docker_service.pull_image(image) is None:
         pytest.skip(f"hermes image {image} cannot be pulled")
+    monkeypatch.setattr(settings, "hermes_image", docker_service.inspect_image(image)["Id"])
     return DockerRuntimeInstanceManager(docker=docker_service)
 
 
@@ -37,6 +40,18 @@ async def test_hermes_container_boots_and_reports_version(
         assert instance.internal_port == 8642
         # version is detected via exec `hermes version`
         assert instance.runtime_version, "hermes version not detected"
+        print(
+            json.dumps(
+                {
+                    "runtime": "hermes",
+                    "image_id": instance.image_digest,
+                    "version": instance.runtime_version,
+                    "container_id": instance.container_id,
+                    "resource_key": instance.resource_key,
+                    "workspace_writable_as_runtime_user": True,
+                }
+            )
+        )
         # config files were NOT rendered (no provider), but the mount root exists
         from pathlib import Path
 

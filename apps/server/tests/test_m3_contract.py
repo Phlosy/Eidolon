@@ -757,7 +757,9 @@ def test_orchestration_layer_calls_no_destructive_action():
     assert not offenders, "编排层出现了删除类调用（P7）：\n" + "\n".join(offenders)
 
 
-def test_orchestrate_twice_does_not_duplicate_provisioning_facts(db, default_company_id):
+async def test_orchestrate_twice_does_not_duplicate_provisioning_facts(
+    db, default_company_id, fake_docker, monkeypatch
+):
     """P6：ensure × N == ensure × 1（不重复创建实例 / 绑定）。"""
     employee = _hire(db, default_company_id, "m3-idempotent")
     policy = readiness.RuntimePolicy(
@@ -769,17 +771,23 @@ def test_orchestrate_twice_does_not_duplicate_provisioning_facts(db, default_com
         source=C.RUNTIME_POLICY_SOURCES["platform_default"],
     )
     employee.runtime_type = RuntimeType.hermes.value
-    db.flush()
+    db.commit()
+    from app.runtimes.manager import docker_manager
+
+    monkeypatch.setattr(
+        docker_manager, "_manager", docker_manager.DockerRuntimeInstanceManager(docker=fake_docker)
+    )
     before = db.scalars(select(RuntimeInstance)).all()
-    first = readiness.ensure_runtime_instance(db, employee, policy)
-    second = readiness.ensure_runtime_instance(db, employee, policy)
+    first = await readiness.ensure_runtime_instance(employee, policy)
+    second = await readiness.ensure_runtime_instance(employee, policy)
     after = db.scalars(select(RuntimeInstance)).all()
     assert first[0] is True and second[0] is True
     assert len(after) == len(before) + 1, "第二次 ensure 不应新增实例（P6）"
     instance = runtime_repo.get_instance_for_employee(db, int(employee.id))
     assert instance is not None
     assert str(instance.runtime_type) == RuntimeType.hermes.value
-    assert second[2] == first[2], "复用同一个实例，而不是重建"
+    assert second[2].id == first[2].id, "复用同一个实例，而不是重建"
+    assert len(fake_docker.containers) == 1
     # mock 策略不建供应商绑定（事实，不是放水）
     mock_policy = readiness.RuntimePolicy(
         runtime_type=RuntimeType.mock.value,

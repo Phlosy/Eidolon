@@ -7,6 +7,7 @@ the default ``make test`` excludes them via addopts).
 import uuid
 
 import pytest
+from docker.errors import NotFound
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -25,9 +26,10 @@ def docker_service():
 
 
 @pytest.fixture()
-def idb(tmp_path, monkeypatch):
+def idb(tmp_path, monkeypatch, cleanup_containers):
     """Isolated sqlite DB + data root for one integration test."""
     monkeypatch.setattr(settings, "data_root", str(tmp_path / "data"))
+    monkeypatch.setattr(settings, "workspace_root", str(tmp_path / "workspaces"))
     engine = create_engine(
         f"sqlite:///{tmp_path}/integration.db", connect_args={"check_same_thread": False}
     )
@@ -64,7 +66,7 @@ def make_employee(idb):
                 status="idle",
                 runtime_type="mock",
                 runtime_config={},
-                workspace_path=f"/tmp/{slug}",
+                workspace_path=f"{settings.workspace_root}/{slug}",
                 memory_namespace=f"emp_{slug}",
             )
             db.add(employee)
@@ -76,9 +78,30 @@ def make_employee(idb):
 
 
 @pytest.fixture()
-def cleanup_containers(docker_service):
+def runtime_network(docker_service, monkeypatch):
+    name = f"eidolon-it-{uuid.uuid4().hex[:12]}"
+    monkeypatch.setattr(settings, "runtime_network", name)
+    yield name
+    try:
+        docker_service._get_client().networks.get(name).remove()
+    except NotFound:
+        pass
+
+
+@pytest.fixture()
+def cleanup_containers(docker_service, runtime_network, monkeypatch):
     """Collect container ids and force-remove them after the test."""
     created: list[str] = []
+    create = docker_service.create_container
+
+    def tracked_create(**kwargs):
+        container_id = create(**kwargs)
+        if container_id is not None:
+            created.append(container_id)
+        return container_id
+
+    # Track before a later manager failure can hide the returned container id.
+    monkeypatch.setattr(docker_service, "create_container", tracked_create)
     yield created
-    for container_id in created:
+    for container_id in dict.fromkeys(created):
         docker_service.remove_container(container_id)

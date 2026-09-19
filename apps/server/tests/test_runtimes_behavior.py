@@ -148,7 +148,12 @@ def test_container_spec_mirrors_behavior_and_records_revision(db, employees_by_s
     alice = employees_by_slug["alice"]
     employee = db.get(Employee, alice["id"])
     _brain_with(db, alice["id"], 0.85)
-    instance = RuntimeInstanceRow(employee_id=alice["id"], runtime_type="hermes", image="x")
+    instance = RuntimeInstanceRow(
+        employee_id=alice["id"],
+        runtime_type="hermes",
+        image="x",
+        workspace_path=employee.workspace_path,
+    )
 
     spec = _MANAGER._container_spec(db, instance, employee, None, None, "token-1")
 

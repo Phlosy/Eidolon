@@ -693,7 +693,7 @@ UI 呈现结构化 `activity / decision / result`（动作、工具、产物、�
 | **P3** | Runtime configuration is not Person competency. | `FORBIDDEN_RUNTIME_POLICY_KEYS` 含能力类键 + AST |
 | **P4** | Runtime readiness is derived, not manually asserted. | 无 `employee.ready` 列/字段 + readiness 派生断言 |
 | **P5** | A RuntimeInstance DB row alone does not imply READY_TO_WORK. | 就绪项断言：行存在但 unhealthy ⇒ NOT_READY |
-| **P6** | Provisioning is idempotent. | 二次 `orchestrate` 不新增实例/工作区事实 |
+| **P6** | Provisioning is idempotent. | U3：顺序/并发 ensure 只保留同一环境，真实容器创建后进程退出可找回原资源；[证据](m3-u3-runtime-ensure.md) |
 | **P7** | Runtime reconciliation must not silently delete unknown external resources. | 契约动作表只含 detect/mark/repair；AST 无 rm/remove/delete 调用 |
 | **P8** | System never reassigns work because an Agent is not ready. | AST：无 readiness ⇒ assign 的自动路径；派发只发事件 |
 | **P9** | Capability Gap does not trigger automatic recruitment. | AST：work/* 不 import 招募服务；无阈值自动动作函数 |

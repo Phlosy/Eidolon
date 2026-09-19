@@ -46,8 +46,13 @@ def _restore_org_state(org_snapshot):
 
 
 @pytest.fixture(autouse=True)
-def _no_background_dispatch(monkeypatch):
+def _no_background_dispatch(monkeypatch, fake_docker):
     monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", False)
+    from app.runtimes.manager import docker_manager
+
+    monkeypatch.setattr(
+        docker_manager, "_manager", docker_manager.DockerRuntimeInstanceManager(docker=fake_docker)
+    )
 
 
 def _provision(client, db, employee):
@@ -64,15 +69,18 @@ def _employees(db, company_id: int) -> dict[str, Employee]:
     return {row.slug: row for row in org_repo.list_employees(db, company_id)}
 
 
-def _grant_real_runtime(db, company_id: int, runtime_type: str = RuntimeType.claude_code.value):
+def _grant_real_runtime(db, company_id: int, runtime_type: str = RuntimeType.hermes.value):
     """把公司策略配成"真实运行时 + 有供应商"（测试用的最小可信环境）。"""
+    from app.providers.secrets.store import get_secret_store
     from app.repositories import providers as provider_repo
 
     provider = provider_repo.create_provider(
         db,
         company_id=int(company_id),
         name="M2.8 Test Provider",
-        provider_type="openai_compatible",
+        provider_type="custom",
+        base_url="https://provider.invalid/v1",
+        credential_ref=get_secret_store().store(db, "readiness-test-key"),
         enabled=True,
     )
     db.commit()
@@ -196,7 +204,7 @@ def test_not_ready_agent_is_never_dispatched(client, db, default_company_id):
         "ready-real",
         workspace=f"{settings.workspace_root}/definitely-missing-ws",
     )
-    employee.runtime_type = RuntimeType.claude_code.value
+    employee.runtime_type = RuntimeType.hermes.value
     db.commit()
 
     project = project_repo.create_project(
@@ -317,19 +325,19 @@ def test_provisioning_failure_is_partial_and_explicit(client, db, default_compan
         "ready-noprovider",
         workspace=f"{settings.workspace_root}/no-provider",
     )
-    employee.runtime_type = RuntimeType.claude_code.value
+    employee.runtime_type = RuntimeType.hermes.value
     db.commit()
 
     # 策略里指向一个**不存在**的供应商（显式写全，不依赖别的用例留下的值）
     readiness.set_company_runtime_defaults(
         db,
         default_company_id,
-        {"runtime_type": "claude_code", "provider_id": 999_999, "model": "ghost-model"},
+        {"runtime_type": "hermes", "provider_id": 999_999, "model": "ghost-model"},
     )
     result = _provision(client, db, employee)
     assert result.ok is False
     assert result.job_status == "partial"
-    assert result.failed_steps == ("provider",)
+    assert result.failed_steps == ("runtime", "provider")
     db.expire_all()
     report = readiness.readiness_report(db, org_repo.get_employee(db, int(employee.id)))
     assert report.ready_to_work is False
@@ -342,7 +350,9 @@ def test_provisioning_failure_is_partial_and_explicit(client, db, default_compan
         db.scalars(select(ProvisioningStep).where(ProvisioningStep.job_id == int(result.job_id)))
     )
     failed = [step for step in steps if step.status == "failed"]
-    assert failed and failed[0].error and "missing or disabled" in str(failed[0].error)
+    assert all(step.error for step in failed)
+    provider_failure = next(step for step in failed if step.resource_type == "provider")
+    assert "missing or disabled" in provider_failure.error
 
     # 换成一个**真的存在**的供应商 ⇒ 再跑一次就齐了（同一个员工，同一套事实）
     _grant_real_runtime(db, default_company_id)

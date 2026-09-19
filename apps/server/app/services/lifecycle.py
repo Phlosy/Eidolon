@@ -407,6 +407,9 @@ async def onboard(
         if payload.runtime_type == RuntimeType.mock
         else DeploymentMode.docker.value
     )
+    # The lifecycle service owns this transaction. Ensure runs on independent
+    # connections and must only observe a committed employee and model binding.
+    db.commit()
     try:
         instance = await manager.create_instance(
             db,
