@@ -271,8 +271,8 @@ def _project_timeline(
     )
 
 
-def get_project_portfolio(db: Session) -> list[ProjectTimeline]:
-    projects = project_repo.list_projects(db)
+def get_project_portfolio(db: Session, *, company_id: int | None = None) -> list[ProjectTimeline]:
+    projects = project_repo.list_projects(db, company_id=company_id)
     project_ids = [project.id for project in projects]
     milestones = project_repo.list_milestones_for_projects(db, project_ids)
     tasks = project_repo.list_tasks_for_projects(db, project_ids)

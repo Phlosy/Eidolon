@@ -85,7 +85,7 @@ def _company_employees(db: Session, ctx: tools.ToolCallContext) -> list[Employee
 
 
 def _list_company_projects(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
-    portfolio = project_service.get_project_portfolio(db)
+    portfolio = project_service.get_project_portfolio(db, company_id=ctx.company_id)
     items = [
         {
             "project_id": int(entry.id),
