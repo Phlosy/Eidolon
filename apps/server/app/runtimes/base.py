@@ -49,7 +49,9 @@ class RuntimeInstance:
 
 @dataclass
 class TaskContext:
-    task_id: int
+    # Management/review handles carry no worker task. Their host owns the
+    # explicit Project/ReviewRequest binding through the WorkSession.
+    task_id: int | None
     project_id: int
     title: str
     kind: str
@@ -70,7 +72,7 @@ class TaskContext:
 class RuntimeSession:
     id: str
     instance: RuntimeInstance
-    task_id: int
+    task_id: int | None
     status: str = "running"
     # Adapter-private state (queue / background task / produced artifacts).
     queue: asyncio.Queue = field(default_factory=asyncio.Queue)

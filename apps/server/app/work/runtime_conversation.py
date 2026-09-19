@@ -379,6 +379,18 @@ async def run_conversation(
                 "remaining_rounds": limits.max_rounds - index,
                 "remaining_actions": limits.max_actions - result["submitted_actions"],
             }
+            if ctx.purpose == "review":
+                message["instructions"] += (
+                    " This is a review session, not worker execution. Its only write is "
+                    "submit_review_verdict for the scope's review_request_id. After its saved "
+                    "verdict, read facts, replay prior receipts, or finish to acknowledge them; "
+                    "no fresh write is allowed."
+                )
+            elif ctx.purpose == "management":
+                message["instructions"] += (
+                    " This is a management session without a worker task. Writes must target "
+                    "the scope's project and its existing work."
+                )
             if feedback is None:
                 message.update(tools=executor.catalog(), reply_contract=bridge.reply_contract())
             else:

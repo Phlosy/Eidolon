@@ -1,0 +1,64 @@
+{
+  "unit": "U8",
+  "slice": "Non-worker runtime actor, target scope and own-verdict receipt acknowledgement",
+  "slice_status": "locally_verified",
+  "unit_status": "in_progress",
+  "recorded_at": "2026-09-19T22:04:45.004696+00:00",
+  "base_commit": "7e3f865fdc7cbadf422c7e650fa3b3a7df4c7386",
+  "raw_directory": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id",
+  "evidence_strategy": {
+    "behavior_changed": true,
+    "worker_red_before_production": {
+      "failed": 7,
+      "reason": "Old worker-only attribution gates"
+    },
+    "envelope_red_before_bridge_edit": {
+      "failed": 13,
+      "passed": 2,
+      "reason": "Same-company foreign envelope scopes misattributed decisions despite correct action targets"
+    },
+    "new_tests": 98,
+    "worker_focused_passed": 98,
+    "shared_fixtures_modified": false,
+    "random_order_repeated": false
+  },
+  "authoritative_verification": {
+    "focused_backend": {
+      "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest -q tests/test_m3_management_runtime.py tests/test_m3_management_sessions.py tests/test_m3_runtime_identity.py tests/test_m3_runtime_scope.py tests/test_m3_runtime_authority.py tests/test_m3_runtime_bridge.py tests/test_m3_runtime_conversation.py tests/test_m3_runtime_turns.py tests/test_m3_readiness.py tests/test_m2_tools.py tests/test_m2_decisions.py tests/test_m2_review.py tests/test_m2_dag_runtime.py tests/test_m2_handoff.py tests/test_m2_golden_path.py tests/test_review_task_lifecycle.py",
+      "cwd": "apps/server",
+      "passed": 610,
+      "warnings": 1,
+      "seconds": 40.86,
+      "exit_code": 0
+    },
+    "lint": {
+      "command": "make lint",
+      "formatted_python_files": 474,
+      "exit_code": 0
+    }
+  },
+  "limits": [
+    "Scripted external I/O does not constitute real-runtime acceptance.",
+    "Event source consumption, runner and real manager/reviewer acceptance remain pending.",
+    "No schema migration, shared fixture or product UI change in this slice.",
+    "Full U8 simplification, review and stage-close gates remain pending.",
+    "No developer database, services or existing containers changed; no paid calls, push or PR."
+  ],
+  "source_sha256": {
+    "apps/server/app/runtimes/base.py": "2a29c769a4261ea119e1cd33139be41703f690dd45c4f07189210a601971f60e",
+    "apps/server/app/work/runtime_bridge.py": "d1d289b09b122b0029ad0a74b3c3ea84e16cada7abfc603f4d725b07abc16ce2",
+    "apps/server/app/work/runtime_conversation.py": "9f18fe8d76011fa2f25de5fa627bc4d7784c0b4159782d6ab2c9688d23d1a06e",
+    "apps/server/app/work/runtime_operations.py": "7ee5f869b1deab067050587119f0caeda025a055e3b5973849c3ecce952db891",
+    "apps/server/app/work/tool_executor.py": "9e72ab4db7b8bffeccf35a01d59799258e1ffb48013923a2b519a4f14a92405c",
+    "apps/server/app/work/tools.py": "0c6d474869d790be295687da0c5222861729a4387e03ee27845a44ca2be9eb04",
+    "apps/server/tests/test_m3_management_runtime.py": "130d07ec1b8c4fbaaf4d5746c9d3adb977fd2b3137cc93c6c7305623c90a21a3"
+  },
+  "log_sha256": {
+    "scope-red.log": "8f93725cdb7c6e60a2be0a6faccb5f4344a08d931b50122f0582b4767063c3da",
+    "scope-envelope-red.log": "708fa72f7cdb521cdc5b43a854b7dc42fd5fffa37e5f1477212b155968d16053",
+    "scope-envelope-final.log": "98d361beaafdb14babfa357657a5902ca7917bf3ed57c342be602379da41ac1f",
+    "scope-envelope-checks.log": "0be7adce665690956090205e08186f7efd9939d7fe606e4a0d117c570ab71599",
+    "scope-parent-integrated.log": "65c6d98a1dacacfda54ef06d06cbc33f9c5432135cda2c452f412ba7e2ab0679",
+    "scope-parent-lint.log": "10cb2b9c6693a77b89580d652fc8b2b04e6464be67f8db35758d13dd1dbf7639"
+  }
+}

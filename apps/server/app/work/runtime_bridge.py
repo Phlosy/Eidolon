@@ -17,6 +17,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.database import SessionLocal
 from app.core.transaction_effects import ensure_sqlite_transaction
 from app.models.decision import DecisionRecord, ToolAudit
+from app.models.project import Task
+from app.models.review import ReviewRequest
 from app.models.runtime_operation import RuntimeOperation
 from app.repositories import knowledge as knowledge_repo
 from app.repositories import position as position_repo
@@ -289,6 +291,32 @@ def _validate_references(db, ctx, decision):
         position = position_repo.get_definition(db, identifier)
         if position is None or position.company_id != ctx.company_id:
             raise tools.ToolError("scope not found in this company")
+    if ctx.purpose in {"management", "review"}:
+        # The envelope's attribution must describe this session's actual target,
+        # even if its actions happen to target the correct project. Context fact
+        # references below remain company-visible; they do not change that target.
+        in_scope = kind == "project" and identifier == ctx.project_id
+        if kind == "task" and ctx.purpose == "management":
+            in_scope = (
+                db.scalar(
+                    select(Task.id).where(Task.id == identifier, Task.project_id == ctx.project_id)
+                )
+                == identifier
+            )
+        elif kind == "task" and ctx.purpose == "review":
+            in_scope = (
+                db.scalar(
+                    select(ReviewRequest.task_id).where(
+                        ReviewRequest.id == ctx.review_request_id,
+                        ReviewRequest.project_id == ctx.project_id,
+                        ReviewRequest.company_id == ctx.company_id,
+                        ReviewRequest.reviewer_employee_id == ctx.employee_id,
+                    )
+                )
+                == identifier
+            )
+        if not in_scope:
+            raise tools.ToolError("decision scope is outside this work session's target")
     parent_id = decision["parent_decision_id"]
     if parent_id is not None:
         parent = db.get(DecisionRecord, parent_id)

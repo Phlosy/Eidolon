@@ -312,6 +312,16 @@ DECISION_NEEDED 和 `task.review_named` 消费已有持久 Event/ReviewRequest�
 的管理者或评审人。消费保存来源引用、去重与等待原因，不自动选团队、改派或改变领域事件词表。
 接收人缺失、失效或环境未就绪时保留等待事实；每次执行仍重查身份、当前目标和权限。
 
+新管理会话的现有项目写工具限定在其绑定项目内，评审会话的写动作限定为向所绑定请求
+提交结论。非 Worker 的 DecisionEnvelope 作用域也必须指向绑定项目或其适用任务，防止
+业务效果与 DecisionRecord 记到不同项目；公司内其他可见事实仍可作为读取上下文。
+既有 Worker 和内部入口继续沿用原 Authority / Autonomy 边界。本人在该会话
+提交的结论生效后，可凭关联的持久回执完成读取、重传和结束确认，但不能继续新增写动作。
+其他调用者已决定、请求已被替代、人员失效或项目取消时，不得借回执阶段恢复旧权限。
+
+Worker 与非 Worker 的会话领取在 SQLite 上共用短写事务：先取得写锁，再读取当前人员占用、
+目标与就绪事实，并在同一事务创建会话。锁不跨 Runtime 调用；既有 DAG 判定和 Worker 收尾不变。
+
 实施前 M2 契约、Project/RoleContext/Decision/DAG/Handoff/Review/WorkOrder 黄金路径及
 Worker 收尾、M3 契约与出处迁移锚点 **356 passed**。`test_review_task_lifecycle`、
 `test_m2_dag_runtime`、`test_m2_review`、`test_m3_provenance` 和相关迁移测试保留原业务断言；

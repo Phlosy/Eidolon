@@ -37,7 +37,7 @@ class BridgeError(ValueError):
 
 def receipt_result(db: Session, audit: ToolAudit) -> executor.ToolResult:
     """Rehydrate the whole original result from its single durable fact source."""
-    session = db.get(WorkSession, audit.work_session_id)
+    session = db.get(WorkSession, audit.work_session_id, populate_existing=True)
     if session is None:
         raise BridgeError("receipt_identity_unavailable", operation_id=audit.runtime_operation_id)
     return executor.ToolResult(
@@ -60,6 +60,8 @@ def receipt_result(db: Session, audit: ToolAudit) -> executor.ToolResult:
             task_id=audit.task_id,
             project_id=audit.project_id,
             runtime_type=session.runtime_type,
+            purpose=session.purpose,
+            review_request_id=session.review_request_id,
         ).as_dict(),
     )
 

@@ -160,9 +160,11 @@ class ToolCallContext:
     task_id: int | None = None
     project_id: int | None = None
     runtime_type: str = ""
+    purpose: str = "worker"
+    review_request_id: int | None = None
 
     def as_dict(self) -> dict:
-        return {
+        result = {
             "employee_id": self.employee_id,
             "person_id": self.person_id,
             "company_id": self.company_id,
@@ -172,6 +174,11 @@ class ToolCallContext:
             "project_id": self.project_id,
             "runtime_type": self.runtime_type,
         }
+        # Preserve the established worker/internal wire shape. Non-worker scope
+        # comes from immutable WorkSession targets, never from model arguments.
+        if self.purpose != "worker":
+            result.update(purpose=self.purpose, review_request_id=self.review_request_id)
+        return result
 
 
 # ---------------------------------------------------------------------------

@@ -29,22 +29,28 @@ import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.transaction_effects import ensure_sqlite_transaction
-from app.models.base import utcnow
-from app.models.decision import ToolAudit
+from app.models.base import as_utc, utcnow
+from app.models.decision import DecisionRecord, ToolAudit
+from app.models.drive import DriveNode
 from app.models.enums import (
     AutonomyLevel,
     DecisionSemantics,
     LifecycleStatus,
+    ProjectStatus,
+    ReviewVerdict,
     TaskStatus,
     ToolTransport,
 )
 from app.models.organization import Company, Employee
 from app.models.person import Person
 from app.models.project import Project, Task, WorkSession
+from app.models.review import ReviewRequest
+from app.models.runtime_operation import RuntimeOperation
 from app.work import authority as authority_service
 from app.work import contracts as C
 from app.work import tool_reads, tool_writes
@@ -129,8 +135,8 @@ def context_for_work_session(db: Session, work_session_id: int) -> tool_machiner
     """从 **WorkSession** 推导 actor（Agent Runtime 的唯一注入路径）。
 
     身份来自创建时记录的归属，当前任职和执行范围只用于重新校验，不能改写身份。
-    每次读取都刷新 ORM 缓存；调用方先取得锁并拥有事务。U7 只支持仍在执行的
-    worker task，管理/评审用途由 U8 显式扩展。缺少主职不阻断事实读取，写工具
+    每次读取都刷新 ORM 缓存；调用方先取得锁并拥有事务。worker 必须仍执行原任务；
+    management / review 绑定原项目 / 评审请求。缺少主职不阻断事实读取，写工具
     仍由既有 Authority / Autonomy 门禁逐次校验。
     """
     session = db.get(WorkSession, int(work_session_id), populate_existing=True)
@@ -143,8 +149,28 @@ def context_for_work_session(db: Session, work_session_id: int) -> tool_machiner
         )
 
     snapshot = session.provenance_snapshot_json
+    purpose = session.purpose
+    if (
+        not isinstance(snapshot, dict)
+        or snapshot.get("version") != 1
+        or purpose not in {"worker", "management", "review"}
+    ):
+        raise ToolExecutionError(
+            "work_session_identity_unknown", "work session has unknown historical attribution"
+        )
+    # v1 worker history predates explicit purposes; no other missing purpose is
+    # reconstructed from today's targets.
+    if snapshot.get("purpose", "worker") != purpose:
+        raise ToolExecutionError(
+            "work_session_identity_mismatch", "work session purpose does not match its snapshot"
+        )
+    keys = ["employee", "person", "company", "project"]
+    if purpose != "management":
+        keys.append("task")
+    if purpose == "review":
+        keys.append("review_request")
     attribution: dict[str, int] = {}
-    for key in ("employee", "person", "company", "task", "project"):
+    for key in keys:
         fact = snapshot.get(key) if isinstance(snapshot, dict) else None
         identifier = fact.get("id") if isinstance(fact, dict) else None
         if type(identifier) is not int or identifier <= 0:
@@ -159,7 +185,7 @@ def context_for_work_session(db: Session, work_session_id: int) -> tool_machiner
         )
     if any(
         attribution[key] != getattr(session, f"{key}_id")
-        for key in ("employee", "person", "company", "task")
+        for key in ("employee", "person", "company")
     ):
         raise ToolExecutionError(
             "work_session_identity_mismatch", "work session attribution does not match its snapshot"
@@ -183,22 +209,71 @@ def context_for_work_session(db: Session, work_session_id: int) -> tool_machiner
             "work_session_identity_unknown", "work session person or company no longer exists"
         )
 
-    task = db.get(Task, session.task_id, populate_existing=True)
-    if (
-        task is None
-        or task.assignee_id != session.employee_id
-        or task.status != TaskStatus.in_progress.value
-    ):
-        raise ToolExecutionError(
-            "work_session_task_invalid", "work session task is no longer executing for its actor"
-        )
-    project = db.get(Project, task.project_id, populate_existing=True)
+    if purpose == "worker":
+        if (
+            session.task_id != attribution["task"]
+            or session.project_id is not None
+            or session.review_request_id is not None
+            or snapshot.get("review_request") is not None
+        ):
+            raise ToolExecutionError(
+                "work_session_identity_mismatch", "worker attribution does not match its snapshot"
+            )
+        task = db.get(Task, session.task_id, populate_existing=True)
+        if (
+            task is None
+            or task.assignee_id != session.employee_id
+            or task.status != TaskStatus.in_progress.value
+        ):
+            raise ToolExecutionError(
+                "work_session_task_invalid",
+                "work session task is no longer executing for its actor",
+            )
+        project_id = task.project_id
+    else:
+        if session.task_id is not None or session.project_id != attribution["project"]:
+            raise ToolExecutionError(
+                "work_session_identity_mismatch", "non-worker target does not match its snapshot"
+            )
+        project_id = session.project_id
+    project = db.get(Project, project_id, populate_existing=True)
     if (
         project is None
         or project.id != attribution["project"]
         or project.company_id != session.company_id
-        or project.status not in EXECUTABLE_PROJECT_STATUSES
     ):
+        raise ToolExecutionError(
+            "work_session_project_invalid",
+            "work session project is no longer in its executable scope",
+        )
+    allowed_states = EXECUTABLE_PROJECT_STATUSES
+    if purpose == "management":
+        if (
+            session.review_request_id is not None
+            or snapshot.get("task") is not None
+            or snapshot.get("review_request") is not None
+        ):
+            raise ToolExecutionError(
+                "work_session_identity_mismatch", "management session must target only its project"
+            )
+        if (
+            project.management_employee_id != session.employee_id
+            or project.management_person_id not in (None, session.person_id)
+        ):
+            raise ToolExecutionError(
+                "work_session_manager_invalid",
+                "work session actor is no longer the designated manager",
+            )
+        allowed_states = allowed_states | {ProjectStatus.waiting_for_management.value}
+    elif purpose == "review":
+        _validate_review_scope(db, session, attribution, project)
+        # The review validator handles the narrowly scoped completed-project
+        # receipt case as well as open work. No write is authorized by that case.
+        allowed_states = allowed_states | {
+            ProjectStatus.waiting_for_management.value,
+            ProjectStatus.completed.value,
+        }
+    if project.status not in allowed_states:
         raise ToolExecutionError(
             "work_session_project_invalid",
             "work session project is no longer in its executable scope",
@@ -209,10 +284,198 @@ def context_for_work_session(db: Session, work_session_id: int) -> tool_machiner
         person_id=int(session.person_id),
         origin="work_session",
         work_session_id=int(session.id),
-        task_id=int(session.task_id),
+        task_id=int(session.task_id) if session.task_id is not None else None,
         project_id=attribution["project"],
         runtime_type=str(session.runtime_type or ""),
+        purpose=purpose,
+        review_request_id=session.review_request_id,
     )
+
+
+def _has_own_verdict_receipt(db: Session, session: WorkSession, request: ReviewRequest) -> bool:
+    """Only an applied, correlated action proves this session decided the request.
+
+    Neither model claims nor a decided request alone grant a receipt phase. The
+    verdict and its timestamp must still match the action committed atomically
+    with the domain write. Uncorrelated/internal verdicts cannot open this phase.
+    """
+    if request.status != C.REVIEW_REQUEST_DECIDED or request.decided_at is None:
+        return False
+    audits = db.scalars(
+        select(ToolAudit)
+        .join(RuntimeOperation, RuntimeOperation.id == ToolAudit.runtime_operation_id)
+        .join(DecisionRecord, DecisionRecord.id == ToolAudit.decision_id)
+        .where(
+            RuntimeOperation.work_session_id == session.id,
+            RuntimeOperation.kind == "decision",
+            RuntimeOperation.decision_id == ToolAudit.decision_id,
+            ToolAudit.work_session_id == session.id,
+            ToolAudit.actor_employee_id == session.employee_id,
+            ToolAudit.actor_person_id == session.person_id,
+            ToolAudit.actor_company_id == session.company_id,
+            ToolAudit.project_id == session.project_id,
+            ToolAudit.task_id.is_(None),
+            ToolAudit.origin == "work_session",
+            ToolAudit.tool_name == "submit_review_verdict",
+            ToolAudit.outcome == "applied",
+            ToolAudit.authority_allowed.is_(True),
+            DecisionRecord.actor_employee_id == session.employee_id,
+            DecisionRecord.actor_person_id == session.person_id,
+            DecisionRecord.company_id == session.company_id,
+        )
+        .execution_options(populate_existing=True)
+    )
+    for audit in audits:
+        args, result = audit.arguments_json or {}, audit.result_json or {}
+        if (
+            args.get("review_request_id") == request.id
+            and result.get("review_request_id") == request.id
+            and result.get("task_id") == request.task_id
+            and request.verdict in C.REVIEW_VERDICT_TARGETS
+            and args.get("verdict") == result.get("verdict") == request.verdict
+            and str(args.get("notes") or "") == (request.verdict_notes or "")
+            and audit.started_at is not None
+            and audit.finished_at is not None
+            and as_utc(audit.started_at) <= as_utc(request.decided_at) <= as_utc(audit.finished_at)
+        ):
+            return True
+    return False
+
+
+def _validate_review_scope(db, session, attribution, project):
+    if session.review_request_id != attribution["review_request"]:
+        raise ToolExecutionError(
+            "work_session_identity_mismatch", "review target does not match its snapshot"
+        )
+    request = db.get(ReviewRequest, session.review_request_id, populate_existing=True)
+    task = db.get(Task, attribution["task"], populate_existing=True)
+    original = session.provenance_snapshot_json["review_request"]
+    if (
+        request is None
+        or task is None
+        or request.company_id != session.company_id
+        or request.project_id != project.id
+        or request.task_id != task.id
+        or task.project_id != project.id
+        or request.reviewer_employee_id != session.employee_id
+        or any(
+            original.get(key) != getattr(request, key)
+            for key in ("project_id", "task_id", "reviewer_employee_id", "requested_by_employee_id")
+        )
+        or request.requested_at is None
+        or original.get("requested_at") != as_utc(request.requested_at).isoformat()
+    ):
+        raise ToolExecutionError(
+            "work_session_review_invalid",
+            "review request no longer matches the original target and actor",
+        )
+    latest_id = db.scalar(
+        select(ReviewRequest.id)
+        .where(ReviewRequest.task_id == task.id)
+        .order_by(ReviewRequest.id.desc())
+        .limit(1)
+    )
+    if latest_id != request.id:
+        raise ToolExecutionError(
+            "work_session_review_invalid", "review request has been superseded"
+        )
+    if project.status in {ProjectStatus.cancelled.value, ProjectStatus.rejected.value}:
+        raise ToolExecutionError(
+            "work_session_project_invalid", "review project is no longer executable"
+        )
+    if request.status == C.REVIEW_REQUEST_OPEN:
+        if (
+            task.status != TaskStatus.in_review.value
+            or request.verdict is not None
+            or request.decided_at is not None
+            or project.status == ProjectStatus.completed.value
+        ):
+            raise ToolExecutionError(
+                "work_session_review_invalid", "review request is no longer open for review"
+            )
+    elif not _has_own_verdict_receipt(db, session, request):
+        raise ToolExecutionError(
+            "work_session_review_invalid", "review was not decided by this session"
+        )
+    elif project.status == ProjectStatus.completed.value:
+        # Normal PASS follow-on can complete the project before receipt delivery.
+        # Admit only that session's PASS with all project work actually done.
+        unfinished = db.scalar(
+            select(Task.id)
+            .where(Task.project_id == project.id, Task.status != TaskStatus.done.value)
+            .limit(1)
+        )
+        if (
+            request.verdict != ReviewVerdict.passed.value
+            or task.status != TaskStatus.done.value
+            or unfinished is not None
+        ):
+            raise ToolExecutionError(
+                "work_session_project_invalid",
+                "completed project is outside this verdict receipt scope",
+            )
+
+
+def _nonworker_write_allowed(db, ctx, spec, args):
+    """Restrict the current tool catalog to the immutable non-worker target."""
+    if ctx.purpose == "review":
+        request = db.get(ReviewRequest, ctx.review_request_id, populate_existing=True)
+        return (
+            spec.name == "submit_review_verdict"
+            and args.get("review_request_id") == ctx.review_request_id
+            and request.status == C.REVIEW_REQUEST_OPEN
+        )
+    # Every present management write has a concrete project, task or review
+    # target. Future company/person actions must explicitly define their scope.
+    if spec.name not in {
+        "create_task",
+        "consume_artifact",
+        "update_task",
+        "create_dependency",
+        "assign_task",
+        "delegate_project",
+        "submit_review_verdict",
+        "replan_project",
+        "request_review",
+        "request_rework",
+        "mark_task_blocked",
+        "cancel_task",
+    }:
+        return False
+    targeted = False
+    if "project_id" in args:
+        targeted = True
+        if args["project_id"] != ctx.project_id:
+            return False
+    task_ids = [args[key] for key in ("task_id", "depends_on_id") if args.get(key) is not None]
+    for key in ("depends_on", "consumes"):
+        task_ids.extend(args.get(key) or [])
+    for identifier in task_ids:
+        targeted = True
+        task = db.get(Task, identifier, populate_existing=True)
+        if task is None or task.project_id != ctx.project_id:
+            return False
+    if args.get("review_request_id") is not None:
+        targeted = True
+        request = db.get(ReviewRequest, args["review_request_id"], populate_existing=True)
+        if (
+            request is None
+            or request.project_id != ctx.project_id
+            or request.company_id != ctx.company_id
+        ):
+            return False
+        task = db.get(Task, request.task_id, populate_existing=True)
+        if task is None or task.project_id != ctx.project_id:
+            return False
+    if args.get("artifact_id") is not None:
+        artifact = db.get(DriveNode, args["artifact_id"], populate_existing=True)
+        if (
+            artifact is None
+            or artifact.project_id != ctx.project_id
+            or artifact.company_id != ctx.company_id
+        ):
+            return False
+    return targeted
 
 
 # ---------------------------------------------------------------------------
@@ -386,6 +649,30 @@ def execute_tool(
         tool_machinery.validate_arguments(spec.input_schema, arguments, tool=spec.name)
     except tool_machinery.ToolError as exc:
         return fail("invalid_arguments", str(exc))
+
+    # Purpose is a restriction, never a replacement for Authority/Autonomy.
+    # Refresh even if a trusted internal caller retained a context between calls.
+    # Refused in-scope attempts have actual durable receipts just like all other
+    # tool refusals; a decided review can never authorize another fresh write.
+    if not spec.is_read and context.purpose != "worker":
+        ensure_sqlite_transaction(db)
+        if context.origin != "work_session" or context.work_session_id is None:
+            return fail(
+                "work_session_write_forbidden", "non-worker writes require a bound work session"
+            )
+        try:
+            current = context_for_work_session(db, context.work_session_id)
+        except ToolExecutionError as exc:
+            return fail(exc.reason, str(exc))
+        if current != context:
+            return fail(
+                "work_session_identity_mismatch", "tool context no longer matches its work session"
+            )
+        if not _nonworker_write_allowed(db, current, spec, arguments):
+            return fail(
+                "work_session_write_forbidden",
+                "action is outside this work session's current write scope",
+            )
 
     # ③ Authority（内部面不例外，T4）
     snapshot: dict | None = None
