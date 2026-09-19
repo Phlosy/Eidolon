@@ -21,13 +21,17 @@
 |---|---|---|
 | Backend | Python 3.12（conda env `eidolon`）/ FastAPI / Pydantic v2 | Agent/LLM 生态最完整；自带 OpenAPI 文档 |
 | ORM / Migration | SQLAlchemy 2.0 (sync) / Alembic | 成熟；sync session 配 FastAPI 线程池，MVP 最简单 |
-| DB | SQLite（默认）→ PostgreSQL 可切换 | 业务层只走 ORM，不写 SQLite 方言 |
+| DB | SQLite；PostgreSQL 适配待完成 | 当前迁移和验收以 SQLite 为基线，不能仅修改连接 URL 切换数据库 |
 | Backend 工具链 | conda 环境（不在仓库内建 `.venv`）/ pip + `requirements.lock` / Ruff / pytest | 解释器版本与 CI 对齐，环境来源显式可复现 |
 | Frontend | React 19 / Vite / TypeScript strict | 标准 |
 | Frontend 库 | TanStack Query v5（服务端状态）、Zustand v5（本地状态）、@xyflow/react（项目流程图）、Tailwind CSS v4 + shadcn 风格组件、lucide-react、React Router v7 | 全部成熟活跃，不造轮子 |
 | Frontend 工具链 | pnpm / ESLint / Prettier / Vitest | — |
 | 实时推送 | WebSocket `/ws/events` | 单向推送足够，不用高频轮询 |
 | 进程编排 | 根目录 Makefile；Docker Compose 可选 | `make run` 一键起全栈 |
+
+数据库 URL 可配置不代表迁移已跨方言兼容。v50 的会话出处守卫和 v52 的请求/回执守卫使用
+SQLite 触发器；PostgreSQL 支持需要补齐这些守卫的等效实现，并验证完整迁移链和并发事务行为。
+当前测试证据只声明 SQLite 支持。
 
 ## 2. Monorepo 目录结构
 

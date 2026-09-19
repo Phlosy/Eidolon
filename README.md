@@ -36,7 +36,7 @@ Frontend (React SPA)
    ↓ REST + WebSocket
 Backend API (FastAPI)
    ↓
-Service Layer → Repository Layer → SQLite (可切 PostgreSQL)
+Service Layer → Repository Layer → SQLite
    ↓
 Agent Runtime Gateway
    ↓
@@ -111,7 +111,7 @@ docker compose up --build
 | `EIDOLON_WEB_PORT` | `26880` | 前端端口（唯一对外入口） |
 | `EIDOLON_API_HOST` | `127.0.0.1` | 后端监听地址（loopback，仅经 Web 反代访问） |
 | `EIDOLON_API_PORT` | `26881` | 后端端口 |
-| `EIDOLON_DATABASE_URL` | `sqlite:///./data/eidolon.db` | 数据库（可换 PostgreSQL） |
+| `EIDOLON_DATABASE_URL` | `sqlite:///./data/eidolon.db` | 当前支持 SQLite；PostgreSQL 迁移适配尚未完成 |
 | `EIDOLON_WORKSPACE_ROOT` | `./data/workspaces` | 员工 Workspace 根目录 |
 | `EIDOLON_RUNTIME_MODE` | `mock` | `mock` / `auto`（探测真实 Runtime） |
 | `EIDOLON_MOCK_TASK_SECONDS` | `8` | Mock 单任务时长 |

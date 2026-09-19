@@ -46,6 +46,11 @@ SQLite 守卫同时装入迁移和 `create_all`：请求身份不能修改或删
 回执，需要新的 operation key 表达新的尝试。中途退出后只执行缺少回执的动作，已终结或被替代
 的决定不能继续缺失动作。恢复时仍重查当前身份与公司可见性。
 
+降级到 v51 会删除 `runtime_operations` 和 ToolAudit 的两个关联列；审计主体仍保留，但再次
+升级不能恢复旧 operation key 与动作序号的关联。正式回滚前应备份完整数据库；需要继续重放
+既有请求时应保留 v52 schema。临时库 up/down/up 测试验证结构可迁移，不代表生产重放身份能
+跨降级保留。
+
 ## 验证与边界
 
 新增 `test_m3_runtime_bridge.py` 和 `test_m3_runtime_operation_migration.py`。
