@@ -26,7 +26,7 @@ from sqlalchemy.orm import Session
 
 from app.models.project import WorkSession
 from app.work import contracts as C
-from app.work import handoff
+from app.work import handoff, provenance
 
 if TYPE_CHECKING:  # pragma: no cover - 仅为类型
     from app.models.project import Task
@@ -55,6 +55,7 @@ def _session_fact(db: Session, task: Task) -> dict:
         "error": session.error or "",
         "started_at": session.started_at.isoformat() if session.started_at else None,
         "ended_at": session.ended_at.isoformat() if session.ended_at else None,
+        "provenance": provenance.read(session),
     }
 
 

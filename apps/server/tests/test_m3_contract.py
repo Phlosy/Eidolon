@@ -891,22 +891,20 @@ def test_provenance_fields_match_work_session_columns():
     missing = [field for field in P.PROVENANCE_PRESENT_FIELDS if field not in columns]
     assert not missing, f"声明的现存 provenance 字段不在表上：{missing}"
     for field in P.PROVENANCE_PRESENT_FIELDS:
-        if field not in ("deployment_mode",):
-            assert field in P.PROVENANCE_SNAPSHOT_FIELDS
+        assert field in P.PROVENANCE_SNAPSHOT_FIELDS
     assert set(P.PROVENANCE_PRESENT_FIELDS) | set(P.PROVENANCE_OWED_FIELDS) == set(
         P.PROVENANCE_SNAPSHOT_FIELDS
     )
 
 
 def test_provenance_gaps_are_declared_and_owned():
-    """P34：欠账必须显式、非空、owner 合法；补齐后这条会提醒更新契约。"""
-    assert P.PROVENANCE_OWED_FIELDS, "欠账被清空了 —— 要么真补齐了字段，要么在骗自己（P34）"
+    """P34：已偿还的字段不再保留虚假欠账；行为守卫见 test_m3_provenance。"""
+    assert not set(P.PROVENANCE_OWED_FIELDS) & set(P.PROVENANCE_PRESENT_FIELDS)
     for field, owner in P.PROVENANCE_OWED_FIELDS.items():
         assert owner in P.M3_STAGES, f"{field} 的 owner 非法：{owner}"
     columns = _columns("work_sessions")
-    assert "deployment_mode" not in columns, (
-        "`deployment_mode` 已落表 ⇒ 请把它从欠账移到现存字段（P34 的守卫要跟着改）"
-    )
+    assert "deployment_mode" in columns and not P.PROVENANCE_OWED_FIELDS
+    assert {"person_id", "company_id", "provenance_snapshot_json"} <= columns
     assert P.PROVENANCE_WRITE_ONCE_TRIGGER == "work_sessions.ended_at"
 
 
@@ -923,7 +921,8 @@ def test_every_declared_gap_is_owned_by_a_real_stage():
         ("telemetry", {kind: "M3.4" for kind in P.TELEMETRY_NOT_YET_MAPPED}),
         ("person_scope", P.PERSON_SCOPED_COLUMN_OWED),
     ):
-        assert registry, f"{label} 的欠账登记为空 —— 要么真的没有欠账，要么在装（P34）"
+        if label != "provenance":
+            assert registry, f"{label} 的欠账尚未偿还，不能静默清空（P34）"
         for item, owner in registry.items():
             assert owner in P.M3_STAGES, f"{label}.{item} 的 owner 非法：{owner}"
 
@@ -967,11 +966,17 @@ def test_work_experience_has_a_stage_for_every_field():
 
 def test_work_experience_history_is_snapshot_based_not_reverse_inferred():
     """P23：历史来自"当时的任职事实"，不是从当前 Position 反推。"""
-    position_source = P.WORK_EXPERIENCE_SOURCES["position_code"]
-    assert "employments" in position_source, (
-        "历史职位必须来自任职行（employments，带 effective 区间），不能只读当前职位定义"
-    )
-    assert "company_id" in P.WORK_EXPERIENCE_SOURCES["company_id"]
+    assert P.WORK_EXPERIENCE_SOURCES["person_id"] == "work_sessions.person_id"
+    assert P.WORK_EXPERIENCE_SOURCES["company_id"] == "work_sessions.company_id"
+    for field in (
+        "position_code",
+        "project_id",
+        "project_title",
+        "task_title",
+        "task_kind",
+        "requirement_snapshot",
+    ):
+        assert "work_sessions.provenance_snapshot_json" in P.WORK_EXPERIENCE_SOURCES[field]
     assert "difficulty_snapshot" in P.WORK_EXPERIENCE_OWED_FIELDS, (
         "难度快照当前没有承载 ⇒ 必须显式登记为欠账，而不是拿 tasks.priority 冒充"
     )

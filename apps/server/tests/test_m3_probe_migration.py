@@ -126,7 +126,7 @@ def test_v48_v49_roundtrip_preserves_environment_and_enforces_unique_reservation
         migrate("head")
         verify()
         script = ScriptDirectory.from_config(config)
-        assert script.get_heads() == ["49f90481d32a"]
+        assert len(script.get_heads()) == 1
         assert script.get_revision("49f90481d32a").down_revision == "48e38b2049c1"
         assert script.get_revision("48e38b2049c1").down_revision == "47d50a3618ef"
         assert not (tmp_path / "unused-0").exists()

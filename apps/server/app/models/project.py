@@ -5,7 +5,7 @@ See docs/architecture.md §3.2.
 
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, Text
+from sqlalchemy import DDL, JSON, Boolean, ForeignKey, Integer, String, Text, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin
@@ -150,8 +150,50 @@ class WorkSession(TimestampMixin, Base):
     provider_id: Mapped[int | None] = mapped_column(ForeignKey("providers.id"), nullable=True)
     model: Mapped[str | None] = mapped_column(String(200), nullable=True)
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Historical attribution, written only by create_work_session. No backfill
+    # from current people/configuration. Bare IDs preserve history after deletion.
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    company_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    deployment_mode: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    provenance_snapshot_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     task: Mapped[Task] = relationship(back_populates="sessions")
+
+
+# SQLite is the supported deployment database. Install the same guards on fresh
+# metadata schemas as migration v50; direct SQL and bulk updates must also obey them.
+_PROVENANCE_COLUMNS = (
+    "task_id",
+    "employee_id",
+    "person_id",
+    "company_id",
+    "runtime_type",
+    "runtime_instance_id",
+    "provider_id",
+    "model",
+    "deployment_mode",
+    "provenance_snapshot_json",
+)
+_PROVENANCE_CHANGED = " OR ".join(
+    f"NEW.{field} IS NOT OLD.{field}" for field in _PROVENANCE_COLUMNS
+)
+for _name, _condition in (
+    ("work_session_provenance_immutable", _PROVENANCE_CHANGED),
+    (
+        "work_session_runtime_ref_once",
+        "NEW.runtime_session_ref IS NOT OLD.runtime_session_ref AND "
+        "(OLD.ended_at IS NOT NULL OR COALESCE(OLD.runtime_session_ref, '') <> '')",
+    ),
+    ("work_session_ended_once", "OLD.ended_at IS NOT NULL AND NEW.ended_at IS NOT OLD.ended_at"),
+):
+    event.listen(
+        WorkSession.__table__,
+        "after_create",
+        DDL(
+            f"CREATE TRIGGER {_name} BEFORE UPDATE ON work_sessions WHEN {_condition} "
+            "BEGIN SELECT RAISE(ABORT, 'work session provenance is immutable'); END"
+        ).execute_if(dialect="sqlite"),
+    )
 
 
 class Artifact(TimestampMixin, Base):

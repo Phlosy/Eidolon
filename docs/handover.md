@@ -1,5 +1,7 @@
 # Eidolon 交接文档（2026-09-09）
 
+> 最新阶段：M3.1（U1–U5）于 2026-09-20 完成，见 §5s–§5t；下一包 U6。以下早期基线为历史记录。
+
 > 覆盖范围：P5–P11 之后的「本地开发体验 / 入职与权限开通可靠性 / 教程交互」连续修复。
 > 状态基线：分支 `dev`，HEAD `430601e`，**工作树干净**，全量门禁绿（见 §5）。
 > 续篇：当天下午完成「教程全流程实机走查」，见 §1.6。
@@ -674,11 +676,30 @@ C 新 CEO 接任：CEO A 离任 → CEO B 上任 → B 不继承 A 的技能/私
 
 ---
 
+## 5s. M3.1 U4 Probes and Reconciliation（DONE，2026-09-20）
+
+- `bb6a3ea`：就绪读取有时间、原因及有效期的容器、应用、鉴权控制、能力和 Provider/模型事实；缺失和过期均未知。
+- 宿主 loopback 与 Docker 内网控制分开；OpenClaw 固定镜像使用有设备身份的 protocol 4，只批准本实例的精确配对请求。
+- 模型验证需显式开关、一次调用和有限预算，持久回执防止重复计费及编号复用；后台读面不发起付费验证。
+- 默认序及五组实际随机序各 1490 passed；两种固定镜像各一次真实模型调用，相关真实路径共 9 项。价格估算合计 $0.0035508，不冒充厂商账单。
+- v48/v49 往返、lint、前端 390 项和构建通过。[完整证据与边界](m3-u4-runtime-probes.md)。
+
+## 5t. M3.1 U5 Execution Snapshot / 阶段收尾（DONE，2026-09-20）
+
+- 会话创建并提交后才分配外部会话；历史保存当时 Person / Employee / Company、任职、任务要求与名称、Runtime / Provider / Model、deployment_mode 与 real/mock。
+- v50 `50a7816c2e90` 增加 nullable 历史字段及 SQLite 不可变守卫。旧行保留 unknown；外部号只允许结束前一次补记，不能清空 ended_at 绕过保护。
+- 既有评审 session 事实通过同一读者暴露快照；不从当前职位、当前绑定或改名后的资料重建历史。
+- 全局 mock 覆盖按实际适配器记录，不把配置过的真实环境当作已使用。普通执行仍要求 task / employee 归属。
+- 阶段全套 1532 passed / 10 deselected；定向 167 项，补强历史场景后相关 96 项通过；迁移往返、lint、前端 390 项和构建通过。
+- [本包及 B1–B5 验收](m3-u5-execution-snapshots.md)、[机器证据](evidence/m3-u5-verification.json)。实际开发库未迁移，26880/26881 与用户容器未重启，`tmp/` 未修改；未开始真实业务派发。
+- U8 扩展会话用途时须保留 v50 的三条触发器；U13 的新尝试不得覆盖已记录的外部会话号。
+
+---
+
 ## 6. 下一步建议（按优先级）
 
-1. **M3.1 Real Runtime Provisioning**：先读 `docs/m3-agent-production-growth-design.md`
-   §6（provisioning 契约）与 `docs/m3-implementation-plan.md` §4；
-   U1 测试隔离、U2 提交后意图、U3 幂等真实开通已完成；按 U4–U5 继续探测对账与最小历史快照。
+1. **M3.2 Ready-to-Work（U6–U8）**：U1–U5 已完成；先按 U6 统一 API、工具与派发的就绪事实和环境等待语义，
+   然后 U7 验证真实结构化工具往返，U8 接管理/评审会话。按实施计划逐包阅读要求和 KTD，不提前进行 A/B/C 业务验收。
 2. **M2 冻结面改动纪律**：碰 M1/T2/M2 面前先跑对应锚点（M3 计划 §2 第 4 条）。
 3. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
 4. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。

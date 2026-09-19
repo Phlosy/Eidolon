@@ -285,14 +285,12 @@ PROVENANCE_PRESENT_FIELDS: tuple[str, ...] = (
     "provider_id",
     "model",
     "runtime_session_ref",
+    "deployment_mode",
 )
 
-#: **欠账**：字段 → owner 阶段。必须非空且 owner 合法（P34）——
-#: "假装已经完整"比"承认欠账"危险得多。
-PROVENANCE_OWED_FIELDS: dict[str, str] = {
-    # 会话级部署模式快照：现在只有 runtime_instances.deployment_mode（当前值，会被换绑改写）
-    "deployment_mode": "M3.1",
-}
+#: The execution provenance debt is repaid. Empty is valid only with the field,
+#: creation writer, historical reader and immutability behavior all implemented.
+PROVENANCE_OWED_FIELDS: dict[str, str] = {}
 
 #: 写一次纪律的触发点：会话结束后 provenance 不可改写。
 PROVENANCE_WRITE_ONCE_TRIGGER = "work_sessions.ended_at"
@@ -459,18 +457,18 @@ WORK_EXPERIENCE_FIELDS: tuple[str, ...] = (
 #: （只有 position 口径，没有 task/project/artifact/review），
 #: 硬塞只能进 `metadata_json`（不可查询、不可守卫、会变成垃圾抽屉）。
 WORK_EXPERIENCE_SOURCES: dict[str, str] = {
-    "person_id": "employees.person_id",
+    "person_id": "work_sessions.person_id",
     "employee_id": "work_sessions.employee_id",
-    "company_id": "employees.company_id",
-    "position_code": "position_definitions.code + employments.position_slot_id",
-    "project_id": "tasks.project_id",
-    "project_title": "projects.name",
+    "company_id": "work_sessions.company_id",
+    "position_code": "work_sessions.provenance_snapshot_json（当时任职 code）",
+    "project_id": "work_sessions.provenance_snapshot_json（当时项目 id）",
+    "project_title": "work_sessions.provenance_snapshot_json（当时项目名称）",
     "task_id": "work_sessions.task_id",
-    "task_title": "tasks.title",
-    "task_kind": "tasks.kind",
+    "task_title": "work_sessions.provenance_snapshot_json（当时任务名称）",
+    "task_kind": "work_sessions.provenance_snapshot_json（当时任务 kind）",
     "role_in_work": "tasks.assignee_id（执行）+ review_requests.reviewer_employee_id（评审）",
     "contribution": "drive_nodes.task_id（产出归属，M2 H2）",
-    "requirement_snapshot": "tasks.acceptance_criteria",
+    "requirement_snapshot": "work_sessions.provenance_snapshot_json（当时任务要求）",
     "result": "tasks.status",
     "review_verdict": "review_requests.verdict",
     "rework_count": "tasks.rework_count",
@@ -878,7 +876,7 @@ PRODUCTION_INVARIANTS: tuple[C.Invariant, ...] = (
     ),
     C.Invariant(
         "P34",
-        "Declared provenance gaps must be non-empty and owned (no silent completeness).",
+        "Provenance gaps are explicitly owned; repaid gaps require behavioral evidence.",
         enforced=True,
         owner_stage="M3.0",
         anchors=(
@@ -925,8 +923,8 @@ assert not ({MOCK_RUNTIME_TYPE} & (set(REAL_RUNTIME_TYPES) | set(PLACEHOLDER_RUN
     "mock 不可能同时是真实或 placeholder"
 )
 
-# P34：欠账必须显式、非空、owner 合法
-assert PROVENANCE_OWED_FIELDS, "provenance 欠账被清空了 —— 要么真的补齐了字段，要么在骗自己（P34）"
+# P34：欠账必须显式、owner 合法；已偿还的债务不能作为占位保留。
+assert not set(PROVENANCE_PRESENT_FIELDS) & set(PROVENANCE_OWED_FIELDS)
 assert set(PROVENANCE_PRESENT_FIELDS) | set(PROVENANCE_OWED_FIELDS) == set(
     PROVENANCE_SNAPSHOT_FIELDS
 ), "provenance 字段全集与 现存/欠账 两半不一致（P34）"

@@ -132,7 +132,12 @@ def list_dependencies(db: Session, project_id: int) -> list[TaskDependency]:
 
 
 def create_work_session(db: Session, **fields) -> WorkSession:
+    from app.work import provenance
+
+    if {"person_id", "company_id", "deployment_mode", "provenance_snapshot_json"} & fields.keys():
+        raise ValueError("work session provenance is captured by the creation path")
     session = WorkSession(**fields)
+    provenance.capture(db, session)
     db.add(session)
     db.flush()
     return session

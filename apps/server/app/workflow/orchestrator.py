@@ -263,6 +263,7 @@ class Orchestrator:
                     return
                 employee_id = employee.id
                 company_id = task.project.company_id
+                adapter = gateway.adapter_for(employee.runtime_type)
 
                 old_status = employee.status
                 employee.status = (
@@ -284,11 +285,15 @@ class Orchestrator:
                     if runtime_instance and runtime_instance.model_binding_id
                     else None
                 )
+                # The global mock override selects an actual MockAdapter even if
+                # this employee has a configured real environment and model.
+                if adapter.type.value == "mock":
+                    runtime_instance = binding = None
                 ws = project_repo.create_work_session(
                     db,
                     task_id=task.id,
                     employee_id=employee.id,
-                    runtime_type=employee.runtime_type,
+                    runtime_type=adapter.type.value,
                     status=WorkSessionStatus.running.value,
                     started_at=started,
                     runtime_instance_id=runtime_instance.id if runtime_instance else None,
@@ -358,7 +363,6 @@ class Orchestrator:
             )
 
             instance = await gateway.get_or_create_instance(employee_snapshot)
-            adapter = gateway.adapter_for(employee_snapshot.runtime_type)
             session = await adapter.create_session(instance, task_ctx)
             with SessionLocal() as db:
                 ws = db.get(WorkSession, work_session_id)

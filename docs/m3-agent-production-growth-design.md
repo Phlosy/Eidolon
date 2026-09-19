@@ -380,16 +380,21 @@ M3.10 Scenario A **必须**至少一个真实 Runtime（Hermes 或 OpenClaw）�
 | `runtime_instance_id` | `work_sessions.runtime_instance_id` | ✅ 已有 |
 | `provider_id` | `work_sessions.provider_id` | ✅ 已有 |
 | `model` | `work_sessions.model` | ✅ 已有 |
-| `deployment_mode` | —（`RuntimeInstance.deployment_mode` 是**当前**值） | ⚠️ **欠账**（M3.1/M3.5） |
+| `deployment_mode` | `work_sessions.deployment_mode` | ✅ U5，旧值 unknown |
 | `runtime_session_ref` | `work_sessions.runtime_session_ref` | ✅ 已有 |
 
 M3.0 冻结两件事：
 
 1. **写一次**：WorkSession 的 provenance 列在 `ended_at` 之后**不得改写**（换绑/换绑定/换模型
    只能影响**未来**会话）。
-2. **欠账显式登记**：`PROVENANCE_OWED_FIELDS` 必须非空且带 owner stage —— 不允许"假装已经完整"。
-   现已登记：`deployment_mode`（M3.1 落列/快照）；providers 的**名字**快照（M3.5，
-   用于 provider 行被改名/删除后履历仍可读）。
+2. **欠账显式登记**：未实现的字段必须带 owner stage；偿还后以写入、读取和不可变行为证据关闭，
+   不保留虚假欠账。U5 已保存 deployment_mode、Provider 名称、Person / Employee / Company、
+   任职、任务要求与名称快照。既有缺失历史保持 unknown，不能从当前资料反推。
+
+U5 的创建路径为 `repositories/project.create_work_session`，历史读者为 `work/review_facts`。
+v50 SQLite 守卫从创建起保护出处字段；外部 runtime_session_ref 分配后只允许补记一次，
+ended_at 非空后不能更改或清空。全局 mock 覆盖按实际适配器记录，real 表示所选执行通道，
+不单独证明模型已成功调用或业务已交付。普通执行的 task / employee 关联约束不变。
 
 ### 8.2 Binding 变化的历史语义（M3.9 落地）
 
@@ -701,7 +706,7 @@ UI 呈现结构化 `activity / decision / result`（动作、工具、产物、�
 | **P11** | Learning never directly writes competency score. | AST：学习路径不 import competency 写路径 |
 | **P12** | Recruitment does not copy Person-owned assets. | 契约 + T2 锚点（`test_recruitment`） |
 | **P13** | Recruitment must eventually pass through provisioning before real execution. | 契约 + readiness 必答项（real: workspace/runtime/provider） |
-| **P14** | Historical runtime/provider/model facts are immutable snapshots. | provenance 字段存在性 + 欠账登记 + 不可改写规则 |
+| **P14** | Historical runtime/provider/model facts are immutable snapshots. | U5：创建快照、历史读取、直接 SQL / ORM / 批量改写拒绝（test_m3_provenance） |
 | **P15** | Technical retry and management replan are separate semantics. | 两个 owner 常量 + 计数器分属不同事实 |
 | **P16** | Runtime events do not directly become domain truth. | 遥测词表 ∩ 领域事件 = ∅ + AST：runtimes 不写领域 |
 | **P17** | Task success requires domain completion/review, not merely runtime exit=0. | 契约：status 目标仅来自域（M2 锚点） |
@@ -710,7 +715,7 @@ UI 呈现结构化 `activity / decision / result`（动作、工具、产物、�
 | **P20** | Specialization is derived from evidence/history. | 契约：无 specialization 写入路径 |
 | **P21** | No single opaque power score becomes Agent truth. | AST + metadata：无 power/overall_score 列 |
 | **P22** | Management experience must come from DecisionRecord + outcome facts. | 来源映射（decision_records + outcome 事实） |
-| **P23** | Current employment/runtime state must not overwrite historical career facts. | 历史快照字段契约 + 不反推断言 |
+| **P23** | Current employment/runtime state must not overwrite historical career facts. | U5：改名/调岗/改派/换环境后历史不变；旧记录 unknown；完整履历投影仍属 U18 |
 | **P24** | Mock execution must remain distinguishable from real execution. | `execution_mode()` + 判定链守卫 |
 | **P25** | Mock evidence must continue respecting existing reliability discount. | 契约常量 == `evidence.policy.MOCK_RELIABILITY_FACTOR` |
 | **P26** | AgentProfile is a read model. | AST：无 AgentProfile 表/写路径；字段集与来源映射一致 |
@@ -726,7 +731,7 @@ UI 呈现结构化 `activity / decision / result`（动作、工具、产物、�
 | **P31** | Provisioning steps and readiness items must describe the same environment facts. | 步骤与就绪项不一致 ⇒ "配了但没检"或"检了但没配"（漂移口） |
 | **P32** | Every declared readiness item must name a real table/column source. | 来源可以解析到真实表列（M2 A4 同款纪律） |
 | **P33** | A declared capability-gap action must have either a live tool or an owner stage. | 防止"词表里写了但没人做" |
-| **P34** | Declared provenance gaps must be non-empty and owned (no silent completeness). | 欠账显式：`deployment_mode` 快照等 |
+| **P34** | Provenance gaps are explicitly owned; repaid gaps require behavioral evidence. | U5：字段、创建写者、历史读者和数据库不可变守卫；旧值 unknown |
 | **P35** | Telemetry vocabulary must not collide with frozen domain event vocabulary. | P16 的词汇层守卫 |
 | **P36** | M3 must not introduce a second project/task/DAG container. | M2 冻结面的 M3 侧守卫（防止执行层另造图） |
 
