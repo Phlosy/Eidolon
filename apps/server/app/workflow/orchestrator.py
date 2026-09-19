@@ -239,6 +239,10 @@ class Orchestrator:
         started = datetime.now(UTC)
         try:
             with SessionLocal() as db:
+                # Worker and non-worker claims share the same admission lock.
+                # Fresh occupancy/authority reads and creation must be atomic;
+                # the transaction ends before any external runtime call.
+                dispatch_notices.begin_observation(db)
                 task = project_repo.get_task(db, task_id)
                 # 可派发的前提是"结构就绪 + 已指派"。`backlog` 表示"草稿"，
                 # 就绪后由**系统**推进到 `todo`（就绪是系统职责，选人是管理职责，R3）。

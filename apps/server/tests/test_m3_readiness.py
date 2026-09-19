@@ -316,6 +316,74 @@ def test_completed_task_closes_environment_notice_without_reopening(db, waiting)
     )
 
 
+def test_worker_admission_excludes_a_competing_management_claim(db, waiting, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event as ThreadEvent
+
+    from app.core.database import SessionLocal
+    from app.repositories import project as project_repo
+
+    employee_id, project_id, task_id = (
+        waiting.employee.id,
+        waiting.project.id,
+        waiting.task.id,
+    )
+    waiting.employee.lifecycle_status = "active"
+    waiting.project.management_employee_id = employee_id
+    db.commit()
+    observed, release, claiming, committed = (ThreadEvent() for _ in range(4))
+    evaluate = dispatch.evaluate_dispatch
+
+    def pause_after_admission(session, task):
+        result = evaluate(session, task)
+        assert result.dispatchable
+        observed.set()
+        assert release.wait(timeout=5)
+        return result
+
+    def claim_management():
+        with SessionLocal() as session:
+            claiming.set()
+            dispatch_notices.begin_observation(session)
+            if project_repo.get_running_session_for_employee(session, employee_id) is None:
+                project_repo.create_work_session(
+                    session,
+                    purpose="management",
+                    project_id=project_id,
+                    employee_id=employee_id,
+                    runtime_type="mock",
+                    started_at=utcnow(),
+                )
+            session.commit()
+            committed.set()
+
+    runner = orchestration.Orchestrator()
+    # The actual database admission is exercised; external runtime and worker
+    # completion are outside this concurrency test and cannot obscure its claim.
+    monkeypatch.setattr(runner, "_finalize", Mock())
+    monkeypatch.setattr(dispatch, "evaluate_dispatch", pause_after_admission)
+    monkeypatch.setattr(
+        orchestration.gateway,
+        "get_or_create_instance",
+        AsyncMock(side_effect=RuntimeError("stop after committed admission")),
+    )
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        worker = pool.submit(lambda: asyncio.run(runner._run_task(task_id)))
+        assert observed.wait(timeout=5)
+        management = pool.submit(claim_management)
+        try:
+            assert claiming.wait(timeout=5)
+            interleaved = committed.wait(timeout=0.2)
+        finally:
+            release.set()
+        worker.result(timeout=5)
+        management.result(timeout=5)
+    db.expire_all()
+    sessions = list(db.scalars(select(WorkSession).where(WorkSession.employee_id == employee_id)))
+    assert [(row.purpose, row.task_id) for row in sessions] == [("worker", task_id)]
+    assert not interleaved, "a second claim committed between worker admission and its write"
+
+
 def test_two_scheduler_processes_share_one_durable_notice(db, waiting):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier
