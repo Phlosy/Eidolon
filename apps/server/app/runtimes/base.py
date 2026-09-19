@@ -1,6 +1,9 @@
 """RuntimeAdapter ABC + data types. See docs/architecture.md §4.1."""
 
 import asyncio
+import hashlib
+import math
+import re
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
@@ -41,7 +44,7 @@ class RuntimeInstance:
     home_path: str
     status: RuntimeStatus = RuntimeStatus.stopped
     # Adapter-private connection details (container name, base URL, key ref ...).
-    details: dict = field(default_factory=dict)
+    details: dict = field(default_factory=dict, repr=False)
 
 
 @dataclass
@@ -73,6 +76,70 @@ class RuntimeSession:
     queue: asyncio.Queue = field(default_factory=asyncio.Queue)
     background: asyncio.Task | None = None
     artifacts: list["ProducedArtifact"] = field(default_factory=list)
+    turn_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+    remote_run_id: str | None = None
+    cancel_confirmed: bool | None = None
+    completed_turns: dict[str, tuple[str, "RuntimeReply"]] = field(default_factory=dict, repr=False)
+
+
+class RuntimeProtocolError(RuntimeError):
+    """A controlled response was unavailable or could not be authenticated to its run."""
+
+
+@dataclass(frozen=True)
+class RuntimeReply:
+    session_id: str
+    request_id: str
+    run_id: str
+    text: str
+    usage: dict | None = None
+
+
+def controlled_request_key(session: RuntimeSession, request_id: str, timeout: float) -> str:
+    if session.status != "running":
+        raise RuntimeProtocolError("session_not_running")
+    if session.background and not session.background.done():
+        raise RuntimeProtocolError("session_already_streaming")
+    if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", request_id):
+        raise RuntimeProtocolError("invalid_request_id")
+    if not re.fullmatch(r"[A-Za-z0-9_.:-]{1,128}", session.id):
+        raise RuntimeProtocolError("invalid_session_id")
+    if not math.isfinite(timeout) or not 0 < timeout <= 900:
+        raise RuntimeProtocolError("invalid_turn_timeout")
+    # Both runtimes scope idempotency beyond a conversation. Include its identity.
+    return hashlib.sha256(f"{session.id}\0{request_id}".encode()).hexdigest()
+
+
+def complete_reply_text(value: object) -> str:
+    if not isinstance(value, str) or not value.strip() or len(value.encode()) > 65_536:
+        raise RuntimeProtocolError("invalid_complete_reply")
+    return value
+
+
+def cached_controlled_reply(
+    session: RuntimeSession, request_id: str, prompt: str
+) -> RuntimeReply | None:
+    """Called under turn_lock: replay locally, never evict a used request identity."""
+    cached = session.completed_turns.get(request_id)
+    if cached is not None:
+        digest, reply = cached
+        if hashlib.sha256(prompt.encode()).hexdigest() != digest:
+            raise RuntimeProtocolError("request_reuse_conflict")
+        return reply
+    if len(session.completed_turns) >= 32:
+        raise RuntimeProtocolError("controlled_turn_limit")
+    return None
+
+
+def remember_controlled_reply(
+    session: RuntimeSession, prompt: str, reply: RuntimeReply
+) -> RuntimeReply:
+    # Check after all transport cleanup awaits, immediately before releasing the
+    # turn lock. A cancellation intent invalidates even an otherwise valid reply.
+    if session.status != "running":
+        raise RuntimeProtocolError("session_not_running")
+    session.completed_turns[reply.request_id] = (hashlib.sha256(prompt.encode()).hexdigest(), reply)
+    return reply
 
 
 @dataclass
@@ -118,6 +185,7 @@ class RuntimeCapabilities:
 class RuntimeAdapter(ABC):
     type: RuntimeType
     implemented: bool = False
+    supports_controlled_turn: bool = False
 
     @abstractmethod
     async def create_instance(self, employee: EmployeeRef, config: dict) -> RuntimeInstance: ...
@@ -141,6 +209,16 @@ class RuntimeAdapter(ABC):
 
     @abstractmethod
     async def send_message(self, session: RuntimeSession, message: str) -> None: ...
+
+    async def complete_turn(
+        self, session: RuntimeSession, prompt: str, *, request_id: str, timeout: float = 60
+    ) -> RuntimeReply:
+        """Return one complete reply on the host-controlled channel.
+
+        Ordinary task streams and tool telemetry cannot implement this capability.
+        A completed turn leaves the session running for the next host receipt.
+        """
+        raise RuntimeProtocolError("controlled_turn_unsupported")
 
     @abstractmethod
     def stream_events(self, session: RuntimeSession) -> AsyncIterator[RuntimeEvent]: ...

@@ -121,11 +121,11 @@ def cleanup_containers(docker_service, runtime_network, monkeypatch):
 
 
 @pytest.fixture()
-def model_relay(docker_service, runtime_network, cleanup_containers, tmp_path):
-    """An explicit paid gate: one tiny request through a disposable relay.
+def model_relay(request, docker_service, runtime_network, cleanup_containers, tmp_path):
+    """An explicit paid gate; default to one 32-token request through a relay.
 
-    The agent receives only the relay token. It cannot spend another request by
-    retrying or falling back, even if a runtime ignores max_tokens or times out.
+    Indirect parameters can allow up to eight bounded turns within one total
+    budget. Runtime retries and fallbacks consume the same durable allowance.
     """
     if os.environ.get("EIDOLON_REAL_MODEL_TESTS") != "1":
         pytest.skip("real model calls require EIDOLON_REAL_MODEL_TESTS=1")
@@ -133,7 +133,13 @@ def model_relay(docker_service, runtime_network, cleanup_containers, tmp_path):
     if not key:
         pytest.skip("real model calls require EIDOLON_TEST_PROVIDER_KEY")
     budget = Decimal(os.environ["EIDOLON_TEST_MODEL_BUDGET_USD"])
-    assert 0 < budget <= Decimal("0.05")
+    assert budget.is_finite() and 0 < budget <= Decimal("0.05")
+    options = getattr(request, "param", {})
+    assert isinstance(options, dict) and not options.keys() - {"max_requests", "output_limit"}
+    max_requests = options.get("max_requests", 1)
+    output_limit = options.get("output_limit", 32)
+    assert type(max_requests) is int and 1 <= max_requests <= 8
+    assert type(output_limit) is int and 32 <= output_limit <= 1024
     valid_until = datetime.fromisoformat(os.environ["EIDOLON_TEST_PRICING_VALID_UNTIL"])
     assert valid_until.tzinfo and datetime.now(UTC) < valid_until <= datetime.now(UTC) + timedelta(
         days=1
@@ -150,7 +156,14 @@ def model_relay(docker_service, runtime_network, cleanup_containers, tmp_path):
         name=name,
         image=image["Id"],
         network=runtime_network,
-        environment={"REAL_PROVIDER_KEY": key, "RELAY_TOKEN": token, "MAX_COST_USD": str(budget)},
+        environment={
+            "REAL_PROVIDER_KEY": key,
+            "RELAY_TOKEN": token,
+            "MAX_COST_USD": str(budget),
+            "MAX_REQUESTS": str(max_requests),
+            "OUTPUT_LIMIT": str(output_limit),
+            "PRICING_VALID_UNTIL": valid_until.isoformat(),
+        },
         volumes={
             str(Path(__file__).with_name("model_budget_proxy.py")): {
                 "bind": "/relay.py",
@@ -172,7 +185,12 @@ def model_relay(docker_service, runtime_network, cleanup_containers, tmp_path):
         time.sleep(0.1)
     assert receipt.exists(), "budget relay did not start"
     relay = SimpleNamespace(
-        url=f"http://{name}:8642/v1", token=token, model="deepseek-flash", receipt=receipt
+        url=f"http://{name}:8642/v1",
+        token=token,
+        model="deepseek-flash",
+        receipt=receipt,
+        max_requests=max_requests,
+        output_limit=output_limit,
     )
     yield relay
     print("MODEL_BUDGET_RECEIPT=" + json.dumps(json.loads(receipt.read_text()), sort_keys=True))
@@ -240,9 +258,12 @@ def create_model_runtime(idb, make_employee, model_relay, wait_control):
 def record_model_evidence(model_relay):
     def record(runtime, *, output_matches):
         receipt = json.loads(model_relay.receipt.read_text())
-        assert receipt["attempts"] == 1
+        assert 1 <= receipt["attempts"] <= model_relay.max_requests
+        assert receipt["attempts"] == len(receipt["requests"])
+        assert all(item["state"] == "settled" for item in receipt["requests"])
         assert receipt["http_status"] == 200
         assert receipt["usage"]["output_tokens"] > 0
+        assert Decimal(receipt["reserved_cost_usd"]) == 0
         assert Decimal(receipt["cost_usd"]) <= Decimal(receipt["max_cost_usd"])
         assert output_matches, "runtime did not return the actual minimal model response"
         print(

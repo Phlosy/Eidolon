@@ -13,6 +13,7 @@ import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator
+from urllib.parse import quote
 
 import httpx
 
@@ -28,9 +29,15 @@ from app.runtimes.base import (
     RuntimeEventKind,
     RuntimeInfo,
     RuntimeInstance,
+    RuntimeProtocolError,
+    RuntimeReply,
     RuntimeSession,
     RuntimeStatus,
     TaskContext,
+    cached_controlled_reply,
+    complete_reply_text,
+    controlled_request_key,
+    remember_controlled_reply,
 )
 from app.runtimes.container_common import refresh_status, resolve_container_instance
 from app.runtimes.docker.service import get_docker_service
@@ -45,6 +52,7 @@ _DEFAULT_RUN_TIMEOUT = 900.0
 class HermesAdapter(RuntimeAdapter):
     type = RuntimeType.hermes
     implemented = True
+    supports_controlled_turn = True
     tested_min_version = "2026.8.0"
     tested_max_version = None  # no known incompatible upper bound yet
 
@@ -117,6 +125,69 @@ class HermesAdapter(RuntimeAdapter):
             )
         )
 
+    async def complete_turn(
+        self, session: RuntimeSession, prompt: str, *, request_id: str, timeout: float = 60
+    ) -> RuntimeReply:
+        key = controlled_request_key(session, request_id, timeout)
+        run_id = None
+        submitted = False
+        try:
+            async with asyncio.timeout(timeout), session.turn_lock:
+                controlled_request_key(session, request_id, timeout)
+                cached = cached_controlled_reply(session, request_id, prompt)
+                if cached is not None:
+                    return cached
+                submitted = True
+                run_id = await self._create_run(
+                    session.instance, prompt, key, session_id=session.id
+                )
+                if not isinstance(run_id, str) or not run_id:
+                    raise RuntimeProtocolError("run_id_missing")
+                session.remote_run_id = run_id
+                session.cancel_confirmed = None
+                controlled_request_key(session, request_id, timeout)
+                url = f"{session.instance.details['base_url']}/v1/runs/{quote(run_id, safe='')}"
+                async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT, trust_env=False) as client:
+                    while True:
+                        response = await client.get(url, headers=self._headers(session.instance))
+                        response.raise_for_status()
+                        payload = response.json()
+                        if not isinstance(payload, dict) or payload.get("run_id", run_id) != run_id:
+                            raise RuntimeProtocolError("run_identity_mismatch")
+                        status = payload.get("status")
+                        if status == "completed":
+                            reply = RuntimeReply(
+                                session_id=session.id,
+                                request_id=request_id,
+                                run_id=run_id,
+                                text=complete_reply_text(payload.get("output")),
+                                usage=payload.get("usage")
+                                if isinstance(payload.get("usage"), dict)
+                                else None,
+                            )
+                            break
+                        if status not in {"started", "running", "queued"}:
+                            raise RuntimeProtocolError("run_not_successful")
+                        await asyncio.sleep(0.1)
+                return remember_controlled_reply(session, prompt, reply)
+        except (Exception, asyncio.CancelledError):
+            if submitted:
+                # A stop request is not proof that a remote model has terminated.
+                if session.status == "running":
+                    session.status = "failed"
+                session.cancel_confirmed = False
+            if run_id:
+                try:
+                    stop_path = f"/v1/runs/{quote(run_id, safe='')}/stop"
+                    async with httpx.AsyncClient(timeout=5, trust_env=False) as client:
+                        await client.post(
+                            session.instance.details["base_url"] + stop_path,
+                            headers=self._headers(session.instance),
+                        )
+                except Exception:
+                    logger.warning("controlled Hermes stop could not be confirmed")
+            raise
+
     async def stream_events(self, session: RuntimeSession) -> AsyncIterator[RuntimeEvent]:
         while True:
             event = await session.queue.get()
@@ -125,9 +196,10 @@ class HermesAdapter(RuntimeAdapter):
                 break
 
     async def cancel_task(self, session: RuntimeSession) -> None:
+        session.status = "cancelled"
         if session.background and not session.background.done():
             session.background.cancel()
-        run_id = session.instance.details.get(f"run_id:{session.id}")
+        run_id = session.remote_run_id or session.instance.details.get(f"run_id:{session.id}")
         if run_id:
             try:
                 async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
@@ -137,7 +209,6 @@ class HermesAdapter(RuntimeAdapter):
                     )
             except Exception:
                 logger.exception("hermes stop run failed", extra={"task_id": session.task_id})
-        session.status = "cancelled"
 
     async def get_artifacts(self, session: RuntimeSession) -> list[ProducedArtifact]:
         return list(session.artifacts)
@@ -160,16 +231,21 @@ class HermesAdapter(RuntimeAdapter):
         return {"Authorization": f"Bearer {key}"}
 
     async def _create_run(
-        self, instance: RuntimeInstance, prompt: str, idempotency_key: str
+        self,
+        instance: RuntimeInstance,
+        prompt: str,
+        idempotency_key: str,
+        *,
+        session_id: str | None = None,
     ) -> str | None:
         base_url = instance.details.get("base_url")
         if not base_url:
             raise RuntimeError("hermes instance has no base_url (not provisioned?)")
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT, trust_env=False) as client:
             response = await client.post(
                 f"{base_url}/v1/runs",
                 headers={**self._headers(instance), "Idempotency-Key": idempotency_key},
-                json={"input": prompt},
+                json={"input": prompt, **({"session_id": session_id} if session_id else {})},
             )
             response.raise_for_status()
             payload = response.json()

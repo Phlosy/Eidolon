@@ -28,9 +28,15 @@ from app.runtimes.base import (
     RuntimeEventKind,
     RuntimeInfo,
     RuntimeInstance,
+    RuntimeProtocolError,
+    RuntimeReply,
     RuntimeSession,
     RuntimeStatus,
     TaskContext,
+    cached_controlled_reply,
+    complete_reply_text,
+    controlled_request_key,
+    remember_controlled_reply,
 )
 from app.runtimes.container_common import refresh_status, resolve_container_instance
 from app.runtimes.docker.service import get_docker_service
@@ -46,6 +52,7 @@ _SESSION_KEY = "agent:main:main"
 class OpenClawAdapter(RuntimeAdapter):
     type = RuntimeType.openclaw
     implemented = True
+    supports_controlled_turn = True
     tested_min_version = "2026.8.1"
     tested_max_version = None  # no known incompatible upper bound yet
 
@@ -143,19 +150,145 @@ class OpenClawAdapter(RuntimeAdapter):
             if event.kind in (RuntimeEventKind.completed, RuntimeEventKind.error):
                 break
 
+    async def complete_turn(
+        self, session: RuntimeSession, prompt: str, *, request_id: str, timeout: float = 60
+    ) -> RuntimeReply:
+        key = controlled_request_key(session, request_id, timeout)
+        session_key = f"agent:main:eidolon-{session.id}"
+        async with asyncio.timeout(timeout), session.turn_lock:
+            controlled_request_key(session, request_id, timeout)
+            cached = cached_controlled_reply(session, request_id, prompt)
+            if cached is not None:
+                return cached
+            async with self._connect(session.instance) as client:
+                run_id = None
+                reply_task = None
+                try:
+                    controlled_request_key(session, request_id, timeout)
+                    # The fixed protocol uses our idempotency key as the run ID.
+                    # Retain it even when the ACK is lost; never abort an ACK's foreign ID.
+                    run_id = key
+                    session.remote_run_id = run_id
+                    session.cancel_confirmed = None
+                    started = await client.call(
+                        "chat.send",
+                        {
+                            "sessionKey": session_key,
+                            "message": prompt,
+                            "idempotencyKey": key,
+                            "thinking": "off",
+                            "timeoutMs": max(1, int(timeout * 1000)),
+                        },
+                        timeout=timeout,
+                    )
+                    if not isinstance(started, dict) or started.get("runId") != run_id:
+                        raise RuntimeProtocolError("run_identity_mismatch")
+                    controlled_request_key(session, request_id, timeout)
+                    reply_task = asyncio.create_task(
+                        self._complete_chat_reply(client, session_key, run_id),
+                        name=f"openclaw-controlled-{session.id}",
+                    )
+                    terminal = await client.call(
+                        "agent.wait",
+                        {"runId": run_id, "timeoutMs": max(1, int(timeout * 1000))},
+                        timeout=timeout,
+                    )
+                    if (
+                        not isinstance(terminal, dict)
+                        or terminal.get("status") != "ok"
+                        or terminal.get("runId", run_id) != run_id
+                    ):
+                        raise RuntimeProtocolError("run_not_successful")
+                    # terminalReply and chat.history can be truncated or belong to
+                    # another turn. Only the final event with both identities qualifies.
+                    text = await reply_task
+                    reply = RuntimeReply(session.id, request_id, run_id, text)
+                except (Exception, asyncio.CancelledError):
+                    if run_id:
+                        if session.status == "running":
+                            session.status = "failed"
+                        confirmed = False
+                        try:
+                            result = await client.call(
+                                "chat.abort",
+                                {"sessionKey": session_key, "runId": run_id},
+                                timeout=5,
+                            )
+                            confirmed = (
+                                isinstance(result, dict)
+                                and result.get("aborted") is True
+                                and run_id in result.get("runIds", [])
+                            )
+                        except Exception:
+                            logger.warning("controlled OpenClaw abort could not be confirmed")
+                        session.cancel_confirmed = confirmed
+                    raise
+                finally:
+                    if reply_task is not None:
+                        reply_task.cancel()
+                        await asyncio.gather(reply_task, return_exceptions=True)
+            return remember_controlled_reply(session, prompt, reply)
+
+    @staticmethod
+    async def _complete_chat_reply(client: GatewayClient, session_key: str, run_id: str) -> str:
+        while True:
+            event = await client.events.get()
+            payload = event.get("payload")
+            if (
+                event.get("event") != "chat"
+                or not isinstance(payload, dict)
+                or payload.get("sessionKey") != session_key
+                or payload.get("runId") != run_id
+            ):
+                continue
+            if payload.get("state") in {"error", "aborted"}:
+                raise RuntimeProtocolError("run_not_successful")
+            if payload.get("state") != "final":
+                continue
+            message = payload.get("message")
+            if not isinstance(message, dict) or message.get("role") != "assistant":
+                raise RuntimeProtocolError("assistant_reply_missing")
+            projection = message.get("__openclaw") or {}
+            if not isinstance(projection, dict) or projection.get("truncated"):
+                raise RuntimeProtocolError("reply_truncated")
+            content = message.get("content")
+            if isinstance(content, list):
+                content = "\n".join(
+                    block["text"]
+                    for block in content
+                    if isinstance(block, dict)
+                    and block.get("type") == "text"
+                    and isinstance(block.get("text"), str)
+                )
+            return complete_reply_text(content)
+
     async def cancel_task(self, session: RuntimeSession) -> None:
+        session.status = "cancelled"
         if session.background and not session.background.done():
             session.background.cancel()
-        run_id = session.instance.details.get(f"run_id:{session.id}")
+        controlled = session.remote_run_id is not None or session.turn_lock.locked()
+        run_id = (
+            session.remote_run_id
+            if controlled
+            else session.instance.details.get(f"run_id:{session.id}")
+        )
+        if controlled and run_id is None:
+            # A control connection has not submitted a run yet. Do not redirect
+            # its cancellation to the ordinary shared chat session.
+            return
         try:
             async with self._connect(session.instance) as client:
                 await client.call(
                     "chat.abort",
-                    {"sessionKey": _SESSION_KEY, **({"runId": run_id} if run_id else {})},
+                    {
+                        "sessionKey": (
+                            f"agent:main:eidolon-{session.id}" if controlled else _SESSION_KEY
+                        ),
+                        **({"runId": run_id} if run_id else {}),
+                    },
                 )
         except Exception:
             logger.exception("openclaw abort failed", extra={"task_id": session.task_id})
-        session.status = "cancelled"
 
     async def get_artifacts(self, session: RuntimeSession) -> list[ProducedArtifact]:
         run_id = session.instance.details.get(f"run_id:{session.id}")

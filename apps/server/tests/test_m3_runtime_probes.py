@@ -853,7 +853,10 @@ def test_rendered_provider_configuration_preserves_explicit_endpoint(runtime_typ
     ]()
     result = renderer.render_provider_config(provider, "selected", "fixture-key")
     if runtime_type == "hermes":
-        assert yaml.safe_load(result.files["config.yaml"])["model"]["base_url"] == provider.base_url
+        configuration = yaml.safe_load(result.files["config.yaml"])
+        assert configuration["model"]["base_url"] == provider.base_url
+        # Managed turns must not spend an extra model call naming a conversation.
+        assert configuration["auxiliary"]["title_generation"]["enabled"] is False
     else:
         assert (
             json.loads(result.files["openclaw.json"])["models"]["providers"]["deepseek"]["baseUrl"]

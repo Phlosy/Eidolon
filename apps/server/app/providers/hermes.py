@@ -64,7 +64,12 @@ class HermesProviderConfigurator(RuntimeProviderConfigurator):
         if native is None:
             # custom providers read the key from the model block; "none" when keyless
             model_block["api_key"] = credential or "none"
-        config = yaml.safe_dump({"model": model_block}, sort_keys=False)
+        # Eidolon names work sessions. Hermes' automatic title generation makes
+        # an extra model request outside the host's controlled turn allowance.
+        config = yaml.safe_dump(
+            {"model": model_block, "auxiliary": {"title_generation": {"enabled": False}}},
+            sort_keys=False,
+        )
 
         env_lines: list[str] = []
         key_env = key_env_for(provider)
