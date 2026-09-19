@@ -1030,7 +1030,10 @@ READINESS_ITEMS: tuple[str, ...] = ("position", "workspace", "runtime", "provide
 #: 每一项的事实来源（可核对：读哪张表 / 哪个目录）—— **不含任何判断**。
 READINESS_FACT_SOURCES: dict[str, str] = {
     # 软契约：有生效主职就有角色上下文（W4/W5）；没有也不阻止执行，只影响解释
-    "position": "position_assignments (effective primary) + position_definitions",
+    "position": (
+        "employments (effective primary) + position_slots + position_definitions"
+        " + employees.lifecycle_status"
+    ),
     # 工作区：路径写在员工行上，且目录真的存在
     "workspace": "employees.workspace_path + 目录存在 + resource_accounts(workspace)",
     # 运行时：实例存在且状态/健康可用（mock 代理由 MockAdapter 自带，不需实例）

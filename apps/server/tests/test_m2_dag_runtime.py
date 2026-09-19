@@ -253,11 +253,6 @@ def test_ready_unassigned_escalates_as_management_decision(
     db, default_company_id, monkeypatch, _inert_global
 ):
     """R4：调度器遇到"就绪但没负责人"只发事件；同一原因不刷屏（去重）。"""
-    published: list[tuple[str, dict]] = []
-    monkeypatch.setattr(
-        bus, "publish", lambda event, payload, **kw: published.append((event, payload))
-    )
-
     project = _project(db, default_company_id)
     task = _task(db, project, "无人认领的活")
 
@@ -269,24 +264,16 @@ def test_ready_unassigned_escalates_as_management_decision(
     asyncio.run(orchestrator._dispatch_pending())
     # 只认**这个任务**的上报：库里可能有其它遗留项目同时在扫（全局调度器），
     # 不筛 id 的话断言会被别人的上报顶掉（实测过：整仓跑时偶发）。
-    escalations = [
-        item
-        for item in published
-        if item[0] == "task.assignment_required" and item[1].get("id") == int(task.id)
-    ]
+    query = select(Event).where(Event.type == "task.assignment_required", Event.task_id == task.id)
+    escalations = list(db.scalars(query))
     assert escalations, "就绪但缺负责人必须上报，不能静静等着"
-    payload = escalations[0][1]
+    payload = escalations[0].payload
     assert payload["needs_management"] is True
     assert D.REASON_ASSIGNEE_MISSING in payload["reasons"]
 
     # 去重：同一 (task, event) 不再重复上报
-    published.clear()
     asyncio.run(orchestrator._dispatch_pending())
-    assert not [
-        item
-        for item in published
-        if item[0] == "task.assignment_required" and item[1].get("id") == int(task.id)
-    ]
+    assert [event.id for event in db.scalars(query)] == [escalations[0].id]
 
     # 事件落的还是**事实**：任务依然没人、依然没开始
     db.expire_all()
@@ -736,25 +723,23 @@ def test_invalid_graph_is_never_scheduled_and_escalates(
     # 两个任务即使"没有未完成的前置"也不许被当成就绪
     assert D.structural_ready_task_ids(db, int(project.id)) == ()
 
-    published: list[tuple[str, dict]] = []
-    monkeypatch.setattr(
-        bus, "publish", lambda event, payload, **kw: published.append((event, payload))
-    )
     monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     orchestrator = orchestrator_module.Orchestrator()
 
     import asyncio
 
     asyncio.run(orchestrator._dispatch_pending())
-    replans = [item for item in published if item[0] == "project.replan_required"]
+    query = select(Event).where(
+        Event.type == "project.replan_required", Event.project_id == project.id
+    )
+    replans = list(db.scalars(query))
     assert replans, "图不可执行必须上报重规划，不能静静卡住"
-    assert replans[0][1]["id"] == int(project.id)
-    assert replans[0][1]["reasons"], "上报要带上结构问题清单"
+    assert replans[0].payload["id"] == int(project.id)
+    assert replans[0].payload["reasons"], "上报要带上结构问题清单"
 
     # 去重：不刷屏
-    published.clear()
     asyncio.run(orchestrator._dispatch_pending())
-    assert not [item for item in published if item[0] == "project.replan_required"]
+    assert [event.id for event in db.scalars(query)] == [replans[0].id]
 
     # 而且**没有**任何任务被启动
     db.expire_all()

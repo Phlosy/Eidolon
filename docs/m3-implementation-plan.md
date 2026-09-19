@@ -122,8 +122,8 @@ Codex / Claude Code / OpenCode / Custom 新 Runtime（保持 placeholder）
 | 阶段 | 主题 | 迁移 | 状态 |
 | --- | --- | --- | --- |
 | M3.0 | Production Agent Contract Freeze | 零 | **DONE**（`6f4e97b`） |
-| M3.1 | Real Runtime Provisioning | 开通归属、出处快照按需 | IN_PROGRESS |
-| M3.2 | Ready-to-Work & Runtime Readiness | 管理会话 / 调用幂等按需 | PLANNED |
+| M3.1 | Real Runtime Provisioning | 开通归属、出处快照按需 | **DONE**（U1–U5） |
+| M3.2 | Ready-to-Work & Runtime Readiness | 通知周期、管理会话 / 调用幂等按需 | IN_PROGRESS（U6 完成） |
 | M3.3 | Capability Gap Actions | 动作确认记录按需 | PLANNED |
 | M3.4 | Execution Telemetry & Recovery | 遥测 / 恢复元数据按需 | PLANNED |
 | M3.5 | Work Experience & Unified Resume | 视裁决 | PLANNED |
@@ -679,8 +679,8 @@ docs/m3-freeze.md（机器可检：形态 / 不变量 / 唯一写入路径 / 模
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
 | M3.0 | **DONE** | `6f4e97b` | 设计 + 契约 + 54 条新增守卫；零迁移。详细历史证据见 §18 |
-| M3.1 | **DONE** | `d838823`（U1）、`146dca3`（U2）、`d814476`（U3）、`bb6a3ea`（U4）；U5 见本次提交 | U1–U5 完成。阶段收尾 1532 passed / 10 deselected，v50 往返及检查、lint、前端 390 项与构建通过；U4 五组随机序和两种 Runtime 的真实调用证据保留。历史快照已有创建写者、历史读者和数据库保护。[B1–B5 与完整证据](m3-u5-execution-snapshots.md)。真实业务交付及管理工具桥仍属后续阶段 |
-| M3.2 | PLANNED | — | |
+| M3.1 | **DONE** | `d838823`（U1）、`146dca3`（U2）、`d814476`（U3）、`bb6a3ea`（U4）、`3718881`（U5） | U1–U5 完成。阶段收尾 1532 passed / 10 deselected，v50 往返及检查、lint、前端 390 项与构建通过；U4 五组随机序和两种 Runtime 的真实调用证据保留。历史快照已有创建写者、历史读者和数据库保护。[B1–B5 与完整证据](m3-u5-execution-snapshots.md)。真实业务交付及管理工具桥仍属后续阶段 |
+| M3.2 | IN_PROGRESS | U6 见本次提交 | U6 完成：四层就绪共享读面、环境等待与管理暂停分离、持久故障通知周期和开工前复查。后端 1557 passed / 10 deselected、v51 往返及检查、lint、前端 390 项与构建通过。[U6 证据](m3-u6-readiness-and-waiting.md)。U7 真实工具桥及 U8 管理/评审会话待实施 |
 | M3.3 | PLANNED | — | |
 | M3.4 | PLANNED | — | |
 | M3.5 | PLANNED | — | |

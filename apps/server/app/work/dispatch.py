@@ -28,18 +28,14 @@ from dataclasses import dataclass, field
 from sqlalchemy.orm import Session
 
 from app.models.enums import (
-    EmployeeStatus,
-    LifecycleStatus,
     ProjectStatus,
-    RuntimeType,
     TaskStatus,
 )
 from app.models.organization import Employee
 from app.models.project import Task
 from app.repositories import project as project_repo
-from app.repositories import runtimes as runtime_repo
 from app.work import contracts as C
-from app.work import handoff
+from app.work import handoff, readiness
 
 #: 项目处于这些状态时允许执行（终态与"等管理层"不在此列）
 EXECUTABLE_PROJECT_STATUSES: frozenset[str] = frozenset(
@@ -95,6 +91,16 @@ class DispatchEvaluation:
     #: 暂时排不上（负责人正忙）：不是异常，也不需要管理决策，等就行
     queued: bool = False
     assignee_id: int | None = None
+    readiness: dict | None = None
+
+    @property
+    def waiting_for_environment(self) -> bool:
+        return bool(self.reasons) and set(self.reasons) <= {
+            REASON_ASSIGNEE_INACTIVE,
+            REASON_RUNTIME_UNAVAILABLE,
+            REASON_PROVIDER_MISSING,
+            REASON_ASSIGNEE_NOT_READY,
+        }
 
     @property
     def needs_management(self) -> bool:
@@ -117,6 +123,8 @@ class DispatchEvaluation:
             "assignee_id": self.assignee_id,
             "reasons": list(self.reasons),
             "needs_management": self.needs_management,
+            "waiting_for_environment": self.waiting_for_environment,
+            "readiness": self.readiness,
         }
 
 
@@ -165,35 +173,20 @@ def ready_tasks(db: Session, project_id: int) -> list[Task]:
 # ---------------------------------------------------------------------------
 
 
-def _readiness_block_reasons(db: Session, employee: Employee) -> list[str]:
+def _readiness_block_reasons(report: readiness.ReadinessReport) -> list[str]:
     """M2.8（W31/RD3）：执行环境是否就绪。
 
     **只查"执行必须满足"的那几项**（见契约 §8c）：mock 运行时不需要工作区/实例，
     真实运行时缺任何一项都拦下并交给管理层 —— 系统不会"先跑跑看"。
     """
-    from app.work import readiness
-
-    return [REASON_ASSIGNEE_NOT_READY] if readiness.blocking_gaps(db, employee) else []
-
-
-def _runtime_block_reasons(db: Session, employee: Employee) -> list[str]:
-    """运行时/模型绑定是否可用。
-
-    **mock 模式**：不需要 provider 绑定（MockAdapter 自身就是可执行的替身）。
-    **真实 runtime**：必须有相应的 runtime instance **且**绑定了模型 ——
-    两者缺一都归到 `runtime_unavailable` / `provider_missing`，由管理层决定怎么修。
-    """
-    runtime_type = str(employee.runtime_type or RuntimeType.mock.value)
-    if runtime_type == RuntimeType.mock.value:
-        return []
-    instance = runtime_repo.get_instance_for_employee(db, int(employee.id))
-    if instance is None:
-        return [REASON_RUNTIME_UNAVAILABLE]
-    if str(instance.status) in {"crashed", "error", "unhealthy", "stopped", "deleted"}:
-        return [REASON_RUNTIME_UNAVAILABLE]
-    if instance.model_binding_id is None:
-        return [REASON_PROVIDER_MISSING]
-    return []
+    reasons = [REASON_ASSIGNEE_NOT_READY] if report.blocking_gaps else []
+    if not report.policy.is_mock:
+        items = {item.item: item for item in report.items}
+        if not items["runtime"].ready:
+            reasons.append(REASON_RUNTIME_UNAVAILABLE)
+        if not items["provider"].ready:
+            reasons.append(REASON_PROVIDER_MISSING)
+    return reasons
 
 
 def evaluate_dispatch(db: Session, task: Task) -> DispatchEvaluation:
@@ -237,21 +230,28 @@ def evaluate_dispatch(db: Session, task: Task) -> DispatchEvaluation:
         )
 
     employee = db.get(Employee, int(assignee_id))
+    report = None
+    explanation = None
     if employee is None:
         reasons.append(REASON_ASSIGNEE_INACTIVE)
     else:
-        if employee.lifecycle_status != LifecycleStatus.active.value:
+        report = readiness.readiness_report(db, employee)
+        data = report.as_dict()
+        # Notification/tool consumers need facts, not raw runtime configuration.
+        explanation = {
+            key: data[key]
+            for key in (
+                "evaluated_at",
+                "blocking_gaps",
+                "required_for_execution",
+                "items",
+                "stages",
+            )
+        }
+        if not report.employment_active:
             reasons.append(REASON_ASSIGNEE_INACTIVE)
-        elif employee.status in {
-            EmployeeStatus.offline.value,
-            EmployeeStatus.error.value,
-        }:
-            # 离线的 Agent 仍然可以"被派"（runtime 会把它拉起来）；只有真错误的才拦。
-            reasons.extend(_readiness_block_reasons(db, employee))
-            reasons.extend(_runtime_block_reasons(db, employee))
         else:
-            reasons.extend(_readiness_block_reasons(db, employee))
-            reasons.extend(_runtime_block_reasons(db, employee))
+            reasons.extend(_readiness_block_reasons(report))
 
     # ④b M2.6：声明要用的上游跑完了却没产出 ⇒ 不派发，交给管理层（H5/R10）。
     # 这是"计划与事实不符"，不是"缺人/缺资源"：换个人也拿不到不存在的产物。
@@ -265,18 +265,22 @@ def evaluate_dispatch(db: Session, task: Task) -> DispatchEvaluation:
             dispatchable=False,
             reasons=tuple(reasons),
             assignee_id=int(assignee_id),
+            readiness=explanation,
         )
 
     # ⑤ 负责人是否已经有别的 running 会话（一员工同时一个 session 的不变式）
-    if project_repo.get_running_session_for_employee(db, int(assignee_id)) is not None:
+    if report is not None and report.busy:
         return DispatchEvaluation(
             task_id=int(task.id),
             dispatchable=False,
             queued=True,
             reasons=("assignee_busy",),
             assignee_id=int(assignee_id),
+            readiness=explanation,
         )
-    return DispatchEvaluation(task_id=int(task.id), dispatchable=True, assignee_id=int(assignee_id))
+    return DispatchEvaluation(
+        task_id=int(task.id), dispatchable=True, assignee_id=int(assignee_id), readiness=explanation
+    )
 
 
 @dataclass(frozen=True)

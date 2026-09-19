@@ -60,7 +60,7 @@ from app.services import position_compat
 from app.services import tasks as task_service
 from app.work import contracts as C
 from app.work import dispatch as dispatch_runtime
-from app.work import handoff, review_fixture, work_defaults
+from app.work import dispatch_notices, handoff, review_fixture, work_defaults
 
 logger = get_logger(__name__)
 
@@ -71,8 +71,6 @@ class Orchestrator:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._runner: asyncio.Task | None = None
         self._running: dict[int, asyncio.Task] = {}  # employee_id -> session task
-        #: (task_id, event_type) —— 同一任务同一原因只上报一次（重启后最多再报一次）
-        self._escalated: set[tuple[int, str]] = set()
 
     def start(self) -> None:
         self._loop = asyncio.get_running_loop()
@@ -125,13 +123,17 @@ class Orchestrator:
         | `queued`（负责人正忙）| 跳过 —— 下一轮再看，不是异常 |
         | `needs_management` | 发 Decision-needed 事件（去重），**绝不自动挑人**（R4/R5）|
 
-        **去重**：同一 (task, event) 只在第一次遇到时上报；重启后最多再报一次
-        （事件是事实，重述一次可以接受；反复刷屏不可以）。
+        通知按持久周期去重，条件消失或改派后结束，再次发生可重新通知。
         """
         if not settings.orchestrator_dispatch_enabled:
             # 门控：后台写者不与调用方抢同一份 SQLite（见 Settings 的注释）。
             return
         with SessionLocal() as db:
+            # SQLite's legacy read transactions otherwise allow another sweep or
+            # recovery write between observing a fault and recording its cycle.
+            # This short phase only reads local facts and writes Events; external
+            # calls and broadcasts occur after commit.
+            dispatch_notices.begin_observation(db)
             candidates: list[tuple[int, int]] = []
             escalations: list[tuple[int | None, str, dict]] = []
             for project in project_repo.list_projects(db):
@@ -141,25 +143,22 @@ class Orchestrator:
                 if state.invalid_graph:
                     # 图本身有环/悬空 ⇒ 这张计划无法执行：上报重规划（等管理层修图），
                     # 既不调度、也不假装它是"缺人/缺资源"（那是另一类判断）。
-                    key = (int(project.id), "project.replan_required")
-                    if key not in self._escalated:
-                        self._escalated.add(key)
-                        escalations.append(
-                            (
-                                None,
-                                "project.replan_required",
-                                {
-                                    "id": int(project.id),
-                                    "name": project.name,
-                                    "company_id": int(project.company_id),
-                                    "project_id": int(project.id),
-                                    "work_mode": project.work_mode,
-                                    "management_employee_id": project.management_employee_id,
-                                    "reasons": list(state.graph_problems),
-                                    "needs_management": True,
-                                },
-                            )
+                    escalations.append(
+                        (
+                            None,
+                            "project.replan_required",
+                            {
+                                "id": int(project.id),
+                                "name": project.name,
+                                "company_id": int(project.company_id),
+                                "project_id": int(project.id),
+                                "work_mode": project.work_mode,
+                                "management_employee_id": project.management_employee_id,
+                                "reasons": list(state.graph_problems),
+                                "needs_management": True,
+                            },
                         )
+                    )
                     continue
                 for evaluation in state.dispatchable:
                     assignee_id = int(evaluation.assignee_id or 0)
@@ -170,10 +169,6 @@ class Orchestrator:
                     candidates.append((int(evaluation.task_id), assignee_id))
                 # M2.7：做完了却没指定评审人 ⇒ 叫管理层（系统不替它选人，W1/R2/RV1）
                 for pending in dispatch_runtime.tasks_awaiting_review(db, int(project.id)):
-                    key = (int(pending.id), "task.review_required")
-                    if key in self._escalated:
-                        continue
-                    self._escalated.add(key)
                     escalations.append(
                         (
                             int(pending.id),
@@ -195,10 +190,14 @@ class Orchestrator:
                     event = evaluation.event_type
                     if event is None:
                         continue
-                    key = (int(evaluation.task_id), event)
-                    if key in self._escalated:
-                        continue
                     task = project_repo.get_task(db, int(evaluation.task_id))
+                    if task is None or task.status not in {
+                        TaskStatus.backlog.value,
+                        TaskStatus.todo.value,
+                        TaskStatus.blocked.value,
+                        TaskStatus.failed.value,
+                    }:
+                        continue
                     escalations.append(
                         (
                             int(evaluation.task_id),
@@ -211,22 +210,16 @@ class Orchestrator:
                                 "company_id": int(project.company_id),
                                 "reasons": list(evaluation.reasons),
                                 "assignee_id": evaluation.assignee_id,
+                                "waiting_for_environment": evaluation.waiting_for_environment,
+                                "readiness": evaluation.readiness,
                                 "management_employee_id": project.management_employee_id,
                                 "needs_management": True,
                             },
                         )
                     )
-                    self._escalated.add(key)
-        for task_id, event, payload in escalations:
-            logger.info("dispatch needs management: %s target=%s", event, task_id or "project")
-            bus.publish(
-                event,
-                payload,
-                company_id=payload["company_id"],
-                project_id=payload["project_id"],
-                task_id=task_id,
-                actor_employee_id=payload.get("assignee_id"),
-            )
+            dispatch_notices.reconcile(db, escalations)
+            db.commit()
+        dispatch_notices.broadcast_pending()
         for task_id, employee_id in candidates:
             # invariant §3.4.2: one running WorkSession per employee
             session_task = asyncio.create_task(
@@ -257,6 +250,10 @@ class Orchestrator:
                 # A manager may requeue/reassign a task before its executor exits.
                 # The new assignee starts only after that session has finished.
                 if project_repo.get_running_session_for_task(db, task_id) is not None:
+                    return
+                # Authorization and observed readiness may have changed since the
+                # sweep queued this coroutine; reuse the same dispatch evaluator.
+                if not dispatch_runtime.evaluate_dispatch(db, task).dispatchable:
                     return
                 employee = org_repo.get_employee(db, task.assignee_id)
                 if employee is None or employee.status != EmployeeStatus.idle.value:

@@ -33,6 +33,7 @@ from app.models.competency import (
 )
 from app.models.cultivation import CharacterProfile, EducationEvent, TrainingProgram
 from app.models.decision import DecisionRecord, ToolAudit
+from app.models.dispatch import DispatchNotice
 from app.models.drive import DriveCollaborator, DriveNode, DriveRevision
 from app.models.economy import (
     Escrow,
@@ -107,6 +108,7 @@ from app.models.review import ReviewFact, ReviewRequest
 from app.models.runtime import EmployeeBrain, RuntimeImage, RuntimeInstance
 
 __all__ = [
+    "DispatchNotice",
     "AccessPackage",
     "AccessPackageItem",
     "Artifact",

@@ -371,6 +371,22 @@ class ReadinessItemOut(BaseModel):
     detail: str
     source: str
     facts: dict = {}
+    stage: str = ""
+    required_for_execution: bool = False
+    blocking: bool = False
+    reason_codes: list[str] = []
+    evaluated_at: str | None = None
+    observed_at: str | None = None
+    expires_at: str | None = None
+
+
+class ReadinessStageOut(BaseModel):
+    stage: str
+    ready: bool
+    blocking: bool
+    reason_codes: list[str]
+    facts: dict
+    evaluated_at: str | None = None
 
 
 class RuntimePolicyOut(BaseModel):
@@ -395,6 +411,10 @@ class ReadinessOut(BaseModel):
     gaps: list[str] = []
     policy: RuntimePolicyOut
     items: list[ReadinessItemOut] = []
+    evaluated_at: str | None = None
+    blocking_gaps: list[str] = []
+    required_for_execution: list[str] = []
+    stages: list[ReadinessStageOut] = []
 
 
 class ReadinessProvisionOut(BaseModel):

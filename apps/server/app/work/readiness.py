@@ -24,12 +24,13 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.models.base import utcnow
 from app.models.enums import (
     DeploymentMode,
     LifecycleStatus,
@@ -41,12 +42,15 @@ from app.models.enums import (
 )
 from app.models.lifecycle import ProvisioningJob
 from app.models.organization import Company, Employee
-from app.models.position import PositionAssignment, PositionDefinition, PositionSlot
+from app.models.position import PositionDefinition, PositionSlot
 from app.repositories import lifecycle as lifecycle_repo
+from app.repositories import position as position_repo
+from app.repositories import project as project_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
 from app.runtimes.probe import runtime_facts
 from app.work import contracts as C
+from app.work.production import READINESS_ITEM_STAGE, ProductionStage
 from app.work.runtime_readiness import provider_facts
 
 logger = logging.getLogger(__name__)
@@ -221,6 +225,12 @@ class ReadinessItem:
     detail: str
     source: str
     facts: dict = field(default_factory=dict)
+    stage: str = ""
+    required_for_execution: bool = False
+    reason_codes: tuple[str, ...] = ()
+    evaluated_at: str | None = None
+    observed_at: str | None = None
+    expires_at: str | None = None
 
     def as_dict(self) -> dict:
         return {
@@ -229,6 +239,13 @@ class ReadinessItem:
             "detail": self.detail,
             "source": self.source,
             "facts": self.facts,
+            "stage": self.stage,
+            "required_for_execution": self.required_for_execution,
+            "blocking": self.required_for_execution and not self.ready,
+            "reason_codes": list(self.reason_codes),
+            "evaluated_at": self.evaluated_at,
+            "observed_at": self.observed_at,
+            "expires_at": self.expires_at,
         }
 
 
@@ -242,6 +259,11 @@ class ReadinessReport:
     items: tuple[ReadinessItem, ...]
     gaps: tuple[str, ...]
     policy: RuntimePolicy
+    evaluated_at: str | None = None
+    blocking_gaps: tuple[str, ...] = ()
+    stages: tuple[dict, ...] = ()
+    employment_active: bool = True
+    busy: bool = False
 
     def as_dict(self) -> dict:
         return {
@@ -253,6 +275,12 @@ class ReadinessReport:
             "gaps": list(self.gaps),
             "policy": self.policy.as_dict(),
             "items": [item.as_dict() for item in self.items],
+            "evaluated_at": self.evaluated_at,
+            "blocking_gaps": list(self.blocking_gaps),
+            "required_for_execution": list(
+                C.READINESS_REQUIRED_FOR_EXECUTION["mock" if self.policy.is_mock else "real"]
+            ),
+            "stages": list(self.stages),
         }
 
 
@@ -264,16 +292,7 @@ def _position_item(db: Session, employee: Employee) -> ReadinessItem:
     （P4b 的单一真相：任职挂在编制上）。没有主职是**合法答案**（= AVAILABLE），
     不回落 `employees.role` 假装有职位。
     """
-    assignments = [
-        row
-        for row in db.scalars(
-            select(PositionAssignment).where(
-                PositionAssignment.employee_id == int(employee.id),
-                PositionAssignment.effective_to.is_(None),
-            )
-        )
-    ]
-    assignment = assignments[0] if assignments else None
+    assignment = position_repo.active_primary_assignment(db, employee.id)
     slot = (
         db.get(PositionSlot, int(assignment.position_slot_id))
         if assignment is not None and assignment.position_slot_id is not None
@@ -284,15 +303,21 @@ def _position_item(db: Session, employee: Employee) -> ReadinessItem:
     )
     return ReadinessItem(
         item="position",
-        ready=assignment is not None and definition is not None,
+        ready=(
+            assignment is not None
+            and definition is not None
+            and employee.lifecycle_status == LifecycleStatus.active.value
+        ),
         detail=(
-            f"在任职位 {definition.code}"
+            f"在册状态 {employee.lifecycle_status} / 在任职位 {definition.code}"
             if definition is not None
             else "没有生效职位（软契约：不阻止执行，但会缺少履职上下文）"
         ),
         source=C.READINESS_FACT_SOURCES["position"],
         facts={
             "assignment_id": int(assignment.id) if assignment is not None else None,
+            "lifecycle_status": employee.lifecycle_status,
+            "employment_active": employee.lifecycle_status == LifecycleStatus.active.value,
             "position_slot_id": (
                 int(assignment.position_slot_id)
                 if assignment is not None and assignment.position_slot_id is not None
@@ -358,6 +383,7 @@ def _runtime_item(db: Session, employee: Employee, policy: RuntimePolicy) -> Rea
             "health_status": str(instance.health_status),
             "probes": probes,
             "runtime_type": str(instance.runtime_type),
+            "deployment_mode": str(instance.deployment_mode),
             "model_binding_id": (
                 int(instance.model_binding_id) if instance.model_binding_id else None
             ),
@@ -414,11 +440,59 @@ def readiness_items(
     resolved = policy or resolve_runtime_policy(
         db, company_id=int(employee.company_id or 0), employee=employee
     )
-    return (
+    items = (
         _position_item(db, employee),
         _workspace_item(employee),
         _runtime_item(db, employee, resolved),
         _provider_item(db, employee, resolved),
+    )
+    evaluated_at = utcnow().isoformat()
+    return tuple(_explain(item, resolved, evaluated_at) for item in items)
+
+
+def _explain(item: ReadinessItem, policy: RuntimePolicy, evaluated_at: str) -> ReadinessItem:
+    reasons = []
+    if item.item == "position":
+        if not item.facts["employment_active"]:
+            reasons.append("employment_inactive")
+        if not item.facts["position_definition_id"]:
+            reasons.append("position_missing")
+    elif item.item == "workspace" and not item.ready:
+        reasons.append("workspace_missing")
+    elif item.item == "runtime" and not policy.is_mock:
+        if item.facts.get("instance_id") is None:
+            reasons.append("runtime_instance_missing")
+        else:
+            if item.facts["status"] not in INSTANCE_OK_STATUSES:
+                reasons.append("runtime_not_running")
+            if item.facts["runtime_type"] != policy.runtime_type:
+                reasons.append("runtime_type_mismatch")
+            if item.facts["deployment_mode"] != policy.deployment_mode:
+                reasons.append("runtime_deployment_mismatch")
+    elif item.item == "provider" and not policy.is_mock and item.facts.get("binding_id") is None:
+        reasons.append("model_binding_missing")
+    probes = item.facts.get("probes", {})
+    reasons.extend(
+        f"{name}:{probe['reason']}" for name, probe in probes.items() if probe["state"] != "passed"
+    )
+    if not reasons:
+        reasons.append(f"{item.item}_ready" if item.ready else f"{item.item}_unavailable")
+
+    def earliest(field):
+        values = [probe.get(field) for probe in probes.values()]
+        return min(values, key=datetime.fromisoformat) if values and all(values) else None
+
+    required = C.READINESS_REQUIRED_FOR_EXECUTION["mock" if policy.is_mock else "real"]
+    return replace(
+        item,
+        stage=READINESS_ITEM_STAGE[item.item].value,
+        required_for_execution=item.item in required,
+        reason_codes=tuple(reasons),
+        evaluated_at=evaluated_at,
+        observed_at=earliest("checked_at")
+        if probes or item.item in {"runtime", "provider"}
+        else evaluated_at,
+        expires_at=earliest("expires_at"),
     )
 
 
@@ -441,6 +515,63 @@ def readiness_report(db: Session, employee: Employee) -> ReadinessReport:
     items = readiness_items(db, employee, policy)
     # gaps = 全部未就绪项（面向人：告诉你差什么）；ready_to_work 同样看**全部**四项
     gaps = tuple(item.item for item in items if not item.ready)
+    execution_gaps = required_for_execution(policy, items)
+    active = employee.lifecycle_status == LifecycleStatus.active.value
+    busy = project_repo.get_running_session_for_employee(db, employee.id) is not None
+    by_name = {item.item: item for item in items}
+    position, workspace, runtime, provider = (
+        by_name[name] for name in ("position", "workspace", "runtime", "provider")
+    )
+    provisioned = workspace.ready and (
+        policy.is_mock
+        or (
+            runtime.facts.get("instance_id") is not None
+            and provider.facts.get("binding_id") is not None
+            and provider.facts.get("provider_enabled", False)
+        )
+    )
+    evaluated_at = items[0].evaluated_at
+    stages = (
+        {
+            "stage": ProductionStage.employment.value,
+            "ready": position.ready,
+            "blocking": not active,
+            "reason_codes": list(position.reason_codes),
+            "facts": {"employment_active": active, "position_is_soft": True},
+        },
+        {
+            "stage": ProductionStage.provisioning.value,
+            "ready": provisioned,
+            "blocking": not policy.is_mock and not provisioned,
+            "reason_codes": ["resources_present" if provisioned else "resources_missing"],
+            "facts": {
+                "workspace_present": workspace.ready,
+                "instance_id": runtime.facts.get("instance_id"),
+                "binding_id": provider.facts.get("binding_id"),
+            },
+        },
+        {
+            "stage": ProductionStage.runtime.value,
+            "ready": runtime.ready and provider.ready,
+            "blocking": not runtime.ready or not provider.ready,
+            "reason_codes": list(runtime.reason_codes + provider.reason_codes),
+            "facts": {"runtime_ready": runtime.ready, "provider_ready": provider.ready},
+        },
+        {
+            "stage": ProductionStage.execution.value,
+            "ready": active and not execution_gaps and not busy,
+            "blocking": not active or bool(execution_gaps),
+            "reason_codes": (["employment_inactive"] if not active else [])
+            + [f"{name}_not_ready" for name in execution_gaps]
+            + (["assignee_busy"] if busy else [])
+            or ["execution_requirements_met"],
+            "facts": {
+                "blocking_gaps": list(execution_gaps),
+                "busy": busy,
+                "task_scope_checked_separately": True,
+            },
+        },
+    )
     return ReadinessReport(
         employee_id=int(employee.id),
         company_id=int(employee.company_id or 0),
@@ -450,13 +581,17 @@ def readiness_report(db: Session, employee: Employee) -> ReadinessReport:
         items=items,
         gaps=gaps,
         policy=policy,
+        evaluated_at=evaluated_at,
+        blocking_gaps=execution_gaps,
+        stages=tuple({**stage, "evaluated_at": evaluated_at} for stage in stages),
+        employment_active=active,
+        busy=busy,
     )
 
 
 def blocking_gaps(db: Session, employee: Employee) -> tuple[str, ...]:
     """**执行门禁**用的缺口（比 `readiness_report().gaps` 窄，见契约 §8c）。"""
-    policy = resolve_runtime_policy(db, company_id=int(employee.company_id or 0), employee=employee)
-    return required_for_execution(policy, readiness_items(db, employee, policy))
+    return readiness_report(db, employee).blocking_gaps
 
 
 # ---------------------------------------------------------------------------

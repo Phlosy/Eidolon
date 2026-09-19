@@ -139,3 +139,53 @@ async def test_stats_reports_all_fields():
         assert stats["queue_dropped"] == 0
     finally:
         await engine.stop()
+
+
+async def test_persisted_event_reoffer_preserves_source_id_without_another_row(db):
+    from sqlalchemy import select
+
+    from app.models.event import Event
+
+    event_bus = EventBus()
+    event_bus.attach_loop()
+    queue = event_bus.subscribe()
+    try:
+        event_bus.publish(
+            "test.reoffer", {"api_key": "sk-private-test-value", "meaning": "retained"}
+        )
+        original = await asyncio.wait_for(queue.get(), 1)
+        event_id = original["event_id"]
+        assert event_id
+        assert event_bus.publish_persisted(event_id)
+        reoffered = await asyncio.wait_for(queue.get(), 1)
+        assert reoffered["event_id"] == event_id
+        assert reoffered["data"] == original["data"]
+        assert "sk-private-test-value" not in str(reoffered)
+        assert list(db.scalars(select(Event.id).where(Event.type == "test.reoffer"))) == [event_id]
+        assert not event_bus.publish_persisted(-1)
+        event_bus._loop = None
+        assert not event_bus.publish_persisted(event_id)
+    finally:
+        event_bus.unsubscribe(queue)
+
+
+async def test_failed_event_commit_never_broadcasts_uncommitted_source_id(monkeypatch):
+    from app.core.database import SessionLocal
+
+    event_bus = EventBus()
+    event_bus.attach_loop()
+    queue = event_bus.subscribe()
+    try:
+        with SessionLocal() as session:
+
+            def fail_commit():
+                session.flush()  # An ID exists but is not a durable source.
+                raise RuntimeError("injected failure after flush")
+
+            monkeypatch.setattr(session, "commit", fail_commit)
+            monkeypatch.setattr("app.events.bus.SessionLocal", lambda: session)
+            event_bus.publish("test.rollback", {})
+        message = await asyncio.wait_for(queue.get(), 1)
+        assert message["event_id"] is None
+    finally:
+        event_bus.unsubscribe(queue)

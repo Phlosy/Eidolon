@@ -603,23 +603,18 @@ def test_production_project_gets_no_verdict_and_escalates_to_the_manager(
     task = _task(db, project, "生产工作", assignee_id=int(worker.id))
     _finish_work(db, task)
 
-    published: list[tuple[str, dict]] = []
-    _capture_bus(published)
-    try:
-        monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
-        import asyncio
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
+    import asyncio
 
-        asyncio.run(orchestrator_module.Orchestrator()._dispatch_pending())
-    finally:
-        _release_bus()
+    asyncio.run(orchestrator_module.Orchestrator()._dispatch_pending())
+    from sqlalchemy import select
 
-    escalations = [
-        payload
-        for event, payload in published
-        if event == "task.review_required" and payload.get("id") == int(task.id)
-    ]
+    from app.models.event import Event
+
+    query = select(Event).where(Event.type == "task.review_required", Event.task_id == task.id)
+    escalations = list(db.scalars(query))
     assert escalations, "没有人接手评审时必须上报，而不是静静等着"
-    assert escalations[0]["needs_reviewer"] is True
+    assert escalations[0].payload["needs_reviewer"] is True
     db.expire_all()
     assert str(project_repo.get_task(db, int(task.id)).status) == TaskStatus.in_review.value
 

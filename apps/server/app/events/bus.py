@@ -64,6 +64,7 @@ class EventBus:
             task_id=task_id,
             payload=data,
         )
+        event_id = None
         try:
             with SessionLocal() as db:
                 # R1.4：actor 的 person 镜像在**唯一落库点**统一解析双写 ——
@@ -72,21 +73,39 @@ class EventBus:
                     event.actor_person_id = person_repo.write_person_id(db, actor_employee_id)
                 db.add(event)
                 db.commit()
+                event_id = event.id
         except Exception:
             logger.exception("failed to persist event %s", type)
 
+        self._broadcast(type, data, company_id, event_id=event_id)
+
+    def publish_persisted(self, event_id: int) -> bool:
+        """Offer a committed event without creating a second activity-feed record."""
+        with SessionLocal() as db:
+            event = db.get(Event, event_id)
+            if event is None:
+                return False
+            return self._broadcast(
+                event.type, redact_data(event.payload), event.company_id, event_id=event.id
+            )
+
+    def _broadcast(
+        self, type: str, data: dict, company_id: int | None, *, event_id: int | None
+    ) -> bool:
         message = {
             "type": type,
             "data": data,
             "company_id": company_id,
             "ts": datetime.now(UTC).isoformat(),
+            "event_id": event_id,
         }
         loop = self._loop
         if loop is None or not loop.is_running():
-            return
+            return False
         with self._subscription_lock:
             for queue in self._subscribers:
                 loop.call_soon_threadsafe(self._safe_put, queue, message)
+        return True
 
     def _safe_put(self, queue: asyncio.Queue, message: dict) -> None:
         try:

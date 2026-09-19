@@ -24,7 +24,6 @@ import pytest
 from sqlalchemy import select, text
 
 from app.core.config import settings
-from app.events.bus import bus
 from app.models.drive import DriveNode
 from app.models.enums import ArtifactType, TaskStatus
 from app.models.handoff import ArtifactLink, TaskInput
@@ -704,20 +703,21 @@ def test_declared_input_without_delivery_escalates_instead_of_dispatching(
     }
 
     # 调度器把它上报为一次 Decision-needed 事件（去重）
-    published: list[tuple[str, dict]] = []
-    monkeypatch.setattr(
-        bus, "publish", lambda event, payload, **kw: published.append((event, payload))
-    )
     monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", True)
     import asyncio
 
     orchestrator = orchestrator_module.Orchestrator()
     asyncio.run(orchestrator._dispatch_pending())
-    escalations = [item for item in published if item[0] == "project.replan_required"]
-    assert escalations, "输入缺失必须上报，不能静静卡住"
-    assert escalations[0][1]["reasons"] == ["not_ready", D.REASON_INPUT_ARTIFACTS_MISSING] or (
-        D.REASON_INPUT_ARTIFACTS_MISSING in escalations[0][1]["reasons"]
+    from app.models.event import Event
+
+    query = select(Event).where(
+        Event.type == "project.replan_required", Event.task_id == downstream.id
     )
+    escalations = list(db.scalars(query))
+    assert escalations, "输入缺失必须上报，不能静静卡住"
+    assert D.REASON_INPUT_ARTIFACTS_MISSING in escalations[0].payload["reasons"]
+    asyncio.run(orchestrator._dispatch_pending())
+    assert [event.id for event in db.scalars(query)] == [escalations[0].id]
     db.expire_all()
     assert project_repo.get_task(db, int(downstream.id)).status == TaskStatus.backlog.value
 

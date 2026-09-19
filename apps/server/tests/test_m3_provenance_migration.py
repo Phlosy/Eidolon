@@ -73,7 +73,7 @@ def test_v50_up_down_up_preserves_legacy_unknowns_and_constraints(tmp_path):
         migrate("head")
         verify()
         script = ScriptDirectory.from_config(config)
-        assert script.get_heads() == ["50a7816c2e90"]
+        assert len(script.get_heads()) == 1
         assert script.get_revision("50a7816c2e90").down_revision == "49f90481d32a"
     finally:
         engine.dispose()

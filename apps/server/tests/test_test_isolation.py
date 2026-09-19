@@ -41,7 +41,7 @@ def test_committed_connections_and_workspace_are_test_local(db, case):
 def test_process_state_is_test_local(case):
     assert settings.autonomous_learning_enabled == _LEARNING_ENABLED
     assert economic_policy().market_fee_bps == _MARKET_FEE
-    assert not orchestrator._escalated
+    assert orchestrator._queue.empty()
     assert "isolation:probe" not in get_registry()._provisioners
     auth.enforce_rate_limit("isolation-probe", limit=1)
 
@@ -49,7 +49,7 @@ def test_process_state_is_test_local(case):
     settings.economy_market_fee_bps = (_MARKET_FEE + 1) % 10_001
     economic_policy.cache_clear()
     economic_policy()
-    orchestrator._escalated.add((123456, case))
+    orchestrator._queue.put_nowait({"type": "isolation:probe", "case": case})
     get_registry().register(SimpleNamespace(key="isolation:probe"))
 
 
@@ -92,7 +92,7 @@ def test_next_case_is_clean(client, db):
     assert old["loop"].is_closed(), "prior application loop is still alive"
     assert db.scalar(select(Company).where(Company.slug == "cleanup-write")) is None
     assert not Path(settings.workspace_root, "cleanup-write").exists()
-    assert not orchestrator._escalated
+    assert orchestrator._queue.empty()
 """
     )
     result = subprocess.run(

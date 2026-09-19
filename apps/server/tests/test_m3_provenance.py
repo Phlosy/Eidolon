@@ -351,6 +351,13 @@ def test_creation_rejects_incompatible_ownership(db, execution, target):
 def test_dispatch_commits_snapshot_before_any_runtime_effect(db, execution, monkeypatch, mode):
     e = execution
     monkeypatch.setattr(settings, "runtime_mode", mode)
+    # U6 checks readiness again at execution time; this U5 test owns snapshot
+    # ordering, with observed readiness covered independently in test_m3_readiness.
+    monkeypatch.setattr(
+        orchestration.dispatch_runtime,
+        "evaluate_dispatch",
+        lambda db, task: orchestration.dispatch_runtime.DispatchEvaluation(task.id, True),
+    )
     for binding in db.scalars(
         select(ModelBinding).where(ModelBinding.employee_id == e.employee.id)
     ):
