@@ -679,7 +679,7 @@ docs/m3-freeze.md（机器可检：形态 / 不变量 / 唯一写入路径 / 模
 | 阶段 | 状态 | Commit | 备注 |
 | --- | --- | --- | --- |
 | M3.0 | **DONE** | `6f4e97b` | 设计 + 契约 + 54 条新增守卫；零迁移。详细历史证据见 §18 |
-| M3.1 | PLANNED | — | 真实 provisioning（Hermes / OpenClaw）+ 幂等 + 对账；先修测试隔离 |
+| M3.1 | IN_PROGRESS | — | U1 隔离完成，默认序 + 5 个实际随机序均为 1401 passed；[证据](m3-u1-test-isolation.md)。U2–U5 及真实开通验收待完成 |
 | M3.2 | PLANNED | — | |
 | M3.3 | PLANNED | — | |
 | M3.4 | PLANNED | — | |
@@ -696,7 +696,7 @@ docs/m3-freeze.md（机器可检：形态 / 不变量 / 唯一写入路径 / 模
 
 | # | 风险 | 影响 | 缓解 / owner |
 | --- | --- | --- | --- |
-| R1 | **测试无套件级隔离**（历史真随机序 6 次 5 红） | 固定序通过不能证明顺序无关 | M3.1 首包 U1；处理独立 SessionLocal、后台任务与全局状态 |
+| R1 | **测试无套件级隔离**（历史真随机序 6 次 5 红） | 固定序通过不能证明顺序无关 | U1 已关闭：独立连接、后台退出、全局恢复及默认序 + 5 个随机序通过；[证据](m3-u1-test-isolation.md) |
 | R2 | 真实 Runtime 依赖环境（Docker/镜像/网络） | 门禁不可重复、假绿 | 环境门控 + 明确 skip 原因；禁止 mock 冒充（M3.1/M3.10） |
 | R3 | 真实模型调用成本失控 | 费用 | 默认 mock；真实调用显式开关 + 上限（M3.1） |
 | R4 | Runtime 不可信（伪造身份/越权/注入） | 安全 | Tool Executor 边界 + 不暴露 Secret + 不信任 runtime 声明（M3.1/M3.9） |
@@ -715,7 +715,7 @@ docs/m3-freeze.md（机器可检：形态 / 不变量 / 唯一写入路径 / 模
 
 以下为 `6f4e97b` 当时的验收记录，不代表当前待办。五个格式差异是当时登记的既有基线，不能作为后续阶段的门禁豁免。
 2026-09-19 使用 ruff 0.16.7 复核这五个文件，结果为 `5 files already formatted`；保留下面的原始记录便于追溯。
-随机序测试隔离仍缺关闭证据，由 U1 处理；最近功能回归结果见 Product Contract 的 Baseline。
+M3.0 时随机序测试隔离仍缺关闭证据；U1 的后续关闭记录见[测试隔离验收](m3-u1-test-isolation.md)。此前功能回归结果见 Product Contract 的 Baseline。
 
 ```text
 pytest（固定序）          1305 passed / 6 deselected（M2.10 为 1251，+54 条 M3.0 守卫）

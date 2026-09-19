@@ -182,7 +182,7 @@ M2 的裁决记录见 `docs/m2-agent-work-runtime-design.md` §17（M2-ADR-1..35
 | 8 | 历史脏值清理（`work_orders.project_id` 无效引用等）| M2 的纪律是"不猜、不美化"；清理要人工立项 |
 | 9 | 经济/资产/复杂金融扩展（股权、买卖、融资…）| 用户明令不做（设计 §15）|
 | 10 | 中央 Planner / 自动组队 / 自动辞退 / 个人化 prompt 注入 | 用户明令不做（W1/W2/W13/W26）|
-| 11 | **测试隔离（真随机序不稳定）** | M2.10 复审计实测：打乱文件序 **6 次里 5 次转红**（`test_market_npc` NPC 计数 9≠2 / `test_architecture_guards` person-only 行 / `test_m2_golden_path` 场景 A / `test_economy_ledger` escrow ×5 / `test_m2_project_spec` ×2）。根因：session 级 `client` + 同一个 SQLite 库，**只有部分模块自带快照夹具**，跨模块公共行累积；在冻结态 `42a9d0f` 同样复现。修法：套件级 per-test 事务回滚或统一清理夹具 —— 碰 M1 冻结测试基建，单独立项 |
+| 11 | **测试隔离（真随机序不稳定）** | 历史：M2.10 打乱文件序 **6 次里 5 次转红**，冻结态 `42a9d0f` 同样复现，原因为 session 级 `client` 和共享 SQLite 写入累积。**M3.1 U1 已关闭**：每例应用生命周期、数据库/目录基线与全局状态隔离；保留真实独立连接及 M1 冻结锚点，默认序 + 5 个实际随机序全部通过。单纯外层事务回滚不能覆盖独立 SessionLocal 提交。[验收证据](m3-u1-test-isolation.md) |
 
 **M3 开工前的三条纪律（沿用 M2）**：
 

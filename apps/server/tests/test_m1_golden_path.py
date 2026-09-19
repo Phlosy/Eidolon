@@ -40,6 +40,7 @@ from app.models.organization import Employee
 from app.repositories import economy as economy_repo
 from app.services.economy.accounts import AccountService
 from app.services.economy.ledger import LedgerService
+from app.services.economy.monetary import MonetaryAuthority
 from app.services.economy.work_orders import WorkOrderService
 
 _seq = 0
@@ -363,9 +364,16 @@ def test_m1_golden_path_end_to_end(client, db):
     _assert_every_transaction_is_explainable(db, since_id=ledger_watermark)
 
 
-def test_every_ledger_transaction_is_balanced_and_explainable(db):
+def test_every_ledger_transaction_is_balanced_and_explainable(db, default_company_id):
     """A/D 的兜底回归：账本里**每一笔**交易都复式平衡，且供给恒等式成立。"""
+    # Own the ledger facts: this guard must also work before the golden-path test.
+    authority = MonetaryAuthority(db)
+    actor = EconomicActor.company(default_company_id)
+    authority.mint(actor=actor, amount=1_000, reason="balance guard funding")
+    authority.burn(actor=actor, amount=100, reason="balance guard burn")
+    authority.treasury_transfer(actor=actor, amount=200, reason="balance guard treasury")
     _assert_ledger_is_balanced(db)
+    _assert_every_transaction_is_explainable(db, since_id=0)
     supply = _supply(db)
     assert supply.supply == supply.minted - supply.burned
     assert supply.circulating == supply.supply - supply.treasury_balance - supply.escrow_balance

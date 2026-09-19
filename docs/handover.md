@@ -644,16 +644,25 @@ C 新 CEO 接任：CEO A 离任 → CEO B 上任 → B 不继承 A 的技能/私
 
 ---
 
+## 5p. M3.1 U1 Test Isolation（DONE，2026-09-20）
+
+- 逐测试 SQLite/工作区/应用生命周期隔离，先结束后台任务及事件循环，再恢复基线与全局状态。
+- 保留真实多连接提交与竞争；修复 M1 账本、孤儿实体和教程事件测试对前序数据的依赖，冻结锚点名称和业务断言保留。
+- 默认序及随机种子 `20260920`–`20260924` 每轮 **1401 passed / 6 deselected**；`make lint` 通过。
+- [验收与原因记录](m3-u1-test-isolation.md)含实际收集顺序、代码/顺序校验和及红测记录。M3.1 尚未完成，下一包 U2。
+
+---
+
 ## 6. 下一步建议（按优先级）
 
 1. **M3.1 Real Runtime Provisioning**：先读 `docs/m3-agent-production-growth-design.md`
    §6（provisioning 契约）与 `docs/m3-implementation-plan.md` §4；
-   第一件事是修**套件级 per-test 测试隔离**（真随机序当前 6 次 5 红，已在 M3.0 登记为技术债 1）。
+   U1 测试隔离已完成；按 U2–U5 继续开通意图、真实幂等执行、探测对账与最小历史快照。
 2. **M2 冻结面改动纪律**：碰 M1/T2/M2 面前先跑对应锚点（M3 计划 §2 第 4 条）。
 3. ~~实机过一遍教程后段~~ **已完成**（§1.6，17 步全走通，截图在 `tmp/tutorial-audit/`）。可选复验：小视口（1280x800）再过一遍，招聘向导弹窗较高的子步骤是历史上最挤的场景。
 4. 若要 git 权限：`make runtime-pull` → 启动 builtin gitea → `POST /provisioning-jobs/{id}/retry`。
 5. 可选增强：上传文件夹保留层级；表格/PPT/画板格式；CoachPanel sticky footer（按钮始终可见）。
-6. P6.1 flaky 的根因排查（注入时钟 / 事件循环生命周期 fixture）—— 与 M3.1 的测试隔离同批处理。
+6. 后续若有顺序相关失败，使用 U1 的 `--test-order-seed` / `--test-order-output` 保留实际顺序再排查；当前 P6.1 在默认序和五个随机序均通过。
 
 ---
 

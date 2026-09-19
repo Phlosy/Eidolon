@@ -36,6 +36,20 @@ ruff check app tests
 ruff format --check app tests
 ```
 
+测试默认使用独立临时目录、文件 SQLite 和 mock runtime。每个用例结束时，先关闭
+应用事件循环及后台任务，再还原迁移/seed 后的数据库、工作区与进程全局状态。
+用例内的多个 `SessionLocal` 仍走独立连接并真实提交，SQLite 并发测试保留真实竞争。
+不要依赖其他用例留下的业务数据或事件。
+
+验证顺序无关性时，显式打乱实际收集到的用例，并记录顺序（包括参数化用例）：
+
+```bash
+python -m pytest tests -q --test-order-seed 20260920 --test-order-output /tmp/eidolon-order.json
+```
+
+`--test-order-output` 也可单独使用，记录默认顺序。M3 隔离门禁要求默认顺序和至少
+五个不同 seed 的完整套件通过；失败后保留 seed、顺序和日志，修复原因后再验证。
+
 ## Run the server
 
 ```bash

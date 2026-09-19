@@ -712,8 +712,7 @@ def test_concurrent_spend_and_settlement_keep_invariants(db):
     del contractor
 
 
-def test_no_orphan_entities_after_failures(db):
-    """矩阵收尾：所有实体都处于"能被解释"的状态（订单/合同/托管/挂牌状态成对）。"""
+def _assert_no_orphan_entities(db):
     escrows = economy_repo.list_escrows(db)
     for escrow in escrows:
         if escrow.contract_id is not None:
@@ -735,6 +734,32 @@ def test_no_orphan_entities_after_failures(db):
                     EscrowStatus.released.value,
                     EscrowStatus.refunded.value,
                 )
-    # 共享测试库：这里只断言"没有孤儿"，不假设数量
-    assert int(db.execute(sa.select(sa.func.count()).select_from(Contract)).scalar_one()) >= 0
+
+
+@pytest.fixture(autouse=True)
+def _check_entity_integrity_after_each_scenario(db):
+    """Check each failure's own committed state before the harness restores it."""
+    yield
+    db.rollback()
+    _assert_no_orphan_entities(db)
+
+
+def test_no_orphan_entities_after_failures(db):
+    """Independent freeze anchor for partial creation and terminal relationships."""
+    issuer = _company(db, "IntegrityIssuer")
+    _fund(db, issuer, 4_000)
+    contracts = ContractService(db)
+    actor = EconomicActor.company(issuer.id)
+    contract = contracts.create_contract(
+        issuer=actor, title="Cancel before acceptance", consideration_amount=1_000
+    )
+    contracts.cancel(contract.id, actor=actor)
+    with pytest.raises(InsufficientFunds):
+        WorkOrderService(db).publish_player_order(
+            issuer=actor, title="Cannot fund", reward_amount=10_000
+        )
+    assert len(economy_repo.list_contracts(db)) == 1
+    assert len(economy_repo.list_escrows(db)) == 1
+    assert economy_repo.list_work_orders(db) == []
+    _assert_no_orphan_entities(db)
     assert int(db.execute(sa.select(sa.func.count()).select_from(LedgerEntry)).scalar_one()) > 0

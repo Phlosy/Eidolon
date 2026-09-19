@@ -1,13 +1,18 @@
-"""Test fixtures: temp sqlite file + fast mock runtime. See docs/architecture.md §12."""
+"""Per-test SQLite/filesystem/app isolation with a fast mock runtime."""
 
+import json
 import os
+import random
 import tempfile
+from pathlib import Path
 
-_TMP_DIR = tempfile.mkdtemp(prefix="eidolon-test-")
+_TEST_ROOT = tempfile.TemporaryDirectory(prefix="eidolon-test-")
+_TMP_DIR = _TEST_ROOT.name
 os.environ["EIDOLON_DATABASE_URL"] = f"sqlite:///{_TMP_DIR}/test.db"
 os.environ["EIDOLON_WORKSPACE_ROOT"] = f"{_TMP_DIR}/workspaces"
 os.environ["EIDOLON_DATA_ROOT"] = f"{_TMP_DIR}/data"
 os.environ["EIDOLON_MOCK_TASK_SECONDS"] = "0.1"
+os.environ["EIDOLON_RUNTIME_MODE"] = "mock"
 os.environ["EIDOLON_LOG_LEVEL"] = "WARNING"
 os.environ["EIDOLON_UPDATE_CHECK_ENABLED"] = "false"
 os.environ["EIDOLON_SECRET_KEY"] = "test-secret-key"
@@ -44,28 +49,59 @@ os.environ["EIDOLON_ORCHESTRATOR_DISPATCH_ENABLED"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from isolation import TestEnvironment  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 
-from app.core.database import SessionLocal  # noqa: E402
+from app.core.database import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.base import utcnow  # noqa: E402
 from app.repositories import organization as org_repo  # noqa: E402
 
 
-@pytest.fixture(scope="session")
-def client():
-    with TestClient(app) as test_client:
-        yield test_client
+def pytest_addoption(parser):
+    parser.addoption("--test-order-seed", type=int, help="Shuffle collected tests with this seed")
+    parser.addoption("--test-order-output", help="Write the selected test order as JSON")
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_collection_modifyitems(config, items):
+    seed = config.getoption("--test-order-seed")
+    if seed is not None:
+        random.Random(seed).shuffle(items)
+    output = config.getoption("--test-order-output")
+    if output:
+        Path(output).write_text(
+            json.dumps({"seed": seed, "nodeids": [item.nodeid for item in items]}, indent=2) + "\n"
+        )
+
+
+def pytest_report_header(config):
+    seed = config.getoption("--test-order-seed")
+    if seed is not None:
+        return f"test order shuffled with seed {seed}"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _test_environment():
+    environment = TestEnvironment(_TMP_DIR)
+    try:
+        environment.prepare()
+        yield environment
+    finally:
+        engine.dispose()
+        _TEST_ROOT.cleanup()
 
 
 @pytest.fixture(autouse=True)
-def clear_human_session_between_tests(client):
-    """The session-scoped app is shared, but browser cookies are test-local."""
-    for name in ("eidolon_session", "eidolon_csrf"):
-        client.cookies.delete(name)
-    yield
-    for name in ("eidolon_session", "eidolon_csrf"):
-        client.cookies.delete(name)
+def client(_test_environment):
+    """A test owns its app loop; committed writes never reach the next test."""
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        # Context exit also cancels leftover tasks and joins the portal thread.
+        # Restore only afterward, including when a test fails or is cancelled.
+        _test_environment.restore()
 
 
 @pytest.fixture()

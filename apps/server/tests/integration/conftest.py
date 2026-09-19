@@ -37,7 +37,10 @@ def idb(tmp_path, monkeypatch):
     # persists events with its own session factory too
     monkeypatch.setattr("app.runtimes.manager.docker_manager.SessionLocal", factory)
     monkeypatch.setattr("app.events.bus.SessionLocal", factory)
-    return factory
+    try:
+        yield factory
+    finally:
+        engine.dispose()
 
 
 @pytest.fixture()

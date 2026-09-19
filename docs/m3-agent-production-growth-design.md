@@ -788,7 +788,7 @@ M5 才做 Autonomous Company。Eidolon 始终是 **Agent Society OS**。
 
 | # | 债 | 现状 | owner |
 | --- | --- | --- | --- |
-| 1 | **测试无套件级隔离** | 真随机序 6 次 5 红（M2.10 复审计实测，冻结态复现） | M3.0→M3.1 前（碰测试基建需显式理由） |
+| 1 | **测试无套件级隔离** | U1 已关闭：逐测试数据库/目录/应用生命周期与全局状态隔离，默认序 + 5 个实际随机序均通过；历史为 6 次 5 红 | M3.1 U1，[证据](m3-u1-test-isolation.md) |
 | 2 | `deployment_mode` 未进 WorkSession 快照 | 只有实例上的当前值 | M3.1 |
 | 3 | Provider/Model 无名称快照 | 只有 id + model 字符串 | M3.5 |
 | 4 | Token/成本遥测缺失 | 无 runtime token 事实（`learning.py` 的 `tokens_used` 是学习预算，不是执行） | M3.4 |
@@ -796,7 +796,7 @@ M5 才做 Autonomous Company。Eidolon 始终是 **Agent Society OS**。
 | 6 | 学习/市场工具面缺失 | 30 个工具里没有 learn / search_market / inspect_candidate | M3.3 |
 | 7 | 无 provider/model 可用性主动探测 | 只读 `providers.enabled` 与 binding 存在性 | M3.1 |
 | 8 | 无 runtime 对账 | 只有 `refresh_status()` 单实例刷新，没有 DB⇄backend 全面对账 | M3.1 |
-| 9 | 既有 flake | `test_m1_hardening::test_races_have_exactly_one_winner`（线程 + SQLite 竞态） | M3.1（与债务 1 同批） |
+| 9 | 既有 flake | U1 隔离后，`test_m1_hardening::test_races_have_exactly_one_winner` 在默认序及 5 个随机序均通过；保留真实独立连接、屏障及唯一赢家断言 | M3.1 U1，[证据](m3-u1-test-isolation.md) |
 | 10 | 历史脏值 | `work_orders.project_id` 无效引用等（M2 纪律：不猜、不美化） | 人工立项 |
 | 11 | 技术重试计数器无承载 | 契约声明 `technical_retry_count`，但 `work_sessions` 没有该列（管理侧 `tasks.rework_count` 已有） | M3.4 |
 | 12 | `career_events` 缺 Person 口径列 | 只有 `employee_id`；换公司后历史归因会断链（已登记 `PERSON_SCOPED_COLUMN_OWED`） | M3.5 |

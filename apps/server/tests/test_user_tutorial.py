@@ -440,9 +440,20 @@ def test_advancement_publishes_tutorial_events(client, fake_gitea, db):
     client.post("/api/v1/tutorial/start")
     client.post("/api/v1/tutorial/steps/company_setup/complete")
     _hire(client, founder, name="EV CEO", role="ceo", dept_slug="executive", package="ceo")
+    # Reconciliation on a progress read emits the event for this company's hire.
+    progress = client.get("/api/v1/tutorial")
+    assert progress.status_code == 200
+    assert "hire_ceo" in progress.json()["completed_steps"]
 
     def tutorial_events() -> list[str]:
-        return [row.type for row in db.scalars(select(Event).where(Event.type.like("tutorial.%")))]
+        return [
+            row.type
+            for row in db.scalars(
+                select(Event).where(
+                    Event.type.like("tutorial.%"), Event.company_id == founder["company"]["id"]
+                )
+            )
+        ]
 
     types = tutorial_events()
     assert "tutorial.advanced" in types, f"没有发出推进事件：{types}"
