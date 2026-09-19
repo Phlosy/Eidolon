@@ -529,6 +529,9 @@ def test_actor_identity_for_work_session_requires_a_running_session(db, default_
     _grant(db, definition, C.AuthorityKind.plan_project_work)
     project = _project(db, default_company_id, "T5 会话")
     task = _task(db, int(project.id))
+    task.assignee_id = employee.id
+    task.status = TaskStatus.in_progress.value
+    db.flush()
     session = project_repo.create_work_session(
         db,
         task_id=int(task.id),

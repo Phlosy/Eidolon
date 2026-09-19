@@ -35,13 +35,21 @@ from app.core.config import settings
 from app.core.transaction_effects import ensure_sqlite_transaction
 from app.models.base import utcnow
 from app.models.decision import ToolAudit
-from app.models.enums import AutonomyLevel, DecisionSemantics, ToolTransport
-from app.models.organization import Employee
-from app.models.project import Task, WorkSession
+from app.models.enums import (
+    AutonomyLevel,
+    DecisionSemantics,
+    LifecycleStatus,
+    TaskStatus,
+    ToolTransport,
+)
+from app.models.organization import Company, Employee
+from app.models.person import Person
+from app.models.project import Project, Task, WorkSession
 from app.work import authority as authority_service
 from app.work import contracts as C
 from app.work import tool_reads, tool_writes
 from app.work import tools as tool_machinery
+from app.work.dispatch import EXECUTABLE_PROJECT_STATUSES
 
 logger = logging.getLogger("eidolon.work.tools")
 
@@ -120,29 +128,89 @@ def context_for_employee(
 def context_for_work_session(db: Session, work_session_id: int) -> tool_machinery.ToolCallContext:
     """从 **WorkSession** 推导 actor（Agent Runtime 的唯一注入路径）。
 
-    身份来自库里的会话行 + 员工行，**不来自**模型参数（T5）。会话必须处于
-    `running`：已经结束的会话不该再发起组织动作（那会让"谁在什么时候做的"失真）。
+    身份来自创建时记录的归属，当前任职和执行范围只用于重新校验，不能改写身份。
+    每次读取都刷新 ORM 缓存；调用方先取得锁并拥有事务。U7 只支持仍在执行的
+    worker task，管理/评审用途由 U8 显式扩展。缺少主职不阻断事实读取，写工具
+    仍由既有 Authority / Autonomy 门禁逐次校验。
     """
-    session = db.get(WorkSession, int(work_session_id))
+    session = db.get(WorkSession, int(work_session_id), populate_existing=True)
     if session is None:
         raise ToolExecutionError("work_session_not_found", "work session not found")
-    if session.status != "running":
+    if session.status != "running" or session.ended_at is not None:
         raise ToolExecutionError(
             "work_session_not_running",
-            f"work session is {session.status}; only a running session may call management tools",
+            "only a running work session without an end time may call management tools",
         )
-    employee = db.get(Employee, int(session.employee_id))
-    if employee is None:  # pragma: no cover - 防御
+
+    snapshot = session.provenance_snapshot_json
+    attribution: dict[str, int] = {}
+    for key in ("employee", "person", "company", "task", "project"):
+        fact = snapshot.get(key) if isinstance(snapshot, dict) else None
+        identifier = fact.get("id") if isinstance(fact, dict) else None
+        if type(identifier) is not int or identifier <= 0:
+            raise ToolExecutionError(
+                "work_session_identity_unknown",
+                "work session has incomplete historical attribution",
+            )
+        attribution[key] = identifier
+    if session.person_id is None or session.company_id is None:
+        raise ToolExecutionError(
+            "work_session_identity_unknown", "work session has no historical person or company"
+        )
+    if any(
+        attribution[key] != getattr(session, f"{key}_id")
+        for key in ("employee", "person", "company", "task")
+    ):
+        raise ToolExecutionError(
+            "work_session_identity_mismatch", "work session attribution does not match its snapshot"
+        )
+
+    employee = db.get(Employee, session.employee_id, populate_existing=True)
+    if employee is None:
         raise ToolExecutionError("employee_not_found", "work session has no employee")
-    task = db.get(Task, int(session.task_id)) if session.task_id else None
+    if employee.company_id != session.company_id or employee.person_id != session.person_id:
+        raise ToolExecutionError(
+            "work_session_identity_mismatch",
+            "employee no longer matches the original session actor",
+        )
+    if employee.lifecycle_status != LifecycleStatus.active.value:
+        raise ToolExecutionError("employee_not_active", "work session employee is no longer active")
+    if (
+        db.get(Person, session.person_id, populate_existing=True) is None
+        or db.get(Company, session.company_id, populate_existing=True) is None
+    ):
+        raise ToolExecutionError(
+            "work_session_identity_unknown", "work session person or company no longer exists"
+        )
+
+    task = db.get(Task, session.task_id, populate_existing=True)
+    if (
+        task is None
+        or task.assignee_id != session.employee_id
+        or task.status != TaskStatus.in_progress.value
+    ):
+        raise ToolExecutionError(
+            "work_session_task_invalid", "work session task is no longer executing for its actor"
+        )
+    project = db.get(Project, task.project_id, populate_existing=True)
+    if (
+        project is None
+        or project.id != attribution["project"]
+        or project.company_id != session.company_id
+        or project.status not in EXECUTABLE_PROJECT_STATUSES
+    ):
+        raise ToolExecutionError(
+            "work_session_project_invalid",
+            "work session project is no longer in its executable scope",
+        )
     return tool_machinery.ToolCallContext(
-        employee_id=int(employee.id),
-        company_id=int(employee.company_id or 0),
-        person_id=int(employee.person_id) if employee.person_id else None,
+        employee_id=int(session.employee_id),
+        company_id=int(session.company_id),
+        person_id=int(session.person_id),
         origin="work_session",
         work_session_id=int(session.id),
-        task_id=int(session.task_id) if session.task_id else None,
-        project_id=int(task.project_id) if task is not None else None,
+        task_id=int(session.task_id),
+        project_id=attribution["project"],
         runtime_type=str(session.runtime_type or ""),
     )
 
