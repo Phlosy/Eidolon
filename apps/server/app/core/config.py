@@ -121,6 +121,10 @@ class Settings(BaseSettings):
     work_order_bridge_consumers_enabled: bool = False
     orchestrator_dispatch_enabled: bool = True
 
+    # Management/review source scanning is opt-in. Enabling it without explicit
+    # provider spending-admission hooks only records durable waiting facts.
+    management_runner_enabled: bool = False
+
     # M2.3 —— 内部 Agent 工具执行面。写工具**只有**这一条通道（没有玩家 /tools 路由，T3）。
     # 调试口：允许 CLI / 测试从任意员工身份调用同一执行面（默认关；生产不开）。
     # 注意：即便打开，Authority / 领域校验**照做不误**（T4/T10）—— 它只是"谁能发起"，

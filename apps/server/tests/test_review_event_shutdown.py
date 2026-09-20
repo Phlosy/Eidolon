@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import threading
+from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -284,7 +285,11 @@ async def test_cancelling_stop_cleans_up_inflight_handlers():
         await engine.stop()
 
 
-async def test_lifespan_stops_event_producers_before_draining_engine(monkeypatch):
+@pytest.mark.parametrize("management_enabled", [False, True])
+@pytest.mark.parametrize("lifespan_error", [False, True])
+async def test_lifespan_stops_event_producers_before_draining_engine(
+    monkeypatch, management_enabled, lifespan_error
+):
     from app import main
 
     event_bus = EventBus()
@@ -337,7 +342,31 @@ async def test_lifespan_stops_event_producers_before_draining_engine(monkeypatch
         ),
     )
     monkeypatch.setattr(main, "gateway", SimpleNamespace(stop_all=producer("gateway")))
+    assert "management_runner_enabled" in type(settings).model_fields
+    monkeypatch.setattr(settings, "management_runner_enabled", management_enabled)
+    lifecycle = []
+    monkeypatch.setattr(
+        main,
+        "management_runner",
+        SimpleNamespace(
+            register=lambda engine: lifecycle.append("registered"),
+            start=lambda: lifecycle.append("started"),
+            stop=producer("management"),
+        ),
+    )
 
-    async with main.lifespan(main.app):
-        pass
-    assert seen == ["orchestrator", "healthcheck", "updates", "gateway"]
+    with (
+        pytest.raises(RuntimeError, match="lifespan interruption")
+        if lifespan_error
+        else nullcontext()
+    ):
+        async with main.lifespan(main.app):
+            if lifespan_error:
+                raise RuntimeError("lifespan interruption")
+    assert lifecycle == (["registered", "started"] if management_enabled else [])
+    assert seen == (["management"] if management_enabled else []) + [
+        "orchestrator",
+        "healthcheck",
+        "updates",
+        "gateway",
+    ]

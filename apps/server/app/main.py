@@ -27,6 +27,7 @@ from app.services.drive_migration import migrate_artifacts_to_drive
 from app.services.seed import seed_default_company
 from app.work import authority_seed
 from app.work import role_events as role_context_events
+from app.work.management_runner import management_runner
 from app.work.runtime_provisioning import runtime_provisioner
 from app.workflow.orchestrator import orchestrator
 from app.workforce import access as workforce_access
@@ -78,6 +79,9 @@ async def lifespan(app: FastAPI):
         from app.work import work_order_events
 
         work_order_events.register(engine_module.engine)
+    management_started = settings.management_runner_enabled
+    if management_started:
+        management_runner.register(engine_module.engine)
     await engine_module.engine.start()
     manager = get_manager()
     await manager.start_healthcheck_loop()
@@ -85,14 +89,20 @@ async def lifespan(app: FastAPI):
     await update_service.start_update_loop()
     runtime_provisioner.start()
     logger.info("eidolon server started (runtime_mode=%s)", settings.runtime_mode)
-    yield
-    # Stop producers first so their final events enter the engine's graceful drain.
-    await runtime_provisioner.stop()
-    await orchestrator.stop()
-    await manager.stop_healthcheck_loop()
-    await update_service.stop_update_loop()
-    await gateway.stop_all()
-    await engine_module.engine.stop()
+    try:
+        if management_started:
+            management_runner.start()
+        yield
+    finally:
+        # Stop producers first so their final events enter the engine's graceful drain.
+        if management_started:
+            await management_runner.stop()
+        await runtime_provisioner.stop()
+        await orchestrator.stop()
+        await manager.stop_healthcheck_loop()
+        await update_service.stop_update_loop()
+        await gateway.stop_all()
+        await engine_module.engine.stop()
 
 
 app = FastAPI(title="Eidolon Server", version=application_version(), lifespan=lifespan)
