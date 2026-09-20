@@ -26,7 +26,7 @@ from app.models.provider import Provider
 from app.models.review import ReviewRequest
 from app.repositories import persons, providers, runtimes
 from app.repositories import project as project_repo
-from app.work import contracts, readiness
+from app.work import contracts, readiness, runtime_admission
 from app.work.dispatch_notices import begin_observation
 from app.work.runtime_readiness import provider_state
 
@@ -382,6 +382,15 @@ def _evaluate(
         return None
     if enabled is not True:
         _wait(row, "disabled")
+        return None
+    pending = runtime_admission.unresolved_attempt_ids(
+        db,
+        company_id=row.company_id,
+        employee_id=actor.id,
+        task_id=row.task_id if review else None,
+    )
+    if pending:
+        _wait(row, "recipient_busy", unresolved_attempt_ids=pending)
         return None
     if budget_available is not True:
         _wait(row, "budget_unavailable")

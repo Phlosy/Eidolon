@@ -1,0 +1,248 @@
+{
+  "unit": "U15",
+  "component": "original_unresolved_run_admission",
+  "status": "component_verified_unit_in_progress",
+  "base_commit": "0515f4a6bdec7a91e391cf1e9f32e1ce078bacac",
+  "raw_directory": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p",
+  "behavior_changed": true,
+  "existing_tests_inspected": [
+    "test_m3_management_runner.py",
+    "test_m3_management_dispatch.py",
+    "test_m3_telemetry.py",
+    "test_m3_stop_intent.py",
+    "test_m3_technical_failure.py",
+    "test_m3_retry_cancel.py",
+    "test_m3_controlled_stop.py"
+  ],
+  "changes": [
+    "Known unresolved real attempts fence new Worker sessions for the same Task or employee, management for the same employee, and reviews for the same Task or employee. Prepare rechecks other sessions before send.",
+    "Existing dispatch reasons include at most two original attempt IDs. Existing schedulers own bounded preflight queries: two original runs per pass, five seconds per query, no submit/start/stop side effects.",
+    "Reconstruction uses original identity, runtime and connection. Canonical terminal persistence revalidates the original handle after query; failed host history and business states remain unchanged.",
+    "Atomic admission is repeated after query; management budget hooks are rechecked. Worker preflight ownership is kept per employee and shutdown drains it."
+  ],
+  "observed_red_before_implementation": [
+    "Existing baseline: 168 passed.",
+    "Initial 44 failures were a fixture AttributeError from assuming a RuntimeInstance.model_binding relationship; these are not behavior proof.",
+    "Corrected fixture provider lookup, enabled the actual scheduler setting, and refreshed stored timestamps: 42 expected behavioral failures and two other-manager compatibility passes BEFORE production changes.",
+    "Initial implementation: 194 passed, one competing review source timeout. Removed the added inspection round trip from ordinary management admission; only a rejected unresolved-run claim triggers queries. Follow-up 97 passed.",
+    "Fourteen postimplementation boundary scenarios yielded 58 passed. Four additional review-association and storage-failure scenarios are also postimplementation, without red claims.",
+    "Final 709 related checks passed; seven changed Python files passed static and formatting checks."
+  ],
+  "verification": [
+    {
+      "label": "admission-baseline",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_management_dispatch.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 18.65,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/admission-baseline.log",
+      "log_sha256": "257e74538883d91a3d64c7c9cac9ec004ea4ab8eb2c39b42d331b0b44132c57b",
+      "output_tail": "........................................................................ [ 42%]\n........................................................................ [ 85%]\n........................                                                 [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n168 passed, 1 warning in 17.21s\n"
+    },
+    {
+      "label": "admission-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 4.12,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/admission-red.log",
+      "log_sha256": "a0c0a60e86cc79fcb03885a0f0ff7ce9226157c69131555514e6a386c423acf1",
+      "output_tail": "y_completion_revalidates_original_identity_and_current_authority[openclaw-task_cancelled]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_prepare_attempt_rechecks_other_sessions_before_first_send[hermes]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_prepare_attempt_rechecks_other_sessions_before_first_send[openclaw]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_admission_respects_remote_occupancy_without_blocking_other_managers[hermes-True]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_admission_respects_remote_occupancy_without_blocking_other_managers[hermes-False]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_admission_respects_remote_occupancy_without_blocking_other_managers[openclaw-True]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_admission_respects_remote_occupancy_without_blocking_other_managers[openclaw-False]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_runner_queries_before_claim_and_send[hermes-running]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_runner_queries_before_claim_and_send[hermes-completed]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_runner_queries_before_claim_and_send[openclaw-running]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_runner_queries_before_claim_and_send[openclaw-completed]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_periodic_scan_reaches_original_query[hermes]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_periodic_scan_reaches_original_query[openclaw]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_cancellation_during_original_query_never_claims[hermes]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_cancellation_during_original_query_never_claims[openclaw]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_mock_override_cannot_hide_a_known_real_pending_run[hermes]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_mock_override_cannot_hide_a_known_real_pending_run[openclaw]\n44 failed, 1 warning in 2.77s\n"
+    },
+    {
+      "label": "admission-red-corrected",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 6.25,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/admission-red-corrected.log",
+      "log_sha256": "476eb78923219436e4fc949826768a90920ab6edf636dc76181876da45d9dec6",
+      "output_tail": "mpletion_revalidates_original_identity_and_current_authority[hermes-task_cancelled]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_query_completion_revalidates_original_identity_and_current_authority[openclaw-connection]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_query_completion_revalidates_original_identity_and_current_authority[openclaw-task_cancelled]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_prepare_attempt_rechecks_other_sessions_before_first_send[hermes]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_prepare_attempt_rechecks_other_sessions_before_first_send[openclaw]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_admission_respects_remote_occupancy_without_blocking_other_managers[hermes-True]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_admission_respects_remote_occupancy_without_blocking_other_managers[openclaw-True]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_runner_queries_before_claim_and_send[hermes-running]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_runner_queries_before_claim_and_send[hermes-completed]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_runner_queries_before_claim_and_send[openclaw-running]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_runner_queries_before_claim_and_send[openclaw-completed]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_periodic_scan_reaches_original_query[hermes]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_management_periodic_scan_reaches_original_query[openclaw]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_cancellation_during_original_query_never_claims[hermes]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_cancellation_during_original_query_never_claims[openclaw]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_mock_override_cannot_hide_a_known_real_pending_run[hermes]\nFAILED apps/server/tests/test_m3_runtime_admission.py::test_mock_override_cannot_hide_a_known_real_pending_run[openclaw]\n42 failed, 2 passed, 1 warning in 4.87s\n"
+    },
+    {
+      "label": "admission-green-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_management_dispatch.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 22.47,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/admission-green-1.log",
+      "log_sha256": "82f354f1e87f51f7304909f46a6d94df868ae66d8ef316f1eb1bcd56bb36a63f",
+      "output_tail": "........................................................................ [ 36%]\n...........................F............................................ [ 73%]\n...................................................                      [100%]\n=================================== FAILURES ===================================\n____ test_duplicate_review_events_and_competing_runners_share_one_execution ____\napps/server/tests/test_m3_management_runner.py:225: in eventually\n    await asyncio.sleep(0.01)\n../../miniconda3/envs/eidolon/lib/python3.12/asyncio/tasks.py:665: in sleep\n    return await future\n           ^^^^^^^^^^^^\nE   asyncio.exceptions.CancelledError\n\nThe above exception was the direct cause of the following exception:\napps/server/tests/test_m3_management_runner.py:406: in test_duplicate_review_events_and_competing_runners_share_one_execution\n    await ended(event_id)\napps/server/tests/test_m3_management_runner.py:229: in ended\n    return await eventually(\napps/server/tests/test_m3_management_runner.py:219: in eventually\n    async with asyncio.timeout(3):\n               ^^^^^^^^^^^^^^^^^^\n../../miniconda3/envs/eidolon/lib/python3.12/asyncio/timeouts.py:115: in __aexit__\n    raise TimeoutError from exc_val\nE   TimeoutError\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_management_runner.py::test_duplicate_review_events_and_competing_runners_share_one_execution\n1 failed, 194 passed, 1 warning in 21.05s\n"
+    },
+    {
+      "label": "admission-green-2",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 10.83,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/admission-green-2.log",
+      "log_sha256": "e9f9d20a19a3f5d00f80c15fd5a5bcd7eda8e9535e5767781a1aca5b7e1bdfc7",
+      "output_tail": "........................................................................ [ 74%]\n.........................                                                [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n97 passed, 1 warning in 9.40s\n"
+    },
+    {
+      "label": "admission-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 5.52,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/admission-boundaries.log",
+      "log_sha256": "dd3929f3e0319bf89b84a18df946dd1b1f25b52d78a92aa15554617b0a228573",
+      "output_tail": "..........................................................               [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n58 passed, 1 warning in 4.17s\n"
+    },
+    {
+      "label": "admission-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "apps/server/tests/test_m3_technical_failure.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_stop_intent.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "apps/server/tests/test_m3_management_dispatch.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_m2_contract.py",
+        "apps/server/tests/test_m2_golden_path.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_task_lifecycle.py",
+        "apps/server/tests/test_m3_pinned_handoff.py",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_project_workflow.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 64.77,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/admission-final.log",
+      "log_sha256": "f8949b8bb8b668c2c8c7bd2bbdad11a3536f070e7820241e036643273e659fb4",
+      "output_tail": "........................................................................ [ 10%]\n........................................................................ [ 20%]\n........................................................................ [ 30%]\n........................................................................ [ 40%]\n........................................................................ [ 50%]\n........................................................................ [ 60%]\n........................................................................ [ 71%]\n........................................................................ [ 81%]\n........................................................................ [ 91%]\n.............................................................            [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n709 passed, 1 warning in 62.93s (0:01:02)\n"
+    },
+    {
+      "label": "admission-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/work/runtime_admission.py",
+        "apps/server/app/work/dispatch.py",
+        "apps/server/app/work/management_dispatch.py",
+        "apps/server/app/work/management_runner.py",
+        "apps/server/app/work/telemetry.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_runtime_admission.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/admission-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "admission-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/work/runtime_admission.py",
+        "apps/server/app/work/dispatch.py",
+        "apps/server/app/work/management_dispatch.py",
+        "apps/server/app/work/management_runner.py",
+        "apps/server/app/work/telemetry.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_runtime_admission.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/admission-format.log",
+      "log_sha256": "0321fffcb91606a42c0a19d8c1121d5c544379d663821fce616c71a7bb62f6b5",
+      "output_tail": "7 files already formatted\n"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/work/runtime_admission.py": "f7aa2c2db69732014e2973cf2018a043903d54085e31915b3dcda40b0eb0730b",
+    "apps/server/app/work/dispatch.py": "9120dab082993d8f155668e1f6ba4b06ac9de3c7f626ce35e76c2f0beef4f40b",
+    "apps/server/app/work/management_dispatch.py": "a58afbe75da1bc14fc4209705850a4ec2123bf81dbf7143c3cc229718cdf9ecf",
+    "apps/server/app/work/management_runner.py": "725ee709e84c9dd10af3fefbf3fc3cab3e2b001be2dfccfd6a5f3e588d900c94",
+    "apps/server/app/work/telemetry.py": "f2a4a16eb8634fe2e63bdd2f5cb6bbb709be0ffd59beb62f6ecd45bc59849003",
+    "apps/server/app/workflow/orchestrator.py": "4a0ed61a028f143a213ff0463cb02b5ba0911ce0af78f336fa97a9aecbc0b5f3",
+    "apps/server/tests/test_m3_runtime_admission.py": "66ea97a1ffcc0137788a4d4a19a9c8db27be450aaf33d7b46821bbd08a638306",
+    "docs/m2-freeze.md": "800e94d7f3c36f46947b4b961e256256ec9e917ab9660539145012c18fa0610c",
+    "docs/m3-u15-retry-and-cancel.md": "253046343afe248df17add35ffa0712c5aceffa2bab1336f5eff4365fc812b09"
+  },
+  "exceptions": [
+    "62 new scenarios; real services, isolated SQLite and both runtime adapters with transport doubles. Worker tests stop at the new environment-start boundary after inspecting the committed claim. Management tests execute real controlled sends with scripted external responses.",
+    "Same-session request reuse and explicit retry rules are unchanged; this component specifically fences other logical sessions.",
+    "Only known canonical real attempts are admission evidence. No attempt is fabricated for legacy sessions without an attempt; startup reconciliation remains U16.",
+    "No complete backend rerun; focused regression includes management/review, stop, telemetry, technical failure, M2 lifecycle/golden paths, pinned handoff and artifact acceptance.",
+    "No schema, shared fixtures, paid model calls, Docker actions, development database writes or user tmp access."
+  ],
+  "remaining": [
+    "Safe finite retry and bounded backoff",
+    "Cumulative budget admission and stop",
+    "Cross-process startup reconciliation (U16)",
+    "Actual remote stop and unconfirmed-stop acceptance",
+    "U14 additional paid whole-chain allowance answer pending"
+  ],
+  "paid_model_requests": 0,
+  "standalone_shipping_skipped": true
+}

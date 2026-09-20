@@ -68,6 +68,7 @@ from app.work import (
     dispatch_notices,
     handoff,
     review_fixture,
+    runtime_admission,
     runtime_artifacts,
     telemetry,
     work_defaults,
@@ -231,7 +232,12 @@ class Orchestrator:
                         )
                     )
                     continue
-                for evaluation in state.dispatchable:
+                preflights = [
+                    item
+                    for item in state.needs_management
+                    if (item.readiness or {}).get("unresolved_attempt_ids")
+                ]
+                for evaluation in (*state.dispatchable, *preflights):
                     assignee_id = int(evaluation.assignee_id or 0)
                     if not assignee_id or assignee_id in self._running:
                         continue
@@ -292,6 +298,8 @@ class Orchestrator:
             db.commit()
         dispatch_notices.broadcast_pending()
         for task_id, employee_id in candidates:
+            if employee_id in self._running:
+                continue
             # invariant §3.4.2: one running WorkSession per employee
             session_task = asyncio.create_task(
                 self._run_task(task_id), name=f"work-session-task-{task_id}"
@@ -332,6 +340,14 @@ class Orchestrator:
             return interrupted
 
         try:
+            with SessionLocal() as db:
+                task = project_repo.get_task(db, task_id)
+                if task is None:
+                    return
+                evaluation = dispatch_runtime.evaluate_dispatch(db, task)
+                pending = (evaluation.readiness or {}).get("unresolved_attempt_ids", ())
+            if pending:
+                await runtime_admission.reconcile_attempts(pending, adapter_for=gateway.adapter_for)
             with SessionLocal() as db:
                 # Worker and non-worker claims share the same admission lock.
                 # Fresh occupancy/authority reads and creation must be atomic;

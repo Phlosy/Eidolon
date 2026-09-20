@@ -35,7 +35,7 @@ from app.models.organization import Employee
 from app.models.project import Task
 from app.repositories import project as project_repo
 from app.work import contracts as C
-from app.work import handoff, readiness
+from app.work import handoff, readiness, runtime_admission
 
 #: 项目处于这些状态时允许执行（终态与"等管理层"不在此列）
 EXECUTABLE_PROJECT_STATUSES: frozenset[str] = frozenset(
@@ -277,6 +277,17 @@ def evaluate_dispatch(db: Session, task: Task) -> DispatchEvaluation:
             reasons=("assignee_busy",),
             assignee_id=int(assignee_id),
             readiness=explanation,
+        )
+    pending = runtime_admission.unresolved_attempt_ids(
+        db, company_id=project.company_id, employee_id=int(assignee_id), task_id=int(task.id)
+    )
+    if pending:
+        return DispatchEvaluation(
+            task_id=int(task.id),
+            dispatchable=False,
+            reasons=(REASON_RUNTIME_UNAVAILABLE,),
+            assignee_id=int(assignee_id),
+            readiness={**(explanation or {}), "unresolved_attempt_ids": pending},
         )
     return DispatchEvaluation(
         task_id=int(task.id), dispatchable=True, assignee_id=int(assignee_id), readiness=explanation

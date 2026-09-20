@@ -170,6 +170,10 @@ def prepare_attempt(
             or (kind == "worker" and work.purpose != "worker")
         ):
             raise RuntimeProtocolError("execution_session_ended")
+        from app.work.runtime_admission import unresolved_for_work
+
+        if unresolved_for_work(db, work):
+            raise RuntimeProtocolError("execution_previous_run_unresolved")
         if work.purpose == "worker":
             task = db.get(Task, work.task_id)
             if task is None or task.status != "in_progress":
@@ -290,20 +294,23 @@ class AttemptRecorder:
             row = record_stop_intent(db, self.attempt_id, reason)
             db.commit()
             if session is not None:
-                work = db.get(WorkSession, row.work_session_id)
-                validate_identity(db, work, session, fingerprint=row.instance_fingerprint)
-                if (
-                    row.local_session_ref != session.id
-                    or row.idempotency_key != self.idempotency_key
-                    or row.request_key != self.request_key
-                    or row.remote_run_id != session.remote_run_id
-                    or (
-                        row.remote_run_id is not None
-                        and row.remote_session_ref != session.remote_session_ref
-                    )
-                ):
-                    raise RuntimeProtocolError("execution_stop_identity_mismatch")
+                self._validate_session(db, row, session, "execution_stop_identity_mismatch")
             return row.status
+
+    def _validate_session(self, db, row, session, reason):
+        work = db.get(WorkSession, row.work_session_id)
+        validate_identity(db, work, session, fingerprint=row.instance_fingerprint)
+        if (
+            row.local_session_ref != session.id
+            or row.idempotency_key != self.idempotency_key
+            or row.request_key != self.request_key
+            or row.remote_run_id != session.remote_run_id
+            or (
+                row.remote_run_id is not None
+                and row.remote_session_ref != session.remote_session_ref
+            )
+        ):
+            raise RuntimeProtocolError(reason)
 
     def accepted(self, run_id, remote_session_ref):
         if not isinstance(run_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:/-]{1,256}", run_id):
@@ -324,12 +331,14 @@ class AttemptRecorder:
                 _record(db, row, "session.started", {}, "accepted", row.accepted_at)
             db.commit()
 
-    def terminal(self, status, source):
+    def terminal(self, status, source, *, session=None):
         if status not in {"completed", "failed"} or source not in _TERMINAL_SOURCES:
             raise RuntimeProtocolError("invalid_remote_outcome")
         with self.session_factory() as db:
             ensure_sqlite_transaction(db)
             row = _attempt(db, self.attempt_id)
+            if session is not None:
+                self._validate_session(db, row, session, "execution_query_identity_mismatch")
             if row.ended_at is not None:
                 if row.status != status:
                     raise RuntimeProtocolError("execution_terminal_conflict")

@@ -28,7 +28,7 @@ from app.runtimes.base import RuntimeSession, TaskContext
 from app.runtimes.container_common import resolve_container_instance
 from app.runtimes.gateway import gateway
 from app.work import management_dispatch as dispatch
-from app.work import tool_executor
+from app.work import runtime_admission, tool_executor
 from app.work.dispatch_notices import begin_observation
 from app.work.runtime_conversation import ConversationLimits, run_conversation
 from app.work.telemetry import record_stop_intent
@@ -216,7 +216,10 @@ class ManagementRunner:
                             self._check_running()
                             if (
                                 view is not None
-                                and view.waiting_reason == "budget_unavailable"
+                                and (
+                                    view.waiting_reason == "budget_unavailable"
+                                    or view.details.get("unresolved_attempt_ids")
+                                )
                                 and callable(self._budget_available)
                                 and callable(self._budget_check)
                                 and len(self._jobs) < self._max_concurrency
@@ -241,32 +244,46 @@ class ManagementRunner:
 
     async def _admit_and_run(self, source_id: int) -> None:
         try:
-            allowed = False
-            try:
-                async with asyncio.timeout(self._admission_timeout) as admission:
-                    allowed = await self._budget_available(source_id)
-                if admission.expired():
-                    allowed = False
-            except Exception:
-                pass
-            self._check_running()
-            # Re-read all facts after budget admission. Cancellation must drain
-            # the atomic claim and deliver any committed session to owned cleanup.
-            claiming = asyncio.create_task(
-                asyncio.to_thread(
-                    dispatch.claim_source,
-                    source_id,
-                    enabled=self._enabled,
-                    budget_available=allowed is True,
+            # The ordinary path keeps its existing single atomic claim. Only a
+            # rejected claim with original unresolved runs gets one query pass.
+            for admission_pass in range(2):
+                allowed = False
+                try:
+                    async with asyncio.timeout(self._admission_timeout) as admission:
+                        allowed = await self._budget_available(source_id)
+                    if admission.expired():
+                        allowed = False
+                except Exception:
+                    pass
+                self._check_running()
+                # Recheck all facts and budget after a query. Cancellation drains
+                # the atomic claim and delivers any committed session to cleanup.
+                claiming = asyncio.create_task(
+                    asyncio.to_thread(
+                        dispatch.claim_source,
+                        source_id,
+                        enabled=self._enabled,
+                        budget_available=allowed is True,
+                        session_factory=self._session_factory,
+                    )
+                )
+                cancelled = await self._drain(claiming)
+                claim = claiming.result()
+                if claim.created:
+                    await self._run_owned(claim.dispatch)
+                if cancelled:
+                    raise asyncio.CancelledError
+                pending = (claim.dispatch.details if claim.dispatch else {}).get(
+                    "unresolved_attempt_ids", ()
+                )
+                if claim.created or admission_pass or allowed is not True or not pending:
+                    return
+                await runtime_admission.reconcile_attempts(
+                    pending,
+                    adapter_for=gateway.adapter_for,
                     session_factory=self._session_factory,
                 )
-            )
-            cancelled = await self._drain(claiming)
-            claim = claiming.result()
-            if claim.created:
-                await self._run_owned(claim.dispatch)
-            if cancelled:
-                raise asyncio.CancelledError
+                self._check_running()
         except asyncio.CancelledError:
             raise
         except Exception:
