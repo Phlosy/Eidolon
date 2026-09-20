@@ -1,0 +1,309 @@
+{
+  "unit": "U14",
+  "status": "collection_acceptance_component_verified_not_unit_complete",
+  "base_commit": "e0175b9dfcbfbae0c403399f3d0f8304dac5e3a2",
+  "migration": "60f659ce8704",
+  "source_sha256": {
+    "apps/server/app/models/__init__.py": "9358bda7ea7829077dea3973a12399c3dc0f4071554f44c34fa379ebab9b447e",
+    "apps/server/app/models/runtime_artifact.py": "1894c89c8d9b829b37231c29c6a6659e1979983f6361a4605632d6324357386d",
+    "apps/server/app/work/runtime_artifacts.py": "cd95e2e68afe43d691d1615fd81546fba0e55d410d67e19b6ae207a3fe0a4996",
+    "apps/server/app/work/telemetry.py": "b7826363265c5b4b422523edbac34898896e0a43e1b6fbde8cb24007b97a8cab",
+    "apps/server/app/workflow/orchestrator.py": "d4f36c23c59b472e95638f0d8b2209b592683920bc12d2b715dd952a72e596ad",
+    "apps/server/migrations/versions/60f659ce8704_v60_artifact_collections.py": "cf118c1c34dabfe24b225122f192e0b029defb63439c7ffbe79a3f9ba75e1c05",
+    "apps/server/tests/test_m3_artifact_acceptance.py": "51c073a164270f1903711f44d5ed706ded2493558b870eddbf02b55ebb2ac406",
+    "apps/server/tests/test_m3_artifact_collection_migration.py": "6cce778a6741843ea99d040458e9d7297912b1321b74ecff6b27bbce446f8f44",
+    "apps/server/tests/test_m3_artifact_context_migration.py": "323b98b31383003573580f205ed4769873d87c1f51ed45ea55ef34280589e0b3",
+    "apps/server/tests/test_m3_confirmation_migration.py": "a7c2a081c40fd7bac4fb529dbc07f3be6bbb59414c142959063171f456684250",
+    "apps/server/tests/test_m3_drive_revision_migration.py": "1ac55270bb4524117c37f2db631b2cbab1afc3130ee2a260bd0f24383d131f90",
+    "apps/server/tests/test_m3_execution_migration.py": "422606f1d6469fd114844d380af2aa4d29b468c86639686dea3a70abbd633af4",
+    "apps/server/tests/test_m3_management_discovery_migration.py": "e1fd0d247d9de3f22d96a7e4d7ab2bbdca886492cb099f45d2acbe19a818e8c4",
+    "apps/server/tests/test_m3_management_dispatch_migration.py": "b51be530cff43f01b6e4e23e835fccf596b002f44bc8bde89fac9b331e60881c",
+    "apps/server/tests/test_m3_runtime_operation_migration.py": "4ce2f7e3a40f2a168d16c5bf072f103988f13b1556410d53aa625c3d4d498f16",
+    "apps/server/tests/test_m3_session_purpose_migration.py": "f83e7ec954f52db71645fe8ebd0835698227766f174a4cc3499b4d6e9c57698b"
+  },
+  "checks": [
+    {
+      "label": "collection-acceptance-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 5.62,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-acceptance-red.log"
+    },
+    {
+      "label": "collection-migration-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_artifact_collection_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 4.06,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-migration-red.log"
+    },
+    {
+      "label": "collection-acceptance-green-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_artifact_collection_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 7.38,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-acceptance-green-1.log"
+    },
+    {
+      "label": "collection-write-race-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "-q",
+        "-k",
+        "during_drive_writes",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 2,
+      "elapsed_seconds": 1.92,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-write-race-red.log"
+    },
+    {
+      "label": "collection-write-race-red-2",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "-q",
+        "-k",
+        "during_drive_writes",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.12,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-write-race-red-2.log"
+    },
+    {
+      "label": "collection-acceptance-green-2",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_artifact_collection_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 9.22,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-acceptance-green-2.log"
+    },
+    {
+      "label": "collection-acceptance-focused",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_artifact_collection_migration.py",
+        "apps/server/tests/test_m3_drive_revision_content.py",
+        "apps/server/tests/test_m3_drive_revision_migration.py",
+        "apps/server/tests/test_m3_artifact_workspace_identity.py",
+        "apps/server/tests/test_m3_artifact_context_migration.py",
+        "apps/server/tests/test_m3_confirmation_migration.py",
+        "apps/server/tests/test_m3_execution_migration.py",
+        "apps/server/tests/test_m3_session_purpose_migration.py",
+        "apps/server/tests/test_m3_runtime_operation_migration.py",
+        "apps/server/tests/test_m3_management_dispatch_migration.py",
+        "apps/server/tests/test_m3_management_discovery_migration.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "apps/server/tests/test_drive.py",
+        "apps/server/tests/test_artifact_compat.py",
+        "apps/server/tests/test_m2_handoff.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_m3_management_handoff.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 49.39,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-acceptance-focused.log"
+    },
+    {
+      "label": "collection-orchestrator-regression",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_m3_readiness.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "apps/server/tests/test_m3_provenance.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 17.96,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-orchestrator-regression.log"
+    },
+    {
+      "label": "collection-pending-cancel-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "-q",
+        "-k",
+        "unflushed_cancellation",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.27,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-pending-cancel-red.log"
+    },
+    {
+      "label": "collection-transaction-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_artifact_collection_migration.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 20.66,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-transaction-final.log"
+    },
+    {
+      "label": "collection-static-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/models/__init__.py",
+        "apps/server/app/models/runtime_artifact.py",
+        "apps/server/app/work/runtime_artifacts.py",
+        "apps/server/app/work/telemetry.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/migrations/versions/60f659ce8704_v60_artifact_collections.py",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_artifact_collection_migration.py",
+        "apps/server/tests/test_m3_artifact_context_migration.py",
+        "apps/server/tests/test_m3_confirmation_migration.py",
+        "apps/server/tests/test_m3_drive_revision_migration.py",
+        "apps/server/tests/test_m3_execution_migration.py",
+        "apps/server/tests/test_m3_management_discovery_migration.py",
+        "apps/server/tests/test_m3_management_dispatch_migration.py",
+        "apps/server/tests/test_m3_runtime_operation_migration.py",
+        "apps/server/tests/test_m3_session_purpose_migration.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-static-final.log"
+    },
+    {
+      "label": "collection-format-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/models/__init__.py",
+        "apps/server/app/models/runtime_artifact.py",
+        "apps/server/app/work/runtime_artifacts.py",
+        "apps/server/app/work/telemetry.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/migrations/versions/60f659ce8704_v60_artifact_collections.py",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_artifact_collection_migration.py",
+        "apps/server/tests/test_m3_artifact_context_migration.py",
+        "apps/server/tests/test_m3_confirmation_migration.py",
+        "apps/server/tests/test_m3_drive_revision_migration.py",
+        "apps/server/tests/test_m3_execution_migration.py",
+        "apps/server/tests/test_m3_management_discovery_migration.py",
+        "apps/server/tests/test_m3_management_dispatch_migration.py",
+        "apps/server/tests/test_m3_runtime_operation_migration.py",
+        "apps/server/tests/test_m3_session_purpose_migration.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/collection-format-final.log"
+    }
+  ],
+  "proof_first": {
+    "initial_behavior_expected_failures": 32,
+    "initial_behavior_harness_failure": 1,
+    "migration_expected_failures": 2,
+    "mid_write_race_expected_failures": 3,
+    "unflushed_cancellation_expected_failures": 2,
+    "harness_corrections": "The newer-intent case initially violated U13 first-worker idempotency, so it was corrected to a valid persisted prepared attempt. A stray parenthesis caused one collection error before the three expected race failures were observed."
+  },
+  "new_behavior_tests": 53,
+  "new_migration_tests": 2,
+  "passed_groups": {
+    "before_final_flush_fix": {
+      "collection_and_adjacent": 269,
+      "other_orchestrator": 178
+    },
+    "after_final_flush_fix_affected_paths": 133
+  },
+  "scope": "Complete collection preflight, original identity revalidation, immutable canonical reference receipt, concurrent/restart dedup, transaction rollback, and real-worker orchestrator integration. Pinned downstream consumption, reviewer reads, and real formal chain remain.",
+  "paid_calls": 0,
+  "development_database_modified": false
+}

@@ -123,5 +123,5 @@ def test_v58_refuses_to_erase_workspace_snapshot_before_any_ddl(db, workspace_wo
         assert connection.exec_driver_sql("SELECT * FROM runtime_attempts").all() == rows
         assert (
             connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-            == "59e548bd7603"
+            == "60f659ce8704"
         )

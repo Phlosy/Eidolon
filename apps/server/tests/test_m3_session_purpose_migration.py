@@ -312,7 +312,7 @@ def test_v53_up_down_up_preserves_history_and_inbound_receipts(tmp_path):
                     _assert_original_guards(connection, 1)
                     assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
         scripts = ScriptDirectory.from_config(_alembic_config())
-        assert scripts.get_heads() == ["59e548bd7603"]
+        assert scripts.get_heads() == ["60f659ce8704"]
         assert scripts.get_revision(REVISION).down_revision == PREVIOUS
     finally:
         engine.dispose()

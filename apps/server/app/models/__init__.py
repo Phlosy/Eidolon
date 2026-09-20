@@ -109,10 +109,12 @@ from app.models.project_delivery import (
 from app.models.provider import ModelBinding, Provider, Secret
 from app.models.review import ReviewFact, ReviewRequest
 from app.models.runtime import EmployeeBrain, RuntimeImage, RuntimeInstance
+from app.models.runtime_artifact import RuntimeArtifactCollection
 from app.models.runtime_execution import RuntimeAttempt, RuntimeTelemetry
 from app.models.runtime_operation import RuntimeOperation
 
 __all__ = [
+    "RuntimeArtifactCollection",
     "RuntimeAttempt",
     "RuntimeTelemetry",
     "ManagementDiscoveryCursor",

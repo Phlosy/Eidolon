@@ -36,6 +36,7 @@ from app.brain import policy_for as behavior_policy_for
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
+from app.core.transaction_effects import ensure_sqlite_transaction
 from app.events.bus import bus
 from app.learning import reflection, retrieval
 from app.models.enums import (
@@ -53,14 +54,21 @@ from app.repositories import organization as org_repo
 from app.repositories import project as project_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
-from app.runtimes.base import RuntimeEventKind, TaskContext
+from app.runtimes.base import RuntimeEventKind, RuntimeSession, TaskContext
 from app.runtimes.gateway import gateway
 from app.services import artifacts as artifact_service
 from app.services import position_compat
 from app.services import tasks as task_service
 from app.work import contracts as C
 from app.work import dispatch as dispatch_runtime
-from app.work import dispatch_notices, handoff, review_fixture, telemetry, work_defaults
+from app.work import (
+    dispatch_notices,
+    handoff,
+    review_fixture,
+    runtime_artifacts,
+    telemetry,
+    work_defaults,
+)
 
 logger = get_logger(__name__)
 
@@ -454,7 +462,13 @@ class Orchestrator:
             produced = await adapter.get_artifacts(session) if success else []
             duration = (datetime.now(UTC) - started).total_seconds()
             self._finalize(
-                task_id, success, produced, error, duration, work_session_id=work_session_id
+                task_id,
+                success,
+                produced,
+                error,
+                duration,
+                work_session_id=work_session_id,
+                runtime_session=session,
             )
         except asyncio.CancelledError:
             if attempt is not None:
@@ -490,8 +504,10 @@ class Orchestrator:
         duration: float,
         *,
         work_session_id: int | None = None,
+        runtime_session: RuntimeSession | None = None,
     ) -> None:
         with SessionLocal() as db:
+            ensure_sqlite_transaction(db)
             task = project_repo.get_task(db, task_id)
             if task is None:
                 return
@@ -508,6 +524,18 @@ class Orchestrator:
             employee = org_repo.get_employee(db, ws.employee_id)
             company_id = project.company_id if project else None
 
+            artifact_ids = []
+            if success and ws.runtime_type != "mock":
+                nodes = runtime_artifacts.accept_collection(
+                    db,
+                    work_session_id=ws.id,
+                    attempt_id=getattr(
+                        getattr(runtime_session, "attempt", None), "attempt_id", None
+                    ),
+                    session=runtime_session,
+                    produced=produced,
+                )
+                artifact_ids = [(node.id, node.doc_type, node.name) for node in nodes]
             ws.status = (
                 WorkSessionStatus.completed.value if success else WorkSessionStatus.failed.value
             )
@@ -531,9 +559,8 @@ class Orchestrator:
             for usage in knowledge_repo.list_skill_usages_for_task(db, task_id):
                 usage.success = success
 
-            artifact_ids = []
             # v0.3: artifacts are drive documents in the project folder
-            for item in produced if project is not None else []:
+            for item in produced if project is not None and ws.runtime_type == "mock" else []:
                 node = artifact_service.record_project_artifact(
                     db,
                     project,

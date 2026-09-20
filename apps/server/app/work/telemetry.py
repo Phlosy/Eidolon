@@ -51,7 +51,7 @@ def _digest(value):
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def _identity(db, work, session=None, *, fingerprint=None):
+def validate_identity(db, work, session=None, *, fingerprint=None):
     if work is None or not isinstance(work.provenance_snapshot_json, dict):
         raise RuntimeProtocolError("execution_identity_unknown")
     identity = get_request_identity()
@@ -139,7 +139,7 @@ def prepare_attempt(
     with session_factory() as db:
         ensure_sqlite_transaction(db)
         work = db.get(WorkSession, work_session_id)
-        row = _identity(db, work, session)
+        row = validate_identity(db, work, session)
         artifact_context = None
         if kind == "worker" and work.runtime_type != "mock":
             from app.work import runtime_artifacts
@@ -491,7 +491,7 @@ def reconstruct_attempt(attempt_id, *, session_factory=SessionLocal):
     with session_factory() as db:
         attempt = _attempt(db, attempt_id)
         work = db.get(WorkSession, attempt.work_session_id)
-        row = _identity(db, work, fingerprint=attempt.instance_fingerprint)
+        row = validate_identity(db, work, fingerprint=attempt.instance_fingerprint)
         if (
             row is None
             or row.id != attempt.runtime_instance_id
