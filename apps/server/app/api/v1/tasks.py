@@ -1,8 +1,9 @@
 """/tasks"""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.api.scope import resolve_company_id
 from app.core.database import get_db
 from app.events.bus import bus
 from app.models.enums import TaskStatus
@@ -18,7 +19,7 @@ from app.schemas.work import (
 from app.services import tasks as task_service
 from app.services.schedules import InvalidScheduleError, apply_schedule_patch
 from app.work import contracts as C
-from app.work import handoff, reviews
+from app.work import gap_facts, handoff, reviews
 
 
 def _task_out(task) -> TaskOut:
@@ -26,6 +27,27 @@ def _task_out(task) -> TaskOut:
 
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+@router.get("/{task_id}/gap")
+def get_task_gap(
+    task_id: int,
+    candidate_employee_ids: list[int] | None = Query(default=None),
+    company_id: int | None = Depends(resolve_company_id),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Company-scoped facts, shared with inspect_gap; the manager chooses the action."""
+    if company_id is None:
+        raise HTTPException(status_code=404, detail="task not found in this company")
+    try:
+        return gap_facts.inspect_gap(
+            db,
+            company_id=company_id,
+            task_id=task_id,
+            candidate_employee_ids=candidate_employee_ids,
+        )
+    except gap_facts.GapFactsError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/{task_id}", response_model=TaskOut)

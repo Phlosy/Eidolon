@@ -16,7 +16,7 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.events.bus import bus
-from app.models.enums import MarketListingStatus, MarketParticipantKind
+from app.models.enums import MarketParticipantKind
 from app.repositories import cultivation as cultivation_repo
 from app.repositories import market as market_repo
 from app.repositories import organization as org_repo
@@ -190,11 +190,11 @@ def search(
 
 def listing_detail(db: Session, listing_id: int, *, timeline_limit: int, evidence_limit: int):
     """在人才的公开档案（只允许 active listing —— 下架/关闭后不再对外可读）。"""
-    listing = market_repo.get_listing(db, listing_id)
-    if listing is None or listing.status != MarketListingStatus.active.value:
-        raise MarketError("listing_not_found", http_status=404)
     from app.talent.market import read_model as market_read_model
 
-    return market_read_model.candidate_profile(
-        db, listing, timeline_limit=timeline_limit, evidence_limit=evidence_limit
-    )
+    try:
+        return market_read_model.candidate_detail(
+            db, listing_id, timeline_limit=timeline_limit, evidence_limit=evidence_limit
+        )
+    except ValueError as exc:
+        raise MarketError(str(exc), http_status=404) from exc

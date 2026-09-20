@@ -1123,6 +1123,9 @@ def test_read_and_write_tool_names_are_the_agreed_first_batch():
         # M2.7：给出评审结论（RV2/RV4/RV6）+ 重新规划（RV7）
         "submit_review_verdict",
         "replan_project",
+        # M3 U9: project-bound learning facts, never execution or spending.
+        "create_learning_priority",
+        "request_training",
     }
 
 
@@ -1130,5 +1133,6 @@ def test_build_helpers_are_pure_constructors():
     """构建函数只造 spec，不注册到全局表（注册只发生一次，且显式）。"""
     assert len(tool_reads.build_read_tools()) >= 12
     # M2.6：9 → 10（consume_artifact）；M2.7：10 → 12（submit_review_verdict / replan_project）
-    assert len(tool_writes.build_write_tools()) == 12
+    # M3 U9: two decision-bound learning planning tools.
+    assert len(tool_writes.build_write_tools()) == 14
     assert isinstance(machinery.ToolRegistry(), machinery.ToolRegistry)

@@ -44,33 +44,7 @@ def _company(db: Session, employee: Employee) -> Company:
 
 
 def _session_out(session: LearningSession) -> dict:
-    return {
-        "id": session.id,
-        "employee_id": session.employee_id,
-        "company_id": session.company_id,
-        "topic": session.topic,
-        "reason": session.reason,
-        "source_type": session.source_type,
-        "source_id": session.source_id,
-        "status": session.status,
-        "learning_mode": session.learning_mode,
-        "priority": session.priority,
-        "budget_tokens": session.budget_tokens,
-        "budget_cost": session.budget_cost,
-        "budget_minutes": session.budget_minutes,
-        "tokens_used": session.tokens_used,
-        "cost_used": session.cost_used,
-        "duration_minutes": session.duration_minutes,
-        "runtime_type": session.runtime_type,
-        "provider_name": session.provider_name,
-        "model_name": session.model_name,
-        "started_at": session.started_at,
-        "completed_at": session.completed_at,
-        "cancelled_at": session.cancelled_at,
-        "error": session.error,
-        "summary": session.summary,
-        "outputs": (session.metadata_json or {}).get("outputs", {}),
-    }
+    return learning_service.session_out(session)
 
 
 @router.get("/company/learning-policy", response_model=LearningPolicyOut)

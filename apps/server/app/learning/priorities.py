@@ -5,12 +5,32 @@ See docs/architecture.md §6.2.
 
 from sqlalchemy.orm import Session
 
+from app.models.knowledge import LearningPriority
 from app.repositories import knowledge as knowledge_repo
 
 FAILURE_PRIORITY_SCORE = 70
 # §13.1：失败驱动与行为延伸两类优先级靠 source 区分，分数区间互不侵入。
 FAILURE_SOURCE = "failure"
 EXTENSION_SOURCE = "behavior-extension"
+
+
+def record_request(
+    db: Session, employee_id: int, *, topic: str, score: int, reason: str
+) -> tuple[LearningPriority, bool]:
+    """Record the Agent's choice without rewriting any existing Person-owned intent.
+
+    The caller holds the employee lock and owns the transaction and action audit.
+    A source collision is an unchanged fact, never an implicit reprioritization.
+    """
+    topic, reason = topic.strip(), reason.strip()
+    if not 1 <= len(topic) <= 200 or not 1 <= len(reason) <= 2000 or not 0 <= score <= 100:
+        raise ValueError("priority requires topic (1..200), reason (1..2000), score (0..100)")
+    existing = knowledge_repo.get_priority_by_topic(db, employee_id, topic)
+    if existing is not None:
+        return existing, False
+    return knowledge_repo.create_learning_priority(
+        db, employee_id=employee_id, topic=topic, score=score, reason=reason, source="agent_request"
+    ), True
 
 
 def record_failure(db: Session, employee_id: int, topic: str, reason: str) -> None:

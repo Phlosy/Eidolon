@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "unit": "U9",
+  "requirements": [
+    "R3"
+  ],
+  "status": "verified",
+  "baseline_head": "db3b94ddf90d68d2bf5e3ca16dd5448cd5e601fd",
+  "generated_at": "2026-09-20T09:43:42.533504+00:00",
+  "worker_verification": [
+    {
+      "unit": "U9",
+      "behavior_changed": true,
+      "existing_tests_inspected": [
+        "tests/test_learning.py",
+        "tests/test_market_contract.py",
+        "tests/test_market_core.py",
+        "tests/test_persons.py",
+        "tests/test_m2_tools.py",
+        "tests/test_m3_tool_transactions.py",
+        "tests/test_m3_management_runtime.py",
+        "tests/test_m3_contract.py"
+      ],
+      "tests_added_or_changed": [
+        "tests/test_m3_gap_actions.py (36 isolated scenarios)",
+        "tests/test_m2_tools.py (two approved catalog assertions only)"
+      ],
+      "tests_used_unchanged": [
+        "tests/test_m3_contract.py",
+        "tests/test_learning.py",
+        "tests/test_market_contract.py",
+        "tests/test_market_core.py::test_market_is_cross_company_readable_via_public_projection",
+        "tests/test_market_core.py::test_candidate_detail_redacts_internal_outcome_and_evidence_ids",
+        "tests/test_market_core.py::test_unknown_listing_is_404_and_closed_listing_not_public",
+        "tests/test_market_core.py::test_mine_filter_returns_only_own_listings",
+        "tests/test_persons.py::test_knowledge_repo_double_writes_employee_and_person",
+        "tests/test_persons.py::test_learning_session_create_double_writes_person",
+        "tests/test_persons.py::test_read_criterion_uses_person_column_when_resolved",
+        "tests/test_person_fit.py::test_market_search_annotates_and_sorts_but_never_filters",
+        "tests/test_person_fit.py::test_market_search_fit_requires_own_position",
+        "tests/test_m3_tool_transactions.py::test_database_audit_rejection_preserves_unrelated_caller_work",
+        "tests/test_m3_management_runtime.py::test_management_can_read_and_apply_a_real_decision_without_a_worker_task",
+        "tests/test_m3_management_runtime.py::test_management_keeps_bound_project_for_task_dependency_and_review_targets"
+      ],
+      "proofs": [
+        {
+          "name": "baseline",
+          "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_market_contract.py tests/test_market_core.py::test_market_is_cross_company_readable_via_public_projection tests/test_market_core.py::test_candidate_detail_redacts_internal_outcome_and_evidence_ids tests/test_market_core.py::test_unknown_listing_is_404_and_closed_listing_not_public tests/test_persons.py::test_knowledge_repo_double_writes_employee_and_person tests/test_persons.py::test_learning_session_create_double_writes_person tests/test_persons.py::test_read_criterion_uses_person_column_when_resolved tests/test_learning.py --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-baseline -q",
+          "result": "25 passed, 1 warning in 1.72s",
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-baseline.log"
+        },
+        {
+          "name": "feature red before production writes",
+          "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_gap_actions.py --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-final -q",
+          "result": "32 failed, 1 warning in 2.44s; missing registered tools (after correcting one initial fixture)",
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-final.log"
+        },
+        {
+          "name": "existing competency preservation red before learning production writes",
+          "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_gap_actions.py::test_training_is_planned_audited_replayed_and_never_spends_or_teaches tests/test_m3_gap_actions.py::test_new_priority_has_person_ownership_and_replay_has_no_extra_effect --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-competency -q",
+          "result": "2 failed, 1 warning in 0.69s; learning tools absent; seeded Person score/confidence assertions in place",
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-competency.log"
+        },
+        {
+          "name": "unfinished request state red before learning production writes",
+          "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_gap_actions.py::test_unfinished_training_reuses_its_current_state --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-unfinished -q",
+          "result": "3 failed, 1 warning in 0.79s; learning tool absent for running/waiting_budget/paused",
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-unfinished.log"
+        },
+        {
+          "name": "optional-null edge red",
+          "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_gap_actions.py::test_market_tools_match_public_api_and_do_not_select_candidates --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-null -q",
+          "result": "1 failed, 1 warning in 1.14s; search limit=None raised TypeError",
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-null.log"
+        },
+        {
+          "name": "frozen P9 guard red",
+          "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_contract.py::test_work_layer_does_not_import_recruitment_or_market_services --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-market-boundary -q",
+          "result": "1 failed, 1 warning in 1.03s; work/tool_reads imported app.services.market; fixed by shared public read_model plus thin authorized service delegate; guard unchanged",
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-market-boundary.log"
+        },
+        {
+          "name": "large company edge red",
+          "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_gap_actions.py::test_gap_all_company_candidates_is_not_limited_as_explicit_user_ids --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-large-company -q",
+          "result": "1 failed, 1 warning in 1.06s; internal all-company IDs mistakenly hit explicit-input 200 limit; original selection now preserved without truncation",
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-large-company.log"
+        },
+        {
+          "name": "final focused validation",
+          "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_gap_actions.py tests/test_m3_contract.py tests/test_m2_tools.py tests/test_learning.py tests/test_market_contract.py tests/test_market_core.py::test_market_is_cross_company_readable_via_public_projection tests/test_market_core.py::test_candidate_detail_redacts_internal_outcome_and_evidence_ids tests/test_market_core.py::test_unknown_listing_is_404_and_closed_listing_not_public tests/test_market_core.py::test_mine_filter_returns_only_own_listings tests/test_persons.py::test_knowledge_repo_double_writes_employee_and_person tests/test_persons.py::test_learning_session_create_double_writes_person tests/test_persons.py::test_read_criterion_uses_person_column_when_resolved tests/test_person_fit.py::test_market_search_annotates_and_sorts_but_never_filters tests/test_person_fit.py::test_market_search_fit_requires_own_position tests/test_m3_tool_transactions.py::test_database_audit_rejection_preserves_unrelated_caller_work tests/test_m3_management_runtime.py::test_management_can_read_and_apply_a_real_decision_without_a_worker_task tests/test_m3_management_runtime.py::test_management_keeps_bound_project_for_task_dependency_and_review_targets --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-final-contract -q",
+          "result": "156 passed, 1 existing Starlette/httpx deprecation warning in 13.69s",
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-final-contract.log"
+        }
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon/apps/server",
+      "no_test_exceptions": [],
+      "integration": "Real SQLite database and real RuntimeBridge -> RuntimeOperation -> DecisionEnvelope -> ToolExecutor -> learning services -> ToolAudit; HTTP parity uses real API; only readiness observation clock fixed for parity. Two concurrent threads exercise distinct-operation active-request deduplication; database trigger rejects real audit inserts to prove rollback and retry."
+    }
+  ],
+  "worker_receipt": {
+    "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-return.json",
+    "sha256": "4864549bea12b00739c8b28fa74c31bf1372a1c0c1e70c0a63fa6f3d59f1dd78"
+  },
+  "parent_verification": [
+    {
+      "command": "make test-server",
+      "log": "u9-parent-server.log",
+      "status": "failed",
+      "result": "1 failed, 2266 passed, 16 deselected, 118 warnings in 255.81s",
+      "failure": "test_m2_decisions.py::test_declared_semantics_match_the_agreed_split omitted the two newly registered required-decision learning tools; no production change required"
+    },
+    {
+      "command": "python -m pytest tests/test_m2_decisions.py tests/test_m3_gap_actions.py -q",
+      "cwd": "apps/server",
+      "log": "u9-parent-semantics.log",
+      "status": "passed",
+      "result": "63 passed, 1 warning in 6.61s",
+      "correction": "Add both tools to the exact required set; optional set and rejection guards preserved"
+    },
+    {
+      "command": "make test-server",
+      "log": "u9-parent-server-recheck.log",
+      "status": "passed",
+      "result": "2267 passed, 16 deselected, 118 warnings in 249.75s (0:04:09)"
+    },
+    {
+      "command": "make lint",
+      "log": "u9-parent-lint.log",
+      "status": "passed",
+      "result": "Ruff check, 488 Python files formatted, TypeScript, ESLint and Prettier pass"
+    },
+    {
+      "command": "python -m ruff check apps/server/tests/test_m2_decisions.py; python -m ruff format --check apps/server/tests/test_m2_decisions.py; git diff --check",
+      "status": "passed",
+      "result": "After parent-only exact catalog assertion update"
+    },
+    {
+      "command": "make test-web",
+      "log": "u9-parent-web.log",
+      "status": "passed",
+      "result": "392 tests, 89 files, 12.42s"
+    },
+    {
+      "command": "make build",
+      "log": "u9-parent-build.log",
+      "status": "passed",
+      "result": "7.48s; existing chunk-size warning"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/api/v1/learning_api.py": "2ad979ff61c95752462cf9ea9c46db621031664972fe4cb452b9e685db088665",
+    "apps/server/app/api/v1/market.py": "47a33f673a831b4bd30853a5df948fde594d73e181dee1004e825fef53ddf6e6",
+    "apps/server/app/api/v1/tasks.py": "466414d76cdc43df292cfb4e4a7714a36438a878a3cefbce670516dd5a007ed4",
+    "apps/server/app/learning/priorities.py": "48fabe7b81559dac413d78815b23ad2bf00e349178d0d067b82a41bdba7eca57",
+    "apps/server/app/services/learning.py": "35b570d34b95befb10ec3d7a2005f4d4bc776c625b940b560d2a78b1a5aad205",
+    "apps/server/app/services/market.py": "ff2638a53dac363d1749116f95d77676dd7a2850ba269c277643472783da9578",
+    "apps/server/app/talent/market/read_model.py": "76e60f2582efc6ed05f4338dfbfe328477f6d879149ebb5d03b9a26167f135e4",
+    "apps/server/app/work/gap_facts.py": "f44bfb63477697384712961eb2a8e1dbd65676dd44d3ed7b417a87a7f5f83620",
+    "apps/server/app/work/tool_executor.py": "8024f912b943886bf675b865789b44b4fbb2a4f6c5f3480e75d7b23a839a2266",
+    "apps/server/app/work/tool_reads.py": "44a321d500837a4889db0ed864694fd029211e637b7260f576430c4ec8299c89",
+    "apps/server/app/work/tool_writes.py": "6c0bb5633bd6eb9a621c03a99a6e46d3d3ce0aa0ecfbb4a9ffd5afb06f2b41d3",
+    "apps/server/tests/test_m2_tools.py": "d733dba0f232ae923b9dd8f2a396d919a5fd28f95bbbebbfcc93934484bff688",
+    "apps/server/tests/test_m3_gap_actions.py": "c0ba93d955d7943b713d91dabce95a24e61795ef6983c57d25e6777eeea670ec",
+    "apps/server/tests/test_m2_decisions.py": "daa85fc293d3736baf1ca64f5344e1d7b8dab643e1cc17421c8c50e32decb79c"
+  },
+  "logs": [
+    {
+      "name": "u9-baseline.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-baseline.log",
+      "sha256": "73dc0d054b75d92b6832e54817e1f70d7d891da6fb8111f35b18948086b5ac11",
+      "bytes": 627
+    },
+    {
+      "name": "u9-final-contract.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-final-contract.log",
+      "sha256": "8c0625df975d7c795ca51fea716b3fd24cc1cf075558b37be4b55930077eea11",
+      "bytes": 789
+    },
+    {
+      "name": "u9-final.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-final.log",
+      "sha256": "79b6e452811edfd3c5c0fdc13a0a77517e4e6a25c397cb1d7aeb56f13d53e3c5",
+      "bytes": 708
+    },
+    {
+      "name": "u9-green-1.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-green-1.log",
+      "sha256": "c18f8ceca6254294e313dab3b1e19dcb27854cfc6f05f542e72a974986919727",
+      "bytes": 3246
+    },
+    {
+      "name": "u9-green-2.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-green-2.log",
+      "sha256": "a9f065ffe638165d83c0a48808863847246805825310ec061464c68b3c262503",
+      "bytes": 707
+    },
+    {
+      "name": "u9-parent-build.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-parent-build.log",
+      "sha256": "c5a174d2406b0ac8462d4806d42faf5676a448f8dcd3870f7bf07551b55fb0f1",
+      "bytes": 18521
+    },
+    {
+      "name": "u9-parent-lint.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-parent-lint.log",
+      "sha256": "a8669db81faaafaf8b4b109841d970f77f959bd83ba6e4e41f3b77e114c72b94",
+      "bytes": 416
+    },
+    {
+      "name": "u9-parent-semantics.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-parent-semantics.log",
+      "sha256": "3f10abae47d1e0eb98699bf7922ed18b1c798c0206243e06d376d8f015695af1",
+      "bytes": 627
+    },
+    {
+      "name": "u9-parent-server-recheck.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-parent-server-recheck.log",
+      "sha256": "372500635c672921d1fe842df0edfe2ebcd2feb7808a0311d8452212c2ff8136",
+      "bytes": 3546
+    },
+    {
+      "name": "u9-parent-server.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-parent-server.log",
+      "sha256": "4302bd39985c414c7e5c9dc6be8702af8df8e006444dc1af72ebfdc24b8c6024",
+      "bytes": 5306
+    },
+    {
+      "name": "u9-parent-web.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-parent-web.log",
+      "sha256": "5d3331d4b04f256361fa5a8271646c86aeae4c838ae39af2f476f0a840c5a699",
+      "bytes": 16659
+    },
+    {
+      "name": "u9-red-competency.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-competency.log",
+      "sha256": "45514c1a3349a5cd81727e592df0343aac6fdb38d6726a71087fb111bd445164",
+      "bytes": 7467
+    },
+    {
+      "name": "u9-red-final.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-final.log",
+      "sha256": "889ef7a25cb894c7e438850e496d31383f1779eeee12e921c4cea71eda1e7d73",
+      "bytes": 104337
+    },
+    {
+      "name": "u9-red-large-company.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-large-company.log",
+      "sha256": "5c26ed7709fc9e70948d740ac9e2997bce97ac3651eaa90d812860037de25f67",
+      "bytes": 2267
+    },
+    {
+      "name": "u9-red-market-boundary.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-market-boundary.log",
+      "sha256": "854da8fb9c48ff0047e9e4717a6bfdd47af92504949372f8bc2d200755ac7a21",
+      "bytes": 1934
+    },
+    {
+      "name": "u9-red-null.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-null.log",
+      "sha256": "a318fe19c7b5060e82d22b7f739e488c37383d3333f2ad57aadcb4db5c4403d8",
+      "bytes": 4608
+    },
+    {
+      "name": "u9-red-unfinished.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red-unfinished.log",
+      "sha256": "c00618041f07b36fe2ecad0518a0542ba5f0962365aeb2b14c49314198e38e61",
+      "bytes": 10512
+    },
+    {
+      "name": "u9-red.log",
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u9-red.log",
+      "sha256": "6fb9293619ad7cc739e08a7cff6015eea112636452b2933bc03de121cee3048d",
+      "bytes": 98578
+    }
+  ],
+  "production_summary": [
+    "inspect_gap and company-scoped task gap API share requirements, Person-owned capabilities, load and readiness; no inferred action/ranking; implicit all-company selection works above 200 employees.",
+    "search_market and inspect_candidate share T2 public projections, active-listing policy and bounded optional limits with API; private market assets remain hidden.",
+    "create_learning_priority and request_training require assign_task Authority against actual target company/department, active same-company Person employee, own management project and executing enroll_learning RuntimeOperation.",
+    "Priorities preserve existing sources and values with created=false/updated=false. Planned requests do not run learning, reserve/spend or mutate competency. Identical active project requests return original current state, including paused; differing active parameters reject.",
+    "U7 operation replay returns original receipts and rejects changed bodies; two concurrent distinct operations converge on one planned learning session. Audit failure rolls back actual effect and retry succeeds."
+  ],
+  "scope_limits": [
+    "No paid model calls, real runtime calls or actual training execution in this unit. Real SQLite bridge integration is not a live-model acceptance.",
+    "Training creates or reuses only planned/unfinished learning requests; no competency update, cost reservation, debit or fabricated completion.",
+    "SQLite concurrency tested; PostgreSQL was not exercised.",
+    "No migration or shared fixture change; five-seed isolation rerun was not needed.",
+    "U10 confirmation, U11 recruitment, U12 complete action map and U13–U31 remain pending; M3.3 is not complete.",
+    "No new independent formal review at this individual unit; phase review remains after the related implementation cluster.",
+    "No push/PR. User tmp/, development database and containers untouched."
+  ]
+}

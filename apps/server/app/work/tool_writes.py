@@ -22,10 +22,12 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.events.bus import bus
+from app.learning import priorities as learning_priorities
 from app.models.base import utcnow
 from app.models.enums import (
     ArtifactType,
     DecisionSemantics,
+    LearningMode,
     LifecycleStatus,
     ProjectStatus,
     ReviewVerdict,
@@ -36,6 +38,7 @@ from app.models.project import Task
 from app.repositories import organization as org_repo
 from app.repositories import project as project_repo
 from app.repositories import review as review_repo
+from app.services import learning as learning_service
 from app.services import tasks as task_service
 from app.work import contracts as C
 from app.work import handoff, reviews, tools
@@ -45,6 +48,61 @@ CREATABLE_TASK_KINDS = tuple(kind.value for kind in TaskKind)
 
 #: `update_task` 允许改的字段（状态另有专用工具；改 id/来源列不在管理动作范围内）
 UPDATABLE_TASK_FIELDS = ("title", "description", "acceptance_criteria", "priority")
+LEARNING_TOOL_NAMES = frozenset({"create_learning_priority", "request_training"})
+
+
+def _learning_target(db: Session, ctx: tools.ToolCallContext, args: dict):
+    return learning_service.request_target(
+        db,
+        company_id=ctx.company_id,
+        project_id=args["project_id"],
+        employee_id=args["employee_id"],
+    )
+
+
+def _create_learning_priority(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
+    try:
+        employee = _learning_target(db, ctx, args)
+        priority, created = learning_priorities.record_request(
+            db, employee.id, topic=args["topic"], score=args["score"], reason=args["reason"]
+        )
+    except ValueError as exc:
+        raise tools.ToolError(str(exc)) from exc
+    return {
+        "project_id": args["project_id"],
+        "created": created,
+        "updated": False,
+        "learning_priority": {
+            "id": priority.id,
+            "person_id": priority.person_id,
+            "employee_id": priority.employee_id,
+            "topic": priority.topic,
+            "score": priority.score,
+            "reason": priority.reason,
+            "source": priority.source,
+        },
+    }
+
+
+def _request_training(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
+    try:
+        employee = _learning_target(db, ctx, args)
+        session, created = learning_service.request_training(
+            db,
+            employee=employee,
+            project_id=args["project_id"],
+            topic=args["topic"],
+            reason=args["reason"],
+            learning_mode=args.get("learning_mode") or LearningMode.practice.value,
+            minutes=args.get("minutes"),
+        )
+    except learning_service.LearningError as exc:
+        raise tools.ToolError(str(exc)) from exc
+    return {
+        "project_id": args["project_id"],
+        "created": created,
+        "learning_session": learning_service.session_out(session),
+    }
 
 
 def _task_in_company(db: Session, ctx: tools.ToolCallContext, task_id: int) -> tuple[Task, int]:
@@ -499,6 +557,17 @@ def _target_company(db: Session, ctx: tools.ToolCallContext, args: dict) -> C.Au
     return C.AuthorityTarget(company_id=ctx.company_id)
 
 
+def _target_learning_employee(
+    db: Session, ctx: tools.ToolCallContext, args: dict
+) -> C.AuthorityTarget:
+    employee = org_repo.get_employee(db, args["employee_id"])
+    return C.AuthorityTarget(
+        company_id=employee.company_id if employee else ctx.company_id,
+        employee_id=args["employee_id"],
+        department_id=employee.department_id if employee else None,
+    )
+
+
 def _target_task_assignee(db: Session, ctx: tools.ToolCallContext, args: dict) -> C.AuthorityTarget:
     """派活类动作的目标 = "被派的那个人"（这样 `direct_reports` 作用域才有意义）。"""
     employee_id = args.get("employee_id") or args.get("assignee_id") or args.get("to_employee_id")
@@ -637,6 +706,60 @@ def _replan_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
 def build_write_tools() -> tuple[tools.ToolSpec, ...]:
     """写工具清单（**只有内部执行面**；人类管理动作走各领域自己的正式 API）。"""
     return (
+        tools.ToolSpec(
+            name="create_learning_priority",
+            decision_semantics=DecisionSemantics.required,
+            description="记录管理者选择的学习优先级；保留已有 Person 意图，不增加能力",
+            side_effect=C.ToolSideEffect.write,
+            required_authority=C.AuthorityKind.assign_task,
+            authority_target=_target_learning_employee,
+            input_schema=tools.object_schema(
+                {
+                    "project_id": _INT,
+                    "employee_id": _INT,
+                    "topic": {"type": "string", "minLength": 1, "maxLength": 200},
+                    "reason": {"type": "string", "minLength": 1, "maxLength": 2000},
+                    "score": {"type": "integer", "minimum": 0, "maximum": 100},
+                },
+                ("project_id", "employee_id", "topic", "reason", "score"),
+            ),
+            output_schema=tools.object_schema(
+                {
+                    "learning_priority": {"type": "object"},
+                    "created": {"type": "boolean"},
+                    "updated": {"type": "boolean"},
+                },
+                ("learning_priority", "created", "updated"),
+            ),
+            handler=_create_learning_priority,
+        ),
+        tools.ToolSpec(
+            name="request_training",
+            decision_semantics=DecisionSemantics.required,
+            description="创建或读取同项目未结束的训练请求；仅计划，不执行、不占用预算、不增加能力",
+            side_effect=C.ToolSideEffect.write,
+            required_authority=C.AuthorityKind.assign_task,
+            authority_target=_target_learning_employee,
+            input_schema=tools.object_schema(
+                {
+                    "project_id": _INT,
+                    "employee_id": _INT,
+                    "topic": {"type": "string", "minLength": 1, "maxLength": 500},
+                    "reason": {"type": "string", "minLength": 1, "maxLength": 2000},
+                    "learning_mode": {
+                        "type": "string",
+                        "enum": [mode.value for mode in LearningMode],
+                    },
+                    "minutes": {"type": "integer", "minimum": 1, "maximum": 120},
+                },
+                ("project_id", "employee_id", "topic", "reason"),
+            ),
+            output_schema=tools.object_schema(
+                {"learning_session": {"type": "object"}, "created": {"type": "boolean"}},
+                ("learning_session", "created"),
+            ),
+            handler=_request_training,
+        ),
         tools.ToolSpec(
             name="create_task",
             # 决策语义 REQUIRED：这是真正的管理动作，必须隶属于一条决策（DR7）

@@ -30,7 +30,6 @@ from app.services import market as market_service
 from app.services import recruitment as recruitment_service
 from app.talent.fit import service as fit_service
 from app.talent.market import read_model as market_read_model
-from app.talent.market.contracts import MarketSearchQuery
 
 router = APIRouter(prefix="/market", tags=["market"])
 
@@ -43,10 +42,10 @@ def _market_position_or_404(
     db: Session, position_definition_id: int, company_id: int | None
 ) -> PositionDefinition:
     """市场侧职位解析：本公司职位或全局模板；其它一律 404（不泄露存在性）。"""
-    position = db.get(PositionDefinition, position_definition_id)
-    if position is None or (position.company_id is not None and position.company_id != company_id):
-        raise HTTPException(status_code=404, detail="position not found")
-    return position
+    try:
+        return market_read_model.position_for_company(db, position_definition_id, company_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/listings", response_model=MarketListingOut)
@@ -118,35 +117,20 @@ def list_listings(
     `position_definition_id`（T2.5）：附 Fit 摘要 + 按匹配度排序 —— **永不剔除**
     未评估的人（Unknown != Bad）。
     """
-    position = (
-        _market_position_or_404(db, position_definition_id, company_id)
-        if position_definition_id is not None
-        else None
-    )
-    mine_participant_id: int | None = None
-    if mine:
-        from app.models.enums import MarketParticipantKind
-        from app.repositories import market as market_repo
-
-        if company_id is None:
-            return {"items": [], "total": 0, "limit": limit, "offset": offset}
-        participant = market_repo.get_participant_by_owner(
-            db, kind=MarketParticipantKind.player_company.value, company_id=int(company_id)
+    try:
+        return market_read_model.search_page(
+            db,
+            company_id=company_id,
+            text=text,
+            origin=origin,
+            quality_tier=quality_tier,
+            position_definition_id=position_definition_id,
+            mine=mine,
+            limit=limit,
+            offset=offset,
         )
-        if participant is None:
-            return {"items": [], "total": 0, "limit": limit, "offset": offset}
-        mine_participant_id = int(participant.id)
-
-    query = MarketSearchQuery(
-        text=text,
-        origin=origin,
-        quality_tier=quality_tier,
-        position_definition_id=position_definition_id,
-        listed_by_participant_id=mine_participant_id,
-        limit=limit,
-        offset=offset,
-    )
-    return market_service.search(db, query, position=position, company_id=company_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/listings/{listing_id}", response_model=MarketCandidateOut)

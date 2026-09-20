@@ -351,6 +351,25 @@ ArtifactType 值域。目录补齐该既有枚举，未知类型在请求校验�
 合法类型和领域服务校验保持不变。受控信封说明补充嵌套 decision 与简单 operation_key
 示例，不放宽解析或执行约束。
 
+### U9：缺口读面与学习请求（实施前登记，2026-09-20）
+
+内部工具新增 inspect_gap、search_market、inspect_candidate，复用当前任务要求、能力、
+负载、就绪事实和 T2 市场白名单。与相同权限的领域 API 共享投影，保留未知值，不按分数
+替 Manager 选择人或动作；不公开旧公司私有产物、配置或 Provider 信息。
+
+create_learning_priority 与 request_training 通过已有 DecisionEnvelope、Authority、ToolAudit
+和 U7 持久操作回执执行。管理会话必须关联其绑定项目，目标员工须在同公司有效在册；
+评审会话仍仅能提交指定请求的结论。新增目标规则只服务这两个明确工具，不泛化为公司级
+任意写入许可。学习优先级继续归 Person，不能覆盖不同来源或人工意图。
+
+训练请求只创建计划中的学习事实，不能调用现有模拟学习执行器、占用或扣除执行预算、
+生成完成结果或增加 competency。重复信封复用原效果与审计；训练未完成或失败时保留
+真实状态。未来实际执行仍经过预算与适用确认要求，成果沿用 Evidence 管道；本包不能
+绕过 U10 的高影响确认。相关 M2 工具/决策、T2 市场及 Person 归属锚点保留原业务断言，
+新增真实桥、拒绝、重放、原子回滚和 API 一致性反例记录于 test_m3_gap_actions。
+目录与语义清单的精确集合分别在 test_m2_tools 和 test_m2_decisions 增补两个学习工具；
+它们均为 required，原有 optional 集合及缺失决策时的拒绝断言不变。
+
 **M3 开工前的三条纪律（沿用 M2）**：
 
 ```text

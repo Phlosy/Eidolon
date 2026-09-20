@@ -19,7 +19,9 @@ import dataclasses
 
 from sqlalchemy.orm import Session
 
+from app.models.enums import MarketListingStatus
 from app.models.market import MarketListing
+from app.models.position import PositionDefinition
 from app.repositories import market as market_repo
 from app.talent.market import eligibility
 from app.talent.market.contracts import MarketListingView, MarketSearchQuery
@@ -162,6 +164,64 @@ def listing_page(
     return {"items": items, "total": total, "limit": query.limit or total, "offset": query.offset}
 
 
+def position_for_company(
+    db: Session, position_definition_id: int, company_id: int | None
+) -> PositionDefinition:
+    """A target position is company-scoped even though listings are public."""
+    position = db.get(PositionDefinition, position_definition_id)
+    if position is None or (position.company_id is not None and position.company_id != company_id):
+        raise ValueError("position not found")
+    return position
+
+
+def search_page(
+    db: Session,
+    *,
+    company_id: int | None,
+    text: str | None = None,
+    origin: str | None = None,
+    quality_tier: str | None = None,
+    position_definition_id: int | None = None,
+    mine: bool = False,
+    limit: int = 50,
+    offset: int = 0,
+) -> dict:
+    """The same bounded, public search projection for HTTP and Agent callers."""
+    from app.models.enums import MarketParticipantKind
+
+    limit = 50 if limit is None else limit
+    offset = 0 if offset is None else offset
+    if not 1 <= limit <= 200 or offset < 0:
+        raise ValueError("limit must be 1..200 and offset must be non-negative")
+    position = (
+        position_for_company(db, position_definition_id, company_id)
+        if position_definition_id is not None
+        else None
+    )
+    participant_id = None
+    if mine:
+        participant = (
+            market_repo.get_participant_by_owner(
+                db, kind=MarketParticipantKind.player_company.value, company_id=company_id
+            )
+            if company_id is not None
+            else None
+        )
+        if participant is None:
+            return {"items": [], "total": 0, "limit": limit, "offset": offset}
+        participant_id = int(participant.id)
+    query = MarketSearchQuery(
+        text=text,
+        origin=origin,
+        quality_tier=quality_tier,
+        position_definition_id=position_definition_id,
+        listed_by_participant_id=participant_id,
+        limit=limit,
+        offset=offset,
+    )
+    return listing_page(db, query, position=position, company_id=company_id)
+
+
 def fit_summary_out(result) -> dict:  # noqa: ANN001  （PositionFitResult）
     """列表页 Fit 摘要（公开投影的一部分）。"""
     return {
@@ -298,3 +358,23 @@ def candidate_profile(
         # 三轴快照供 UI 显示"可招募/已关闭"（派生，不落库）
         "market_state": eligibility.market_state(db, person_id).value,
     }
+
+
+def candidate_detail(
+    db: Session,
+    listing_id: int,
+    *,
+    timeline_limit: int | None = 50,
+    evidence_limit: int | None = 20,
+) -> dict:
+    """Bounded public detail for an active listing, shared by API and Agent reads."""
+    timeline_limit = 50 if timeline_limit is None else timeline_limit
+    evidence_limit = 20 if evidence_limit is None else evidence_limit
+    if not 1 <= timeline_limit <= 200 or not 0 <= evidence_limit <= 200:
+        raise ValueError("timeline_limit must be 1..200 and evidence_limit must be 0..200")
+    listing = market_repo.get_listing(db, listing_id)
+    if listing is None or listing.status != MarketListingStatus.active.value:
+        raise ValueError("listing_not_found")
+    return candidate_profile(
+        db, listing, timeline_limit=timeline_limit, evidence_limit=evidence_limit
+    )

@@ -602,6 +602,9 @@ def test_declared_semantics_match_the_agreed_split():
         # M2.7：出结论（RV2/RV4）与重新规划（RV7）都是判断，必须隶属一条决策
         "submit_review_verdict",
         "replan_project",
+        # M3 U9: learning intent is a manager decision, including planned-only requests.
+        "create_learning_priority",
+        "request_training",
     }
     assert optional == {"update_task", "request_review", "mark_task_blocked"}
 

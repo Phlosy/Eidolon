@@ -425,6 +425,10 @@ def _nonworker_write_allowed(db, ctx, spec, args):
             and args.get("review_request_id") == ctx.review_request_id
             and request.status == C.REVIEW_REQUEST_OPEN
         )
+    if spec.name in tool_writes.LEARNING_TOOL_NAMES:
+        # Learning remains an action of this management conversation, not a
+        # blanket permission to mutate any company/person target.
+        return ctx.purpose == "management" and args.get("project_id") == ctx.project_id
     # Every present management write has a concrete project, task or review
     # target. Future company/person actions must explicitly define their scope.
     if spec.name not in {
@@ -476,6 +480,35 @@ def _nonworker_write_allowed(db, ctx, spec, args):
         ):
             return False
     return targeted
+
+
+def _learning_decision_is_bound(db, ctx, decision_id):
+    """A record by itself cannot stand in for the persistent runtime envelope."""
+    if ctx.purpose != "management" or ctx.origin != "work_session" or ctx.work_session_id is None:
+        return False
+    decision = db.get(DecisionRecord, decision_id, populate_existing=True)
+    if (
+        decision is None
+        or decision.decision_type != C.DecisionKind.enroll_learning.value
+        or decision.actor_employee_id != ctx.employee_id
+        or decision.actor_person_id != ctx.person_id
+        or decision.company_id != ctx.company_id
+        or decision.project_id != ctx.project_id
+        or decision.status != "EXECUTING"
+        or decision.resolved_at is not None
+        or decision.superseded_by_id is not None
+    ):
+        return False
+    return (
+        db.scalar(
+            select(RuntimeOperation.id).where(
+                RuntimeOperation.decision_id == decision_id,
+                RuntimeOperation.work_session_id == ctx.work_session_id,
+                RuntimeOperation.kind == "decision",
+            )
+        )
+        is not None
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -706,6 +739,14 @@ def execute_tool(
         return fail(
             "decision_not_allowed",
             f"{spec.name} is not a decision action (semantics=none)",
+        )
+    if spec.name in tool_writes.LEARNING_TOOL_NAMES and not _learning_decision_is_bound(
+        db, context, decision_id
+    ):
+        return fail(
+            "invalid_learning_decision",
+            "learning requires this management session's executing enroll_learning envelope",
+            snapshot=snapshot,
         )
 
     # ④ Autonomy 门禁（Authority ≠ Autonomy，用户拍板 §11）

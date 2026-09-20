@@ -28,10 +28,12 @@ from app.models.enums import (
     LearningMode,
     LearningSessionStatus,
     LearningSourceType,
+    LifecycleStatus,
 )
 from app.models.knowledge import LearningPriority
 from app.models.learning import LearningSession
 from app.models.organization import Company, Employee
+from app.models.project import Project
 from app.models.provider import ModelBinding
 from app.models.runtime import EmployeeBrain
 from app.repositories import knowledge as knowledge_repo
@@ -259,6 +261,112 @@ def _cooldown_ok(db: Session, employee_id: int, topic: str, policy: CompanyLearn
         recent = recent.replace(tzinfo=UTC)
     minutes = (datetime.now(UTC) - recent).total_seconds() / 60
     return minutes >= policy.cooldown_minutes
+
+
+def request_target(db: Session, *, company_id: int, project_id: int, employee_id: int) -> Employee:
+    """Validate and lock the live employee for one project-bound learning action."""
+    project = db.get(Project, project_id)
+    if project is None or project.company_id != company_id:
+        raise LearningError("project not found in this company")
+    employee = db.scalar(select(Employee).where(Employee.id == employee_id).with_for_update())
+    if employee is None or employee.company_id != company_id:
+        raise LearningError("employee not found in this company")
+    if employee.lifecycle_status != LifecycleStatus.active.value or employee.person_id is None:
+        raise LearningError("learning target must be an active employee with a Person")
+    return employee
+
+
+def request_training(
+    db: Session,
+    *,
+    employee: Employee,
+    project_id: int,
+    topic: str,
+    reason: str,
+    learning_mode: str = LearningMode.practice.value,
+    minutes: int | None = None,
+) -> tuple[LearningSession, bool]:
+    """Plan only: no execution, reservation, outputs, or capability mutation.
+
+    RuntimeOperation deduplicates transport replay. This second check reuses an
+    unfinished Person/project request even when another operation asks for it.
+    request_target's employee lock serializes that check; paused is unfinished.
+    """
+    topic, reason = topic.strip(), reason.strip()
+    if not 1 <= len(topic) <= 500 or not 1 <= len(reason) <= 2000:
+        raise LearningError("training requires topic (1..500) and reason (1..2000)")
+    if learning_mode not in {mode.value for mode in LearningMode}:
+        raise LearningError("unknown learning mode")
+    policy = company_learning_policy(db, db.get(Company, employee.company_id))
+    requested_minutes = minutes if minutes is not None else policy.max_session_minutes
+    if not 1 <= requested_minutes <= 120:
+        raise LearningError("training minutes must be 1..120")
+    existing = db.scalar(
+        select(LearningSession)
+        .where(
+            person_repo.read_criterion(
+                db, employee.id, LearningSession.person_id, LearningSession.employee_id
+            ),
+            LearningSession.company_id == employee.company_id,
+            LearningSession.source_type == LearningSourceType.project_need.value,
+            LearningSession.source_id == project_id,
+            LearningSession.topic == topic,
+            LearningSession.status.in_(["planned", "running", "waiting_budget", "paused"]),
+        )
+        .order_by(LearningSession.id)
+    )
+    if existing is not None:
+        if (existing.learning_mode, existing.budget_minutes, existing.reason) != (
+            learning_mode,
+            requested_minutes,
+            reason,
+        ):
+            raise LearningError("active training request has different parameters")
+        return existing, False
+    if requested_minutes > policy.max_session_minutes:
+        raise LearningError("training minutes exceed company session policy")
+    return create_session(
+        db,
+        employee.id,
+        topic,
+        source_type=LearningSourceType.project_need.value,
+        source_id=project_id,
+        learning_mode=learning_mode,
+        reason=reason,
+        minutes=requested_minutes,
+        commit=False,
+    ), True
+
+
+def session_out(session: LearningSession) -> dict:
+    """Current learning facts shared by the API and planned-request receipts."""
+    return {
+        "id": session.id,
+        "employee_id": session.employee_id,
+        "company_id": session.company_id,
+        "topic": session.topic,
+        "reason": session.reason,
+        "source_type": session.source_type,
+        "source_id": session.source_id,
+        "status": session.status,
+        "learning_mode": session.learning_mode,
+        "priority": session.priority,
+        "budget_tokens": session.budget_tokens,
+        "budget_cost": session.budget_cost,
+        "budget_minutes": session.budget_minutes,
+        "tokens_used": session.tokens_used,
+        "cost_used": session.cost_used,
+        "duration_minutes": session.duration_minutes,
+        "runtime_type": session.runtime_type,
+        "provider_name": session.provider_name,
+        "model_name": session.model_name,
+        "started_at": session.started_at,
+        "completed_at": session.completed_at,
+        "cancelled_at": session.cancelled_at,
+        "error": session.error,
+        "summary": session.summary,
+        "outputs": (session.metadata_json or {}).get("outputs", {}),
+    }
 
 
 def create_session(
