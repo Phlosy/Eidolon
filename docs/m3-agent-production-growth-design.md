@@ -428,17 +428,18 @@ Manager calls action tool → System validates（Authority/Budget/Market）→ S
 
 ### 9.2 动作词表（冻结；每条登记"现在有没有工具"）
 
-| action | 语义 | M3.0 现状 |
-| --- | --- | --- |
-| `learn` | 让这个人补能力（学习优先级 / 训练请求） | ⏳ M3.3（学习工具面未建） |
-| `use_internal_employee` | 换本公司的人 | ✅ `assign_task`（M2 工具面） |
-| `reassign` | 改派已分配的任务 | ✅ `assign_task` / `update_task` |
-| `recruit` | 从人才市场招 | ⏳ M3.3（市场工具面未建；T2 市场本体已冻结） |
-| `revise_task` | 改方案/改任务定义 | ✅ `update_task` / `replan_project` |
-| `split_task` | 拆小任务 | ✅ `create_task` + `create_dependency`（组合，无单名工具） |
-| `delegate` | 委派项目 | ✅ `delegate_project` |
+| action | 语义 | M3.0 现状 | M3.3 实施结果 |
+| --- | --- | --- | --- |
+| `learn` | 让这个人补能力（学习优先级 / 训练请求） | ⏳ M3.3（学习工具面未建） | `create_learning_priority` / `request_training` |
+| `use_internal_employee` | 换本公司的人 | ✅ `assign_task`（M2 工具面） | `assign_task` |
+| `reassign` | 改派已分配的任务 | ✅ `assign_task` / `update_task` | `assign_task` / `update_task` |
+| `recruit` | 从人才市场招 | ⏳ M3.3（市场工具面未建；T2 市场本体已冻结） | `recruit_from_market`（固定条款经 Owner 确认） |
+| `revise_task` | 改方案/改任务定义 | ✅ `update_task` / `replan_project` | `update_task` / `replan_project` |
+| `split_task` | 拆小任务 | ✅ `create_task` + `create_dependency`（组合，无单名工具） | `create_task` + `create_dependency` |
+| `delegate` | 委派项目 | ✅ `delegate_project` | `delegate_project` |
 
-守卫要求：词表每项必须有 `tool`（现存）或 `owner_stage`（欠账）之一 —— 两头都空即红。
+M3.0 守卫允许登记 `tool` 或欠账 `owner_stage`。U12 已收紧为七类全部具有实际工具，
+Runtime 目录从同一映射派生；不再以本阶段占位通过验收。[M3.3 阶段证据](m3-3-capability-actions.md)。
 
 ### 9.3 Learning 的硬边界（P11）
 
@@ -691,7 +692,7 @@ UI 呈现结构化 `activity / decision / result`（动作、工具、产物、�
 每条 P 在 M3.0 就必须有**现存**测试锚点（`enforced=True`），
 尚未实现的语义用"契约 + 欠账登记（owner_stage）"表达，而不是假装不变量已落地。
 
-| # | 不变量 | M3.0 怎么锚 |
+| # | 不变量 | 当前锚点（保留 M3.0 契约） |
 | --- | --- | --- |
 | **P1** | Agent has no new identity source of truth. | `Base.metadata` 无禁止表 + AST 守卫 |
 | **P2** | Person remains the long-term asset owner. | 资产表 person 口径列断言（M2 A6 同源）+ 契约 |
@@ -701,14 +702,14 @@ UI 呈现结构化 `activity / decision / result`（动作、工具、产物、�
 | **P6** | Provisioning is idempotent. | U3：顺序/并发 ensure 只保留同一环境，真实容器创建后进程退出可找回原资源；[证据](m3-u3-runtime-ensure.md) |
 | **P7** | Runtime reconciliation must not silently delete unknown external resources. | 契约动作表只含 detect/mark/repair；AST 无 rm/remove/delete 调用 |
 | **P8** | System never reassigns work because an Agent is not ready. | AST：无 readiness ⇒ assign 的自动路径；派发只发事件 |
-| **P9** | Capability Gap does not trigger automatic recruitment. | AST：work/* 不 import 招募服务；无阈值自动动作函数 |
-| **P10** | Capability Gap actions originate from Manager/User decisions. | 动作词表 + DecisionRecord 归属断言 |
-| **P11** | Learning never directly writes competency score. | AST：学习路径不 import competency 写路径 |
-| **P12** | Recruitment does not copy Person-owned assets. | 契约 + T2 锚点（`test_recruitment`） |
-| **P13** | Recruitment must eventually pass through provisioning before real execution. | 契约 + readiness 必答项（real: workspace/runtime/provider） |
+| **P9** | Capability Gap does not trigger automatic recruitment. | U9/U12：缺口查询无写副作用，动作来自显式决定；无按阈值自动招聘路径 |
+| **P10** | Capability Gap actions originate from Manager/User decisions. | U9–U12：真实工具目录、DecisionRecord / ToolAudit、组合部分执行与重放锚点 |
+| **P11** | Learning never directly writes competency score. | U9：学习优先级与训练请求不写 competency；Person 归属及失败训练行为检查 |
+| **P12** | Recruitment does not copy Person-owned assets. | U11：实际 M1/T2 招聘前后 Person 资产不复制，并发成交与回滚锚点 |
+| **P13** | Recruitment must eventually pass through provisioning before real execution. | U11：真实 Manager 招聘→Owner 确认→成交→真实开通与就绪；partial 仍不可工作 |
 | **P14** | Historical runtime/provider/model facts are immutable snapshots. | U5：创建快照、历史读取、直接 SQL / ORM / 批量改写拒绝（test_m3_provenance） |
-| **P15** | Technical retry and management replan are separate semantics. | 两个 owner 常量 + 计数器分属不同事实 |
-| **P16** | Runtime events do not directly become domain truth. | 遥测词表 ∩ 领域事件 = ∅ + AST：runtimes 不写领域 |
+| **P15** | Technical retry and management replan are separate semantics. | U13：持久请求/尝试计数与管理 rework 分离；自动重试及取消仍属 U15 |
+| **P16** | Runtime events do not directly become domain truth. | U13：有界遥测、原远端引用、主机/远端结果分离；重复及晚到事件不改领域状态 |
 | **P17** | Task success requires domain completion/review, not merely runtime exit=0. | 契约：status 目标仅来自域（M2 锚点） |
 | **P18** | Work Experience must originate from real domain facts. | 字段契约 + 来源表映射（全部真实存在） |
 | **P19** | Reliability metrics are derived. | 指标清单 + 来源映射 + 无缓存列 |
@@ -719,10 +720,10 @@ UI 呈现结构化 `activity / decision / result`（动作、工具、产物、�
 | **P24** | Mock execution must remain distinguishable from real execution. | `execution_mode()` + 判定链守卫 |
 | **P25** | Mock evidence must continue respecting existing reliability discount. | 契约常量 == `evidence.policy.MOCK_RELIABILITY_FACTOR` |
 | **P26** | AgentProfile is a read model. | AST：无 AgentProfile 表/写路径；字段集与来源映射一致 |
-| **P27** | T2 Market remains the talent transaction source of truth. | 契约 + T2 锚点（`test_market_*`） |
+| **P27** | T2 Market remains the talent transaction source of truth. | U9/U11：复用 T2 市场公开投影与 M1 商业条款，工具/API 同源；交易锚点通过 |
 | **P28** | M2 Project/Task/Decision/DAG contracts remain frozen. | M2 冻结锚点（`test_m2_*`） |
 | **P29** | System detects execution problems; Agents decide business responses. | AST：检测函数与决策函数分离（无 auto_replan） |
-| **P30** | High-impact actions must respect Authority and Autonomy independently. | `AUTONOMY_BY_SIDE_EFFECT` + `HIGH_IMPACT_AUTHORITIES_RESERVED` |
+| **P30** | High-impact actions must respect Authority and Autonomy independently. | U10/U11：固定动作 Owner 确认与当前双 Authority 重查；存储失败保留批准；其他入口覆盖由 U26 补齐 |
 
 **审计补充（M3.0 新增，来自 repository re-audit）**：
 
@@ -730,7 +731,7 @@ UI 呈现结构化 `activity / decision / result`（动作、工具、产物、�
 | --- | --- | --- |
 | **P31** | Provisioning steps and readiness items must describe the same environment facts. | 步骤与就绪项不一致 ⇒ "配了但没检"或"检了但没配"（漂移口） |
 | **P32** | Every declared readiness item must name a real table/column source. | 来源可以解析到真实表列（M2 A4 同款纪律） |
-| **P33** | A declared capability-gap action must have either a live tool or an owner stage. | 防止"词表里写了但没人做" |
+| **P33** | A declared capability-gap action must have either a live tool or an owner stage. | U12：七类动作全部有真实工具；Runtime 目录、非法输入/权限及部分成功行为锚点 |
 | **P34** | Provenance gaps are explicitly owned; repaid gaps require behavioral evidence. | U5：字段、创建写者、历史读者和数据库不可变守卫；旧值 unknown |
 | **P35** | Telemetry vocabulary must not collide with frozen domain event vocabulary. | P16 的词汇层守卫 |
 | **P36** | M3 must not introduce a second project/task/DAG container. | M2 冻结面的 M3 侧守卫（防止执行层另造图） |

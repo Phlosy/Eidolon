@@ -1,0 +1,747 @@
+{
+  "phase": "M3.3",
+  "status": "complete",
+  "date": "2026-09-20",
+  "units": [
+    "U9",
+    "U10",
+    "U11",
+    "U12"
+  ],
+  "integration_prerequisite": "U13; M3.4 remains incomplete",
+  "base_commit": "db3b94ddf90d68d2bf5e3ca16dd5448cd5e601fd",
+  "reviewed_head": "5f8db04b4899c4be87c32835edd1d153c1e77b0d",
+  "verified_head": "da579c8959d34a077b98bfef2e1d4a97460d0e33",
+  "commits": {
+    "U9": "5058da9",
+    "U10": "dc61291",
+    "U11": "410387a",
+    "U12": "5f8db04",
+    "U13": "6a99c88",
+    "review_fix": "da579c8959d34a077b98bfef2e1d4a97460d0e33"
+  },
+  "counts": {
+    "baseline_server_passed": 2402,
+    "final_server_passed": 2404,
+    "final_server_deselected": 17,
+    "final_server_warnings": 118,
+    "final_server_seconds": 284.68,
+    "review_fix_red_failed": 2,
+    "review_fix_focused_passed": 267,
+    "web_passed": 392,
+    "web_files": 89
+  },
+  "checks": [
+    {
+      "argv": [
+        "make",
+        "test-server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:36:36.159201+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 286.5060553329531,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/m33-parent-server.log",
+      "pytest_addopts": "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/parent-server-tmp",
+      "label": "parent-server",
+      "metadata_sha256": "39d72f6a9d8ba98721913729163a97ba290572f65af4cda2f41d18db7a09ca5d",
+      "log_sha256": "5937bfbb2a452d08ce29970747e1eb169f5f39ebabc537ee6d79f53aa45f2538"
+    },
+    {
+      "argv": [
+        "make",
+        "test-web"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:37:10.371329+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 14.899493207922205,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/m33-parent-web.log",
+      "pytest_addopts": null,
+      "label": "parent-web",
+      "metadata_sha256": "22ea0e83d7c3956243d67748e9872d09b7111cffcb698e17877437f4a1bf03cc",
+      "log_sha256": "63b52d7a920d64d902ee8d147b8c381b34ea2c3b27e1bbe713cd1d4dcbfb0257"
+    },
+    {
+      "argv": [
+        "make",
+        "build"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:37:10.380984+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 23.144542209105566,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/m33-parent-build.log",
+      "pytest_addopts": null,
+      "label": "parent-build",
+      "metadata_sha256": "6ad521c1cc229b164b3f2d5028eba4724efbddfbfe1dea5f8b119779dde5a5e2",
+      "log_sha256": "3758deda6bd5602554f7c8eb3b4479ee3bc7c51621bb5026622126ae0245d42c"
+    },
+    {
+      "argv": [
+        "make",
+        "lint"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:31:00.873618+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 10.94926574989222,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/m33-simplify-lint.log",
+      "pytest_addopts": null,
+      "label": "simplify-lint",
+      "metadata_sha256": "89fc0b6d9ce4d71c14baf03816036323a7093d0ee2f5438574231cc407748883",
+      "log_sha256": "7a4fc8fb77277f38fa6628e44c9f6af1cd2365e4382793d5fcbaf30e54de405a"
+    },
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recruitment_flow.py",
+        "-q",
+        "-k",
+        "confirmed_recruitment_storage_failure"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T12:04:21.401723+00:00",
+      "exit_code": 1,
+      "elapsed_seconds": 3.3633211669512093,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/m33-approval-red.log",
+      "pytest_addopts": null,
+      "label": "approval-red",
+      "metadata_sha256": "8c9bad77849f526931e744707d080af5f990314a1f86c0c55b10cfe4853c4438",
+      "log_sha256": "2dc7059e738516c327c63079caa968b0c2d237c4c8b508219c9c79bb356eb211"
+    },
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recruitment_flow.py",
+        "apps/server/tests/test_m3_action_confirmations.py",
+        "apps/server/tests/test_m3_tool_transactions.py",
+        "apps/server/tests/test_m3_runtime_bridge.py",
+        "apps/server/tests/test_m2_tools.py",
+        "apps/server/tests/test_m2_decisions.py",
+        "apps/server/tests/test_talent_trade.py",
+        "apps/server/tests/test_t2_golden_path.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T12:04:47.138444+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 29.703103125095367,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/m33-approval-focused.log",
+      "pytest_addopts": null,
+      "label": "approval-focused",
+      "metadata_sha256": "22d189bfcc341fdb1f9dced2cc94906a930e77375963b18e984ffba23303389f",
+      "log_sha256": "ce2c8691ab22a9ab4ea9e48bcde6a7c000727b450e161064f617376443021a33"
+    },
+    {
+      "argv": [
+        "make",
+        "lint"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T12:05:05.765229+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 10.773986083921045,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/m33-final-lint.log",
+      "pytest_addopts": null,
+      "label": "final-lint",
+      "metadata_sha256": "dbbe428769f56f9094f77be7f25b02f3b943d0ce39989e9ea23ad8fbeb927451",
+      "log_sha256": "68fe9abc72ae76ea884518df5520e7f4417dbf69417876286b58d7d22d718526"
+    },
+    {
+      "argv": [
+        "make",
+        "test-server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T12:05:47.838039+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 288.0644559159409,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/m33-final-server.log",
+      "pytest_addopts": "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/final-server-tmp",
+      "label": "final-server",
+      "metadata_sha256": "93137e58474452375b2e905a100036f41506a341c21e5368ad10b6637cd2b6b9",
+      "log_sha256": "90ad2782e784d148efdeeec3baff0f917a1351b82b4b4a02b5895cca630b8303"
+    }
+  ],
+  "simplification": {
+    "skill": "ce-simplify-code",
+    "scope": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/scope.json",
+    "route": "inline after pre-launch capacity rejection",
+    "independent": false,
+    "passes": [
+      {
+        "lens": "reuse",
+        "status": "complete",
+        "applied": 0,
+        "observations": [
+          "HTTP/Agent gap, learning, candidate and readiness reads already share service projections. Recruitment delegates to existing M1/T2 and U2 intent rather than duplicating domain effects.",
+          "Learning priority collision semantics differ from record_failure and must preserve prior Person intent; no behavior-equivalent replacement."
+        ],
+        "skipped": [
+          {
+            "location": "app/work/tool_writes.py:_target_learning_employee",
+            "reason": "Task-assignee target helper lacks department/current target-company facts. Sharing it would change Authority behavior."
+          },
+          {
+            "location": "app/models/action_confirmation.py and migrations/versions/57c326fb5401_v57_action_confirmations.py",
+            "reason": "Migration-local guard copy intentionally freezes historical schema; importing evolving model constants would change old revision behavior."
+          }
+        ]
+      },
+      {
+        "lens": "quality",
+        "status": "complete",
+        "applied": 0,
+        "observations": [
+          "Confirmation proposal identity, human review, final receipt, and aggregate state have separate responsibilities with explicit transaction boundaries. No authorization validation removed.",
+          "Role/project/amount validation duplicates schema checks at distinct trust boundaries and is retained."
+        ],
+        "skipped": [
+          {
+            "location": "app/work/action_confirmations.py:propose/validate_execution",
+            "reason": "Apparently repeated binding and term checks occur before proposal vs after human approval; they cannot be merged away."
+          }
+        ]
+      },
+      {
+        "lens": "efficiency",
+        "status": "complete",
+        "applied": 0,
+        "observations": [
+          "Persistent proposal/list/expiry scans are bounded. Tool catalog iterates seven fixed action groups and contains no I/O. Gap capability and load use bulk queries.",
+          "No new parallel external operation is introduced in a hire transaction; deliberate post-commit provisioning retained."
+        ],
+        "skipped": [
+          {
+            "location": "app/work/decisions.py:decision_view/action_summary",
+            "reason": "Repeated effective-audit read is small; changing snapshot/requery timing requires a correctness decision under concurrent approval. No behavior-preserving extraction applied in this pass."
+          }
+        ]
+      }
+    ],
+    "applied_counts": {
+      "reuse": 0,
+      "quality": 0,
+      "efficiency": 0
+    },
+    "skipped_count": 4,
+    "behavior_changed": false,
+    "verification": {
+      "focused": "U12 final 599 passed before these read-only passes; sources unchanged",
+      "project_wide_lint_and_typecheck": {
+        "status": "passed",
+        "elapsed_seconds": 10.95,
+        "metadata": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/m33-simplify-lint.json"
+      }
+    },
+    "limits": [
+      "This is an inline simplification pass, not independent formal code review. Formal phase review follows."
+    ]
+  },
+  "formal_review": {
+    "status": "complete",
+    "verdict": "Ready with fixes",
+    "scope": {
+      "base": "db3b94ddf90d68d2bf5e3ca16dd5448cd5e601fd",
+      "branch": "dev",
+      "head_sha": "5f8db04b4899c4be87c32835edd1d153c1e77b0d",
+      "pr_url": null,
+      "files_changed": 66
+    },
+    "intent": "Complete M3.3 U9–U12: expose seven capability-gap actions through real Manager tools, preserve Person learning intent, bind high-impact hiring to a fixed human confirmation, and retain per-action partial/replay outcomes. Verify the intervening U13 durable telemetry integration without claiming U14–U31 are complete. Reuse M1/T2 economic truth and M2 domain writes; authorization, transaction atomicity, original attribution and crash-safe receipts must hold.",
+    "intent_confidence": "explicit",
+    "reviewers": [
+      "correctness",
+      "testing",
+      "maintainability",
+      "agent-native",
+      "security",
+      "performance",
+      "api-contract",
+      "data-migration",
+      "reliability",
+      "adversarial"
+    ],
+    "findings": [
+      {
+        "#": 1,
+        "title": "Keep approvals retryable after handler storage failures",
+        "severity": "P2",
+        "file": "apps/server/app/work/action_confirmations.py",
+        "line": 385,
+        "why_it_matters": "A transient database failure inside a confirmed recruitment handler can permanently consume the owner's approval even though the purchase was rolled back. The executor converts that storage exception into a handler failure, and the confirmation path commits a terminal failed receipt. A later execute request only returns that terminal receipt, so recovery requires a new proposal and approval; this contradicts the explicit retryability rule for storage failures.",
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "requires_verification": true,
+        "confidence": 75,
+        "first_evidence": "apps/server/app/work/action_confirmations.py:385 -- row.status = \"executed\" if result.ok else \"failed\"",
+        "evidence": [
+          "apps/server/app/work/action_confirmations.py:385 -- row.status = \"executed\" if result.ok else \"failed\"",
+          "apps/server/app/work/action_confirmations.py:370-385: the savepoint comment says a storage failure must leave approval retryable, but any result without audit_id is finalized as failed and other handler failures reach row.status = \"failed\".",
+          "apps/server/app/work/tool_executor.py:863-896: every non-ToolError raised by spec.handler is caught, rolled back to the savepoint, converted to handler_failed, then returned as a normal failure result.",
+          "apps/server/app/work/action_confirmations.py:357-371: terminal confirmations return without execution; approved is the only executable state.",
+          "apps/server/app/work/tool_recruitment.py:32-38: confirmed recruitment invokes the M1/T2 purchase path with commit=False inside that handler.",
+          "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/review-fault-red-configured.log: injected INSERT failures for employees and events are logged as handler_failed rather than escaping as an OperationalError."
+        ],
+        "pre_existing": false,
+        "suggested_fix": "Let SQLAlchemy storage exceptions from the tool handler escape the executor's generic handler-failure conversion, so the outer confirmation transaction rolls back and retains status approved. Continue recording explicit domain rejections as terminal failures. Extend the confirmation fault-injection test to fail a recruitment domain or source-event write once, then verify unchanged approval, no effects or final receipt, and successful replay after recovery.",
+        "reviewers": [
+          "reliability"
+        ],
+        "independent_reviewers": [
+          "reliability"
+        ],
+        "validation_status": "confirmed",
+        "validation_reason": "On reviewed HEAD 5f8db04, an approved recruitment encountering a transient handler storage error reaches tool_executor.py:869-896, which rolls back the handler savepoint and returns handler_failed; the newly introduced action_confirmations.py:385-390 then commits failed, and lines 357-359 prevent replay, while the supplied review-fault-red-configured.log independently demonstrates reachable employee/event INSERT fault paths with OperationalError swallowed, unlike the final-audit-only coverage at test_m3_action_confirmations.py:464-490 (production incidence was not measured).",
+        "protected_subject": "public-contract"
+      }
+    ],
+    "actionable_findings": [
+      {
+        "#": 1,
+        "title": "Keep approvals retryable after handler storage failures",
+        "severity": "P2",
+        "file": "apps/server/app/work/action_confirmations.py",
+        "line": 385,
+        "why_it_matters": "A transient database failure inside a confirmed recruitment handler can permanently consume the owner's approval even though the purchase was rolled back. The executor converts that storage exception into a handler failure, and the confirmation path commits a terminal failed receipt. A later execute request only returns that terminal receipt, so recovery requires a new proposal and approval; this contradicts the explicit retryability rule for storage failures.",
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "requires_verification": true,
+        "confidence": 75,
+        "first_evidence": "apps/server/app/work/action_confirmations.py:385 -- row.status = \"executed\" if result.ok else \"failed\"",
+        "evidence": [
+          "apps/server/app/work/action_confirmations.py:385 -- row.status = \"executed\" if result.ok else \"failed\"",
+          "apps/server/app/work/action_confirmations.py:370-385: the savepoint comment says a storage failure must leave approval retryable, but any result without audit_id is finalized as failed and other handler failures reach row.status = \"failed\".",
+          "apps/server/app/work/tool_executor.py:863-896: every non-ToolError raised by spec.handler is caught, rolled back to the savepoint, converted to handler_failed, then returned as a normal failure result.",
+          "apps/server/app/work/action_confirmations.py:357-371: terminal confirmations return without execution; approved is the only executable state.",
+          "apps/server/app/work/tool_recruitment.py:32-38: confirmed recruitment invokes the M1/T2 purchase path with commit=False inside that handler.",
+          "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/review-fault-red-configured.log: injected INSERT failures for employees and events are logged as handler_failed rather than escaping as an OperationalError."
+        ],
+        "pre_existing": false,
+        "suggested_fix": "Let SQLAlchemy storage exceptions from the tool handler escape the executor's generic handler-failure conversion, so the outer confirmation transaction rolls back and retains status approved. Continue recording explicit domain rejections as terminal failures. Extend the confirmation fault-injection test to fail a recruitment domain or source-event write once, then verify unchanged approval, no effects or final receipt, and successful replay after recovery.",
+        "reviewers": [
+          "reliability"
+        ],
+        "independent_reviewers": [
+          "reliability"
+        ],
+        "validation_status": "confirmed",
+        "validation_reason": "On reviewed HEAD 5f8db04, an approved recruitment encountering a transient handler storage error reaches tool_executor.py:869-896, which rolls back the handler savepoint and returns handler_failed; the newly introduced action_confirmations.py:385-390 then commits failed, and lines 357-359 prevent replay, while the supplied review-fault-red-configured.log independently demonstrates reachable employee/event INSERT fault paths with OperationalError swallowed, unlike the final-audit-only coverage at test_m3_action_confirmations.py:464-490 (production incidence was not measured).",
+        "protected_subject": "public-contract"
+      }
+    ],
+    "triage_groups": [],
+    "pre_existing_findings": [],
+    "requirements_completeness": {
+      "plan_path": "/Users/ponk/workspace/Eidolon/docs/m3-implementation-plan.md",
+      "plan_source": "explicit",
+      "scope": "U9-U13 only. Every claimed unit has corresponding implementation; partial statuses below reflect finding #1, not omitted units.",
+      "requirements": [
+        {
+          "id": "R1",
+          "status": "met",
+          "evidence": "U11 reuses the M1/T2 purchase transaction and U2 provisioning intent; recruitment and readiness remain separate facts."
+        },
+        {
+          "id": "R2",
+          "status": "met",
+          "evidence": "Manager tools and per-action receipts use the existing U7/U8 runtime bridge."
+        },
+        {
+          "id": "R3",
+          "status": "met",
+          "evidence": "All seven capability-action groups, Person learning requests and fixed human confirmation have implemented tool paths."
+        },
+        {
+          "id": "R4",
+          "status": "met",
+          "evidence": "U13 adds durable attempts, remote references and structured telemetry; worker cleanup remains a residual risk."
+        },
+        {
+          "id": "R9",
+          "status": "partially addressed",
+          "evidence": "Owner confirmation and fresh identity, authority and terms checks are present; finding #1 breaks recovery after handler storage failures."
+        },
+        {
+          "id": "R11",
+          "status": "met",
+          "evidence": "Phase tests, migrations and frozen-anchor evidence are present; parent reports 2402 backend and 392 frontend tests passed, plus lint and build."
+        }
+      ],
+      "implementation_units": [
+        {
+          "id": "U9",
+          "status": "met",
+          "evidence": "Gap and candidate reads, learning priorities and planned training requests are implemented."
+        },
+        {
+          "id": "U10",
+          "status": "partially addressed",
+          "evidence": "Durable proposal, approval, rejection, expiry and execution exist; finding #1 requires storage failures to retain approval."
+        },
+        {
+          "id": "U11",
+          "status": "partially addressed",
+          "evidence": "Confirmed recruitment and provisioning intent are atomic; finding #1 prevents retry after a rolled-back handler storage failure."
+        },
+        {
+          "id": "U12",
+          "status": "met",
+          "evidence": "Seven action groups use real tools and preserve per-action partial and replay outcomes."
+        },
+        {
+          "id": "U13",
+          "status": "met",
+          "evidence": "Durable execution identity, bounded telemetry and cross-process reference queries are implemented."
+        }
+      ],
+      "intentional_exclusions": [
+        "U14-U31, including U15 technical retry/remote stop, U16 takeover, U26/U27 broader authority coverage, and final real-delivery/freeze acceptance."
+      ]
+    },
+    "learnings": [],
+    "agent_native_gaps": [],
+    "deployment_notes": [],
+    "residual_risks": [
+      {
+        "title": "Clean up worker streams when telemetry persistence fails",
+        "file": "apps/server/app/workflow/orchestrator.py",
+        "line": 436,
+        "risk": "If telemetry observation fails after a real worker starts, the exception path finalizes and releases the work session but does not cancel or await the adapter-owned producer task. The adapters create that producer separately and their stream iterators do not clean it up, so the remote run may continue after ownership is released.",
+        "evidence": [
+          "apps/server/app/workflow/orchestrator.py:436: attempt.observe(event)",
+          "apps/server/app/workflow/orchestrator.py:463-475: this exception path finalizes the failed host session without producer cleanup.",
+          "apps/server/app/runtimes/hermes/adapter.py:118-120 and apps/server/app/runtimes/openclaw/adapter.py:127-129: adapters create session.background with asyncio.create_task."
+        ],
+        "suggested_response": "Cancel and await the producer task, then make a bounded run-targeted cancellation attempt before releasing worker ownership; add an observe-failure test.",
+        "disposition": "Retained as a residual risk by synthesis; not selected for independent validation. Parent supplied a failing worker-cleanup reproduction."
+      }
+    ],
+    "testing_gaps": [],
+    "coverage": {
+      "depth": "full",
+      "notes": [
+        "Full depth required by 66 files, 3844 executable non-test changed lines and additive migrations.",
+        "Fresh reviewer dispatch hit a pre-launch agent thread limit; no release API is available. Correctness, testing, maintainability, security, performance, api-contract, data-migration and agent-native passes were performed by the parent and are NOT independent reviewers. No agreement promotion is permitted from these passes.",
+        "Reliability and adversarial ran in separate existing review-only subagent contexts with bounded collection. Requested mid-tier override was unavailable on the follow-up primitive; actual model was inherited and not independently verified.",
+        "No working-tree edits occurred during review. Untracked tmp/ was excluded and not read.",
+        "Parent verification on reviewed HEAD: 2402 backend tests passed, 17 deselected; 392 frontend tests passed; lint/typecheck/format and production build passed. These suites do not disprove targeted failure claims.",
+        "Parent fault reproductions outside the checkout on reviewed HEAD observed 3 expected red failures (two recruitment storage-write sites and live worker producer cleanup); raw evidence: /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf/review-fault-red-configured.log. They have not modified production source."
+      ],
+      "cross_model": "Cross-model adversarial pass: Claude (route claude, requested claude-opus-5/high) and its one replacement Grok (route grok-cli, requested grok-4.6/high) both returned authentication-shaped no-review outcomes. Actual model and effort unverified; no serving or independence receipt; no cross-model corroboration. The adversarial lens ran as an in-process read-only fallback. Both terminal job directories were deleted; no peer job is outstanding.",
+      "validator": {
+        "outcome": "verdicts",
+        "batches": 1,
+        "selected": 1,
+        "confirmed": 1,
+        "rejected": 0,
+        "unresolved": 0,
+        "malformed": 0,
+        "failed": 0,
+        "shortcut_skipped": 0,
+        "degraded_blockers": [],
+        "collection": "The fresh validator returned the single selected verdict within the collection bound.",
+        "evidence_basis": "Code inspection and supplied employee/event INSERT fault reproductions confirmed #1; production incidence was not measured. No verified cross-model corroboration supported a shortcut.",
+        "protected_subject_reclassifications": [
+          {
+            "#": 1,
+            "validator_subject": null,
+            "report_subject": "public-contract",
+            "reason": "The published approve/execute endpoints expose a terminal failed status that prevents the documented storage-error retry."
+          }
+        ]
+      },
+      "suppressed_by_confidence": {
+        "0": 0,
+        "25": 0,
+        "50": 0
+      },
+      "first_evidence_backfilled": 0,
+      "missing_quote_demotions": 0,
+      "mode_aware_demotions": 1,
+      "demotion_reason": "The worker telemetry cleanup concern remains in residual_risks under the merge leaf's admission decision.",
+      "malformed_returns": 0,
+      "malformed_findings": 0,
+      "failed_reviewers": [],
+      "bound_exceeded": [],
+      "agreement_promotions": 0,
+      "project_standards": "Complete empty governing-criteria search; no project standards reviewer selected.",
+      "compound_packs": {
+        "roots": [],
+        "errors": [],
+        "warnings": []
+      },
+      "not_assessed": [
+        "Learnings: no corpus or declared packs.",
+        "Deployment verification: not selected; additive tables without destructive upgrade/backfill.",
+        "Prior PR comments and frontend/Swift source review: no applicable changed scope."
+      ],
+      "apply_local": false,
+      "report_context": "Report leaf reused the completed reliability context; merge and fresh validator ran in distinct contexts. Only supplied finish artifacts governed this report."
+    },
+    "verdict_reason": "Fix confirmed P2 finding #1 so transient recruitment storage failures leave the owner's approval retryable. The scoped units are implemented; U14-U31 remain intentionally deferred. Worker cleanup remains a residual risk.",
+    "artifact_path": "/tmp/compound-engineering-501/ce-code-review/20260920-193259-44570608",
+    "run_id": "20260920-193259-44570608"
+  },
+  "review_metadata": {
+    "branch": "dev",
+    "completed_at": "2026-09-20T11:56:31.579Z",
+    "cost": {
+      "host": "codex",
+      "scope": {
+        "changed_lines": 12262,
+        "depth": "full",
+        "exec_nontest_lines": 3844,
+        "size_band": "large",
+        "unclassified_lines": {
+          ".json": 4571,
+          ".md": 433
+        }
+      },
+      "stages": [
+        {
+          "elapsed_seconds": 7.039,
+          "ended_at": "2026-09-20T11:33:06.667925+00:00",
+          "facts": {
+            "changed_lines": 12262,
+            "depth": "full",
+            "exec_nontest_lines": 3844,
+            "size_band": "large",
+            "unclassified_lines": {
+              ".json": 4571,
+              ".md": 433
+            }
+          },
+          "stage": "scope",
+          "started_at": "2026-09-20T11:32:59.628771+00:00"
+        },
+        {
+          "elapsed_seconds": 84.363,
+          "ended_at": "2026-09-20T11:34:31.031179+00:00",
+          "reviewers": 9,
+          "stage": "select",
+          "started_at": "2026-09-20T11:33:06.667925+00:00"
+        },
+        {
+          "elapsed_seconds": 963.594,
+          "ended_at": "2026-09-20T11:49:55.430897+00:00",
+          "stage": "peer",
+          "started_at": "2026-09-20T11:33:51.836815+00:00"
+        },
+        {
+          "candidates": 2,
+          "elapsed_seconds": 924.428,
+          "ended_at": "2026-09-20T11:49:55.458892+00:00",
+          "stage": "dispatch",
+          "started_at": "2026-09-20T11:34:31.031179+00:00"
+        },
+        {
+          "candidates": 1,
+          "elapsed_seconds": 74.464,
+          "ended_at": "2026-09-20T11:51:53.717613+00:00",
+          "stage": "merge",
+          "started_at": "2026-09-20T11:50:39.253436+00:00"
+        },
+        {
+          "elapsed_seconds": 63.993,
+          "ended_at": "2026-09-20T11:53:13.689312+00:00",
+          "stage": "validate",
+          "started_at": "2026-09-20T11:52:09.696588+00:00"
+        },
+        {
+          "candidates": 1,
+          "elapsed_seconds": 135.768,
+          "ended_at": "2026-09-20T11:56:31.677322+00:00",
+          "stage": "report",
+          "started_at": "2026-09-20T11:54:15.909461+00:00"
+        }
+      ],
+      "status": "complete",
+      "totals": {
+        "artifact_bytes": 1240682,
+        "candidates": 2,
+        "elapsed_seconds": 2253.649,
+        "reviewers": 9
+      },
+      "truncated_events": 0
+    },
+    "head_sha": "5f8db04b4899c4be87c32835edd1d153c1e77b0d",
+    "run_id": "20260920-193259-44570608",
+    "verdict": "Ready with fixes"
+  },
+  "review_artifact_sha256": "1ccaeec400bddcbaeb6b9cf454d3ecc1dde133c6a2fa80d2b91563c17d9607b6",
+  "review_fix": {
+    "review_run": "20260920-193259-44570608",
+    "finding": 1,
+    "applied": true,
+    "batches_dispatched": 0,
+    "route": "inline shortcut: exactly one actionable finding; relevant regions already inspected in parent context",
+    "red": "m33-approval-red.log: 2 expected failures before production changes",
+    "focused": "m33-approval-focused.log: 267 passed",
+    "static": "m33-final-lint.log: full project lint/format/typecheck passed",
+    "changed_files": {
+      "apps/server/app/work/tool_executor.py": "efe8e5daac5cc7694526bcbd2204185587dec7a66bf15ec624871f656b522a55",
+      "apps/server/tests/test_m3_recruitment_flow.py": "4f68f62f4b2d6b687586bd60de516a673c096976d2161022e49159a7d572cdf3",
+      "docs/m2-freeze.md": "800abc428be57717c50f0f48190186383b5e4f5c316eef85e56cf1c7a9bd93f3"
+    },
+    "residual_risks": [
+      {
+        "description": "worker producer cleanup after observation failure",
+        "unit": "U15",
+        "proof": "review-fault-red-configured.log",
+        "status": "open; not a phase3 completed claim"
+      }
+    ]
+  },
+  "migration_evidence": {
+    "source": "full backend regression on verified_head",
+    "revisions": [
+      "56b215ea43f0",
+      "57c326fb5401"
+    ],
+    "tests": [
+      "apps/server/tests/test_m3_execution_migration.py",
+      "apps/server/tests/test_m3_confirmation_migration.py"
+    ],
+    "coverage": [
+      "temporary SQLite up/down/up",
+      "alembic check",
+      "single head",
+      "legacy unknown values/history",
+      "immutable facts",
+      "populated downgrade refusal before deletion",
+      "lower-revision refusal rolls back prior DDL"
+    ]
+  },
+  "unit_evidence": [
+    {
+      "path": "docs/evidence/m3-u9-verification.json",
+      "sha256": "ac4f3aaadd0acd04ac6b472eef0a05e25a77a1255f84286d5f4f975b8fec1c76"
+    },
+    {
+      "path": "docs/evidence/m3-u10-verification.json",
+      "sha256": "ef9326be2566ee3cb95758a0b65a415ee576bf705069da5d9a6215611680e091"
+    },
+    {
+      "path": "docs/evidence/m3-u11-verification.json",
+      "sha256": "f8e893dfdf866b3209076159e9c822b3762c053922bcce2d68184536382e24cb"
+    },
+    {
+      "path": "docs/evidence/m3-u12-verification.json",
+      "sha256": "f8975408070a890f91716d24f708a2f68b69cc4ac2f97531c1e48084e6b96b39"
+    },
+    {
+      "path": "docs/evidence/m3-u13-verification.json",
+      "sha256": "1889c163400aef06e9bec8703e66ce2355b5ea3d5ce58ea5819d955693bd5750"
+    }
+  ],
+  "real_acceptance": {
+    "source": "docs/m3-u11-recruitment.md",
+    "receipt": "docs/evidence/m3-u11-verification.json",
+    "result": "real Manager query/proposal, human Owner confirmation, M1/T2 purchase, actual Docker/model provisioning readiness",
+    "attempts": 3,
+    "model_requests": 18,
+    "conservative_estimated_usd": 0.0551475,
+    "budget_usd": 0.15,
+    "not_claimed": [
+      "U29 new worker delivery",
+      "U14 real artifact handoff",
+      "U15-U17 recovery/cancellation/usage"
+    ],
+    "new_paid_calls_during_phase_closure": 0
+  },
+  "residuals": [
+    {
+      "unit": "U15",
+      "status": "open",
+      "risk": "Worker producer can continue after a telemetry observation failure releases ownership",
+      "reproduction": {
+        "reviewed_head": "5f8db04b4899c4be87c32835edd1d153c1e77b0d",
+        "behavior_changed": false,
+        "evidence_kind": "external test-file fault reproduction against unchanged checkout",
+        "baseline_log": "m33-parent-server.log",
+        "baseline_result": "2402 passed,17 deselected,118 warnings",
+        "red_log": "review-fault-red-configured.log",
+        "red_result": "3 expected failures: employees INSERT, events INSERT, worker background still pending",
+        "initial_attempt_log": "review-fault-red.log",
+        "initial_attempt_limitation": "External test paths did not discover project asyncio_mode; two actual recruitment failures plus one harness configuration error. Explicit -c pyproject.toml rerun corrected the harness and reproduced all three faults.",
+        "test_files": [
+          "test_review_recruitment_failure.py",
+          "test_review_worker_cleanup.py"
+        ],
+        "python": "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "cwd": "/Users/ponk/workspace/Eidolon/apps/server",
+        "paid_calls": false,
+        "dev_database_writes": false
+      },
+      "raw_red_log_sha256": "89a0e883dd0c8da5930c19b8f1d9e22ff356bc09d8128b384a64f0a5f5f95f91",
+      "test_source_sha256": "58e6dcc9e1744623ffce3cdd586958657728e07ab118e737578f30dc8b081f82"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/api/v1/action_confirmations.py": "6c69bd80cb3ec2cb905da22e8c02dca05eda6b2f284f5cc538eda4d6459e6b26",
+    "apps/server/app/api/v1/learning_api.py": "2ad979ff61c95752462cf9ea9c46db621031664972fe4cb452b9e685db088665",
+    "apps/server/app/api/v1/market.py": "e22d357e4027a2595e1ccfe19fc63bcdbe7a3be746b9b493af4d7c691961d6cf",
+    "apps/server/app/api/v1/router.py": "5be2b807897286f8bd8dd2c4717a23d985abd61f158c60d68da6ffb004747a3a",
+    "apps/server/app/api/v1/tasks.py": "466414d76cdc43df292cfb4e4a7714a36438a878a3cefbce670516dd5a007ed4",
+    "apps/server/app/learning/priorities.py": "48fabe7b81559dac413d78815b23ad2bf00e349178d0d067b82a41bdba7eca57",
+    "apps/server/app/models/__init__.py": "9c165d206e77bc0757ea3c3948a02268f81a5a3dd10a0668681b69f6521143e1",
+    "apps/server/app/models/action_confirmation.py": "ceea82bcab1efa2615f977c7f09606d6f4827ab050202887cd286795f44c419f",
+    "apps/server/app/models/project.py": "7aaefbea2a30b08f9052c007226d80cdeb48b2bb33962c236691db69f3d50484",
+    "apps/server/app/models/runtime_execution.py": "c5c6061a982b7dad6791e2179e78255a6c64f527cd69de30e0025e24e7c075ef",
+    "apps/server/app/repositories/project.py": "de1113d30f8c3950bd29e5de69167324106d72436d238e5b2ed23605f7808d43",
+    "apps/server/app/runtimes/base.py": "634b75d6df9f423d1a865b64506ca5086a783ca2aa6c09d77bf7199ffc4fcf87",
+    "apps/server/app/runtimes/hermes/adapter.py": "2f3f959d9ce92968fb3260a01b860fc4f0dec9795748fbffd6cd2446e725b259",
+    "apps/server/app/runtimes/openclaw/adapter.py": "261d1f0cb15d8d5607aeb96b4da7f9758d82d390d334af7e81c78a2f669e00e3",
+    "apps/server/app/schemas/action_confirmation.py": "cecc2d336bfd65a41782c804e37b523c0c3a0435fb9ffdd04b54aef223db72d1",
+    "apps/server/app/schemas/market.py": "643f5c18a68ba2d8ecdf4ae405bfcb48f54bb23135ec7c53f1c3e152ac90c144",
+    "apps/server/app/services/economy/talent_trade.py": "1641975b29e47f382f2edfc6b44c1965486c71747fad337bdf62b62be52c3476",
+    "apps/server/app/services/learning.py": "35b570d34b95befb10ec3d7a2005f4d4bc776c625b940b560d2a78b1a5aad205",
+    "apps/server/app/services/market.py": "ff2638a53dac363d1749116f95d77676dd7a2850ba269c277643472783da9578",
+    "apps/server/app/services/recruitment.py": "9f918c0ba9ab4f5cc5702413893d2c7a7f3c453c59213196abd167a8218ea160",
+    "apps/server/app/talent/market/read_model.py": "76e60f2582efc6ed05f4338dfbfe328477f6d879149ebb5d03b9a26167f135e4",
+    "apps/server/app/work/action_confirmations.py": "01b9428332564b82ab360e2cdf921c7cda8547291a4058279910d7cd7653afc8",
+    "apps/server/app/work/contracts.py": "c1710eb806bddfaf52628d7fd1ae76bba68334859c73d6e119ddb3aceae9be07",
+    "apps/server/app/work/decisions.py": "c65bdcce719be813522d534e1ded430ee8a02c8d06b7569d1a2f9da3753a2e31",
+    "apps/server/app/work/gap_facts.py": "f44bfb63477697384712961eb2a8e1dbd65676dd44d3ed7b417a87a7f5f83620",
+    "apps/server/app/work/production.py": "1cc518cd31dc4cd3b5cb36b8121cd7b3613450c789e8ed3ba1faa0f66567ee61",
+    "apps/server/app/work/readiness.py": "3bb6c470800576c734bffe939f352c29fed82f0e6d519d159aefc12f99f16c22",
+    "apps/server/app/work/runtime_conversation.py": "22f8dff7cf334e39e08e32262d32fff0a33a922700c5527a073b0da56c8a4df1",
+    "apps/server/app/work/runtime_operations.py": "a1df7b90b2ad1da8aa555646646ec18109ae4f4ae6c2bfd0d3c1f1601840a410",
+    "apps/server/app/work/telemetry.py": "b9a53e6062cad2db94d08a404b43904b8a91f5fcadb33c6ea78b9048d03c522c",
+    "apps/server/app/work/tool_executor.py": "efe8e5daac5cc7694526bcbd2204185587dec7a66bf15ec624871f656b522a55",
+    "apps/server/app/work/tool_reads.py": "3d95744f73e5b785290713f3c01c8d958939a7f0fcbe148c808cb1687cbd9a1c",
+    "apps/server/app/work/tool_recruitment.py": "5c2e69eded9c48402c21074200c56c44ebaf40d6659a70f070c4f0af2cce6116",
+    "apps/server/app/work/tool_writes.py": "0827a50ea44664b1e9deabb907b6469714a64c3830ea742f0d448b87c0dfbaf3",
+    "apps/server/app/work/tools.py": "cb1194e1a60876fd174f1bf6086161345cc547401fac2028cdac409d617a28d5",
+    "apps/server/app/workflow/orchestrator.py": "0bb410ae2d855af7797038bff3f85e9a62b341b76d3107457e06dd565198677a",
+    "apps/server/migrations/versions/56b215ea43f0_v56_durable_execution.py": "c174f63040c5a8fa872da355721a4d894dd466804a8c5f38321b3819435ab586",
+    "apps/server/migrations/versions/57c326fb5401_v57_action_confirmations.py": "d9e20a35fb29e7708843e6528616d53e0f1fd46389ab80c0dbb1d7039cd24c9c",
+    "apps/server/tests/integration/test_m3_recruitment_manager.py": "9fdc28f329e83f298f0673507d3c186ecf682274db9612dd047f147bd8004969",
+    "apps/server/tests/test_m2_decisions.py": "daa85fc293d3736baf1ca64f5344e1d7b8dab643e1cc17421c8c50e32decb79c",
+    "apps/server/tests/test_m2_tools.py": "c658cf463d1370a43f0fd9be6f800f35531abb683bed00580135b311a8b7fd3b",
+    "apps/server/tests/test_m3_action_confirmations.py": "5a17a725c66da45a349bbc3978d130525fcead4114b0c8d2f96adb11d6ecb743",
+    "apps/server/tests/test_m3_confirmation_migration.py": "afdf151a5e37f510bebea1f01925bfda9350e38f416c5488cf13b8a15db74672",
+    "apps/server/tests/test_m3_contract.py": "02f863b19711c06380173f7260832304646c94fdc8560dba162a616e73ec5810",
+    "apps/server/tests/test_m3_execution_migration.py": "a926bb7b6a02c7596cc7297d3e2530ce2bddfd3857816a5470d73fb8c03688c7",
+    "apps/server/tests/test_m3_gap_actions.py": "67674482e617d19fd0da1e1c97e4d4e4857bc79473965046cc2a7d16ef10130e",
+    "apps/server/tests/test_m3_management_discovery_migration.py": "964b3b9682e6b98d6e0363019cfb284c63ba5cc5cbbdd8cbad31e6ba81b69103",
+    "apps/server/tests/test_m3_management_dispatch_migration.py": "014d2356e8449a18617403234148d97512db1145b939aca0ba362205d8f6598a",
+    "apps/server/tests/test_m3_recruitment_flow.py": "4f68f62f4b2d6b687586bd60de516a673c096976d2161022e49159a7d572cdf3",
+    "apps/server/tests/test_m3_runtime_conversation.py": "7f98bed4fb2e2641ce9a179ad7f19c593fd3ecd70209bd696db5219e0fb37b49",
+    "apps/server/tests/test_m3_runtime_operation_migration.py": "436ec8151c3bfabcdfb0de8da69e7b7d5f7cb68aa9637b663580d0652927a5aa",
+    "apps/server/tests/test_m3_session_purpose_migration.py": "4c30770b7e3589f8fe3328ef697959e72e2a20cb191a23a54d277afa507b1b04",
+    "apps/server/tests/test_m3_telemetry.py": "870ef3f47886e78e6964cdb4fba6ef76e15a56bb16b20d4e299fd90df39ebf91",
+    "apps/server/tests/test_t2_golden_path.py": "f7d1f2fd720524536507e8ad63495988a52928df2b3aec7a47f81b0d30ac3bc5"
+  },
+  "raw_evidence_dir": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-3-close-2z9plmwf",
+  "shipping": "local focused commits only; no push or PR",
+  "untouched_untracked": [
+    "tmp/"
+  ]
+}
