@@ -1,0 +1,277 @@
+{
+  "unit": "U15",
+  "component": "in_flight_read_only_budget_permission",
+  "status": "component_verified_unit_in_progress",
+  "base_commit": "5164b7e",
+  "behavior_changed": true,
+  "existing_tests_inspected": [
+    "test_m3_retry_cancel.py",
+    "test_m3_controlled_stop.py",
+    "test_m3_management_runner.py",
+    "test_m3_telemetry.py",
+    "test_m3_stop_intent.py"
+  ],
+  "changes": [
+    "Optional read-only budget monitor is separate from admission/reservation hooks, runs without holding an external-wait database transaction and has a two-second read deadline.",
+    "Literal False durably requests budget_denied; exception, timeout or non-boolean permission requests host_error. Literal True permits continuation.",
+    "After the wait, recheck original owned session and snapshot, preserve the first saved stop reason, commit stop intent before existing adapter cancellation, and join checks on shutdown.",
+    "Storage outage ends the local owner; adapter cleanup must recover durable intent before sending remote stop. No synthetic verdict or business success."
+  ],
+  "observed_red_before_implementation": "18 expected failures before initial implementation; 2 additional expected stop-reason precedence failures before that correction.",
+  "fixture_corrections": [
+    "Two storage-recovery assertions ran before asynchronous adapter cleanup; corrected tests assert durable intent at the actual outbound stop boundary, without relaxing production guards."
+  ],
+  "verification": [
+    {
+      "label": "budget-monitor-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_budget_monitor.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.95,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-red.log",
+      "log_sha256": "f0b698d2ecf73afbd81d8b0a0f5b9649ed9f513758ff4ea0f41162bbc86ded53",
+      "output_tail": "r.py::test_worker_budget_permit_controls_original_run[False-openclaw]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_worker_budget_permit_controls_original_run[None-hermes]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_worker_budget_permit_controls_original_run[None-openclaw]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_worker_budget_permit_controls_original_run[error-hermes]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_worker_budget_permit_controls_original_run[error-openclaw]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_worker_budget_permit_controls_original_run[True-hermes]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_worker_budget_permit_controls_original_run[True-openclaw]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_controlled_budget_monitor_stops_original_run_without_domain_effects[hermes-aborted-False]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_controlled_budget_monitor_stops_original_run_without_domain_effects[hermes-aborted-True]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_controlled_budget_monitor_stops_original_run_without_domain_effects[hermes-running-False]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_controlled_budget_monitor_stops_original_run_without_domain_effects[hermes-running-True]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_controlled_budget_monitor_stops_original_run_without_domain_effects[openclaw-aborted-False]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_controlled_budget_monitor_stops_original_run_without_domain_effects[openclaw-aborted-True]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_controlled_budget_monitor_stops_original_run_without_domain_effects[openclaw-running-False]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_controlled_budget_monitor_stops_original_run_without_domain_effects[openclaw-running-True]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_late_budget_denial_cannot_cancel_replacement_owner[hermes]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_late_budget_denial_cannot_cancel_replacement_owner[openclaw]\n18 failed, 1 warning in 2.48s\n"
+    },
+    {
+      "label": "budget-monitor-green-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_budget_monitor.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 14.89,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-green-1.log",
+      "log_sha256": "a9c4f3b1c0c52c94362768473f31f65f2c7528ed34744ca8f6740513f271814d",
+      "output_tail": "........................................................................ [ 56%]\n.......................................................                  [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n127 passed, 1 warning in 13.40s\n"
+    },
+    {
+      "label": "budget-monitor-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_budget_monitor.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 5.26,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-boundaries.log",
+      "log_sha256": "67c38979602b69333d615c8695bdb71a1a7405f352f49a04d6c77a878cc9a776",
+      "output_tail": "rt row.stop_reason == reason\nE   AssertionError: assert None == 'budget_denied'\nE    +  where None = <app.models.runtime_execution.RuntimeAttempt object at 0x14a1d2990>.stop_reason\n----------------------------- Captured stderr call -----------------------------\n2026-09-21 01:49:19,435 WARNING [app.work.budget_monitor] employee=- project=- task=- execution budget stop could not be saved\n------------------------------ Captured log call -------------------------------\nWARNING  app.work.budget_monitor:budget_monitor.py:85 execution budget stop could not be saved\n__ test_worker_budget_permit_controls_original_run[storage_failure-openclaw] ___\napps/server/tests/test_m3_budget_monitor.py:77: in test_worker_budget_permit_controls_original_run\n    assert row.stop_reason == reason\nE   AssertionError: assert None == 'budget_denied'\nE    +  where None = <app.models.runtime_execution.RuntimeAttempt object at 0x14a35dd90>.stop_reason\n----------------------------- Captured stderr call -----------------------------\n2026-09-21 01:49:19,537 WARNING [app.work.budget_monitor] employee=- project=- task=- execution budget stop could not be saved\n------------------------------ Captured log call -------------------------------\nWARNING  app.work.budget_monitor:budget_monitor.py:85 execution budget stop could not be saved\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_worker_budget_permit_controls_original_run[storage_failure-hermes]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_worker_budget_permit_controls_original_run[storage_failure-openclaw]\n2 failed, 26 passed, 1 warning in 3.77s\n"
+    },
+    {
+      "label": "budget-monitor-boundaries-corrected",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_budget_monitor.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 5.28,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-boundaries-corrected.log",
+      "log_sha256": "0589e5c0ed6adea3e6f07aa7b48761b89b83dd45196d9910effad3c0b5239596",
+      "output_tail": "..............................                                           [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n30 passed, 1 warning in 3.83s\n"
+    },
+    {
+      "label": "budget-monitor-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_budget_monitor.py",
+        "apps/server/tests/test_m3_request_budget.py",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "apps/server/tests/test_m3_technical_failure.py",
+        "apps/server/tests/test_m3_stop_intent.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_pinned_handoff.py",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "apps/server/tests/test_runtimes_behavior.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_task_lifecycle.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_m2_golden_path.py",
+        "apps/server/tests/test_project_workflow.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 89.6,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-final.log",
+      "log_sha256": "fb9471a726c4d6bdb8d2025ffa7c16082b6e7d40fe75986f0f01e89021896450",
+      "output_tail": "........................................................................ [  8%]\n........................................................................ [ 17%]\n........................................................................ [ 25%]\n........................................................................ [ 34%]\n........................................................................ [ 43%]\n........................................................................ [ 51%]\n........................................................................ [ 60%]\n........................................................................ [ 69%]\n........................................................................ [ 77%]\n........................................................................ [ 86%]\n........................................................................ [ 95%]\n........................................                                 [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n832 passed, 1 warning in 88.06s (0:01:28)\n"
+    },
+    {
+      "label": "budget-monitor-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/work/budget_monitor.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/app/work/management_runner.py",
+        "apps/server/tests/test_m3_budget_monitor.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "budget-monitor-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/work/budget_monitor.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/app/work/management_runner.py",
+        "apps/server/tests/test_m3_budget_monitor.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-format.log",
+      "log_sha256": "177f260a5645724013185e4b140c7045cc39e56c0c97b120f5cb23599f85f0de",
+      "output_tail": "4 files already formatted\n"
+    },
+    {
+      "label": "budget-monitor-precedence-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_budget_monitor.py",
+        "-k",
+        "preexisting_stop_reason",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 2.23,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-precedence-red.log",
+      "log_sha256": "9754bfd5743e1382b2cd23a3df7c21c7296d5c5113ec00308431b5abaa7485f2",
+      "output_tail": "FF                                                                       [100%]\n=================================== FAILURES ===================================\n______ test_preexisting_stop_reason_wins_over_late_budget_denial[hermes] _______\napps/server/tests/test_m3_budget_monitor.py:294: in test_preexisting_stop_reason_wins_over_late_budget_denial\n    assert db.get(WorkSession, row.work_session_id).error == \"cancelled\"\nE   AssertionError: assert 'budget_denied' == 'cancelled'\nE     \nE     - cancelled\nE     + budget_denied\n---------------------------- Captured stdout setup -----------------------------\n[v14] employments → PositionAssignment：回填 0 行\n[v14] 重叠主职清洗：employee 轴 0 条、slot 轴 0 条（均在 metadata_json.normalized 留痕）\n_____ test_preexisting_stop_reason_wins_over_late_budget_denial[openclaw] ______\napps/server/tests/test_m3_budget_monitor.py:294: in test_preexisting_stop_reason_wins_over_late_budget_denial\n    assert db.get(WorkSession, row.work_session_id).error == \"cancelled\"\nE   AssertionError: assert 'budget_denied' == 'cancelled'\nE     \nE     - cancelled\nE     + budget_denied\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_preexisting_stop_reason_wins_over_late_budget_denial[hermes]\nFAILED apps/server/tests/test_m3_budget_monitor.py::test_preexisting_stop_reason_wins_over_late_budget_denial[openclaw]\n2 failed, 30 deselected, 1 warning in 0.84s\n"
+    },
+    {
+      "label": "budget-monitor-precedence-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_budget_monitor.py",
+        "apps/server/tests/test_m3_stop_intent.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 21.49,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-precedence-final.log",
+      "log_sha256": "7ab241c400085d087b053d34962b04f9dcb0ec80d240f82171b022c8ea6ad9d7",
+      "output_tail": "........................................................................ [ 35%]\n........................................................................ [ 70%]\n.............................................................            [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n205 passed, 1 warning in 20.01s\n"
+    },
+    {
+      "label": "budget-monitor-static-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/work/budget_monitor.py",
+        "apps/server/app/work/management_runner.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_budget_monitor.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-static-final.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "budget-monitor-format-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/work/budget_monitor.py",
+        "apps/server/app/work/management_runner.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_budget_monitor.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/budget-monitor-format-final.log",
+      "log_sha256": "177f260a5645724013185e4b140c7045cc39e56c0c97b120f5cb23599f85f0de",
+      "output_tail": "4 files already formatted\n"
+    }
+  ],
+  "verification_scope": "832 broad related checks preceded the last precedence fix. Final corrected source passed 205 focused checks plus static and format checks for all four Python paths. Counts overlap and must not be summed as unique scenarios.",
+  "source_sha256": {
+    "apps/server/app/work/budget_monitor.py": "d2644a7b20872f961f3014018087350d9f34c3ea8537953dd748d50318512012",
+    "apps/server/app/work/management_runner.py": "8353a0bec0416c5fe819fc8b55ae2b09d21a1a11894e1044bdffbb831d8e1e03",
+    "apps/server/app/workflow/orchestrator.py": "8175e0377a23b4c57fc2a59d4cb9a7bdbe05234b220303dd9950d320fbacebbe",
+    "apps/server/tests/test_m3_budget_monitor.py": "9c78a260add8099095f47e72d039a9224a3f500e1fedbbab44d5b999930feb2a",
+    "docs/m2-freeze.md": "b815e41fa23499ab1632b87aa85e60546120f7934492297440e2bd8b99d5b0de",
+    "docs/m3-u15-retry-and-cancel.md": "f27781afe4ec5d9c807ac3ad616042801ae7ec41d13ef4c32ce071f5219816ec"
+  },
+  "exceptions": [
+    "Actual domain services, SQLite and both adapters participate; external transport and budget source are scripted.",
+    "This optional integration hook and project request allowance are not cumulative monetary accounting or a Provider dollar hard cap. Default monitor is unset and existing mandatory management budget hooks remain fail-closed.",
+    "No paid request, Docker, schema, development database, shared fixture or user tmp operation. Full backend not rerun."
+  ],
+  "remaining": [
+    "Concrete cumulative spending source and actual-usage integration must stay distinct from host request allowance; U17 owns actual usage/cost facts.",
+    "Actual remote stop and unconfirmed-stop acceptance remain open.",
+    "U14 additional paid allowance question remains pending."
+  ],
+  "paid_model_requests": 0,
+  "standalone_shipping_skipped": true
+}

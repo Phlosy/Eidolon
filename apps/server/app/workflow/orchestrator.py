@@ -63,9 +63,8 @@ from app.runtimes.worker_recovery import worker_timeout
 from app.services import artifacts as artifact_service
 from app.services import position_compat
 from app.services import tasks as task_service
-from app.work import contracts as C
-from app.work import dispatch as dispatch_runtime
 from app.work import (
+    budget_monitor,
     dispatch_notices,
     handoff,
     review_fixture,
@@ -74,6 +73,8 @@ from app.work import (
     telemetry,
     work_defaults,
 )
+from app.work import contracts as C
+from app.work import dispatch as dispatch_runtime
 
 logger = get_logger(__name__)
 
@@ -93,7 +94,10 @@ async def _stop_worker(adapter, session):
 
 
 class Orchestrator:
-    def __init__(self) -> None:
+    def __init__(self, *, budget_monitor=None) -> None:
+        if budget_monitor is not None and not callable(budget_monitor):
+            raise ValueError("budget_monitor must be a read-only async callable")
+        self._budget_monitor = budget_monitor
         self._queue: asyncio.Queue = asyncio.Queue()
         self._loop: asyncio.AbstractEventLoop | None = None
         self._runner: asyncio.Task | None = None
@@ -138,6 +142,7 @@ class Orchestrator:
     async def _handle(self, signal: dict) -> None:
         if signal["type"] in ("dispatch", "sweep"):
             self._stop_requested_workers()
+            await self._interrupt_budget_workers()
             await self._dispatch_pending()
         elif signal["type"] == "stop_work":
             identifier = signal.get("work_session_id")
@@ -178,6 +183,38 @@ class Orchestrator:
                     )
                 if reason is not None:
                     owned.cancel(reason)
+
+    async def _interrupt_budget_workers(self):
+        if self._budget_monitor is None:
+            return
+        capacity = asyncio.Semaphore(4)
+
+        async def inspect(work_id, owned):
+            def current():
+                return (
+                    self._workers.get(work_id) is owned
+                    and not owned.done()
+                    and not owned.cancelling()
+                )
+
+            async with capacity:
+                try:
+                    reason = await budget_monitor.stop_reason(
+                        work_id, self._budget_monitor, is_current=current
+                    )
+                except Exception:
+                    logger.warning(
+                        "worker budget observation failed", extra={"work_session_id": work_id}
+                    )
+                    return
+                if reason is not None and current():
+                    owned.cancel(reason)
+
+        # All checks belong to this sweep. Shutdown cancels and joins the group;
+        # no detached budget task can later interrupt a replacement owner.
+        async with asyncio.TaskGroup() as checks:
+            for work_id, owned in tuple(self._workers.items()):
+                checks.create_task(inspect(work_id, owned))
 
     def _release_running(self, employee_id, completed):
         if self._running.get(employee_id) is completed:
@@ -589,7 +626,12 @@ class Orchestrator:
             logger.info("work session cancelled", extra={"task_id": task_id})
             if work_session_id is not None:
                 self._finalize(
-                    task_id, False, [], "cancelled", 0.0, work_session_id=work_session_id
+                    task_id,
+                    False,
+                    [],
+                    reason if reason in {"budget_denied", "host_error"} else "cancelled",
+                    0.0,
+                    work_session_id=work_session_id,
                 )
             raise
         except Exception:

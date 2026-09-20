@@ -27,8 +27,8 @@ from app.models.runtime_execution import STOP_REASONS, RuntimeAttempt
 from app.runtimes.base import RuntimeSession, TaskContext
 from app.runtimes.container_common import resolve_container_instance
 from app.runtimes.gateway import gateway
+from app.work import budget_monitor, runtime_admission, tool_executor
 from app.work import management_dispatch as dispatch
-from app.work import runtime_admission, tool_executor
 from app.work.dispatch_notices import begin_observation
 from app.work.runtime_conversation import ConversationLimits, run_conversation
 from app.work.telemetry import record_stop_intent
@@ -61,6 +61,7 @@ class ManagementRunner:
         enabled: bool = False,
         budget_available: Callable[[int], Awaitable[bool]] | None = None,
         budget_check: Callable[[int, str], Awaitable[bool]] | None = None,
+        budget_monitor: budget_monitor.BudgetMonitor | None = None,
         limits: ConversationLimits = _DEFAULT_LIMITS,
         poll_interval: float = 1,
         batch_size: int = 25,
@@ -88,6 +89,9 @@ class ManagementRunner:
         self._session_factory = session_factory
         self._enabled = enabled is True
         self._budget_available, self._budget_check = budget_available, budget_check
+        if budget_monitor is not None and not callable(budget_monitor):
+            raise ValueError("budget_monitor must be a read-only async callable")
+        self._budget_monitor = budget_monitor
         self._limits = limits
         self._poll_interval, self._batch_size = poll_interval, batch_size
         self._max_concurrency = max_concurrency
@@ -348,21 +352,31 @@ class ManagementRunner:
     async def _interrupt_invalid_owned(self) -> None:
         for work_id, owned in list(self._owned.items()):
             owner = owned.task
-            if owned.finalizing or owner.done() or owner.cancelling():
+
+            def current(work_id=work_id, owned=owned, owner=owner):
+                return (
+                    self._owned.get(work_id) is owned
+                    and not owned.finalizing
+                    and not owner.done()
+                    and not owner.cancelling()
+                )
+
+            if not current():
                 continue
             try:
                 reason = await self._database(self._stop_reason, owned.view)
+                if reason is None:
+                    reason = await budget_monitor.stop_reason(
+                        work_id,
+                        self._budget_monitor,
+                        is_current=current,
+                        session_factory=self._session_factory,
+                    )
             except Exception:
                 # A transient read/write failure is not proof of scope withdrawal.
                 logger.warning("management stop observation failed: session=%s", work_id)
                 continue
-            if (
-                reason is not None
-                and self._owned.get(work_id) is owned
-                and not owned.finalizing
-                and not owner.done()
-                and not owner.cancelling()
-            ):
+            if reason is not None and current():
                 owner.cancel(reason)
 
     async def _checked_runtime_type(self, view: dispatch.DispatchView) -> str:
