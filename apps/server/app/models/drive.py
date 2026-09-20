@@ -8,7 +8,7 @@ project-zone DriveNodes at startup (see services/drive_migration.py).
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DDL, DateTime, ForeignKey, Integer, String, Text, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, utcnow
@@ -66,6 +66,8 @@ class DriveRevision(Base):
     author_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    # Explicitly preserved canonical bytes; historical revisions stay unknown.
+    content_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class DriveCollaborator(TimestampMixin, Base):
@@ -74,3 +76,56 @@ class DriveCollaborator(TimestampMixin, Base):
     node_id: Mapped[int] = mapped_column(ForeignKey("drive_nodes.id"), index=True)
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"), index=True)
     role: Mapped[str] = mapped_column(String(20), default="viewer")
+
+
+_CONTENT_IDENTITY = (
+    "id",
+    "node_id",
+    "version",
+    "sha256",
+    "author_employee_id",
+    "author_person_id",
+    "message",
+    "created_at",
+    "content_path",
+)
+_VERSION_CONFLICT = (
+    "EXISTS (SELECT 1 FROM drive_revisions r WHERE r.node_id=NEW.node_id "
+    "AND r.version=NEW.version AND r.id <> NEW.id "
+    "AND (r.content_path IS NOT NULL OR NEW.content_path IS NOT NULL))"
+)
+CONTENT_GUARDS = (
+    (
+        "drive_revision_content_no_replace",
+        "INSERT",
+        "EXISTS (SELECT 1 FROM drive_revisions r WHERE r.id=NEW.id AND r.content_path IS NOT NULL)",
+    ),
+    (
+        "drive_revision_content_valid",
+        "INSERT",
+        "NEW.content_path IS NOT NULL AND (NEW.node_id < 1 OR NEW.version < 1 OR "
+        "length(NEW.sha256) <> 64 OR NEW.sha256 GLOB '*[^0-9a-f]*' OR "
+        "NEW.content_path IS NOT ('drive/.revisions/' || NEW.node_id || '/' || NEW.version "
+        "|| '-' || NEW.sha256 || '.txt') OR NOT EXISTS "
+        "(SELECT 1 FROM drive_nodes n WHERE n.id=NEW.node_id AND n.kind='document'))",
+    ),
+    (
+        "drive_revision_content_immutable",
+        "UPDATE",
+        "(OLD.content_path IS NOT NULL OR NEW.content_path IS NOT NULL) AND ("
+        + " OR ".join(f"NEW.{column} IS NOT OLD.{column}" for column in _CONTENT_IDENTITY)
+        + ")",
+    ),
+    ("drive_revision_content_no_delete", "DELETE", "OLD.content_path IS NOT NULL"),
+    ("drive_revision_version_insert_valid", "INSERT", _VERSION_CONFLICT),
+    ("drive_revision_version_update_valid", "UPDATE", _VERSION_CONFLICT),
+)
+for _name, _operation, _condition in CONTENT_GUARDS:
+    event.listen(
+        DriveRevision.__table__,
+        "after_create",
+        DDL(
+            f"CREATE TRIGGER {_name} BEFORE {_operation} ON drive_revisions WHEN {_condition} "
+            "BEGIN SELECT RAISE(ABORT, 'invalid or immutable revision content'); END"
+        ).execute_if(dialect="sqlite"),
+    )

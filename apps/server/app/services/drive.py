@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.request_context import get_request_identity
+from app.core.transaction_effects import ensure_sqlite_transaction
 from app.events.bus import bus
 from app.models.drive import DriveNode
 from app.models.enums import ArtifactType, DriveNodeKind, DriveZone
@@ -27,6 +28,8 @@ from app.repositories import organization as org_repo
 from app.repositories import persons as person_repo
 from app.repositories import project as project_repo
 from app.repositories import project_delivery as delivery_repo
+from app.services.drive_revisions import preserve_content
+from app.services.drive_revisions import read_revision_content as read_revision_content
 
 ZONES = [z.value for z in DriveZone]
 PROJECT_SUBDIRS = ("docs", "source", "tests", "release")
@@ -235,8 +238,11 @@ def create_document(
     task_id: int | None = None,
     message: str | None = None,
     commit: bool = False,
+    preserve_revision: bool = False,
 ) -> DriveNode:
     """Create a document node: file on disk + row + DriveRevision v1."""
+    if preserve_revision:
+        ensure_sqlite_transaction(db)
     filename = f"{slugify(name, fallback=doc_type or 'doc')}.md"
     path = _unique_path(db, f"{parent.path}/{filename}")
     node = drive_repo.create_node(
@@ -253,6 +259,7 @@ def create_document(
         work_session_id=work_session_id,
         task_id=task_id,
     )
+    content_path = preserve_content(node.id, 1, content) if preserve_revision else None
     target = abs_path(node)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
@@ -263,6 +270,7 @@ def create_document(
         sha256=hashlib.sha256(content.encode("utf-8")).hexdigest(),
         author_employee_id=owner_employee_id,
         message=message,
+        content_path=content_path,
     )
     if commit:
         db.commit()
@@ -454,6 +462,7 @@ def create_project_document(
     work_session_id: int | None = None,
     task_id: int | None = None,
     message: str | None = None,
+    preserve_revision: bool = False,
 ) -> DriveNode:
     """Write a workflow artifact into the project's type-mapped subfolder."""
     folders = ensure_project_folders(db, project)
@@ -469,6 +478,7 @@ def create_project_document(
         work_session_id=work_session_id,
         task_id=task_id,
         message=message,
+        preserve_revision=preserve_revision,
     )
 
 

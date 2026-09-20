@@ -1,0 +1,173 @@
+{
+  "unit": "U14",
+  "status": "revision_content_component_verified_not_unit_complete",
+  "base_commit": "fbb27a5be31b8b5ae62ff7f5f73714ea5dda454d",
+  "migration": "59e548bd7603",
+  "source_sha256": {
+    "apps/server/app/models/drive.py": "b656f40b85e0fb4f29ff2edeb3cd5dca0079d53ea1e3cf3b4fe4ccaac255c679",
+    "apps/server/app/services/drive.py": "451ce220d5847b5eacfcd8aff77b00dbdac3e1a46f611e639e712478e0d8f6b5",
+    "apps/server/app/services/drive_revisions.py": "a61cd6332d72d548c37156330b0817b7d8e623ac5462e7c4c3b34cdc59ee8c31",
+    "apps/server/app/services/artifacts.py": "5047ed9bfb6ee9a83c25dd034bb7d82520d6f4b2c7712626f9445313c99e5bf9",
+    "apps/server/migrations/versions/59e548bd7603_v59_drive_revision_content.py": "a54260e9003b2aace2e9b0d87c2cdb4d364cd002347d68c89de84b9a0fa3f405",
+    "apps/server/tests/test_m3_drive_revision_content.py": "06823436007bd1d3452338fcadd2f32b0fe6da03c76727d597fe517bfe1c72fc",
+    "apps/server/tests/test_m3_drive_revision_migration.py": "bd0f44ba4efd1153792cb22ad9bccee1b23450435e0ae2c4c0aabf148c35ff17",
+    "apps/server/tests/test_m3_artifact_context_migration.py": "bd5cc53f4c776e3e2eb615a62ce92efc8ea0d682b7f4ff7e7f51598301f15464",
+    "apps/server/tests/test_m3_confirmation_migration.py": "c72c7c232ba20c0f5ab6429371b6d9c03666e0a150b978f09f6e1fb4f0b4af54",
+    "apps/server/tests/test_m3_execution_migration.py": "dd719b30c6b94115c831472942a7f2019b71beaa66dbaf1567ec2beb1778c633",
+    "apps/server/tests/test_m3_management_discovery_migration.py": "1c616306534f02b62cbd375f8740a66f6439affbaabebb217d2317a009528439",
+    "apps/server/tests/test_m3_management_dispatch_migration.py": "0069d2c67c766ad31ea589fb0125741db13affc59890cb488d1ff092ec27341f",
+    "apps/server/tests/test_m3_runtime_operation_migration.py": "201e33e6a65d77dc98cb6d617c1ff3160625f09627789e2aaf6ba20172728b7f",
+    "apps/server/tests/test_m3_session_purpose_migration.py": "04a46012e18fb39a4e05aaed1ce9e2cee60c034a1f77c85e4394c6b0b7880e41"
+  },
+  "checks": [
+    {
+      "label": "revision-content-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_drive_revision_content.py",
+        "apps/server/tests/test_m3_drive_revision_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 5.23,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/revision-content-red.log"
+    },
+    {
+      "label": "revision-content-green-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_drive_revision_content.py",
+        "apps/server/tests/test_m3_drive_revision_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 5.77,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/revision-content-green-1.log"
+    },
+    {
+      "label": "revision-replace-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_drive_revision_content.py",
+        "-q",
+        "-k",
+        "rewritten_or_deleted",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.18,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/revision-replace-red.log"
+    },
+    {
+      "label": "revision-content-focused",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_drive_revision_content.py",
+        "apps/server/tests/test_m3_drive_revision_migration.py",
+        "apps/server/tests/test_drive.py",
+        "apps/server/tests/test_artifact_compat.py",
+        "apps/server/tests/test_m2_handoff.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_m3_artifact_context_migration.py",
+        "apps/server/tests/test_m3_confirmation_migration.py",
+        "apps/server/tests/test_m3_execution_migration.py",
+        "apps/server/tests/test_m3_session_purpose_migration.py",
+        "apps/server/tests/test_m3_runtime_operation_migration.py",
+        "apps/server/tests/test_m3_management_dispatch_migration.py",
+        "apps/server/tests/test_m3_management_discovery_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 32.87,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/revision-content-focused.log"
+    },
+    {
+      "label": "revision-content-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/models/drive.py",
+        "apps/server/app/services/drive.py",
+        "apps/server/app/services/drive_revisions.py",
+        "apps/server/app/services/artifacts.py",
+        "apps/server/migrations/versions/59e548bd7603_v59_drive_revision_content.py",
+        "apps/server/tests/test_m3_drive_revision_content.py",
+        "apps/server/tests/test_m3_drive_revision_migration.py",
+        "apps/server/tests/test_m3_artifact_context_migration.py",
+        "apps/server/tests/test_m3_confirmation_migration.py",
+        "apps/server/tests/test_m3_execution_migration.py",
+        "apps/server/tests/test_m3_management_discovery_migration.py",
+        "apps/server/tests/test_m3_management_dispatch_migration.py",
+        "apps/server/tests/test_m3_runtime_operation_migration.py",
+        "apps/server/tests/test_m3_session_purpose_migration.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "output": "All checks passed!",
+      "provenance": "Direct exec_command result 7bb392, before evidence publication; no check rerun."
+    },
+    {
+      "label": "revision-content-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/models/drive.py",
+        "apps/server/app/services/drive.py",
+        "apps/server/app/services/drive_revisions.py",
+        "apps/server/app/services/artifacts.py",
+        "apps/server/migrations/versions/59e548bd7603_v59_drive_revision_content.py",
+        "apps/server/tests/test_m3_drive_revision_content.py",
+        "apps/server/tests/test_m3_drive_revision_migration.py",
+        "apps/server/tests/test_m3_artifact_context_migration.py",
+        "apps/server/tests/test_m3_confirmation_migration.py",
+        "apps/server/tests/test_m3_execution_migration.py",
+        "apps/server/tests/test_m3_management_discovery_migration.py",
+        "apps/server/tests/test_m3_management_dispatch_migration.py",
+        "apps/server/tests/test_m3_runtime_operation_migration.py",
+        "apps/server/tests/test_m3_session_purpose_migration.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/revision-content-format.log"
+    }
+  ],
+  "proof_first": {
+    "initial_expected_failures": 22,
+    "replacement_write_expected_failure": 1
+  },
+  "new_behavior_tests": 23,
+  "new_migration_tests": 2,
+  "focused_passed": 94,
+  "scope": "Explicit canonical revision content API. Whole runtime collection acceptance, exact downstream/review selection and real chain remain.",
+  "paid_calls": 0,
+  "development_database_modified": false
+}

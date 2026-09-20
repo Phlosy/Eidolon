@@ -31,6 +31,7 @@ def record_project_artifact(
     author_id: int | None = None,
     work_session_id: int | None = None,
     task_id: int | None = None,
+    preserve_revision: bool = False,
 ) -> DriveNode:
     """Write a produced artifact into the project's drive folder (revision v1).
 
@@ -46,6 +47,7 @@ def record_project_artifact(
         owner_employee_id=author_id,
         work_session_id=work_session_id,
         task_id=task_id,
+        preserve_revision=preserve_revision,
     )
 
 
