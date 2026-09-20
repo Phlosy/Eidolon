@@ -20,6 +20,7 @@ import httpx
 from app.brain.projection import append_behavior_block
 from app.core.logging import get_logger
 from app.models.enums import RuntimeType
+from app.runtimes import workspace_artifacts
 from app.runtimes.base import (
     EmployeeRef,
     ProducedArtifact,
@@ -75,7 +76,7 @@ class HermesAdapter(RuntimeAdapter):
             skills=True,
             scheduler=True,  # /api/jobs (cron) API
             streaming=True,  # SSE /v1/runs/{id}/events
-            artifacts=False,  # no artifacts-download endpoint in the API
+            artifacts=True,  # bounded UTF-8 workspace manifest, not an HTTP download endpoint
             brain_projection=True,  # behavior block is appended to POST /v1/runs input
         )
 
@@ -112,6 +113,15 @@ class HermesAdapter(RuntimeAdapter):
 
     async def send_task(self, session: RuntimeSession, prompt: str, context: dict) -> None:
         config = context.get("runtime_config") or {}
+        if session.attempt is not None:
+            task = context.get("task_context")
+            prompt += workspace_artifacts.instructions(
+                session,
+                self.type.value,
+                required_types=task.required_artifact_types
+                if isinstance(task, TaskContext)
+                else [],
+            )
         # 接缝 7 / §8 T1：投影在**真正发请求前**拼进 input，而不是写进未挂载的目录。
         prompt = append_behavior_block(prompt, context.get("behavior_policy"))
         timeout = float(config.get("run_timeout_seconds", _DEFAULT_RUN_TIMEOUT))
@@ -245,7 +255,7 @@ class HermesAdapter(RuntimeAdapter):
                 logger.exception("hermes stop run failed", extra={"task_id": session.task_id})
 
     async def get_artifacts(self, session: RuntimeSession) -> list[ProducedArtifact]:
-        return list(session.artifacts)
+        return await asyncio.to_thread(workspace_artifacts.collect, session)
 
     async def get_runtime_info(self, instance: RuntimeInstance) -> RuntimeInfo:
         return RuntimeInfo(
@@ -337,8 +347,10 @@ class HermesAdapter(RuntimeAdapter):
                 event = self._map_event(payload)
                 if event is not None and event.kind == RuntimeEventKind.completed:
                     observe_remote_terminal(session, "completed", "hermes.sse")
+                    session.status = "completed"
                 elif event is not None and event.kind == RuntimeEventKind.error:
                     observe_remote_terminal(session, "failed", "hermes.sse")
+                    session.status = "failed"
                 if event is not None:
                     await session.queue.put(event)
                 if event is not None and event.kind in (

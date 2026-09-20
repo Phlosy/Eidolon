@@ -344,6 +344,7 @@ class Orchestrator:
                     prior_knowledge=prior_knowledge,
                     validated_skills=validated_skills,
                     input_artifacts=[item.as_dict() for item in input_artifacts],
+                    required_artifact_types=list(handoff.declared_artifact_types(task)),
                 )
                 employee_snapshot = employee
 
@@ -418,6 +419,10 @@ class Orchestrator:
                 request_context={
                     "runtime_config": runtime_config,
                     "behavior_policy": policy.as_dict(),
+                    "artifact_protocol": {
+                        "version": "eidolon.artifacts.v1",
+                        "required_types": task_ctx.required_artifact_types,
+                    },
                 },
             )
             await adapter.send_task(

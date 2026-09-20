@@ -1,0 +1,207 @@
+{
+  "unit": "U14",
+  "status": "in_progress",
+  "slice": "Hermes bounded workspace manifest transport",
+  "baseline": "1c011fc",
+  "date": "2026-09-20",
+  "behavior_changed": true,
+  "red": {
+    "initial_file_and_terminal_failures": 29,
+    "required_types_missing": 1
+  },
+  "additional_characterization": 4,
+  "intermediate_regression": {
+    "passed": 252,
+    "failed": 1,
+    "reason": "Existing telemetry test supplied a terminal event without a file; strengthened transport fixture writes actual manifest/file and asserts canonical Drive content."
+  },
+  "final_focused_passed": 306,
+  "checks": [
+    {
+      "label": "workspace-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 4.57,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/workspace-red.log",
+      "log_sha256": "2503312770deaf3a6026129e89edaf44c97c0b986765cafbdcc2e1bac40796e9"
+    },
+    {
+      "label": "workspace-green-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 4.69,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/workspace-green-1.log",
+      "log_sha256": "dc944a9353531ea10c4fb8c2d8363f108b2085b9f871ab7a53f25ef812c28eda"
+    },
+    {
+      "label": "workspace-declared-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "-q",
+        "--tb=short",
+        "-k",
+        "protocol or unfinished or replacement"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.06,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/workspace-declared-red.log",
+      "log_sha256": "643f2c2881f3707b3b7bdbbab7a9f62a0bf9ab65dcc8dff671d18f84dd1d5651"
+    },
+    {
+      "label": "workspace-focused-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_runtimes_behavior.py",
+        "apps/server/tests/test_runtime_lifecycle.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 30.44,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/workspace-focused-1.log",
+      "log_sha256": "2f63efd3a9f8a5138d75c08cbc5b6b483e4436c04037ee9476c46e33ef3ccf92"
+    },
+    {
+      "label": "workspace-focused-2",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_runtimes_behavior.py",
+        "apps/server/tests/test_runtime_lifecycle.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_capabilities.py",
+        "apps/server/tests/test_m2_handoff.py",
+        "apps/server/tests/test_m2_review.py",
+        "apps/server/tests/test_artifact_compat.py",
+        "apps/server/tests/test_artifacts_learning.py",
+        "apps/server/tests/test_drive.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 44.53,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/workspace-focused-2.log",
+      "log_sha256": "f9eea0bfbf5512943c1b6834433703b8cbd26e7645c246f45fc14a14722fc2e4"
+    },
+    {
+      "label": "workspace-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/runtimes/base.py",
+        "apps/server/app/runtimes/paths.py",
+        "apps/server/app/runtimes/workspace_artifacts.py",
+        "apps/server/app/runtimes/hermes/adapter.py",
+        "apps/server/app/runtimes/manager/docker_manager.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_capabilities.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/workspace-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    }
+  ],
+  "format": {
+    "argv": [
+      "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+      "-m",
+      "ruff",
+      "format",
+      "--check",
+      "apps/server/app/runtimes/base.py",
+      "apps/server/app/runtimes/paths.py",
+      "apps/server/app/runtimes/workspace_artifacts.py",
+      "apps/server/app/runtimes/hermes/adapter.py",
+      "apps/server/app/runtimes/manager/docker_manager.py",
+      "apps/server/app/workflow/orchestrator.py",
+      "apps/server/tests/test_m3_workspace_artifacts.py",
+      "apps/server/tests/test_m3_telemetry.py",
+      "apps/server/tests/test_capabilities.py"
+    ],
+    "exit_code": 0,
+    "files": 9
+  },
+  "source_sha256": {
+    "apps/server/app/runtimes/base.py": "acb7e09db585728c1dda2ee26f6ed69109bf7137de53af93c54871f131c01bd5",
+    "apps/server/app/runtimes/paths.py": "c79e360113f3da2a44d0d4d177b9743974a4cad2ab6da30ccf89b58e00bc4a97",
+    "apps/server/app/runtimes/workspace_artifacts.py": "2f33a2d9d6f7e56599657f070ecb74a079fc918918e21dfb8f961432c2a75f66",
+    "apps/server/app/runtimes/hermes/adapter.py": "1a997fe233dc3230ca29640cbae4662064fb7d1e78229a7938d4f2b335ce5cf5",
+    "apps/server/app/runtimes/manager/docker_manager.py": "19a4f9d23a0f1e33f8c3c67a4c05e1fe4353540087a466cec1de2c99311debbd",
+    "apps/server/app/workflow/orchestrator.py": "bb65cd4003447fa3ef38ba7e4f63928a6d84a1452f041e6cc57e71ac8008b643",
+    "apps/server/tests/test_m3_workspace_artifacts.py": "7271a34cf4dbcf3c920e90e9466ea89544f32fd6c10b05366b9c9ece7c512a6d",
+    "apps/server/tests/test_m3_telemetry.py": "bf2a7abc5c77bfb78e8dab3f88720db6120d8349276058f26080c0220326644c",
+    "apps/server/tests/test_capabilities.py": "b57de84b9c46ac242f755b47376a358e49372af1441146abd15600178966db50"
+  },
+  "limits": {
+    "manifest_bytes": 65536,
+    "file_bytes": 262144,
+    "collection_bytes": 1048576,
+    "files": 32
+  },
+  "not_completed": [
+    "durable collection acceptance/dedup",
+    "original workspace identity across restart/rebind",
+    "accepted Drive revision content/handoff",
+    "two real runtime files and real downstream/formal review"
+  ],
+  "real_acceptance_prerequisite": "Existing paid relay strips native tool calls; explicit gated native-tool support with schema/result budget accounting required before a real file proof.",
+  "paid_calls": 0,
+  "migrations": 0,
+  "existing_containers_changed": false,
+  "raw_dir": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p",
+  "untouched": [
+    "tmp/"
+  ]
+}

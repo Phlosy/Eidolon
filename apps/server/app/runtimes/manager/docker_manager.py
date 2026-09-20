@@ -39,6 +39,7 @@ from app.providers.secrets.store import LocalEncryptedSecretStore, get_secret_st
 from app.repositories import runtimes as runtime_repo
 from app.runtimes.docker.service import DockerService, get_docker_service
 from app.runtimes.manager.base import RuntimeInstanceManager
+from app.runtimes.paths import HERMES_MOUNT, OPENCLAW_CONFIG_MOUNT, WORKSPACE_MOUNTS
 
 logger = get_logger(__name__)
 
@@ -55,9 +56,7 @@ DEFAULT_VERSION_COMMANDS: dict[str, list[str]] = {
     RuntimeType.openclaw.value: ["openclaw", "--version"],
 }
 
-# In-container mount targets per runtime type, relative to the runtime dir.
-HERMES_MOUNT = "/opt/data"
-OPENCLAW_CONFIG_MOUNT = "/home/node/.openclaw"
+# Additional OpenClaw state outside its workspace/config home.
 OPENCLAW_AUTH_MOUNT = "/home/node/.config/openclaw"
 
 _HEALTH_WAIT_SECONDS = 45
@@ -286,11 +285,7 @@ class DockerRuntimeInstanceManager(RuntimeInstanceManager):
             }
         else:
             raise RuntimeManagerError(f"unsupported runtime type: {runtime_type}")
-        workspace_mount = (
-            f"{HERMES_MOUNT}/workspace"
-            if runtime_type == RuntimeType.hermes.value
-            else f"{OPENCLAW_CONFIG_MOUNT}/workspace"
-        )
+        workspace_mount = WORKSPACE_MOUNTS[runtime_type]
         volumes[str(Path(instance.workspace_path).resolve())] = {
             "bind": workspace_mount,
             "mode": "rw",

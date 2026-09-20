@@ -1,10 +1,12 @@
 """U13 durable execution facts; transport doubles never stand in for domain writes."""
 
 import asyncio
+import hashlib
 import json
 import subprocess
 import sys
 from datetime import timedelta
+from pathlib import Path
 
 import httpx
 import pytest
@@ -526,8 +528,10 @@ def configure_worker(db, bound, monkeypatch):
 
 @pytest.mark.parametrize("completed", [True, False])
 async def test_worker_orchestrator_persists_intent_acceptance_and_honest_eof(
-    db, bound, monkeypatch, completed
+    db, bound, monkeypatch, completed, tmp_path
 ):
+    bound.row.workspace_path = str(tmp_path / "worker-workspace")
+    db.commit()
     orchestration = configure_worker(db, bound, monkeypatch)
     observed = []
     submitted = []
@@ -545,6 +549,39 @@ async def test_worker_orchestrator_persists_intent_acceptance_and_honest_eof(
                 observed.append(attempt.id)
                 return httpx.Response(202, json={"run_id": "worker-original-run"})
             assert attempt.status == "accepted" and attempt.remote_run_id == "worker-original-run"
+            if completed:
+                # A real Worker terminal needs real files; the transport double
+                # writes its output just as the requested runtime tool would.
+                directory = (
+                    Path(bound.row.workspace_path)
+                    / ".eidolon"
+                    / "outputs"
+                    / hashlib.sha256(attempt.local_session_ref.encode()).hexdigest()
+                    / hashlib.sha256(attempt.idempotency_key.encode()).hexdigest()
+                )
+                directory.mkdir(parents=True)
+                body = b"Durable worker output.\n"
+                (directory / "result.md").write_bytes(body)
+                (directory / "manifest.json").write_text(
+                    json.dumps(
+                        {
+                            "protocol": "eidolon.artifacts.v1",
+                            "local_session_ref": attempt.local_session_ref,
+                            "request_ref": attempt.idempotency_key,
+                            "complete": True,
+                            "artifacts": [
+                                {
+                                    "path": "result.md",
+                                    "type": "other",
+                                    "title": "Worker output",
+                                    "size_bytes": len(body),
+                                    "sha256": hashlib.sha256(body).hexdigest(),
+                                }
+                            ],
+                        }
+                    ),
+                    encoding="utf-8",
+                )
             payload = (
                 {"type": "run.completed"}
                 if completed
@@ -564,6 +601,12 @@ async def test_worker_orchestrator_persists_intent_acceptance_and_honest_eof(
     assert work.status == ("completed" if completed else "failed")
     assert bound.task.status == ("in_review" if completed else "failed")
     assert "tokens" not in work.cost
+    if completed:
+        from app.models.drive import DriveNode
+        from app.services.drive import read_content
+
+        node = db.scalar(select(DriveNode).where(DriveNode.work_session_id == work.id))
+        assert node is not None and read_content(node) == "Durable worker output.\n"
 
 
 @pytest.mark.parametrize("cancelled", [True, False])

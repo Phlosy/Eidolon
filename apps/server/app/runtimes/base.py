@@ -67,6 +67,7 @@ class TaskContext:
     # 每一项是 `app/work/handoff.py::InputArtifactRef.as_dict()`。
     # 它是**输入**，不是知识：这里不做检索、不做裁剪判断，由 handoff 层决定。
     input_artifacts: list[dict] = field(default_factory=list)
+    required_artifact_types: list[str] = field(default_factory=list)
 
 
 @dataclass

@@ -13,7 +13,7 @@ def test_hermes_capabilities_honest():
     caps = gateway.adapters()[RuntimeType.hermes].get_capabilities()
     assert caps.chat and caps.task and caps.streaming
     assert caps.scheduler is True  # /api/jobs
-    assert caps.artifacts is False  # no artifacts-download endpoint
+    assert caps.artifacts is True  # bounded, attempt-bound workspace manifest
 
 
 def test_openclaw_capabilities_honest():
@@ -44,5 +44,5 @@ def test_runtime_types_endpoint(client):
     assert types["hermes"]["deployment_modes"] == ["docker"]
     assert "docker_available" in types["hermes"]
     assert "openai" in types["hermes"]["supported_providers"]
-    assert types["hermes"]["capabilities"]["artifacts"] is False
+    assert types["hermes"]["capabilities"]["artifacts"] is True
     assert types["openclaw"]["capabilities"]["artifacts"] is True
