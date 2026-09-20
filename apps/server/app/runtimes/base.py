@@ -203,11 +203,23 @@ class RuntimeEvent:
     ts: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
+@dataclass(frozen=True)
+class ArtifactOrigin:
+    local_session_ref: str
+    remote_run_id: str
+    remote_session_ref: str
+    source_ref: str
+    size_bytes: int
+    sha256: str
+
+
 @dataclass
 class ProducedArtifact:
     type: str
     title: str
     content: str
+    # Transport evidence only; the host must validate its saved attempt before acceptance.
+    origin: ArtifactOrigin | None = None
 
 
 @dataclass

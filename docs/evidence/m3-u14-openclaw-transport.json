@@ -1,0 +1,153 @@
+{
+  "unit": "U14",
+  "status": "in_progress",
+  "slice": "OpenClaw bounded artifact download and transport origin",
+  "date": "2026-09-20",
+  "baseline": "85c282662a034d2aae8e8f4ee14fa3e531304a6f",
+  "engine": "native inline after two pre-launch thread-limit rejections",
+  "behavior_changed": true,
+  "red": {
+    "initial": 19,
+    "additional_cancel_race": 1,
+    "characterization_byte_boundaries": 3
+  },
+  "final_focused_passed": 175,
+  "tests_added": 23,
+  "checks": [
+    {
+      "label": "openclaw-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 4.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/openclaw-red.log",
+      "log_sha256": "75da87dcaf0baac2d2cb2b107d5b11cb160fa9a7134b38ef482180923325d76c"
+    },
+    {
+      "label": "openclaw-green-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.85,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/openclaw-green-1.log",
+      "log_sha256": "33233a17d73949aa2876ff8e888b8bf0b5870495b34df2e4bfc17afa3e4d147b"
+    },
+    {
+      "label": "openclaw-cancel-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "-q",
+        "--tb=short",
+        "-k",
+        "awaiting or boundary"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 2.93,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/openclaw-cancel-red.log",
+      "log_sha256": "2641934e62e64b421a87191afe59afd40eaa1b63fb57af443acb25a14d03eccc"
+    },
+    {
+      "label": "openclaw-focused",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_runtimes_behavior.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 19.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/openclaw-focused.log",
+      "log_sha256": "9d6efa91bf3c051b9d0a7414664de74dd0808f3e5915fdc8573b0c1c41ce00bf"
+    },
+    {
+      "label": "openclaw-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/runtimes/artifacts.py",
+        "apps/server/app/runtimes/base.py",
+        "apps/server/app/runtimes/openclaw/artifacts.py",
+        "apps/server/app/runtimes/openclaw/adapter.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/openclaw-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    }
+  ],
+  "format_check": {
+    "exit_code": 0,
+    "files": 5,
+    "log_sha256": "f114d83b30c5c657ee43a847a45bafccaea255d82673feb87c26d252c61e29c1"
+  },
+  "pinned_protocol": {
+    "version": "2026.8.1",
+    "image": "sha256:e7849cb6c1ef1ead39ab4be7d85edb2df89611f486e283284c7cf35ce39a20d4",
+    "handler_sha256": "9255e7a908e69b726d7753d44a28dac8a48f1f094d1092304266adba3ad7fb4e",
+    "proof": "source inspection in disposable network-none, read-only container; no model output or artifact production claimed"
+  },
+  "limits": {
+    "per_file_bytes": 262144,
+    "collection_bytes": 1048576,
+    "files": 32,
+    "format": "UTF-8 text only; URL and binary rejected"
+  },
+  "not_yet_verified": [
+    "actual runtime file production and collection",
+    "Hermes controlled manifest",
+    "durable whole-collection acceptance and dedup",
+    "Drive revision content and downstream handoff",
+    "real upstream/downstream/formal review chain"
+  ],
+  "raw_dir": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p",
+  "source_sha256": {
+    "apps/server/app/runtimes/artifacts.py": "41d17416831447ef9eeddbe7fe11a071fc98a3c248bc0bb1d77e42b739b2cf8a",
+    "apps/server/app/runtimes/base.py": "3065b5a52a2025b905ab1151bbc2359345f6d290ecaee8da7b5cd50afdb6a4aa",
+    "apps/server/app/runtimes/openclaw/artifacts.py": "1a5fd41ff2adf5d802354592233f9f7d6a41cdf10dd6bc66e6399f98901fe139",
+    "apps/server/app/runtimes/openclaw/adapter.py": "94e339152bd4e5304ed8e8f8753d3efc14f48e3665e31043345a391504e4004f",
+    "apps/server/tests/test_m3_runtime_artifacts.py": "0f52b9bd8955338da879b36724f26e6cf599b6341bb2b0e440b32b0beb534364"
+  },
+  "paid_calls": 0,
+  "migrations": 0,
+  "existing_containers_changed": false,
+  "untouched": [
+    "tmp/"
+  ]
+}

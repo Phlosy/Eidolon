@@ -44,6 +44,7 @@ from app.runtimes.base import (
 )
 from app.runtimes.container_common import refresh_status, resolve_container_instance
 from app.runtimes.docker.service import get_docker_service
+from app.runtimes.openclaw import artifacts as artifact_transport
 from app.runtimes.openclaw.rpc import GatewayClient
 
 logger = get_logger(__name__)
@@ -327,39 +328,14 @@ class OpenClawAdapter(RuntimeAdapter):
             logger.exception("openclaw abort failed", extra={"task_id": session.task_id})
 
     async def get_artifacts(self, session: RuntimeSession) -> list[ProducedArtifact]:
-        run_id = session.instance.details.get(f"run_id:{session.id}")
-        if not run_id:
-            return list(session.artifacts)
+        artifact_transport.require_completed_origin(session)
         try:
             async with self._connect(session.instance) as client:
-                result = await client.call(
-                    "artifacts.list", {"sessionKey": _SESSION_KEY, "runId": run_id}
-                )
-                items = result.get("artifacts") if isinstance(result, dict) else result
-                for item in items or []:
-                    if not isinstance(item, dict):
-                        continue
-                    content = ""
-                    if item.get("id"):
-                        try:
-                            got = await client.call(
-                                "artifacts.get", {"sessionKey": _SESSION_KEY, "id": item["id"]}
-                            )
-                            content = str((got or {}).get("content") or "")
-                        except Exception:
-                            logger.exception(
-                                "artifacts.get failed", extra={"task_id": session.task_id}
-                            )
-                    session.artifacts.append(
-                        ProducedArtifact(
-                            type=str(item.get("type") or "other"),
-                            title=str(item.get("title") or item.get("name") or "artifact"),
-                            content=content,
-                        )
-                    )
+                return await artifact_transport.collect(client, session)
+        except RuntimeProtocolError:
+            raise
         except Exception:
-            logger.exception("openclaw artifacts.list failed", extra={"task_id": session.task_id})
-        return list(session.artifacts)
+            raise RuntimeProtocolError("artifact_transport_failed") from None
 
     async def get_runtime_info(self, instance: RuntimeInstance) -> RuntimeInfo:
         return RuntimeInfo(
