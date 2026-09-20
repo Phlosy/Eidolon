@@ -140,6 +140,11 @@ def prepare_attempt(
         ensure_sqlite_transaction(db)
         work = db.get(WorkSession, work_session_id)
         row = _identity(db, work, session)
+        artifact_context = None
+        if kind == "worker" and work.runtime_type != "mock":
+            from app.work import runtime_artifacts
+
+            artifact_context = runtime_artifacts.capture_context(work, session, row)
         digest = _digest(
             json.dumps(
                 {
@@ -149,6 +154,11 @@ def prepare_attempt(
                     "request": request_key,
                     "kind": kind,
                     "runtime": instance_fingerprint(row) if row else "mock",
+                    **(
+                        {"artifact_context": artifact_context}
+                        if artifact_context is not None
+                        else {}
+                    ),
                 },
                 sort_keys=True,
                 allow_nan=False,
@@ -168,6 +178,11 @@ def prepare_attempt(
             .order_by(RuntimeAttempt.attempt_number.desc())
             .limit(1)
         )
+        if artifact_context is not None and previous is not None:
+            if previous.artifact_context_json is None:
+                raise RuntimeProtocolError("artifact_context_unknown")
+            if previous.artifact_context_json != artifact_context:
+                raise RuntimeProtocolError("artifact_context_changed")
         if previous is not None and (previous.request_digest != digest or previous.kind != kind):
             raise RuntimeProtocolError("execution_request_conflict")
         if retry_of is not None:
@@ -182,6 +197,8 @@ def prepare_attempt(
                 previous.id, previous.request_key, previous.idempotency_key, session_factory
             )
             session.attempt = recorder
+            if artifact_context is not None:
+                runtime_artifacts.bind_context(previous.artifact_context_json, session)
             return recorder
         number = previous.attempt_number + 1 if previous else 1
         key = (
@@ -208,11 +225,14 @@ def prepare_attempt(
             remote_session_ref=remote_session,
             status="prepared",
             last_progress_at=now,
+            artifact_context_json=artifact_context,
         )
         db.add(attempt)
         db.flush()
         recorder = AttemptRecorder(attempt.id, request_key, key, session_factory)
         db.commit()
+    if artifact_context is not None:
+        runtime_artifacts.bind_context(artifact_context, session)
     session.attempt = recorder
     return recorder
 

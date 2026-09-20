@@ -531,6 +531,7 @@ async def test_worker_orchestrator_persists_intent_acceptance_and_honest_eof(
     db, bound, monkeypatch, completed, tmp_path
 ):
     bound.row.workspace_path = str(tmp_path / "worker-workspace")
+    Path(bound.row.workspace_path).mkdir()
     db.commit()
     orchestration = configure_worker(db, bound, monkeypatch)
     observed = []

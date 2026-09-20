@@ -110,6 +110,7 @@ async def test_pinned_runtime_writes_actual_file_with_original_attempt(
             title="Produce real file",
             assignee_id=employee.id,
             status="in_progress",
+            produces_json=["source_code"],
         )
         db.add(task)
         db.flush()

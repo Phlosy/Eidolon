@@ -70,6 +70,13 @@ class TaskContext:
     required_artifact_types: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class ArtifactWorkspace:
+    path: str
+    device: int
+    inode: int
+
+
 @dataclass
 class RuntimeSession:
     id: str
@@ -89,6 +96,8 @@ class RuntimeSession:
     # Installed by the host before sending. Adapters know no database/domain types.
     attempt: "RuntimeAttemptObserver | None" = field(default=None, repr=False)
     remote_session_ref: str | None = None
+    artifact_workspace: ArtifactWorkspace | None = None
+    artifact_required_types: tuple[str, ...] | None = None
 
 
 class RuntimeProtocolError(RuntimeError):

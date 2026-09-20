@@ -81,6 +81,10 @@ class RuntimeAttempt(TimestampMixin, Base):
     host_outcome: Mapped[str | None] = mapped_column(String(16), nullable=True)
     host_reason: Mapped[str | None] = mapped_column(String(48), nullable=True)
     host_observed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Captured before worker dispatch; legacy, mock and controlled turns stay NULL.
+    artifact_context_json: Mapped[dict | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
 
 
 class RuntimeTelemetry(Base):
@@ -124,6 +128,7 @@ _IDENTITY = (
     "instance_fingerprint",
     "kind",
     "remote_session_ref",
+    "artifact_context_json",
 )
 _ATTEMPT_INSERT = (
     "NEW.status <> 'prepared' OR NEW.remote_run_id IS NOT NULL OR NEW.host_outcome IS NOT NULL OR "
@@ -139,6 +144,14 @@ _ATTEMPT_INSERT = (
 )
 GUARDS = (
     (RuntimeAttempt.__table__, "runtime_attempt_insert_valid", "INSERT", _ATTEMPT_INSERT),
+    (
+        RuntimeAttempt.__table__,
+        "runtime_attempt_artifact_context_valid",
+        "INSERT",
+        "NEW.artifact_context_json IS NOT NULL AND (NEW.kind <> 'worker' OR "
+        "NEW.runtime_instance_id IS NULL OR json_valid(NEW.artifact_context_json) <> 1 OR "
+        "json_type(NEW.artifact_context_json) IS NOT 'object')",
+    ),
     (
         RuntimeAttempt.__table__,
         "runtime_attempt_mock_source_valid",

@@ -128,7 +128,9 @@ class OpenClawAdapter(RuntimeAdapter):
             prompt += workspace_artifacts.instructions(
                 session,
                 self.type.value,
-                required_types=task.required_artifact_types
+                required_types=list(session.artifact_required_types)
+                if session.artifact_required_types is not None
+                else task.required_artifact_types
                 if isinstance(task, TaskContext)
                 else [],
             )

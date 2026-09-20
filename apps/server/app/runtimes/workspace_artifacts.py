@@ -21,7 +21,12 @@ from app.runtimes.artifacts import (
     require_completed_origin,
     text_artifact,
 )
-from app.runtimes.base import ProducedArtifact, RuntimeProtocolError, RuntimeSession
+from app.runtimes.base import (
+    ArtifactWorkspace,
+    ProducedArtifact,
+    RuntimeProtocolError,
+    RuntimeSession,
+)
 from app.runtimes.paths import WORKSPACE_MOUNTS
 
 PROTOCOL = "eidolon.artifacts.v1"
@@ -98,17 +103,29 @@ def _parts(path: object) -> list[str]:
 
 
 @contextmanager
-def _directory(root: str, parts: list[str]):
+def _directory(root: str, parts: list[str], expected: ArtifactWorkspace | None = None):
     if not Path(root).is_absolute():
         raise RuntimeProtocolError("artifact_path_unsafe")
     with ExitStack() as stack:
         flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
         descriptor = os.open(root, flags)
         stack.callback(os.close, descriptor)
+        info = os.fstat(descriptor)
+        if expected is not None and expected != ArtifactWorkspace(root, info.st_dev, info.st_ino):
+            raise RuntimeProtocolError("artifact_workspace_changed")
         for part in parts:
             descriptor = os.open(part, flags, dir_fd=descriptor)
             stack.callback(os.close, descriptor)
         yield descriptor
+
+
+def capture_workspace(path: str) -> ArtifactWorkspace:
+    try:
+        with _directory(path, []) as descriptor:
+            info = os.fstat(descriptor)
+            return ArtifactWorkspace(path, info.st_dev, info.st_ino)
+    except (OSError, RuntimeProtocolError, TypeError, ValueError):
+        raise RuntimeProtocolError("artifact_workspace_unavailable") from None
 
 
 def _stamp(info):
@@ -220,10 +237,22 @@ def _manifest(body: bytes, session: RuntimeSession) -> list[dict]:
 
 def collect(session: RuntimeSession) -> list[ProducedArtifact]:
     require_completed_origin(session)
-    identity = (session.id, session.remote_run_id, session.remote_session_ref, session.attempt)
+
+    def identity():
+        return (
+            session.id,
+            session.remote_run_id,
+            session.remote_session_ref,
+            getattr(session.attempt, "idempotency_key", None),
+            session.instance.home_path,
+            session.artifact_workspace,
+        )
+
+    original = identity()
+    root, expected = session.instance.home_path, session.artifact_workspace
     relative = output_directory(session)
     try:
-        with _directory(session.instance.home_path, _parts(relative)) as directory:
+        with _directory(root, _parts(relative), expected) as directory:
             body = _read(directory, "manifest.json", MAX_MANIFEST_BYTES)
             items = _manifest(body, session)
             collected = []
@@ -245,13 +274,10 @@ def collect(session: RuntimeSession) -> list[ProducedArtifact]:
             if _read(directory, "manifest.json", MAX_MANIFEST_BYTES) != body:
                 raise RuntimeProtocolError("artifact_file_changed")
             require_completed_origin(session)
-            if identity != (
-                session.id,
-                session.remote_run_id,
-                session.remote_session_ref,
-                session.attempt,
-            ):
+            if original != identity():
                 raise RuntimeProtocolError("artifact_origin_mismatch")
+            if expected is not None and capture_workspace(root) != expected:
+                raise RuntimeProtocolError("artifact_workspace_changed")
             return collected
     except FileNotFoundError:
         raise RuntimeProtocolError("artifact_file_missing") from None
