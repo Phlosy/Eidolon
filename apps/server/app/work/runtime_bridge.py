@@ -11,7 +11,7 @@ import math
 import re
 from copy import deepcopy
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.database import SessionLocal
@@ -19,8 +19,9 @@ from app.core.transaction_effects import ensure_sqlite_transaction
 from app.models.decision import DecisionRecord, ToolAudit
 from app.models.drive import DriveNode
 from app.models.enums import DriveNodeKind, DriveZone
-from app.models.project import Project, Task
+from app.models.project import Project, Task, WorkSession
 from app.models.review import ReviewRequest
+from app.models.runtime_execution import RuntimeAttempt
 from app.models.runtime_operation import RuntimeOperation
 from app.repositories import knowledge as knowledge_repo
 from app.repositories import position as position_repo
@@ -392,7 +393,64 @@ def _result(db, operation, *, interruption=None):
     return result
 
 
-def handle_reply(work_session_id: int, text: str, *, session_factory=SessionLocal) -> dict:
+def _digest(request):
+    return hashlib.sha256(
+        json.dumps(
+            request, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _action_count(request):
+    if request["kind"] == "decision":
+        return len(request["decision"]["actions"])
+    return int(request["kind"] == "read")
+
+
+def stored_request_body(operation: RuntimeOperation) -> str:
+    """Recover only saved, validated input; a digest cannot reconstruct missing actions."""
+    if operation.request_body is None:
+        raise BridgeError("request_body_unknown", operation_id=operation.id)
+    try:
+        request = parse_reply(operation.request_body)
+    except BridgeError as exc:
+        raise BridgeError("request_body_mismatch", operation_id=operation.id) from exc
+    if (
+        _digest(request) != operation.request_digest
+        or request["kind"] != operation.kind
+        or request["operation_key"] != operation.operation_key
+        or _action_count(request) != operation.requested_action_count
+    ):
+        raise BridgeError("request_body_mismatch", operation_id=operation.id)
+    return operation.request_body
+
+
+def _reply_attempt(db, work_session_id, attempt_id):
+    attempt = db.get(RuntimeAttempt, attempt_id, populate_existing=True)
+    work = db.get(WorkSession, work_session_id, populate_existing=True)
+    latest_id = db.scalar(
+        select(func.max(RuntimeAttempt.id)).where(RuntimeAttempt.work_session_id == work_session_id)
+    )
+    if (
+        attempt is None
+        or work is None
+        or attempt.id != latest_id
+        or attempt.work_session_id != work_session_id
+        or attempt.local_session_ref != work.runtime_session_ref
+        or attempt.runtime_instance_id != work.runtime_instance_id
+        or attempt.kind != "controlled"
+        or attempt.status != "completed"
+        or attempt.host_outcome != "completed"
+        or attempt.host_reason != "reply_received"
+        or attempt.stop_requested_at is not None
+    ):
+        raise BridgeError("reply_attempt_mismatch")
+    return attempt
+
+
+def handle_reply(
+    work_session_id: int, text: str, *, session_factory=SessionLocal, _runtime_attempt_id=None
+) -> dict:
     """Dispatch a retransmitted body with short, bridge-owned DB transactions.
 
     Invalid input has zero business writes. Identity failures before acceptance
@@ -403,11 +461,11 @@ def handle_reply(work_session_id: int, text: str, *, session_factory=SessionLoca
     request = parse_reply(text)
     if type(work_session_id) is not int or not 0 < work_session_id < 2**63:
         raise BridgeError("invalid_work_session", "host must bind a positive work_session_id")
-    digest = hashlib.sha256(
-        json.dumps(
-            request, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
-        ).encode("utf-8")
-    ).hexdigest()
+    if _runtime_attempt_id is not None and (
+        type(_runtime_attempt_id) is not int or not 0 < _runtime_attempt_id < 2**63
+    ):
+        raise BridgeError("reply_attempt_mismatch")
+    digest = _digest(request)
     operation_id = None
     decision_id = None
     try:
@@ -428,30 +486,46 @@ def handle_reply(work_session_id: int, text: str, *, session_factory=SessionLoca
                 )
             if request["kind"] == "decision":
                 _validate_references(db, ctx, request["decision"])
+            attempt = (
+                _reply_attempt(db, work_session_id, _runtime_attempt_id)
+                if _runtime_attempt_id is not None
+                else None
+            )
+            if (
+                attempt is not None
+                and attempt.reply_operation_id is not None
+                and (operation is None or attempt.reply_operation_id != operation.id)
+            ):
+                raise BridgeError("reply_attempt_mismatch")
             if operation is None:
-                action_count = {"read": 1, "finish": 0}.get(request["kind"])
-                if action_count is None:
-                    action_count = len(request["decision"]["actions"])
                 operation = RuntimeOperation(
                     work_session_id=work_session_id,
                     operation_key=request["operation_key"],
                     request_digest=digest,
+                    request_body=text,
                     kind=request["kind"],
-                    requested_action_count=action_count,
+                    requested_action_count=_action_count(request),
                 )
                 db.add(operation)
                 db.flush()
             operation_id = operation.id
+            if attempt is not None:
+                attempt.reply_operation_id = operation_id
+
+            def validate_request(db, current):
+                if _runtime_attempt_id is not None:
+                    source = _reply_attempt(db, work_session_id, _runtime_attempt_id)
+                    if source.reply_operation_id != operation_id:
+                        raise BridgeError("reply_attempt_mismatch", operation_id=operation_id)
+                if request["kind"] == "decision":
+                    _validate_references(db, current, request["decision"])
+
             runtime = RuntimeExecution(
                 operation.id,
                 work_session_id,
                 digest,
                 session_factory,
-                validate_references=(
-                    lambda db, ctx: _validate_references(db, ctx, request["decision"])
-                )
-                if request["kind"] == "decision"
-                else None,
+                validate_references=validate_request,
             )
             interruption = None
             if request["kind"] == "decision":

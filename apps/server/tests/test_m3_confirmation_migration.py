@@ -3,7 +3,7 @@
 import pytest
 from alembic import command
 from alembic.script import ScriptDirectory
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import create_engine, event, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 from test_m3_action_confirmations import owner, proposal
 from test_m3_management_runtime import world as world
@@ -19,6 +19,7 @@ from app.models.action_confirmation import ActionConfirmation
 from app.models.base import Base, utcnow
 from app.models.project import WorkSession
 from app.models.runtime_execution import RuntimeAttempt
+from app.models.runtime_operation import RuntimeOperation
 from app.work import action_confirmations as confirmations
 
 PREVIOUS = "56b215ea43f0"
@@ -85,7 +86,7 @@ def test_v57_up_down_up_metadata_parity_and_existing_history(tmp_path):
                     assert "action_confirmations" not in inspect(connection).get_table_names()
                     assert connection.exec_driver_sql("SELECT * FROM work_sessions").all() == before
         scripts = ScriptDirectory.from_config(_alembic_config())
-        assert scripts.get_heads() == ["63c98cff1a27"]
+        assert scripts.get_heads() == ["64da10b82e39"]
         assert scripts.get_revision(REVISION).down_revision == PREVIOUS
     finally:
         migrated.dispose()
@@ -93,8 +94,18 @@ def test_v57_up_down_up_metadata_parity_and_existing_history(tmp_path):
 
 
 def test_v57_populated_downgrade_refuses_before_ddl(db, world, monkeypatch):
-    _, _, _, row_id = proposal(db, world, monkeypatch)
+    # Model a pre-v64 request: its body was never captured. This must still reach
+    # v57's own history guard, rather than stopping first on a new v64 source.
+    def legacy_request(_mapper, _connection, row):
+        row.request_body = None
+
+    event.listen(RuntimeOperation, "before_insert", legacy_request)
+    try:
+        _, _, _, row_id = proposal(db, world, monkeypatch)
+    finally:
+        event.remove(RuntimeOperation, "before_insert", legacy_request)
     db.commit()
+    assert db.scalar(select(RuntimeOperation)).request_body is None
     with db.get_bind().connect() as connection:
         schema = contract(connection)
         before = connection.exec_driver_sql("SELECT * FROM action_confirmations").all()
@@ -105,7 +116,7 @@ def test_v57_populated_downgrade_refuses_before_ddl(db, world, monkeypatch):
         assert connection.exec_driver_sql("SELECT * FROM action_confirmations").all() == before
         assert (
             connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-            == "63c98cff1a27"
+            == "64da10b82e39"
         )
     assert db.get(ActionConfirmation, row_id).status == "pending"
 
@@ -179,7 +190,7 @@ def test_lower_revision_refusal_rolls_back_v57_schema_too(tmp_path):
             assert contract(connection) == before
             assert (
                 connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-                == "63c98cff1a27"
+                == "64da10b82e39"
             )
     finally:
         engine.dispose()

@@ -53,7 +53,8 @@ def _assert_guards(connection):
             )
     with pytest.raises(IntegrityError, match="identity is immutable"):
         connection.execute(text("DELETE FROM runtime_operations WHERE id = :id"), {"id": op_id})
-    with pytest.raises(IntegrityError, match="UNIQUE"):
+    # v64 also prevents SQLite INSERT OR REPLACE from erasing this identity.
+    with pytest.raises(IntegrityError, match="invalid runtime request source"):
         _operation(connection)
     for kind, count in (("finish", 1), ("decision", 0), ("decision", 17), ("read", 2)):
         with pytest.raises(IntegrityError, match="ck_runtime_operation_kind_count"):
@@ -159,7 +160,7 @@ def test_v52_up_down_up_check_preserves_legacy_audits_and_guards(tmp_path):
         migrate("head")
         verify()
         script = ScriptDirectory.from_config(config)
-        assert script.get_heads() == ["63c98cff1a27"]
+        assert script.get_heads() == ["64da10b82e39"]
         assert script.get_revision("52c94fd1a807").down_revision == "51b83e04a6f2"
     finally:
         engine.dispose()

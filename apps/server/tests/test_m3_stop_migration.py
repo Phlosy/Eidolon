@@ -47,6 +47,7 @@ def test_v62_up_down_up_metadata_parity_without_invented_stop_history(tmp_path):
                 assert after.pop("stop_requested_at") is None
                 assert after.pop("stop_reason") is None
                 assert after.pop("deadline_at") is None
+                assert after.pop("reply_operation_id") is None
                 assert after == before
                 for assignment in (
                     "stop_reason='cancelled'",
@@ -74,7 +75,7 @@ def test_v62_up_down_up_metadata_parity_without_invented_stop_history(tmp_path):
                         == before
                     )
         scripts = ScriptDirectory.from_config(_alembic_config())
-        assert scripts.get_heads() == ["63c98cff1a27"]
+        assert scripts.get_heads() == ["64da10b82e39"]
         assert scripts.get_revision(REVISION).down_revision == PREVIOUS
     finally:
         migrated.dispose()
@@ -95,5 +96,5 @@ def test_v62_downgrade_refuses_to_erase_stop_before_any_ddl(db, bound):
         assert connection.exec_driver_sql("SELECT * FROM runtime_attempts").all() == rows
         assert (
             connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-            == "63c98cff1a27"
+            == "64da10b82e39"
         )

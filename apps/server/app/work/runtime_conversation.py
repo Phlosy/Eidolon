@@ -486,7 +486,10 @@ async def run_conversation(
                 _remaining(deadline)
                 result["submitted_actions"] += actions
                 receipt = bridge.handle_reply(
-                    work_session_id, reply.text, session_factory=bridge_session
+                    work_session_id,
+                    reply.text,
+                    session_factory=bridge_session,
+                    _runtime_attempt_id=attempt.attempt_id,
                 )
                 if len(_json(receipt).encode("utf-8")) > limits.max_result_bytes:
                     turn["receipt_reference"] = {

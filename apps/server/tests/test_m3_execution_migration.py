@@ -104,7 +104,7 @@ def test_v56_up_down_up_metadata_parity_and_legacy_unknown(tmp_path):
                     )
                     _assert_original_guards(connection, 1)
         scripts = ScriptDirectory.from_config(_alembic_config())
-        assert scripts.get_heads() == ["63c98cff1a27"]
+        assert scripts.get_heads() == ["64da10b82e39"]
         assert scripts.get_revision(REVISION).down_revision == PREVIOUS
     finally:
         migrated.dispose()
@@ -151,7 +151,7 @@ def test_v56_downgrade_refuses_before_erasing_attempt_history(tmp_path):
             assert contract(connection) == schema
             assert (
                 connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-                == "63c98cff1a27"
+                == "64da10b82e39"
             )
     finally:
         engine.dispose()

@@ -96,6 +96,8 @@ class RuntimeAttempt(TimestampMixin, Base):
     stop_reason: Mapped[str | None] = mapped_column(String(48), nullable=True)
     # Original request allowance; NULL means the historical limit was not captured.
     deadline_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Once-only reference enforced by SQL guards, including with foreign_keys=OFF.
+    reply_operation_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Captured before worker dispatch; legacy, mock and controlled turns stay NULL.
     artifact_context_json: Mapped[dict | None] = mapped_column(
         JSON(none_as_null=True), nullable=True
@@ -203,6 +205,26 @@ DEADLINE_GUARDS = (
         "NEW.deadline_at IS NOT OLD.deadline_at",
     ),
 )
+REPLY_GUARDS = (
+    ("runtime_attempt_reply_insert", "INSERT", "NEW.reply_operation_id IS NOT NULL"),
+    (
+        "runtime_attempt_reply_once",
+        "UPDATE",
+        "OLD.reply_operation_id IS NOT NULL AND "
+        "NEW.reply_operation_id IS NOT OLD.reply_operation_id",
+    ),
+    (
+        "runtime_attempt_reply_valid",
+        "UPDATE",
+        "NEW.reply_operation_id IS NOT OLD.reply_operation_id AND "
+        "(NEW.kind <> 'controlled' OR NEW.status <> 'completed' OR "
+        "NEW.host_outcome IS NOT 'completed' OR NEW.host_reason IS NOT 'reply_received' OR "
+        "NEW.stop_requested_at IS NOT NULL OR NOT EXISTS (SELECT 1 FROM runtime_operations op "
+        "WHERE op.id=NEW.reply_operation_id AND op.work_session_id=NEW.work_session_id) OR "
+        "EXISTS (SELECT 1 FROM runtime_attempts a WHERE a.work_session_id=NEW.work_session_id "
+        "AND a.id>NEW.id))",
+    ),
+)
 GUARDS = (
     (
         WorkSession.__table__,
@@ -218,7 +240,7 @@ GUARDS = (
     ),
     *(
         (RuntimeAttempt.__table__, name, operation, condition)
-        for name, operation, condition in (*STOP_GUARDS, *DEADLINE_GUARDS)
+        for name, operation, condition in (*STOP_GUARDS, *DEADLINE_GUARDS, *REPLY_GUARDS)
     ),
     (RuntimeAttempt.__table__, "runtime_attempt_insert_valid", "INSERT", _ATTEMPT_INSERT),
     (

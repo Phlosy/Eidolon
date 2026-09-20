@@ -1,0 +1,379 @@
+{
+  "unit": "U16 component9",
+  "status": "locally_verified_component_only",
+  "base_commit": "b31b57d4c0df9994016307b698b5a1c29b819bc7",
+  "plan": "docs/m3-implementation-plan.md",
+  "requirements": [
+    "R4",
+    "R5"
+  ],
+  "key_technical_decisions": [
+    "KTD3",
+    "KTD8"
+  ],
+  "migration": {
+    "revision": "64da10b82e39",
+    "parent": "63c98cff1a27",
+    "changes": [
+      "nullable immutable RuntimeOperation.request_body",
+      "nullable once-only RuntimeAttempt.reply_operation_id"
+    ],
+    "verification": "Temporary SQLite up/down/up, metadata/trigger parity, alembic check, foreign_key_check, single head; historical unknowns preserved; populated downgrade rejected before DDL"
+  },
+  "behavior": "Store the strict accepted original JSON and bind the latest completed controlled reply to its same-session operation before actions. Preserve canonical digest and existing ToolAudit truth. Each subsequent action rechecks original source; no new model turn or startup owner is implemented by this component.",
+  "process_proof": {
+    "test": "apps/server/tests/test_m3_request_sources.py",
+    "initial_crash": "os._exit(23) after original intent commit or after first action commit",
+    "recovered_crash": "os._exit(24) after second recovered action commits",
+    "replay": "Fresh process receives only original WorkSession ID, reads original stored body/correlation, and uses existing bridge. Two further fresh processes preserve ToolAudit/Event/Task IDs and aggregate APPLIED from actual receipts.",
+    "limits": "Scripted adapter and isolated SQLite exercise real domain transactions and process termination. No real container/model or automatic startup conversation recovery claim."
+  },
+  "checks": [
+    {
+      "label": "request-sources-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_sources.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.29,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-red.log",
+      "outcome": "expected_failure",
+      "summary": "4 failed, 1 warning in 1.97s",
+      "log_sha256": "0cf4bd17c6ea99bc7ccc9bf7ae54d4a2cefdc4e3443e645a746633c3f879c3ec"
+    },
+    {
+      "label": "request-sources-first-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_sources.py",
+        "apps/server/tests/test_m3_runtime_bridge.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 17.55,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-first-green.log",
+      "outcome": "passed",
+      "summary": "200 passed, 1 warning in 16.12s",
+      "log_sha256": "a2b34215e386441f5d9c9e841766fc6bc049b5567168c52ee9d1d0a77bb7725d"
+    },
+    {
+      "label": "request-sources-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_sources.py",
+        "apps/server/tests/test_m3_request_source_migration.py",
+        "apps/server/tests/test_m3_runtime_operation_migration.py",
+        "apps/server/tests/test_m3_deadline_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 10.62,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-boundaries.log",
+      "outcome": "obsolete_sql_error_assertion",
+      "summary": "2 failed, 32 passed, 1 warning in 9.24s",
+      "log_sha256": "ada36ee1a549921c11784ce4875124bd2c66596f810b5d70c07b3f1afa4681eb"
+    },
+    {
+      "label": "request-sources-boundaries-fixed",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_sources.py",
+        "apps/server/tests/test_m3_request_source_migration.py",
+        "apps/server/tests/test_m3_runtime_operation_migration.py",
+        "apps/server/tests/test_m3_deadline_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 11.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-boundaries-fixed.log",
+      "outcome": "passed",
+      "summary": "41 passed, 1 warning in 9.55s",
+      "log_sha256": "fbc37f500d7bea9e20dfb4eab075baaf098789eff8e7c0859ac257dea797f68b"
+    },
+    {
+      "label": "request-sources-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server",
+        "apps/server/migrations/versions/64da10b82e39_v64_accepted_request_sources.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-python-lint.log",
+      "outcome": "passed",
+      "summary": "All checks passed!",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "request-sources-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server",
+        "apps/server/migrations/versions/64da10b82e39_v64_accepted_request_sources.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-python-format.log",
+      "outcome": "passed",
+      "summary": "553 files already formatted",
+      "log_sha256": "098c861bc7482fd579e6f21a15ece22756f1f3bbbd9317b9b7316a0390185429"
+    },
+    {
+      "label": "request-sources-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 324.83,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-full-backend.log",
+      "outcome": "legacy_fixture_compatibility_failures",
+      "summary": "2 failed, 3124 passed, 26 deselected, 118 warnings in 322.80s (0:05:22)",
+      "log_sha256": "431db7debd8e4fd6a28dd7e6d5e45d9d59abc84b3a95880ca2ced0c6ab12f7c8"
+    },
+    {
+      "label": "request-sources-web-types",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 3.63,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-web-types.log",
+      "outcome": "passed",
+      "summary": "Command completed with exit code 0 and no output",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "request-sources-web-lint",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "eslint",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 1.92,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-web-lint.log",
+      "outcome": "passed",
+      "summary": "Command completed with exit code 0 and no output",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "request-sources-migration-fixes",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_confirmation_migration.py",
+        "apps/server/tests/test_m3_artifact_collection_migration.py",
+        "apps/server/tests/test_m3_request_source_migration.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 6.04,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-migration-fixes.log",
+      "outcome": "passed",
+      "summary": "8 passed, 1 warning in 4.58s",
+      "log_sha256": "ff95b3a6dd310ae879b94dfc3c800456574aaffa268a252fcd91c143c4369464"
+    },
+    {
+      "label": "request-sources-python-lint-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server",
+        "apps/server/migrations/versions/64da10b82e39_v64_accepted_request_sources.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.05,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-python-lint-final.log",
+      "outcome": "passed",
+      "summary": "All checks passed!",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "request-sources-python-format-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server",
+        "apps/server/migrations/versions/64da10b82e39_v64_accepted_request_sources.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.05,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-python-format-final.log",
+      "outcome": "passed",
+      "summary": "553 files already formatted",
+      "log_sha256": "098c861bc7482fd579e6f21a15ece22756f1f3bbbd9317b9b7316a0390185429"
+    },
+    {
+      "label": "request-sources-full-backend-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 324.34,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/request-sources-full-backend-final.log",
+      "outcome": "passed",
+      "summary": "3126 passed, 26 deselected, 118 warnings in 322.28s (0:05:22)",
+      "log_sha256": "24c5215dfc5456cd9db10c3aeb082b903358fa51192d2f1de807e837e5ed7e1b"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/models/runtime_operation.py": "ad92afc9957047b42d95a9632fb5ee1f09856a01a569d013f0685eb80cd340b7",
+    "apps/server/app/models/runtime_execution.py": "3aa444185beef41b9a657b54aa90b4b08c3dcaeb568a35d65e87eb72d80d7f83",
+    "apps/server/app/work/runtime_bridge.py": "762e881bfb2ba8a055a09f0ea55a057143a0fa1bcc76f130cfc58a3c44670c59",
+    "apps/server/app/work/runtime_conversation.py": "17bcd2ecd5ad68f5feddd55df6f0928ffa14dc6f834d2b789b7f62e06b0aacce",
+    "apps/server/migrations/versions/64da10b82e39_v64_accepted_request_sources.py": "b46027e5a9d4ed0722b1b89bff717225b86c29275613dfcbe2f0086ea8d7b8a9",
+    "apps/server/tests/test_m3_request_sources.py": "c8fd4ad48d643e16e4c426243525ea1d6aefc93b2ff988ec93d512e3258b511c",
+    "apps/server/tests/test_m3_request_source_migration.py": "a2702599204f7347e539123cdfe079c126743623bc6db241281a8246aab2a8f9",
+    "apps/server/tests/test_m3_artifact_collection_migration.py": "34c76df4c12f8741f3e1b5256df0ca5b91285dbe379d08c824824789f4cfc3b7",
+    "apps/server/tests/test_m3_artifact_context_migration.py": "a1601a6ab0761e354e1af5b878defb78bdf8657a7e515ccabdaccf0f0279dd8c",
+    "apps/server/tests/test_m3_confirmation_migration.py": "1ec27271987193b3c1b13944d9ebf6025d8cc150f1d4c342bddcb494919b7ee3",
+    "apps/server/tests/test_m3_deadline_migration.py": "f2bbb6ac5d7958146cbc1dbdd7f04fdde711c7dc533d3211d06ed986659b2e2b",
+    "apps/server/tests/test_m3_drive_revision_migration.py": "040b0447b8d1de044aad632479e4ec02f4f7f23bbbd8e1dcc71c772b59e45647",
+    "apps/server/tests/test_m3_execution_migration.py": "a9d30d4f6eeaccb4643d7283d843f82b40d40496d41e313a4d0ea5e210b5b638",
+    "apps/server/tests/test_m3_management_discovery_migration.py": "d2bd961eae28f73a6c64a4a9c05fbcbe6e991499c97f490e83287e80b4eb3cc8",
+    "apps/server/tests/test_m3_management_dispatch_migration.py": "4dd7b27cb85274e809d7ebeab599fc3357d7fe68b57c18d7aef04f94e8c59106",
+    "apps/server/tests/test_m3_pinned_handoff_migration.py": "93c19f3c844a671022d5eeb7c38bce1ff1c2af107564f365e236ac2fbfce76cf",
+    "apps/server/tests/test_m3_runtime_operation_migration.py": "72ba80ee699546d6a29934a10ec146f9bee21c88d8ac9306562ac356b6654a30",
+    "apps/server/tests/test_m3_session_purpose_migration.py": "7f392aa0a423b4b59a3994f7c17936c0ad3ce6e90870128fc9e7cb4eb08e8519",
+    "apps/server/tests/test_m3_stop_migration.py": "0ea2a1ecfc4fe6126cd58ad4635a9fbb7c5e1110d72a9382e02582853eef4b68",
+    "docs/m2-freeze.md": "75673af6b7f3f6a05a24bfbc7ebbe72b8cb745d6f8375b8b7c770a150ae5a478",
+    "docs/m3-u16-crash-recovery.md": "4fd5e36eb2527248d5c0958398d18f7bd40c799db885e754166f22afa3fc8be7"
+  },
+  "simplification": {
+    "skill": "ce-simplify-code",
+    "scope": "U16 component9 production delta from b31b57d; four production files and revision-local v64 migration; mechanical migration-test updates excluded",
+    "plan_structure_pins": "M3 KTD3/KTD8 context only; preserve exact protocol, original source, scope/authority and transaction boundaries",
+    "requested_route": {
+      "target": "native",
+      "model": "gpt-5.6-terra",
+      "harness": "Codex subagent"
+    },
+    "actual_route": {
+      "target": "native-inline",
+      "model": "unverified",
+      "harness": "Codex caller"
+    },
+    "fallback": "Fresh u16_request_reuse launch returned agent thread limit reached after read-only capacity inventory. No agent was launched; no supported release operation or active task that can free capacity. No completed context reused. All three exact persona assets read fully and all outcomes completed inline before any changes.",
+    "reviews": [
+      {
+        "persona": "code-reuse-reviewer",
+        "status": "complete",
+        "applied": 0,
+        "outcome": "No behavior-equivalent existing helper replaces accepted-body digest/count verification or once-only source binding. Existing executor and receipt sources are reused.",
+        "skipped": [
+          {
+            "candidate": "Import guard constants into migration instead of keeping revision-local SQL",
+            "reason": "Historical migrations must remain independent of future model edits; current metadata/migration parity has direct tests."
+          }
+        ]
+      },
+      {
+        "persona": "code-quality-reviewer",
+        "status": "complete",
+        "applied": 0,
+        "outcome": "The two new nullable fields store independent unreconstructable source facts. The trusted internal argument and per-action source check preserve the existing entrypoint boundary. No unnecessary compatibility branch or dead code found."
+      },
+      {
+        "persona": "efficiency-reviewer",
+        "status": "complete",
+        "applied": 0,
+        "outcome": "Bodies are bounded at64KiB, native I/O unchanged, and latest-source lookup projects MAX(id) under the existing session-leading index.",
+        "skipped": [
+          {
+            "candidate": "Reuse previous ORM source without refreshing before each action",
+            "reason": "Would thin required lock-local identity/stop/latest-attempt checks. Keep explicit source rereads."
+          }
+        ]
+      }
+    ],
+    "behavior_changes": false,
+    "verification": {
+      "state": "passed",
+      "scoped": "41 passed; migration compatibility fixes8 passed",
+      "full_backend": "3126 passed, 26 deselected, 118 warnings in 322.28s (0:05:22)",
+      "python": "Project lint and format553 including new migration passed",
+      "web": "TypeScript and ESLint passed"
+    }
+  },
+  "independent_review_completed": false,
+  "paid_calls": 0,
+  "docker_operations": 0,
+  "not_run": [
+    "26 opt-in native integration cases deselected by existing suite configuration"
+  ],
+  "open_gates": [
+    "U16 automatic ownership and continuation of saved controlled requests",
+    "U16 other source notifications and Evidence/reflection/assessment consumer recovery",
+    "Independent review remains incomplete: fresh simplification worker also hit prelaunch thread limit",
+    "U14 extra paid allowance unanswered; U15-U17 joint real business/monetary evidence"
+  ],
+  "notes": [
+    "35 new request-source scenarios and2 new migration scenarios; initial4 expected failures recorded before production changes, including both actual child exit23 paths",
+    "v52 duplicate-operation insertion now raises the stronger no-replace source guard, so its exact SQL error assertion was updated; duplicate rejection remains enforced",
+    "First full run exposed legacy v60 NULL comparison and v57 fixture reaching v64 protection first. Added explicit NULL assertion and seeded the v57 test operation with a never-captured legacy body during insertion, preserving the original v57 history-refusal assertion and cleanup in finally",
+    "No production behavior changes between the first and final full backend run; fixes only adjusted schema compatibility tests",
+    "No public raw request surface; no host prompt or connection credential stored; original bounded protocol JSON only",
+    "All three simplification outcomes complete,zero edits,two low-value candidates retained deliberately; failed fresh agent launch does not count as independent review",
+    "Original tmp excluded unread; no dev DB/shared fixture changes or whole-U16 completion claim"
+  ]
+}

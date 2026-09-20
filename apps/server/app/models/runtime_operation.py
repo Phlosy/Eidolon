@@ -1,6 +1,6 @@
 """Durable request identity; execution facts live only in correlated ToolAudits."""
 
-from sqlalchemy import DDL, CheckConstraint, ForeignKey, Index, Integer, String, event
+from sqlalchemy import DDL, CheckConstraint, ForeignKey, Index, Integer, String, Text, event
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -29,6 +29,8 @@ class RuntimeOperation(TimestampMixin, Base):
     work_session_id: Mapped[int] = mapped_column(ForeignKey("work_sessions.id"))
     operation_key: Mapped[str] = mapped_column(String(128))
     request_digest: Mapped[str] = mapped_column(String(64))
+    # Original validated input, not a reconstructed prompt. Legacy rows stay unknown.
+    request_body: Mapped[str | None] = mapped_column(Text, nullable=True)
     kind: Mapped[str] = mapped_column(String(16))
     # Submitted input cardinality, never an execution aggregate.
     requested_action_count: Mapped[int] = mapped_column(Integer)
@@ -60,7 +62,36 @@ _VALID_RECEIPT = (
     "AND NEW.decision_id IS op.decision_id "
     "AND (op.kind = 'read' OR (op.kind = 'decision' AND op.decision_id IS NOT NULL))))"
 )
+BODY_GUARDS = (
+    (
+        "runtime_operation_body_valid",
+        "INSERT",
+        "NEW.request_body IS NOT NULL AND CASE WHEN typeof(NEW.request_body) <> 'text' OR "
+        "length(CAST(NEW.request_body AS BLOB)) > 65536 OR json_valid(NEW.request_body) <> 1 "
+        "THEN 1 ELSE json_type(NEW.request_body) IS NOT 'object' OR "
+        "json_extract(NEW.request_body, '$.version') IS NOT 1 OR "
+        "json_extract(NEW.request_body, '$.kind') IS NOT NEW.kind OR "
+        "json_extract(NEW.request_body, '$.operation_key') IS NOT NEW.operation_key OR "
+        "(NEW.kind = 'decision' AND json_array_length(NEW.request_body, '$.decision.actions') "
+        "IS NOT NEW.requested_action_count) END",
+    ),
+    (
+        "runtime_operation_body_immutable",
+        "UPDATE",
+        "NEW.request_body IS NOT OLD.request_body",
+    ),
+    (
+        "runtime_operation_no_replace",
+        "INSERT",
+        "EXISTS (SELECT 1 FROM runtime_operations op WHERE op.id=NEW.id OR "
+        "(op.work_session_id=NEW.work_session_id AND op.operation_key=NEW.operation_key))",
+    ),
+)
 for _table, _name, _timing, _condition, _message in (
+    *(
+        (RuntimeOperation.__table__, name, timing, condition, "invalid runtime request source")
+        for name, timing, condition in BODY_GUARDS
+    ),
     (
         RuntimeOperation.__table__,
         "runtime_operation_identity_immutable",
