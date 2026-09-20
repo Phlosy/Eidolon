@@ -307,10 +307,10 @@ def _search_market(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
 
 
 def _inspect_candidate(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
-    from app.talent.market import read_model
+    from app.services.economy.talent_trade import TalentTradeService
 
     try:
-        return read_model.candidate_detail(db, **args)
+        return TalentTradeService(db).candidate_detail(**args)
     except ValueError as exc:
         raise tools.ToolError(str(exc)) from exc
 

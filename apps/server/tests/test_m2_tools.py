@@ -363,11 +363,13 @@ def test_declaring_a_write_tool_without_authority_is_impossible():
         )
 
 
-def test_high_impact_tools_are_deliberately_absent():
-    """用户拍板 §9/§10：等级先冻结，M2.3 **不**写空业务。"""
-    assert executor.registry.by_side_effect(ToolSideEffect.high_impact) == ()
+def test_high_impact_tools_require_real_business_and_confirmation():
+    """U11 replaces the M2 placeholder only with confirmed real T2/M1 hiring."""
+    specs = executor.registry.by_side_effect(ToolSideEffect.high_impact)
+    assert {spec.name for spec in specs} == {"recruit_from_market"}
+    assert all(spec.confirmation_policy is not None for spec in specs)
     info = executor.describe_tools()
-    assert info["high_impact_count"] == 0
+    assert info["high_impact_count"] == 1
     assert "spend_credits" in info["reserved_high_impact_authorities"]
     assert info["autonomy_by_side_effect"]["high_impact"] == "requires_confirmation"
 
@@ -1137,5 +1139,5 @@ def test_build_helpers_are_pure_constructors():
     assert len(tool_reads.build_read_tools()) >= 12
     # M2.6：9 → 10（consume_artifact）；M2.7：10 → 12（submit_review_verdict / replan_project）
     # M3 U9: two decision-bound learning planning tools.
-    assert len(tool_writes.build_write_tools()) == 14
+    assert len(tool_writes.build_write_tools()) == 15
     assert isinstance(machinery.ToolRegistry(), machinery.ToolRegistry)

@@ -4,7 +4,7 @@
 - 读（列表/档案）：任何登录用户可读**公开投影**（只含白名单字段，见 schemas/market.py）；
 - 写（挂牌/下架）：仅限本公司持有的 person 与本公司发起的挂牌 —— 否则 404（不泄露存在性）。
 
-不含任何交易语义（无价格/报单/结算 —— M1，设计 D10/D2）。
+候选人详情组合 M1 的公开条款；交易写入仍归 M1，T2 领域不增加经济依赖。
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from app.schemas.market import (
 )
 from app.services import market as market_service
 from app.services import recruitment as recruitment_service
+from app.services.economy.talent_trade import TalentTradeService
 from app.talent.fit import service as fit_service
 from app.talent.market import read_model as market_read_model
 
@@ -145,11 +146,11 @@ def get_listing(
     只对 **active** 挂牌开放：下架或被招募后不再对外可读（404）。
     """
     try:
-        return market_service.listing_detail(
-            db, listing_id, timeline_limit=timeline_limit, evidence_limit=evidence_limit
+        return TalentTradeService(db).candidate_detail(
+            listing_id, timeline_limit=timeline_limit, evidence_limit=evidence_limit
         )
-    except market_service.MarketError as exc:
-        raise _http_error(exc) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/listings/{listing_id}/fit", response_model=MarketFitOut)

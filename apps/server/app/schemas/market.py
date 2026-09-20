@@ -164,6 +164,12 @@ class MarketCandidateIdentityOut(BaseModel):
     cultivation_state: str | None = None
 
 
+class MarketCommercialTermsOut(BaseModel):
+    price: int
+    currency: str
+    sale_mode: str
+
+
 class MarketCandidateOut(BaseModel):
     """候选人公开档案：履历即证据链（score/confidence 并列，未评估如实 null）。"""
 
@@ -175,6 +181,7 @@ class MarketCandidateOut(BaseModel):
     timeline: list[MarketTimelineEventOut]
     evidence: list[MarketEvidenceOut]
     market_state: str
+    commercial_terms: MarketCommercialTermsOut | None = None
 
 
 class RecruitIn(BaseModel):

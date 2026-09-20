@@ -109,6 +109,7 @@ class RecruitmentService:
         role: str | None = None,
         reason: str = "",
         actor_user_id: int | None = None,
+        actor: str = "user",
         commit: bool = True,
     ) -> RecruitmentResult:
         """招募（唯一入口）。
@@ -277,7 +278,7 @@ class RecruitmentService:
                     "position_slot_id": int(slot.id) if slot is not None else None,
                 },
                 reason=reason,
-                actor="user",
+                actor=actor,
             )
             if commit:
                 db.commit()

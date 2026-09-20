@@ -26,16 +26,19 @@ Employee 创建 / Listing 关闭 / `talent.purchased`
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
 from app.economy.contracts import EconomicActor
 from app.economy.policy import EconomicPolicy, economic_policy
 from app.events.bus import bus
-from app.models.base import utcnow
-from app.models.economy import Contract, Offer
+from app.models.base import as_utc, utcnow
+from app.models.economy import Contract, Offer, TalentCommercialTerms
 from app.models.enums import (
     ContractType,
     MarketListingStatus,
@@ -44,10 +47,12 @@ from app.models.enums import (
     SystemAccountKind,
     TalentSaleMode,
 )
+from app.models.market import MarketListing
 from app.repositories import economy as economy_repo
 from app.repositories import market as market_repo
 from app.services.economy.contracts import ContractService, OfferService
 from app.services.recruitment import RecruitmentService
+from app.talent.market import eligibility
 
 logger = get_logger(__name__)
 
@@ -141,6 +146,69 @@ class TalentTradeService:
         """读条款（公开信息：价格本身就是要展示的市场信息）。"""
         return economy_repo.get_terms_by_listing(self.db, listing_id=int(listing_id))
 
+    def candidate_detail(self, listing_id: int, **limits) -> dict:
+        """Compose T2 public facts with the existing M1 public price; no private metadata."""
+        from app.talent.market import read_model
+
+        public = read_model.candidate_detail(self.db, listing_id, **limits)
+        terms = self.terms_for(listing_id)
+        return {
+            **public,
+            "commercial_terms": (
+                {"price": terms.price, "currency": terms.currency, "sale_mode": terms.sale_mode}
+                if terms is not None
+                else None
+            ),
+        }
+
+    def quote_buyout(self, listing_id: int, *, buyer_company_id: int) -> dict:
+        """Read the current fixed-price purchase terms; no offer, lock or charge."""
+        listing = self.db.get(MarketListing, listing_id, populate_existing=True)
+        if listing is None or listing.status != "active":
+            raise TalentTradeError("listing_not_active")
+        terms = self.db.scalar(
+            select(TalentCommercialTerms)
+            .where(TalentCommercialTerms.listing_id == listing.id)
+            .execution_options(populate_existing=True)
+        )
+        if terms is None:
+            raise TalentTradeError("commercial_terms_not_set")
+        if terms.sale_mode != "buyout":
+            raise TalentTradeError("negotiation_requires_seller_acceptance")
+        if terms.currency != "CREDIT":
+            raise TalentTradeError("unsupported_currency")
+        if terms.seller_company_id == buyer_company_id:
+            raise TalentTradeError("cannot_buy_your_own_talent")
+        if not eligibility.can_recruit(self.db, listing.person_id).allowed:
+            raise TalentTradeError("not_recruitable")
+        policy = self.policy
+        version = {
+            "listing_id": listing.id,
+            "person_id": listing.person_id,
+            "participant_id": listing.listed_by_participant_id,
+            "listing_updated_at": as_utc(listing.updated_at).isoformat(),
+            "terms_id": terms.id,
+            "terms_updated_at": as_utc(terms.updated_at).isoformat(),
+            "seller_company_id": terms.seller_company_id,
+            "price": terms.price,
+            "currency": terms.currency,
+            "sale_mode": terms.sale_mode,
+            "terms_policy_version": terms.policy_version,
+            "settlement_policy": {
+                "version": policy.version,
+                "contract_fee_bps": policy.contract_fee_bps,
+                "fee_treasury_ratio": policy.fee_treasury_ratio,
+                "fee_burn_ratio": policy.fee_burn_ratio,
+            },
+        }
+        return {
+            "listing_id": listing.id,
+            "amount": terms.price,
+            "version": hashlib.sha256(
+                json.dumps(version, sort_keys=True, separators=(",", ":")).encode()
+            ).hexdigest(),
+        }
+
     # ---------------------------------------------------------------- 出价
 
     def create_offer(
@@ -150,6 +218,7 @@ class TalentTradeService:
         buyer_company_id: int,
         amount: int,
         message: str = "",
+        recruitment_actor: str = "user",
         commit: bool = True,
     ) -> tuple[Offer, PurchaseResult | None]:
         """买方出价。
@@ -194,6 +263,7 @@ class TalentTradeService:
                 buyer_company_id=int(buyer_company_id),
                 amount=int(amount),
                 offer=offer,
+                recruitment_actor=recruitment_actor,
                 commit=commit,
             )
             return offer, purchase
@@ -240,6 +310,7 @@ class TalentTradeService:
         amount: int,
         offer: Offer | None,
         commit: bool,
+        recruitment_actor: str = "user",
     ) -> PurchaseResult:
         """成交核心：锁资 → 招募（T2）→ 放款，**同一个事务**（失败整笔回滚）。"""
         seller_company_id = (
@@ -280,6 +351,7 @@ class TalentTradeService:
                 title="",
                 role=None,
                 reason="talent_purchase",
+                actor=recruitment_actor,
                 commit=False,
             )
 
@@ -312,16 +384,16 @@ class TalentTradeService:
                 },
             }
             self.db.flush()
+            self._publish_purchase(
+                listing=listing,
+                contract=settled,
+                settlement=settlement,
+                recruitment=recruitment,
+                buyer_company_id=int(buyer_company_id),
+                seller_company_id=seller_company_id,
+            )
             if commit:
                 self.db.commit()
-                self._publish_purchase(
-                    listing=listing,
-                    contract=settled,
-                    settlement=settlement,
-                    recruitment=recruitment,
-                    buyer_company_id=int(buyer_company_id),
-                    seller_company_id=seller_company_id,
-                )
         except Exception:
             if commit:
                 self.db.rollback()
@@ -355,7 +427,7 @@ class TalentTradeService:
         buyer_company_id: int,
         seller_company_id: int | None,
     ) -> None:
-        """提交后发事件：`talent.purchased`（本域）+ `person.recruited`（T2 语义，载荷同 T2）。"""
+        """Persist source events with the purchase; delivery waits for the outer commit."""
         bus.publish(
             "talent.purchased",
             {
@@ -373,6 +445,7 @@ class TalentTradeService:
             },
             company_id=int(buyer_company_id),
             actor_employee_id=int(recruitment.employee_id),
+            db=self.db,
         )
         bus.publish(
             "person.recruited",
@@ -386,6 +459,7 @@ class TalentTradeService:
             },
             company_id=int(buyer_company_id),
             actor_employee_id=int(recruitment.employee_id),
+            db=self.db,
         )
 
     # ---------------------------------------------------------------- 内部

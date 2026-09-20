@@ -28,6 +28,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.base import utcnow
@@ -548,6 +549,7 @@ def readiness_report(db: Session, employee: Employee) -> ReadinessReport:
                 "workspace_present": workspace.ready,
                 "instance_id": runtime.facts.get("instance_id"),
                 "binding_id": provider.facts.get("binding_id"),
+                "job": _provisioning_progress(db, employee.id),
             },
         },
         {
@@ -587,6 +589,31 @@ def readiness_report(db: Session, employee: Employee) -> ReadinessReport:
         employment_active=active,
         busy=busy,
     )
+
+
+def _provisioning_progress(db: Session, employee_id: int) -> dict | None:
+    """Current committed runtime intent, shared by Agent and HTTP readiness reads."""
+    job = db.scalar(
+        select(ProvisioningJob)
+        .where(ProvisioningJob.employee_id == employee_id, ProvisioningJob.owner == "runtime")
+        .order_by(ProvisioningJob.id.desc())
+        .limit(1)
+    )
+    if job is None:
+        return None
+    return {
+        "job_id": job.id,
+        "status": job.status,
+        "steps": [
+            {
+                "step": step.resource_type,
+                "status": step.status,
+                "reason_code": (step.result_json or {}).get("reason_code"),
+                "detail": (step.result_json or {}).get("detail") or step.error or step.status,
+            }
+            for step in lifecycle_repo.list_steps(db, job.id)
+        ],
+    }
 
 
 def blocking_gaps(db: Session, employee: Employee) -> tuple[str, ...]:

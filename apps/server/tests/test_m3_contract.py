@@ -841,9 +841,18 @@ def test_capability_gap_actions_are_decision_shaped():
             continue
         for name in tools:
             spec = specs[name]
-            assert spec.side_effect is C.ToolSideEffect.write, (
+            expected_effect = (
+                C.ToolSideEffect.high_impact
+                if action is P.CapabilityGapAction.recruit
+                else C.ToolSideEffect.write
+            )
+            assert spec.side_effect is expected_effect, (
                 f"{action.value} → {name} 必须是写工具（Manager 决策经工具面落地）"
             )
+            if expected_effect is C.ToolSideEffect.high_impact:
+                assert spec.confirmation_policy is not None
+                assert spec.confirmation_policy.decision_kind is C.DecisionKind.recruit
+                assert spec.decision_semantics is C.DecisionSemantics.required
             assert spec.decision_semantics is not C.DecisionSemantics.none, (
                 f"{action.value} → {name} 必须声明与决策信封的关系"
             )

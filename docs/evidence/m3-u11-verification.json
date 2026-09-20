@@ -1,0 +1,3047 @@
+{
+  "unit": "U11",
+  "status": "complete",
+  "base_commit": "dc6129132fbe9a286e4cecd78ff0d4da074469b1",
+  "date": "2026-09-20",
+  "evidence_strategy": "Pre-implementation anchored baseline and three observed reds, actual domain/bridge/approval behavior and negative cases, then isolated real Manager hiring/provisioning acceptance and final repository gates.",
+  "test_counts": {
+    "focused_passed": 315,
+    "new_behavior_cases": 21,
+    "full_server_passed": 2372,
+    "full_server_deselected": 17,
+    "full_server_warnings": 118,
+    "real_passed": 1,
+    "real_failed_setup_attempts": 2,
+    "web_passed": 392,
+    "web_files_passed": 89,
+    "lint": "passed",
+    "build": "passed"
+  },
+  "verification_evidence": [
+    {
+      "unit": "U11",
+      "behavior_changed": true,
+      "existing_tests_inspected": [
+        "test_recruitment.py",
+        "test_talent_trade.py",
+        "test_m1_economy_contract.py",
+        "test_m1_invariants.py",
+        "test_m1_golden_path.py",
+        "test_t2_golden_path.py",
+        "test_market_contract.py",
+        "test_m2_tools.py",
+        "test_m2_decisions.py",
+        "test_m3_contract.py",
+        "test_m3_action_confirmations.py",
+        "test_m3_gap_actions.py",
+        "test_m3_provisioning.py",
+        "integration/test_m3_real_management_sessions.py"
+      ],
+      "tests_added_or_changed": [
+        "apps/server/tests/integration/test_m3_recruitment_manager.py",
+        "apps/server/tests/test_m2_tools.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_m3_recruitment_flow.py",
+        "apps/server/tests/test_t2_golden_path.py"
+      ],
+      "tests_used_unchanged": [
+        "test_recruitment.py",
+        "test_talent_trade.py",
+        "test_m1_economy_contract.py",
+        "test_m1_invariants.py",
+        "test_m1_golden_path.py",
+        "test_market_contract.py",
+        "test_m2_decisions.py",
+        "test_m3_action_confirmations.py",
+        "test_m3_gap_actions.py",
+        "test_m3_provisioning.py",
+        "integration/test_m3_real_management_sessions.py"
+      ],
+      "red_before_implementation": "baseline-01: 251 passed; initial-red-02: 3 expected failures for missing commercial terms, unregistered recruit_from_market, and source events absent in caller-owned transaction.",
+      "verification_commands_results": [
+        {
+          "argv": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+            "-m",
+            "pytest",
+            "apps/server/tests/test_recruitment.py",
+            "apps/server/tests/test_talent_trade.py",
+            "apps/server/tests/test_m1_economy_contract.py",
+            "apps/server/tests/test_m1_invariants.py",
+            "apps/server/tests/test_m1_golden_path.py",
+            "apps/server/tests/test_t2_golden_path.py",
+            "apps/server/tests/test_m2_tools.py",
+            "apps/server/tests/test_m2_decisions.py",
+            "apps/server/tests/test_m3_contract.py",
+            "apps/server/tests/test_m3_action_confirmations.py",
+            "apps/server/tests/test_m3_provisioning.py",
+            "-q",
+            "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/baseline-tmp"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:01:00.158616+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 26.494640707969666,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-baseline-01.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "cf06f877da23e6ab81f51033c30b7b4e41846d3264888ab95afce01a19c6948b",
+          "log_sha256": "7c1b9cc46ca8556650a8ecb81d6a28ea5de7c71eb85bd6910e2699c43c607625"
+        },
+        {
+          "argv": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+            "-m",
+            "pytest",
+            "apps/server/tests/test_m3_recruitment_flow.py",
+            "-q",
+            "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/initial-red-02-tmp"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:02:05.356760+00:00",
+          "exit_code": 1,
+          "elapsed_seconds": 3.1016884159762412,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-initial-red-02.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "192c27425e877ad9110d4f20aca83f68eae198036853891eef160cd11fbefe9d",
+          "log_sha256": "032925e1532b4ec91e971b0e59d801a752bf78300dae55de08d6b0d795c21818"
+        },
+        {
+          "argv": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+            "-m",
+            "pytest",
+            "apps/server/tests/test_m3_recruitment_flow.py",
+            "apps/server/tests/test_recruitment.py",
+            "apps/server/tests/test_talent_trade.py",
+            "apps/server/tests/test_m1_economy_contract.py",
+            "apps/server/tests/test_m1_invariants.py",
+            "apps/server/tests/test_m1_golden_path.py",
+            "apps/server/tests/test_t2_golden_path.py",
+            "apps/server/tests/test_market_contract.py",
+            "apps/server/tests/test_m2_tools.py",
+            "apps/server/tests/test_m2_decisions.py",
+            "apps/server/tests/test_m3_contract.py",
+            "apps/server/tests/test_m3_action_confirmations.py",
+            "apps/server/tests/test_m3_gap_actions.py",
+            "apps/server/tests/test_m3_provisioning.py",
+            "-q",
+            "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/final-focused-tmp"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:13:03.168797+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 33.577156542101875,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-final-focused.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "300b86da48b16e9d7b3c3e15298a29fc5e0297cbfbe15b552b38173fa919caf7",
+          "log_sha256": "98b9e6518fc783c67a6c1c014238442bf044cb14d176aaffb335d131fb471f38"
+        },
+        {
+          "argv": [
+            "make",
+            "test-server"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:13:50.411208+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 289.6341796249617,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-server.log",
+          "pytest_addopts": "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/parent-server-tmp",
+          "metadata_sha256": "22dc280adffd2ed67802ec541ea1272bd1fde42522b3bf7e434134e08ae47ec2",
+          "log_sha256": "575e89bd506580291f73d4e4e322d4cbf6017226c0bf4ee0b8e8d02636cc9675"
+        },
+        {
+          "argv": [
+            "make",
+            "lint"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:13:50.417290+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 26.76218383293599,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-lint.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "e7e3fd9cb0c3eae0b2a08a5c36d68046bc9a5b7627dbb8fe384bd13eee7cafac",
+          "log_sha256": "54b5933a4e04214ff625e503c97a5b6eafe5345051401d0400f8db8e035cf5e6"
+        },
+        {
+          "argv": [
+            "make",
+            "test-web"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:13:50.425817+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 19.30329449987039,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-web.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "4ad1892f67c7c4d49ff48cf9d76b0c0eb206308ad70445a71d871c5551400079",
+          "log_sha256": "fbde07b5e30bc4f385f44f1c8dfe06c4f4e403c01e3b8ec6c5cce4550e80c8f4"
+        },
+        {
+          "argv": [
+            "make",
+            "build"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:13:50.436170+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 29.261254250071943,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-build.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "9fefa013132c943936cd6a095e5a3127da8a7c17db94c7b808896adbaa69b19e",
+          "log_sha256": "638bc0ef14e27eadef4b86ed5603ff7a49dc7db88dcc11fceea1ecf3f407997b"
+        }
+      ],
+      "exception_reason": null
+    }
+  ],
+  "verification_boundaries": [
+    "Actual M1/T2 ledger and recruitment, runtime bridge, formal authenticated approval APIs, concurrency across two DB connections and final-audit rollback tested.",
+    "Partial-provision behavior substitutes only external Docker transport; independent DB write proves hiring is committed. Final isolated integration uses actual Hermes containers and paid model probes.",
+    "Real Owner approval uses actual stored UserSession/OWNER membership and confirmation domain services; HTTP/CSRF evidence is in behavior tests.",
+    "Explicit human position assignment supplies readiness position fact; the model did not assign position or Worker task. No Worker or Reviewer delivery is claimed; U29 remains.",
+    "No schema migration, shared fixture edits or browser UI changes. No development business writes; configured provider credential was read privately for isolated acceptance.",
+    "No independent review claimed. Phase simplification and formal review due after U12. Native inline after recorded capacity rejection, no worker reuse. Local commit only; user tmp/ unread and unchanged."
+  ],
+  "checks": [
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_recruitment.py",
+        "apps/server/tests/test_talent_trade.py",
+        "apps/server/tests/test_m1_economy_contract.py",
+        "apps/server/tests/test_m1_invariants.py",
+        "apps/server/tests/test_m1_golden_path.py",
+        "apps/server/tests/test_t2_golden_path.py",
+        "apps/server/tests/test_m2_tools.py",
+        "apps/server/tests/test_m2_decisions.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_m3_action_confirmations.py",
+        "apps/server/tests/test_m3_provisioning.py",
+        "-q",
+        "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/baseline-tmp"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:01:00.158616+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 26.494640707969666,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-baseline-01.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "cf06f877da23e6ab81f51033c30b7b4e41846d3264888ab95afce01a19c6948b",
+      "log_sha256": "7c1b9cc46ca8556650a8ecb81d6a28ea5de7c71eb85bd6910e2699c43c607625"
+    },
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recruitment_flow.py",
+        "-q",
+        "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/initial-red-02-tmp"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:02:05.356760+00:00",
+      "exit_code": 1,
+      "elapsed_seconds": 3.1016884159762412,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-initial-red-02.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "192c27425e877ad9110d4f20aca83f68eae198036853891eef160cd11fbefe9d",
+      "log_sha256": "032925e1532b4ec91e971b0e59d801a752bf78300dae55de08d6b0d795c21818"
+    },
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recruitment_flow.py",
+        "apps/server/tests/test_recruitment.py",
+        "apps/server/tests/test_talent_trade.py",
+        "apps/server/tests/test_m1_economy_contract.py",
+        "apps/server/tests/test_m1_invariants.py",
+        "apps/server/tests/test_m1_golden_path.py",
+        "apps/server/tests/test_t2_golden_path.py",
+        "apps/server/tests/test_market_contract.py",
+        "apps/server/tests/test_m2_tools.py",
+        "apps/server/tests/test_m2_decisions.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_m3_action_confirmations.py",
+        "apps/server/tests/test_m3_gap_actions.py",
+        "apps/server/tests/test_m3_provisioning.py",
+        "-q",
+        "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/final-focused-tmp"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:13:03.168797+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 33.577156542101875,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-final-focused.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "300b86da48b16e9d7b3c3e15298a29fc5e0297cbfbe15b552b38173fa919caf7",
+      "log_sha256": "98b9e6518fc783c67a6c1c014238442bf044cb14d176aaffb335d131fb471f38"
+    },
+    {
+      "argv": [
+        "make",
+        "test-server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:13:50.411208+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 289.6341796249617,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-server.log",
+      "pytest_addopts": "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/parent-server-tmp",
+      "metadata_sha256": "22dc280adffd2ed67802ec541ea1272bd1fde42522b3bf7e434134e08ae47ec2",
+      "log_sha256": "575e89bd506580291f73d4e4e322d4cbf6017226c0bf4ee0b8e8d02636cc9675"
+    },
+    {
+      "argv": [
+        "make",
+        "lint"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:13:50.417290+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 26.76218383293599,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-lint.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "e7e3fd9cb0c3eae0b2a08a5c36d68046bc9a5b7627dbb8fe384bd13eee7cafac",
+      "log_sha256": "54b5933a4e04214ff625e503c97a5b6eafe5345051401d0400f8db8e035cf5e6"
+    },
+    {
+      "argv": [
+        "make",
+        "test-web"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:13:50.425817+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 19.30329449987039,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-web.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "4ad1892f67c7c4d49ff48cf9d76b0c0eb206308ad70445a71d871c5551400079",
+      "log_sha256": "fbde07b5e30bc4f385f44f1c8dfe06c4f4e403c01e3b8ec6c5cce4550e80c8f4"
+    },
+    {
+      "argv": [
+        "make",
+        "build"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:13:50.436170+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 29.261254250071943,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-build.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "9fefa013132c943936cd6a095e5a3127da8a7c17db94c7b808896adbaa69b19e",
+      "log_sha256": "638bc0ef14e27eadef4b86ed5603ff7a49dc7db88dcc11fceea1ecf3f407997b"
+    }
+  ],
+  "raw_logs": [
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/real-recruitment-hermes-discovery-limit.log",
+      "sha256": "3eedfe2f3fd775e49c46dc57a46e5d52329c2f26039dfe9d5423df23993272f3",
+      "exit_codes": [],
+      "observed_result_lines": [
+        "1 failed, 1 warning in 15.13s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/real-recruitment-hermes-explicit-slot.log",
+      "sha256": "8137ea70761468246ca5579a534d4c3ccf9a3e7c49e4e619529fd3752582c58c",
+      "exit_codes": [],
+      "observed_result_lines": [
+        "1 passed, 1 warning in 28.68s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/real-recruitment-hermes-first.log",
+      "sha256": "226a248881b2c3439df71421884514a4d39ae0b7a027967b7a9d2c1e16baa109",
+      "exit_codes": [],
+      "observed_result_lines": [
+        "1 failed, 1 warning in 14.46s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-baseline-01.log",
+      "sha256": "7c1b9cc46ca8556650a8ecb81d6a28ea5de7c71eb85bd6910e2699c43c607625",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "251 passed, 1 warning in 24.41s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-baseline.log",
+      "sha256": "7b8edb7ed8cf0938a88b518abaf49ce55d0865bdfc297517ea33608c4eab0590",
+      "exit_codes": [],
+      "observed_result_lines": []
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-behavior-01.log",
+      "sha256": "45f23e9968a1c6bac5eec9d13bea0cfc4c917d709701f31a66abe8a42c738635",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "3 passed, 1 warning in 1.30s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-behavior-02.log",
+      "sha256": "97602041a11e8e5f2599f33bf342ace06ca5b9376e34ab7bffe6eb0aff1a3089",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "5 failed, 13 passed, 1 warning in 3.57s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-behavior-03.log",
+      "sha256": "7860e2d0c1338a2ebc42167126ff47b18f4b1097bb3ceba04dcd5575c58db5cb",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "1 failed, 17 passed, 1 warning in 3.61s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-final-focused.log",
+      "sha256": "98b9e6518fc783c67a6c1c014238442bf044cb14d176aaffb335d131fb471f38",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "315 passed, 1 warning in 31.37s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-focused-01.log",
+      "sha256": "a341e0160f67fd8afbafb2cbdc718daf8528c429b49987940aa121c437e92891",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "41 failed, 264 passed, 1 warning in 32.18s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-focused-02.log",
+      "sha256": "0888b129cb813571596570be6569636f091db10067ac33991d8b094b0956da33",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "1 failed, 304 passed, 1 warning in 33.18s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-focused-03.log",
+      "sha256": "7178bd0a7255e210dee5d4a03e81c43a22d9403c45e49b6faeb1284d6af01518",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "1 failed, 63 passed, 1 warning in 7.83s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-focused-04.log",
+      "sha256": "9061c90d381a4d43128625b914de90969a8a10a559f72b0df364f25c4b162653",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "64 passed, 1 warning in 7.58s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-initial-red-02.log",
+      "sha256": "032925e1532b4ec91e971b0e59d801a752bf78300dae55de08d6b0d795c21818",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "3 failed, 1 warning in 1.20s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-initial-red.log",
+      "sha256": "b48b757f29aa5aed4338a5079e1f1e3bfe0193a6bd146eed985f53aaf95f6329",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "3 failed, 1 warning in 17.26s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-build.log",
+      "sha256": "638bc0ef14e27eadef4b86ed5603ff7a49dc7db88dcc11fceea1ecf3f407997b",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "✓ built in 8.29s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-lint.log",
+      "sha256": "54b5933a4e04214ff625e503c97a5b6eafe5345051401d0400f8db8e035cf5e6",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "All checks passed!",
+        "501 files already formatted"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-server.log",
+      "sha256": "575e89bd506580291f73d4e4e322d4cbf6017226c0bf4ee0b8e8d02636cc9675",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "2372 passed, 17 deselected, 118 warnings in 282.59s (0:04:42)"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-parent-web.log",
+      "sha256": "fbde07b5e30bc4f385f44f1c8dfe06c4f4e403c01e3b8ec6c5cce4550e80c8f4",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        " Test Files  89 passed (89)",
+        "      Tests  392 passed (392)"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-real-collect.log",
+      "sha256": "32caf9bbe9aad1f65f48b72fb77fa5bfbb07b53e89758a143db3a6eb24da351f",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": []
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-static-01.log",
+      "sha256": "c083ca344ddbc86dfd15b9bc121ded9538a5c1874079c2a15960b2e9e06e5523",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": []
+    }
+  ],
+  "source_sha256": {
+    "/Users/ponk/workspace/Eidolon/apps/server/app/api/v1/market.py": "e22d357e4027a2595e1ccfe19fc63bcdbe7a3be746b9b493af4d7c691961d6cf",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/schemas/market.py": "643f5c18a68ba2d8ecdf4ae405bfcb48f54bb23135ec7c53f1c3e152ac90c144",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/services/economy/talent_trade.py": "1641975b29e47f382f2edfc6b44c1965486c71747fad337bdf62b62be52c3476",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/services/recruitment.py": "9f918c0ba9ab4f5cc5702413893d2c7a7f3c453c59213196abd167a8218ea160",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/production.py": "e65e6ab3b3fd0264fc68aa482218720bd778bd5311eab8522a7291a94344314c",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/readiness.py": "3bb6c470800576c734bffe939f352c29fed82f0e6d519d159aefc12f99f16c22",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/tool_executor.py": "6ab465ba9bd7d005e826295437e54884369e50507567cf5438b0c8a400bc5c7f",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/tool_reads.py": "3d95744f73e5b785290713f3c01c8d958939a7f0fcbe148c808cb1687cbd9a1c",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/tool_recruitment.py": "5c2e69eded9c48402c21074200c56c44ebaf40d6659a70f070c4f0af2cce6116",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/tool_writes.py": "9ee9d4c4ba5539731327e05ddfd65a7c02f3e12bc6360ab37ba868e7f60a6983",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/tools.py": "cb1194e1a60876fd174f1bf6086161345cc547401fac2028cdac409d617a28d5",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/integration/test_m3_recruitment_manager.py": "9fdc28f329e83f298f0673507d3c186ecf682274db9612dd047f147bd8004969",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m2_tools.py": "c658cf463d1370a43f0fd9be6f800f35531abb683bed00580135b311a8b7fd3b",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_contract.py": "0b803b049bd5cde86d211fe7b05ad8d230dbb920239a27b9dc867b63c6137a78",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_recruitment_flow.py": "0a32bc766960d8bf078ab89986c8da77ec931c4c83d67d6ae65754e983ec2c0b",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_t2_golden_path.py": "f7d1f2fd720524536507e8ad63495988a52928df2b3aec7a47f81b0d30ac3bc5"
+  },
+  "real_acceptance": {
+    "attempts": [
+      {
+        "label": "first",
+        "passed": false,
+        "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/real-recruitment-hermes-first.log",
+        "receipt_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/recruitment-hermes-first/test_real_manager_recruits_sel0/model-evidence/receipt.json",
+        "receipt": {
+          "accounted_cost_usd": "0.0150060",
+          "attempts": 5,
+          "cost_usd": "0.0150060",
+          "estimated_ceiling_usd": "0.0717210",
+          "http_status": 200,
+          "input_price_usd_per_million": "0.3",
+          "max_cost_usd": "0.05",
+          "max_requests": 8,
+          "model": "deepseek-flash",
+          "output_limit": 768,
+          "output_price_usd_per_million": "1.2",
+          "pricing_valid_until": "2026-09-20T13:10:15.066260+00:00",
+          "request_sha256": "e6ec3e82db170c0a07f2d5ff35b69777ea2b1d88432df491218015a87e82eef0",
+          "requests": [
+            {
+              "cost_usd": "0.0000036",
+              "estimated_ceiling_usd": "0.0010893",
+              "http_status": 200,
+              "input_token_bound": 559,
+              "request_sha256": "d5a8e1da6d37a426ba4e098e00e979c09fa1f29d224cf19d29b2385f98bab83d",
+              "sequence": 1,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 8,
+                "output_tokens": 1
+              }
+            },
+            {
+              "cost_usd": "0.0032724",
+              "estimated_ceiling_usd": "0.0157665",
+              "http_status": 200,
+              "input_token_bound": 49483,
+              "request_sha256": "e9d834a88047f36893e5e76498c9d3399c36724ce080f2e3618a81c036c73612",
+              "sequence": 2,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 10792,
+                "output_tokens": 29
+              }
+            },
+            {
+              "cost_usd": "0.0037875",
+              "estimated_ceiling_usd": "0.0173877",
+              "http_status": 200,
+              "input_token_bound": 54887,
+              "request_sha256": "de41dacd35d6f3281b379db244a22415f27311bc4a25b8304fca6f92b7e6da7e",
+              "sequence": 3,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 12065,
+                "output_tokens": 140
+              }
+            },
+            {
+              "cost_usd": "0.0038556",
+              "estimated_ceiling_usd": "0.0182376",
+              "http_status": 200,
+              "input_token_bound": 57720,
+              "request_sha256": "d46951a839f6c0aabd5fe867309656e39cada9618e7d9a00cd9d5cdfb96983d7",
+              "sequence": 4,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 12700,
+                "output_tokens": 38
+              }
+            },
+            {
+              "cost_usd": "0.0040869",
+              "estimated_ceiling_usd": "0.0192399",
+              "http_status": 200,
+              "input_token_bound": 61061,
+              "request_sha256": "e6ec3e82db170c0a07f2d5ff35b69777ea2b1d88432df491218015a87e82eef0",
+              "sequence": 5,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 13503,
+                "output_tokens": 30
+              }
+            }
+          ],
+          "reserved_cost_usd": "0",
+          "spent_cost_usd": "0.0150060",
+          "usage": {
+            "input_tokens": 49068,
+            "output_tokens": 238
+          }
+        },
+        "evidence": null,
+        "transcript": [
+          {
+            "request_id": "host-52264ec2f00541ad8810e0ce9747f040",
+            "run_id": "run_c59851a456da4a7e9dccd69e96fff13f",
+            "response_text": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-1\",\"tool\":\"inspect_project\",\"args\":{\"project_id\":1}}",
+            "feedback": null
+          },
+          {
+            "request_id": "host-9d6cffecc03c4155a0a568dc8e9ed8ee",
+            "run_id": "run_ca510f9d103b45489bc14a7a66383d16",
+            "response_text": "{\"version\":1,\"kind\":\"decision\",\"operation_key\":\"decision-1\",\"decision\":{\"decision_type\":\"recruit\",\"reason\":\"Project 1 spec requires finding the market listing whose name contains 68b6ab3664ed, reading its actual commercial_terms, and proposing a fixed-price buyout at the exact listed price. I have not yet read search_market, so I cannot supply a valid listing_id or amount; the next step is a read to ground those values before any high-impact recruit action.\",\"scope\":\"project:1\",\"context\":{\"project_id\":1,\"note\":\"Awaiting market listing lookup to obtain listing_id and exact amount.\"},\"actions\":[]}}",
+            "feedback": {
+              "request_id": "host-52264ec2f00541ad8810e0ce9747f040",
+              "run_id": "run_c59851a456da4a7e9dccd69e96fff13f",
+              "request": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-1",
+                "tool": "inspect_project",
+                "args": {
+                  "project_id": 1
+                }
+              },
+              "result": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-1",
+                "operation_id": 1,
+                "decision_id": null,
+                "status": "completed",
+                "results": [
+                  {
+                    "ok": true,
+                    "tool": "inspect_project",
+                    "side_effect": "read",
+                    "autonomy": "auto_allowed",
+                    "transport": "internal",
+                    "data": {
+                      "project": {
+                        "project_id": 1,
+                        "name": "Confirmed market hiring",
+                        "status": "in_progress",
+                        "work_mode": "managed",
+                        "planning_fixture": "none",
+                        "owner_id": null,
+                        "management_employee_id": 1,
+                        "management_person_id": 1,
+                        "priority": "medium",
+                        "deadline": null
+                      },
+                      "spec": {
+                        "background": "",
+                        "goal": "Find the market candidate whose name contains 68b6ab3664ed. Read search_market, then inspect_candidate for its actual commercial_terms. Propose hiring that candidate by submitting one recruit decision with one recruit_from_market action at the exact listed price. Wait for human confirmation; do not claim hiring already succeeded. Once you receive confirmation_pending, finish with summary exactly confirmation=<confirmation id>;audit=<proposal audit id>.",
+                        "requirements": [],
+                        "acceptance_criteria": [],
+                        "constraints": [],
+                        "deliverables": [],
+                        "priority": "medium",
+                        "deadline": null,
+                        "context": ""
+                      },
+                      "completeness": {
+                        "is_complete": false,
+                        "missing": [
+                          "background",
+                          "requirements",
+                          "deliverables",
+                          "acceptance_criteria"
+                        ],
+                        "optional_fields": [
+                          "constraints",
+                          "context",
+                          "deadline"
+                        ]
+                      },
+                      "execution": {
+                        "entered": false,
+                        "task_count": 0,
+                        "task_status_counts": {},
+                        "phase_count": 0,
+                        "artifact_count": 0,
+                        "planning_fixture": "none"
+                      },
+                      "work_intake": {
+                        "responsibility": "work_intake",
+                        "status": "no_position",
+                        "position_code": "ceo",
+                        "default_position_code": "ceo",
+                        "is_configured": false,
+                        "position_definition_id": null,
+                        "assignment": null,
+                        "candidate_employee_ids": [],
+                        "owner_user_id": null,
+                        "reason": "公司没有「ceo」这个职位，也没有人承担 Work Intake 责任。请先建立该职位并任命，或由 Owner 手动处理。"
+                      },
+                      "management": {
+                        "employee_id": 1,
+                        "person_id": 1,
+                        "assigned_at": null,
+                        "position_code": null,
+                        "position_definition_id": null,
+                        "current_responsible_employee_id": null,
+                        "stale": false,
+                        "dispatches": [
+                          {
+                            "id": 1,
+                            "source_event_id": 1,
+                            "source_type": "project.replan_required",
+                            "purpose": "management",
+                            "company_id": 1,
+                            "project_id": 1,
+                            "task_id": null,
+                            "review_request_id": null,
+                            "recipient_employee_id": 1,
+                            "work_session_id": 1,
+                            "duplicate_of_id": null,
+                            "checked_at": "2026-09-20T11:11:55.420397+00:00",
+                            "waiting_reason": null,
+                            "details": {},
+                            "resolution": null,
+                            "resolution_reason": null,
+                            "work_session": {
+                              "id": 1,
+                              "status": "running",
+                              "started_at": "2026-09-20T11:11:55.424653+00:00",
+                              "ended_at": null,
+                              "error": null
+                            }
+                          }
+                        ],
+                        "dispatches_next_before_id": null
+                      },
+                      "tasks": [],
+                      "artifacts": [],
+                      "result_kind": "facts_only"
+                    },
+                    "reason": "ok",
+                    "error": "",
+                    "authority": null,
+                    "audit_id": 1,
+                    "actor": {
+                      "employee_id": 1,
+                      "person_id": 1,
+                      "company_id": 1,
+                      "origin": "work_session",
+                      "work_session_id": 1,
+                      "task_id": null,
+                      "project_id": 1,
+                      "runtime_type": "hermes",
+                      "purpose": "management",
+                      "review_request_id": null
+                    }
+                  }
+                ],
+                "action_indices": [
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "request_id": "host-d5ee0af6d3bb4e7fb21a1191fc3efabd",
+            "run_id": "run_81dde7b4c82d4be6b8c97a415e204c29",
+            "response_text": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-2\",\"tool\":\"search_market\",\"args\":{\"text\":\"68b6ab3664ed\",\"limit\":50}}",
+            "feedback": {
+              "request_id": "host-9d6cffecc03c4155a0a568dc8e9ed8ee",
+              "run_id": "run_ca510f9d103b45489bc14a7a66383d16",
+              "request": null,
+              "error": {
+                "reason": "invalid_request",
+                "error": "a decision requires 1..16 actions",
+                "operation_id": null,
+                "decision_id": null
+              }
+            }
+          },
+          {
+            "request_id": "host-d3e36f582a4c4f0db9bd0956abad4c21",
+            "run_id": "run_82e24372a3ae475aa4a905c7d583ca1d",
+            "response_text": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-3\",\"tool\":\"inspect_candidate\",\"args\":{\"listing_id\":1}}",
+            "feedback": {
+              "request_id": "host-d5ee0af6d3bb4e7fb21a1191fc3efabd",
+              "run_id": "run_81dde7b4c82d4be6b8c97a415e204c29",
+              "request": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-2",
+                "tool": "search_market",
+                "args": {
+                  "text": "68b6ab3664ed",
+                  "limit": 50
+                }
+              },
+              "result": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-2",
+                "operation_id": 2,
+                "decision_id": null,
+                "status": "completed",
+                "results": [
+                  {
+                    "ok": true,
+                    "tool": "search_market",
+                    "side_effect": "read",
+                    "autonomy": "auto_allowed",
+                    "transport": "internal",
+                    "data": {
+                      "items": [
+                        {
+                          "listing_id": 1,
+                          "identity_id": "EU-U11-68b6ab3664ed",
+                          "name": "Engineer 68b6ab3664ed",
+                          "avatar": "",
+                          "origin": "blank",
+                          "cultivation_state": "ready",
+                          "status": "active",
+                          "quality_tier": null,
+                          "listed_at": "2026-09-20T11:11:55.399557",
+                          "closed_at": null,
+                          "listed_by": "Isolated issuer",
+                          "fit": null
+                        }
+                      ],
+                      "total": 1,
+                      "limit": 50,
+                      "offset": 0,
+                      "result_kind": "facts_only"
+                    },
+                    "reason": "ok",
+                    "error": "",
+                    "authority": null,
+                    "audit_id": 2,
+                    "actor": {
+                      "employee_id": 1,
+                      "person_id": 1,
+                      "company_id": 1,
+                      "origin": "work_session",
+                      "work_session_id": 1,
+                      "task_id": null,
+                      "project_id": 1,
+                      "runtime_type": "hermes",
+                      "purpose": "management",
+                      "review_request_id": null
+                    }
+                  }
+                ],
+                "action_indices": [
+                  0
+                ]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "label": "discovery-limit",
+        "passed": false,
+        "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/real-recruitment-hermes-discovery-limit.log",
+        "receipt_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/recruitment-hermes-discovery-limit/test_real_manager_recruits_sel0/model-evidence/receipt.json",
+        "receipt": {
+          "accounted_cost_usd": "0.0200610",
+          "attempts": 6,
+          "cost_usd": "0.0200610",
+          "estimated_ceiling_usd": "0.0943263",
+          "http_status": 200,
+          "input_price_usd_per_million": "0.3",
+          "max_cost_usd": "0.05",
+          "max_requests": 8,
+          "model": "deepseek-flash",
+          "output_limit": 768,
+          "output_price_usd_per_million": "1.2",
+          "pricing_valid_until": "2026-09-20T13:10:15.066260+00:00",
+          "request_sha256": "62ed04aaa7b23c1073ca787b6ccac8f669d6ce46a6c60503f286faa32e6ca8e4",
+          "requests": [
+            {
+              "cost_usd": "0.0000036",
+              "estimated_ceiling_usd": "0.0010893",
+              "http_status": 200,
+              "input_token_bound": 559,
+              "request_sha256": "d5a8e1da6d37a426ba4e098e00e979c09fa1f29d224cf19d29b2385f98bab83d",
+              "sequence": 1,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 8,
+                "output_tokens": 1
+              }
+            },
+            {
+              "cost_usd": "0.0032724",
+              "estimated_ceiling_usd": "0.0157665",
+              "http_status": 200,
+              "input_token_bound": 49483,
+              "request_sha256": "cd3f9fc1cd2ae8aa880ff2ac6f3a2b4f9f9e2cea69bd0599b88375f2579999df",
+              "sequence": 2,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 10792,
+                "output_tokens": 29
+              }
+            },
+            {
+              "cost_usd": "0.003666",
+              "estimated_ceiling_usd": "0.0173877",
+              "http_status": 200,
+              "input_token_bound": 54887,
+              "request_sha256": "0d97996be35851b8f86356a2c86a9a1acf319684923c84fc4f05abe8edd03ab9",
+              "sequence": 3,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 12064,
+                "output_tokens": 39
+              }
+            },
+            {
+              "cost_usd": "0.0039081",
+              "estimated_ceiling_usd": "0.01839",
+              "http_status": 200,
+              "input_token_bound": 58228,
+              "request_sha256": "cc4b6ed2c88c46c5a61b1e0a04cb414f6c1a6d1ffcfbca34bea268190b8d89c1",
+              "sequence": 4,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 12863,
+                "output_tokens": 41
+              }
+            },
+            {
+              "cost_usd": "0.0044847",
+              "estimated_ceiling_usd": "0.0199335",
+              "http_status": 200,
+              "input_token_bound": 63373,
+              "request_sha256": "803c80dc0b5e73482982e5fbcbfe786d96c7be6bae3734016a7463a18aa6514e",
+              "sequence": 5,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 14065,
+                "output_tokens": 221
+              }
+            },
+            {
+              "cost_usd": "0.0047262",
+              "estimated_ceiling_usd": "0.0217593",
+              "http_status": 200,
+              "input_token_bound": 69459,
+              "request_sha256": "62ed04aaa7b23c1073ca787b6ccac8f669d6ce46a6c60503f286faa32e6ca8e4",
+              "sequence": 6,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 15634,
+                "output_tokens": 30
+              }
+            }
+          ],
+          "reserved_cost_usd": "0",
+          "spent_cost_usd": "0.0200610",
+          "usage": {
+            "input_tokens": 65426,
+            "output_tokens": 361
+          }
+        },
+        "evidence": null,
+        "transcript": [
+          {
+            "request_id": "host-808d42a0b305482bb1dc354ce253ef5f",
+            "run_id": "run_c0c60fe6df534f2792fe50fc3d929b88",
+            "response_text": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-1\",\"tool\":\"inspect_project\",\"args\":{\"project_id\":1}}",
+            "feedback": null
+          },
+          {
+            "request_id": "host-e00d2162b1714b7784235ec4ec158f3d",
+            "run_id": "run_91f1d67825a8434ab418a6e575eee6dc",
+            "response_text": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-2\",\"tool\":\"search_market\",\"args\":{\"text\":\"c4f45ebc036b\",\"limit\":20}}",
+            "feedback": {
+              "request_id": "host-808d42a0b305482bb1dc354ce253ef5f",
+              "run_id": "run_c0c60fe6df534f2792fe50fc3d929b88",
+              "request": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-1",
+                "tool": "inspect_project",
+                "args": {
+                  "project_id": 1
+                }
+              },
+              "result": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-1",
+                "operation_id": 1,
+                "decision_id": null,
+                "status": "completed",
+                "results": [
+                  {
+                    "ok": true,
+                    "tool": "inspect_project",
+                    "side_effect": "read",
+                    "autonomy": "auto_allowed",
+                    "transport": "internal",
+                    "data": {
+                      "project": {
+                        "project_id": 1,
+                        "name": "Confirmed market hiring",
+                        "status": "in_progress",
+                        "work_mode": "managed",
+                        "planning_fixture": "none",
+                        "owner_id": null,
+                        "management_employee_id": 1,
+                        "management_person_id": 1,
+                        "priority": "medium",
+                        "deadline": null
+                      },
+                      "spec": {
+                        "background": "",
+                        "goal": "Find the market candidate whose name contains c4f45ebc036b. Read search_market, then inspect_candidate for its actual commercial_terms. Propose hiring that candidate by submitting one recruit decision with one recruit_from_market action at the exact listed price. Wait for human confirmation; do not claim hiring already succeeded. Once you receive confirmation_pending, finish with summary exactly confirmation=<confirmation id>;audit=<proposal audit id>.",
+                        "requirements": [],
+                        "acceptance_criteria": [],
+                        "constraints": [],
+                        "deliverables": [],
+                        "priority": "medium",
+                        "deadline": null,
+                        "context": ""
+                      },
+                      "completeness": {
+                        "is_complete": false,
+                        "missing": [
+                          "background",
+                          "requirements",
+                          "deliverables",
+                          "acceptance_criteria"
+                        ],
+                        "optional_fields": [
+                          "constraints",
+                          "context",
+                          "deadline"
+                        ]
+                      },
+                      "execution": {
+                        "entered": false,
+                        "task_count": 0,
+                        "task_status_counts": {},
+                        "phase_count": 0,
+                        "artifact_count": 0,
+                        "planning_fixture": "none"
+                      },
+                      "work_intake": {
+                        "responsibility": "work_intake",
+                        "status": "no_position",
+                        "position_code": "ceo",
+                        "default_position_code": "ceo",
+                        "is_configured": false,
+                        "position_definition_id": null,
+                        "assignment": null,
+                        "candidate_employee_ids": [],
+                        "owner_user_id": null,
+                        "reason": "公司没有「ceo」这个职位，也没有人承担 Work Intake 责任。请先建立该职位并任命，或由 Owner 手动处理。"
+                      },
+                      "management": {
+                        "employee_id": 1,
+                        "person_id": 1,
+                        "assigned_at": null,
+                        "position_code": null,
+                        "position_definition_id": null,
+                        "current_responsible_employee_id": null,
+                        "stale": false,
+                        "dispatches": [
+                          {
+                            "id": 1,
+                            "source_event_id": 1,
+                            "source_type": "project.replan_required",
+                            "purpose": "management",
+                            "company_id": 1,
+                            "project_id": 1,
+                            "task_id": null,
+                            "review_request_id": null,
+                            "recipient_employee_id": 1,
+                            "work_session_id": 1,
+                            "duplicate_of_id": null,
+                            "checked_at": "2026-09-20T11:12:35.203975+00:00",
+                            "waiting_reason": null,
+                            "details": {},
+                            "resolution": null,
+                            "resolution_reason": null,
+                            "work_session": {
+                              "id": 1,
+                              "status": "running",
+                              "started_at": "2026-09-20T11:12:35.207995+00:00",
+                              "ended_at": null,
+                              "error": null
+                            }
+                          }
+                        ],
+                        "dispatches_next_before_id": null
+                      },
+                      "tasks": [],
+                      "artifacts": [],
+                      "result_kind": "facts_only"
+                    },
+                    "reason": "ok",
+                    "error": "",
+                    "authority": null,
+                    "audit_id": 1,
+                    "actor": {
+                      "employee_id": 1,
+                      "person_id": 1,
+                      "company_id": 1,
+                      "origin": "work_session",
+                      "work_session_id": 1,
+                      "task_id": null,
+                      "project_id": 1,
+                      "runtime_type": "hermes",
+                      "purpose": "management",
+                      "review_request_id": null
+                    }
+                  }
+                ],
+                "action_indices": [
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "request_id": "host-591145ad3b9c4507a694225277fa4dae",
+            "run_id": "run_28615f3c4ca6432e8650aa38840926fe",
+            "response_text": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-3\",\"tool\":\"inspect_candidate\",\"args\":{\"listing_id\":1,\"evidence_limit\":0,\"timeline_limit\":1}}",
+            "feedback": {
+              "request_id": "host-e00d2162b1714b7784235ec4ec158f3d",
+              "run_id": "run_91f1d67825a8434ab418a6e575eee6dc",
+              "request": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-2",
+                "tool": "search_market",
+                "args": {
+                  "text": "c4f45ebc036b",
+                  "limit": 20
+                }
+              },
+              "result": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-2",
+                "operation_id": 2,
+                "decision_id": null,
+                "status": "completed",
+                "results": [
+                  {
+                    "ok": true,
+                    "tool": "search_market",
+                    "side_effect": "read",
+                    "autonomy": "auto_allowed",
+                    "transport": "internal",
+                    "data": {
+                      "items": [
+                        {
+                          "listing_id": 1,
+                          "identity_id": "EU-U11-c4f45ebc036b",
+                          "name": "Engineer c4f45ebc036b",
+                          "avatar": "",
+                          "origin": "blank",
+                          "cultivation_state": "ready",
+                          "status": "active",
+                          "quality_tier": null,
+                          "listed_at": "2026-09-20T11:12:35.182327",
+                          "closed_at": null,
+                          "listed_by": "Isolated issuer",
+                          "fit": null
+                        }
+                      ],
+                      "total": 1,
+                      "limit": 20,
+                      "offset": 0,
+                      "result_kind": "facts_only"
+                    },
+                    "reason": "ok",
+                    "error": "",
+                    "authority": null,
+                    "audit_id": 2,
+                    "actor": {
+                      "employee_id": 1,
+                      "person_id": 1,
+                      "company_id": 1,
+                      "origin": "work_session",
+                      "work_session_id": 1,
+                      "task_id": null,
+                      "project_id": 1,
+                      "runtime_type": "hermes",
+                      "purpose": "management",
+                      "review_request_id": null
+                    }
+                  }
+                ],
+                "action_indices": [
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "request_id": "host-8a21f9d613c04508bd2148bcc0473d97",
+            "run_id": "run_fb9346d4aba146e9a6f0b5b98634d68b",
+            "response_text": "{\"version\":1,\"kind\":\"decision\",\"operation_key\":\"decision-1\",\"decision\":{\"decision_type\":\"recruit\",\"reason\":\"Project 1 goal requires hiring the sole market candidate whose name contains c4f45ebc036b. search_market returned exactly one active listing (listing_id 1, EU-U11-c4f45ebc036b) and inspect_candidate returned actual commercial_terms price=1200 CREDIT, sale_mode=buyout. 1200 is within the spend_credits grant of 2000 and within approve_hiring authority. Proposing the fixed-price buyout at the exact listed price; human Owner confirmation is required, so this decision does not claim hiring succeeded and no provisioning is asserted.\",\"scope\":\"project:1\",\"actions\":[{\"tool\":\"recruit_from_market\",\"args\":{\"project_id\":1,\"listing_id\":1,\"amount\":1200}}],\"context\":{\"project_id\":1,\"candidate_employee_ids\":[],\"note\":\"Awaiting human confirmation; will finish with confirmation id and proposal audit id.\"}}}",
+            "feedback": {
+              "request_id": "host-591145ad3b9c4507a694225277fa4dae",
+              "run_id": "run_28615f3c4ca6432e8650aa38840926fe",
+              "request": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-3",
+                "tool": "inspect_candidate",
+                "args": {
+                  "listing_id": 1,
+                  "evidence_limit": 0,
+                  "timeline_limit": 1
+                }
+              },
+              "result": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-3",
+                "operation_id": 3,
+                "decision_id": null,
+                "status": "completed",
+                "results": [
+                  {
+                    "ok": true,
+                    "tool": "inspect_candidate",
+                    "side_effect": "read",
+                    "autonomy": "auto_allowed",
+                    "transport": "internal",
+                    "data": {
+                      "listing": {
+                        "listing_id": 1,
+                        "status": "active",
+                        "quality_tier": null,
+                        "listed_at": "2026-09-20T11:12:35.182327",
+                        "listed_by": "Isolated issuer"
+                      },
+                      "identity": {
+                        "identity_id": "EU-U11-c4f45ebc036b",
+                        "name": "Engineer c4f45ebc036b",
+                        "avatar": "",
+                        "origin": "blank",
+                        "cultivation_state": "ready"
+                      },
+                      "traits": [
+                        {
+                          "code": "curiosity",
+                          "label": "好奇心",
+                          "description": "探索倾向：专注当前任务 ↔ 主动查阅相邻知识",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": true
+                        },
+                        {
+                          "code": "warmth",
+                          "label": "热情与亲和",
+                          "description": "热情与亲和：克制事务化 ↔ 积极回应、解释、鼓励",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "independence",
+                          "label": "独立倾向",
+                          "description": "独立倾向：频繁确认 ↔ 自主拆解推进",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "conscientiousness",
+                          "label": "严谨倾向",
+                          "description": "严谨倾向：快速推进 ↔ 检查、验证、守流程",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "collaboration",
+                          "label": "协作倾向",
+                          "description": "协作倾向：独立完成 ↔ 沟通、peer review、分享",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "risk_tolerance",
+                          "label": "风险偏好",
+                          "description": "风险偏好：成熟方案 ↔ 实验性技术",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "adaptability",
+                          "label": "变化适应",
+                          "description": "变化适应：偏好稳定 ↔ 新岗位/新栈快速调整",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "creativity",
+                          "label": "创新倾向",
+                          "description": "创新倾向：既有方案 ↔ 替代方案与新组合",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        }
+                      ],
+                      "competencies": {
+                        "general": [],
+                        "professional": []
+                      },
+                      "knowledge_summary": {
+                        "total": 0,
+                        "by_scope": {},
+                        "top_topics": []
+                      },
+                      "timeline": [],
+                      "evidence": [],
+                      "market_state": "listed",
+                      "commercial_terms": {
+                        "price": 1200,
+                        "currency": "CREDIT",
+                        "sale_mode": "buyout"
+                      },
+                      "result_kind": "facts_only"
+                    },
+                    "reason": "ok",
+                    "error": "",
+                    "authority": null,
+                    "audit_id": 3,
+                    "actor": {
+                      "employee_id": 1,
+                      "person_id": 1,
+                      "company_id": 1,
+                      "origin": "work_session",
+                      "work_session_id": 1,
+                      "task_id": null,
+                      "project_id": 1,
+                      "runtime_type": "hermes",
+                      "purpose": "management",
+                      "review_request_id": null
+                    }
+                  }
+                ],
+                "action_indices": [
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "request_id": "host-d3f5173104524c3cabdd21948a6e57d6",
+            "run_id": "run_6bef9962d25e4f5fad95b409abed19b8",
+            "response_text": "{\"version\":1,\"kind\":\"finish\",\"operation_key\":\"finish-1\",\"summary\":\"confirmation=1;audit=4\"}",
+            "feedback": {
+              "request_id": "host-8a21f9d613c04508bd2148bcc0473d97",
+              "run_id": "run_fb9346d4aba146e9a6f0b5b98634d68b",
+              "request": {
+                "version": 1,
+                "kind": "decision",
+                "operation_key": "decision-1",
+                "decision": {
+                  "decision_type": "recruit",
+                  "reason": "Project 1 goal requires hiring the sole market candidate whose name contains c4f45ebc036b. search_market returned exactly one active listing (listing_id 1, EU-U11-c4f45ebc036b) and inspect_candidate returned actual commercial_terms price=1200 CREDIT, sale_mode=buyout. 1200 is within the spend_credits grant of 2000 and within approve_hiring authority. Proposing the fixed-price buyout at the exact listed price; human Owner confirmation is required, so this decision does not claim hiring succeeded and no provisioning is asserted.",
+                  "scope": "project:1",
+                  "actions": [
+                    {
+                      "tool": "recruit_from_market",
+                      "args": {
+                        "project_id": 1,
+                        "listing_id": 1,
+                        "amount": 1200
+                      }
+                    }
+                  ],
+                  "intended_outcome": "",
+                  "context": {
+                    "project_id": 1,
+                    "candidate_employee_ids": [],
+                    "note": "Awaiting human confirmation; will finish with confirmation id and proposal audit id."
+                  },
+                  "parent_decision_id": null
+                }
+              },
+              "result": {
+                "version": 1,
+                "kind": "decision",
+                "operation_key": "decision-1",
+                "operation_id": 4,
+                "decision_id": 1,
+                "status": "completed",
+                "results": [
+                  {
+                    "ok": false,
+                    "tool": "recruit_from_market",
+                    "side_effect": "high_impact",
+                    "autonomy": "requires_confirmation",
+                    "transport": "internal",
+                    "data": {
+                      "confirmation": {
+                        "id": 1,
+                        "status": "pending",
+                        "arguments_digest": "b39e9637454a5b14f943526543811459c2ab1c1daec6a211273b81a1e211156f",
+                        "target_ref": "market_listing:1",
+                        "target_version": "fa3fae3a20219c441efb3290281d9bfdc465ee54d664fad7c1d4977ca1d80d33",
+                        "amount": 1200,
+                        "expires_at": "2026-09-20T12:12:41.289053+00:00"
+                      }
+                    },
+                    "reason": "confirmation_pending",
+                    "error": "",
+                    "authority": {
+                      "snapshot_version": 1,
+                      "authority_kind": "approve_hiring",
+                      "allowed": true,
+                      "reason": "authorized",
+                      "actor_employee_id": 1,
+                      "position_definition_id": 1,
+                      "action_ref": "tool:recruit_from_market",
+                      "grant_ids": [
+                        2
+                      ],
+                      "grant_scopes": [
+                        [
+                          "approve_hiring",
+                          "company",
+                          "0",
+                          ""
+                        ]
+                      ],
+                      "grants_hash": "25792518f2af59768deede3fc7eda636b3458e6b484c753cce60282a5c918f88",
+                      "position_grants_hash": "ec77b5893b4132452b92e713bc4768f71aca7bbe660394e972819acf47745e0e",
+                      "evaluated_at": "2026-09-20T11:12:41.286476",
+                      "additional_checks": [
+                        {
+                          "snapshot_version": 1,
+                          "authority_kind": "spend_credits",
+                          "allowed": true,
+                          "reason": "authorized",
+                          "actor_employee_id": 1,
+                          "position_definition_id": 1,
+                          "action_ref": "tool:recruit_from_market",
+                          "grant_ids": [
+                            3
+                          ],
+                          "grant_scopes": [
+                            [
+                              "spend_credits",
+                              "company",
+                              "0",
+                              "2000"
+                            ]
+                          ],
+                          "grants_hash": "0560edb43600077bdae1f747574889c53bdc051d33ea844c06fa5d0c61c3967c",
+                          "position_grants_hash": "ec77b5893b4132452b92e713bc4768f71aca7bbe660394e972819acf47745e0e",
+                          "evaluated_at": "2026-09-20T11:12:41.287266"
+                        }
+                      ]
+                    },
+                    "audit_id": 4,
+                    "actor": {
+                      "employee_id": 1,
+                      "person_id": 1,
+                      "company_id": 1,
+                      "origin": "work_session",
+                      "work_session_id": 1,
+                      "task_id": null,
+                      "project_id": 1,
+                      "runtime_type": "hermes",
+                      "purpose": "management",
+                      "review_request_id": null
+                    }
+                  }
+                ],
+                "action_indices": [
+                  0
+                ],
+                "decision_status": "EXECUTING"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "label": "explicit-slot",
+        "passed": true,
+        "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/real-recruitment-hermes-explicit-slot.log",
+        "receipt_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/recruitment-hermes-explicit-slot/test_real_manager_recruits_sel0/model-evidence/receipt.json",
+        "receipt": {
+          "accounted_cost_usd": "0.0200805",
+          "attempts": 7,
+          "cost_usd": "0.0200805",
+          "estimated_ceiling_usd": "0.0953970",
+          "http_status": 200,
+          "input_price_usd_per_million": "0.3",
+          "max_cost_usd": "0.05",
+          "max_requests": 8,
+          "model": "deepseek-flash",
+          "output_limit": 768,
+          "output_price_usd_per_million": "1.2",
+          "pricing_valid_until": "2026-09-20T13:10:15.066260+00:00",
+          "request_sha256": "d5a8e1da6d37a426ba4e098e00e979c09fa1f29d224cf19d29b2385f98bab83d",
+          "requests": [
+            {
+              "cost_usd": "0.0000036",
+              "estimated_ceiling_usd": "0.0010893",
+              "http_status": 200,
+              "input_token_bound": 559,
+              "request_sha256": "d5a8e1da6d37a426ba4e098e00e979c09fa1f29d224cf19d29b2385f98bab83d",
+              "sequence": 1,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 8,
+                "output_tokens": 1
+              }
+            },
+            {
+              "cost_usd": "0.0032724",
+              "estimated_ceiling_usd": "0.0157665",
+              "http_status": 200,
+              "input_token_bound": 49483,
+              "request_sha256": "cd3f9fc1cd2ae8aa880ff2ac6f3a2b4f9f9e2cea69bd0599b88375f2579999df",
+              "sequence": 2,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 10792,
+                "output_tokens": 29
+              }
+            },
+            {
+              "cost_usd": "0.0036606",
+              "estimated_ceiling_usd": "0.0173877",
+              "http_status": 200,
+              "input_token_bound": 54887,
+              "request_sha256": "6af7d8110c6e87ad5912f932e70315613f9a06da5b5270031408b171ad91a35e",
+              "sequence": 3,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 12058,
+                "output_tokens": 36
+              }
+            },
+            {
+              "cost_usd": "0.003906",
+              "estimated_ceiling_usd": "0.01839",
+              "http_status": 200,
+              "input_token_bound": 58228,
+              "request_sha256": "e8ba3f63946c830a4a1b6cf7b0bc16c0e35fc4abbf20f57e7c531c73510de716",
+              "sequence": 4,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 12856,
+                "output_tokens": 41
+              }
+            },
+            {
+              "cost_usd": "0.0045033",
+              "estimated_ceiling_usd": "0.0199347",
+              "http_status": 200,
+              "input_token_bound": 63377,
+              "request_sha256": "6283f6b605275ebf10c818c9e3e3370e1576d957a52d0c6f685a48e64e9d6877",
+              "sequence": 5,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 14059,
+                "output_tokens": 238
+              }
+            },
+            {
+              "cost_usd": "0.004731",
+              "estimated_ceiling_usd": "0.0217395",
+              "http_status": 200,
+              "input_token_bound": 69393,
+              "request_sha256": "d34d0dc11024684dd71ef256979ea5adbeb35ad3694102bf546f26b11f0bb261",
+              "sequence": 6,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 15650,
+                "output_tokens": 30
+              }
+            },
+            {
+              "cost_usd": "0.0000036",
+              "estimated_ceiling_usd": "0.0010893",
+              "http_status": 200,
+              "input_token_bound": 559,
+              "request_sha256": "d5a8e1da6d37a426ba4e098e00e979c09fa1f29d224cf19d29b2385f98bab83d",
+              "sequence": 7,
+              "state": "settled",
+              "usage": {
+                "input_tokens": 8,
+                "output_tokens": 1
+              }
+            }
+          ],
+          "reserved_cost_usd": "0",
+          "spent_cost_usd": "0.0200805",
+          "usage": {
+            "input_tokens": 65431,
+            "output_tokens": 376
+          }
+        },
+        "evidence": {
+          "confirmation": {
+            "action_index": 0,
+            "amount": 1200,
+            "arguments": {
+              "amount": 1200,
+              "listing_id": 1,
+              "project_id": 1
+            },
+            "arguments_digest": "b39e9637454a5b14f943526543811459c2ab1c1daec6a211273b81a1e211156f",
+            "company_id": 1,
+            "created_at": "2026-09-20 11:13:47.750637+00:00",
+            "deadline_passed": false,
+            "decision_id": 1,
+            "employee_id": 1,
+            "expires_at": "2026-09-20T12:13:47.750132+00:00",
+            "final_audit_id": 5,
+            "id": 1,
+            "person_id": 1,
+            "policy_version": "1",
+            "project_id": 1,
+            "proposal_audit_id": 4,
+            "resolved_at": "2026-09-20 11:13:48.997000+00:00",
+            "result": {
+              "data": {
+                "authority": {
+                  "action_ref": "tool:recruit_from_market",
+                  "actor_employee_id": 1,
+                  "additional_checks": [
+                    {
+                      "action_ref": "tool:recruit_from_market",
+                      "actor_employee_id": 1,
+                      "allowed": true,
+                      "authority_kind": "spend_credits",
+                      "evaluated_at": "2026-09-20T11:13:48.956741",
+                      "grant_ids": [
+                        3
+                      ],
+                      "grant_scopes": [
+                        [
+                          "spend_credits",
+                          "company",
+                          "0",
+                          "2000"
+                        ]
+                      ],
+                      "grants_hash": "0560edb43600077bdae1f747574889c53bdc051d33ea844c06fa5d0c61c3967c",
+                      "position_definition_id": 1,
+                      "position_grants_hash": "ec77b5893b4132452b92e713bc4768f71aca7bbe660394e972819acf47745e0e",
+                      "reason": "authorized",
+                      "snapshot_version": 1
+                    }
+                  ],
+                  "allowed": true,
+                  "authority_kind": "approve_hiring",
+                  "evaluated_at": "2026-09-20T11:13:48.955738",
+                  "grant_ids": [
+                    2
+                  ],
+                  "grant_scopes": [
+                    [
+                      "approve_hiring",
+                      "company",
+                      "0",
+                      ""
+                    ]
+                  ],
+                  "grants_hash": "25792518f2af59768deede3fc7eda636b3458e6b484c753cce60282a5c918f88",
+                  "position_definition_id": 1,
+                  "position_grants_hash": "ec77b5893b4132452b92e713bc4768f71aca7bbe660394e972819acf47745e0e",
+                  "reason": "authorized",
+                  "snapshot_version": 1
+                },
+                "provisioning": {
+                  "employee_id": 2,
+                  "failed_steps": [],
+                  "job_id": 1,
+                  "job_status": "pending",
+                  "ok": false,
+                  "readiness": {
+                    "blocking_gaps": [
+                      "workspace",
+                      "runtime",
+                      "provider"
+                    ],
+                    "company_id": 1,
+                    "deployment_mode": "docker",
+                    "employee_id": 2,
+                    "evaluated_at": "2026-09-20T11:13:48.996100+00:00",
+                    "gaps": [
+                      "position",
+                      "workspace",
+                      "runtime",
+                      "provider"
+                    ],
+                    "items": [
+                      {
+                        "blocking": false,
+                        "detail": "没有生效职位（软契约：不阻止执行，但会缺少履职上下文）",
+                        "evaluated_at": "2026-09-20T11:13:48.996100+00:00",
+                        "expires_at": null,
+                        "facts": {
+                          "assignment_id": null,
+                          "employment_active": true,
+                          "lifecycle_status": "active",
+                          "position_definition_id": null,
+                          "position_slot_id": null
+                        },
+                        "item": "position",
+                        "observed_at": "2026-09-20T11:13:48.996100+00:00",
+                        "ready": false,
+                        "reason_codes": [
+                          "position_missing"
+                        ],
+                        "required_for_execution": false,
+                        "source": "employments (effective primary) + position_slots + position_definitions + employees.lifecycle_status",
+                        "stage": "employment"
+                      },
+                      {
+                        "blocking": true,
+                        "detail": "工作区目录不存在：/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/recruitment-hermes-explicit-slot/test_real_manager_recruits_sel0/workspaces/candidate-359380afebe1",
+                        "evaluated_at": "2026-09-20T11:13:48.996100+00:00",
+                        "expires_at": null,
+                        "facts": {
+                          "dir_exists": false,
+                          "workspace_path": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/recruitment-hermes-explicit-slot/test_real_manager_recruits_sel0/workspaces/candidate-359380afebe1"
+                        },
+                        "item": "workspace",
+                        "observed_at": "2026-09-20T11:13:48.996100+00:00",
+                        "ready": false,
+                        "reason_codes": [
+                          "workspace_missing"
+                        ],
+                        "required_for_execution": true,
+                        "source": "employees.workspace_path + 目录存在 + resource_accounts(workspace)",
+                        "stage": "provisioning"
+                      },
+                      {
+                        "blocking": true,
+                        "detail": "没有运行时实例",
+                        "evaluated_at": "2026-09-20T11:13:48.996100+00:00",
+                        "expires_at": null,
+                        "facts": {
+                          "instance_id": null,
+                          "required": true
+                        },
+                        "item": "runtime",
+                        "observed_at": null,
+                        "ready": false,
+                        "reason_codes": [
+                          "runtime_instance_missing"
+                        ],
+                        "required_for_execution": true,
+                        "source": "runtime_instances (status / health_status)",
+                        "stage": "runtime"
+                      },
+                      {
+                        "blocking": true,
+                        "detail": "没有主模型绑定",
+                        "evaluated_at": "2026-09-20T11:13:48.996100+00:00",
+                        "expires_at": null,
+                        "facts": {
+                          "binding_id": null,
+                          "required": true
+                        },
+                        "item": "provider",
+                        "observed_at": null,
+                        "ready": false,
+                        "reason_codes": [
+                          "model_binding_missing"
+                        ],
+                        "required_for_execution": true,
+                        "source": "model_bindings (is_primary) + providers.enabled",
+                        "stage": "runtime"
+                      }
+                    ],
+                    "policy": {
+                      "deployment_mode": "docker",
+                      "model": "deepseek-flash",
+                      "provider_id": 1,
+                      "runtime_config": {},
+                      "runtime_type": "hermes",
+                      "source": "companies.settings['runtime_defaults']"
+                    },
+                    "ready_to_work": false,
+                    "required_for_execution": [
+                      "workspace",
+                      "runtime",
+                      "provider"
+                    ],
+                    "runtime_type": "hermes",
+                    "stages": [
+                      {
+                        "blocking": false,
+                        "evaluated_at": "2026-09-20T11:13:48.996100+00:00",
+                        "facts": {
+                          "employment_active": true,
+                          "position_is_soft": true
+                        },
+                        "ready": false,
+                        "reason_codes": [
+                          "position_missing"
+                        ],
+                        "stage": "employment"
+                      },
+                      {
+                        "blocking": true,
+                        "evaluated_at": "2026-09-20T11:13:48.996100+00:00",
+                        "facts": {
+                          "binding_id": null,
+                          "instance_id": null,
+                          "job": {
+                            "job_id": 1,
+                            "status": "pending",
+                            "steps": [
+                              {
+                                "detail": "pending",
+                                "reason_code": null,
+                                "status": "pending",
+                                "step": "workspace"
+                              },
+                              {
+                                "detail": "pending",
+                                "reason_code": null,
+                                "status": "pending",
+                                "step": "runtime"
+                              },
+                              {
+                                "detail": "pending",
+                                "reason_code": null,
+                                "status": "pending",
+                                "step": "provider"
+                              }
+                            ]
+                          },
+                          "workspace_present": false
+                        },
+                        "ready": false,
+                        "reason_codes": [
+                          "resources_missing"
+                        ],
+                        "stage": "provisioning"
+                      },
+                      {
+                        "blocking": true,
+                        "evaluated_at": "2026-09-20T11:13:48.996100+00:00",
+                        "facts": {
+                          "provider_ready": false,
+                          "runtime_ready": false
+                        },
+                        "ready": false,
+                        "reason_codes": [
+                          "runtime_instance_missing",
+                          "model_binding_missing"
+                        ],
+                        "stage": "runtime"
+                      },
+                      {
+                        "blocking": true,
+                        "evaluated_at": "2026-09-20T11:13:48.996100+00:00",
+                        "facts": {
+                          "blocking_gaps": [
+                            "workspace",
+                            "runtime",
+                            "provider"
+                          ],
+                          "busy": false,
+                          "task_scope_checked_separately": true
+                        },
+                        "ready": false,
+                        "reason_codes": [
+                          "workspace_not_ready",
+                          "runtime_not_ready",
+                          "provider_not_ready"
+                        ],
+                        "stage": "execution"
+                      }
+                    ]
+                  },
+                  "steps": [
+                    {
+                      "detail": "pending",
+                      "ok": false,
+                      "reason_code": null,
+                      "status": "pending",
+                      "step": "workspace"
+                    },
+                    {
+                      "detail": "pending",
+                      "ok": false,
+                      "reason_code": null,
+                      "status": "pending",
+                      "step": "runtime"
+                    },
+                    {
+                      "detail": "pending",
+                      "ok": false,
+                      "reason_code": null,
+                      "status": "pending",
+                      "step": "provider"
+                    }
+                  ]
+                },
+                "recruitment": {
+                  "company_id": 1,
+                  "created": true,
+                  "employee_id": 2,
+                  "identity_id": "EU-U11-359380afebe1",
+                  "listing_id": 1,
+                  "person_id": 2
+                },
+                "trade": {
+                  "buyer_company_id": 1,
+                  "contract_id": 1,
+                  "created": true,
+                  "employee_id": 2,
+                  "fee": 36,
+                  "fee_burn": 14,
+                  "fee_treasury": 22,
+                  "gross": 1200,
+                  "identity_id": "EU-U11-359380afebe1",
+                  "listing_id": 1,
+                  "net": 1164,
+                  "offer_id": 1,
+                  "person_id": 2,
+                  "seller_company_id": null,
+                  "settlement_transaction_id": 3,
+                  "status": "settled"
+                }
+              },
+              "error": "",
+              "ok": true,
+              "reason": "applied"
+            },
+            "review_outcome": "approved",
+            "reviewed_at": "2026-09-20 11:13:48.951554+00:00",
+            "reviewer_user_id": 1,
+            "runtime_operation_id": 4,
+            "status": "executed",
+            "target_ref": "market_listing:1",
+            "target_version": "123807d1350dd8e20b547dfebf337e9120a30c22c4b498a4b5fb4548af5d7a11",
+            "tool_name": "recruit_from_market",
+            "work_session_id": 1
+          },
+          "employee_id": 2,
+          "manager_image": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+          "manager_provenance": {
+            "assignments": [
+              {
+                "assignment_type": "primary",
+                "department": {
+                  "id": 1,
+                  "name": "Delivery"
+                },
+                "effective_from": "2026-09-20T11:13:35.622800+00:00",
+                "id": 1,
+                "is_primary": true,
+                "position": {
+                  "code": "u8-management",
+                  "id": 1,
+                  "job_family": "management",
+                  "level": 1,
+                  "name": "Project management",
+                  "responsibilities": [
+                    "Read the bound work facts, decide within authority, and acknowledge results."
+                  ]
+                },
+                "position_title_at_assignment": "Project management",
+                "slot": {
+                  "code": "u8-management-1",
+                  "id": 1
+                }
+              }
+            ],
+            "captured_at": "2026-09-20T11:13:41.765764+00:00",
+            "company": {
+              "id": 1,
+              "name": "IT",
+              "slug": "it-it-aa4efff6"
+            },
+            "employee": {
+              "id": 1,
+              "name": "IT it-aa4efff6",
+              "slug": "it-aa4efff6"
+            },
+            "model": "deepseek-flash",
+            "person": {
+              "id": 1,
+              "name": "IT it-aa4efff6",
+              "slug": "it-aa4efff6"
+            },
+            "project": {
+              "goal": "Find the market candidate whose name contains 359380afebe1. Read search_market, then inspect_candidate for its actual commercial_terms. Propose hiring that candidate by submitting one recruit decision with one recruit_from_market action at the exact listed price. Wait for human confirmation; do not claim hiring already succeeded. Once you receive confirmation_pending, finish with summary exactly confirmation=<confirmation id>;audit=<proposal audit id>.",
+              "id": 1,
+              "name": "Confirmed market hiring",
+              "work_mode": "managed"
+            },
+            "provider": {
+              "id": 1,
+              "name": "U8 isolated budget relay",
+              "type": "custom"
+            },
+            "purpose": "management",
+            "review_request": null,
+            "runtime": {
+              "deployment_mode": "docker",
+              "execution_mode": "real",
+              "image_digest": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+              "instance_id": 1,
+              "resource_key": "65bf26c0-bce0-4a23-af9b-38366159a3fd",
+              "type": "hermes",
+              "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b"
+            },
+            "task": null,
+            "version": 1
+          },
+          "manager_version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b",
+          "model_receipt": {
+            "accounted_cost_usd": "0.0200805",
+            "attempts": 7,
+            "cost_usd": "0.0200805",
+            "estimated_ceiling_usd": "0.0953970",
+            "http_status": 200,
+            "input_price_usd_per_million": "0.3",
+            "max_cost_usd": "0.05",
+            "max_requests": 8,
+            "model": "deepseek-flash",
+            "output_limit": 768,
+            "output_price_usd_per_million": "1.2",
+            "pricing_valid_until": "2026-09-20T13:10:15.066260+00:00",
+            "request_sha256": "d5a8e1da6d37a426ba4e098e00e979c09fa1f29d224cf19d29b2385f98bab83d",
+            "requests": [
+              {
+                "cost_usd": "0.0000036",
+                "estimated_ceiling_usd": "0.0010893",
+                "http_status": 200,
+                "input_token_bound": 559,
+                "request_sha256": "d5a8e1da6d37a426ba4e098e00e979c09fa1f29d224cf19d29b2385f98bab83d",
+                "sequence": 1,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 8,
+                  "output_tokens": 1
+                }
+              },
+              {
+                "cost_usd": "0.0032724",
+                "estimated_ceiling_usd": "0.0157665",
+                "http_status": 200,
+                "input_token_bound": 49483,
+                "request_sha256": "cd3f9fc1cd2ae8aa880ff2ac6f3a2b4f9f9e2cea69bd0599b88375f2579999df",
+                "sequence": 2,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 10792,
+                  "output_tokens": 29
+                }
+              },
+              {
+                "cost_usd": "0.0036606",
+                "estimated_ceiling_usd": "0.0173877",
+                "http_status": 200,
+                "input_token_bound": 54887,
+                "request_sha256": "6af7d8110c6e87ad5912f932e70315613f9a06da5b5270031408b171ad91a35e",
+                "sequence": 3,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 12058,
+                  "output_tokens": 36
+                }
+              },
+              {
+                "cost_usd": "0.003906",
+                "estimated_ceiling_usd": "0.01839",
+                "http_status": 200,
+                "input_token_bound": 58228,
+                "request_sha256": "e8ba3f63946c830a4a1b6cf7b0bc16c0e35fc4abbf20f57e7c531c73510de716",
+                "sequence": 4,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 12856,
+                  "output_tokens": 41
+                }
+              },
+              {
+                "cost_usd": "0.0045033",
+                "estimated_ceiling_usd": "0.0199347",
+                "http_status": 200,
+                "input_token_bound": 63377,
+                "request_sha256": "6283f6b605275ebf10c818c9e3e3370e1576d957a52d0c6f685a48e64e9d6877",
+                "sequence": 5,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 14059,
+                  "output_tokens": 238
+                }
+              },
+              {
+                "cost_usd": "0.004731",
+                "estimated_ceiling_usd": "0.0217395",
+                "http_status": 200,
+                "input_token_bound": 69393,
+                "request_sha256": "d34d0dc11024684dd71ef256979ea5adbeb35ad3694102bf546f26b11f0bb261",
+                "sequence": 6,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 15650,
+                  "output_tokens": 30
+                }
+              },
+              {
+                "cost_usd": "0.0000036",
+                "estimated_ceiling_usd": "0.0010893",
+                "http_status": 200,
+                "input_token_bound": 559,
+                "request_sha256": "d5a8e1da6d37a426ba4e098e00e979c09fa1f29d224cf19d29b2385f98bab83d",
+                "sequence": 7,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 8,
+                  "output_tokens": 1
+                }
+              }
+            ],
+            "reserved_cost_usd": "0",
+            "spent_cost_usd": "0.0200805",
+            "usage": {
+              "input_tokens": 65431,
+              "output_tokens": 376
+            }
+          },
+          "new_hire_image": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+          "new_hire_probe": {
+            "id": 2,
+            "result": {
+              "cost_usd": "0.0000036",
+              "estimated_ceiling_usd": "0.000192",
+              "fact": {
+                "checked_at": "2026-09-20T11:14:00.530947+00:00",
+                "expires_at": "2026-09-20T12:14:00.530947+00:00",
+                "reason": "selected_model_responded",
+                "state": "passed"
+              },
+              "max_requests": 1,
+              "pricing": {
+                "estimated_ceiling_usd": "0.000192",
+                "input_token_allowance": 512,
+                "input_usd_per_million": "0.3",
+                "output_usd_per_million": "1.2",
+                "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+                "valid_until": "2026-09-20T13:10:15.066260Z"
+              },
+              "requested_model": "deepseek-flash",
+              "requests_attempted": 1,
+              "usage": {
+                "input_tokens": 8,
+                "output_tokens": 1
+              }
+            },
+            "state": "passed"
+          },
+          "person_id": 2,
+          "readiness": {
+            "blocking_gaps": [],
+            "company_id": 1,
+            "deployment_mode": "docker",
+            "employee_id": 2,
+            "evaluated_at": "2026-09-20T11:14:00.551564+00:00",
+            "gaps": [],
+            "items": [
+              {
+                "blocking": false,
+                "detail": "在册状态 active / 在任职位 u8-management",
+                "evaluated_at": "2026-09-20T11:14:00.551564+00:00",
+                "expires_at": null,
+                "facts": {
+                  "assignment_id": 2,
+                  "employment_active": true,
+                  "lifecycle_status": "active",
+                  "position_definition_id": 1,
+                  "position_slot_id": 2
+                },
+                "item": "position",
+                "observed_at": "2026-09-20T11:14:00.551564+00:00",
+                "ready": true,
+                "reason_codes": [
+                  "position_ready"
+                ],
+                "required_for_execution": false,
+                "source": "employments (effective primary) + position_slots + position_definitions + employees.lifecycle_status",
+                "stage": "employment"
+              },
+              {
+                "blocking": false,
+                "detail": "工作区目录存在：/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/recruitment-hermes-explicit-slot/test_real_manager_recruits_sel0/workspaces/candidate-359380afebe1",
+                "evaluated_at": "2026-09-20T11:14:00.551564+00:00",
+                "expires_at": null,
+                "facts": {
+                  "dir_exists": true,
+                  "workspace_path": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/recruitment-hermes-explicit-slot/test_real_manager_recruits_sel0/workspaces/candidate-359380afebe1"
+                },
+                "item": "workspace",
+                "observed_at": "2026-09-20T11:14:00.551564+00:00",
+                "ready": true,
+                "reason_codes": [
+                  "workspace_ready"
+                ],
+                "required_for_execution": true,
+                "source": "employees.workspace_path + 目录存在 + resource_accounts(workspace)",
+                "stage": "provisioning"
+              },
+              {
+                "blocking": false,
+                "detail": "实例状态 running / 健康 healthy / ",
+                "evaluated_at": "2026-09-20T11:14:00.551564+00:00",
+                "expires_at": "2026-09-20T11:15:29.369441+00:00",
+                "facts": {
+                  "deployment_mode": "docker",
+                  "health_status": "healthy",
+                  "instance_id": 2,
+                  "model_binding_id": 2,
+                  "probes": {
+                    "application_health": {
+                      "checked_at": "2026-09-20T11:13:59.418871+00:00",
+                      "expires_at": "2026-09-20T11:15:29.418871+00:00",
+                      "reason": "application_healthy",
+                      "state": "passed"
+                    },
+                    "capabilities": {
+                      "checked_at": "2026-09-20T11:13:59.467385+00:00",
+                      "expires_at": "2026-09-20T11:15:29.467385+00:00",
+                      "missing": [],
+                      "present": [
+                        "run_events_sse",
+                        "run_status",
+                        "run_stop",
+                        "run_submission"
+                      ],
+                      "reason": "capabilities_present",
+                      "state": "passed"
+                    },
+                    "container": {
+                      "checked_at": "2026-09-20T11:13:59.369441+00:00",
+                      "expires_at": "2026-09-20T11:15:29.369441+00:00",
+                      "reason": "container_present",
+                      "state": "passed"
+                    },
+                    "control": {
+                      "checked_at": "2026-09-20T11:13:59.467358+00:00",
+                      "expires_at": "2026-09-20T11:15:29.467358+00:00",
+                      "reason": "authenticated_control",
+                      "state": "passed"
+                    },
+                    "process": {
+                      "checked_at": "2026-09-20T11:13:59.508507+00:00",
+                      "docker_health": "none",
+                      "docker_state": "running",
+                      "expires_at": "2026-09-20T11:15:29.508507+00:00",
+                      "reason": "process_healthy",
+                      "state": "passed"
+                    }
+                  },
+                  "required": true,
+                  "runtime_type": "hermes",
+                  "status": "running"
+                },
+                "item": "runtime",
+                "observed_at": "2026-09-20T11:13:59.369441+00:00",
+                "ready": true,
+                "reason_codes": [
+                  "runtime_ready"
+                ],
+                "required_for_execution": true,
+                "source": "runtime_instances (status / health_status)",
+                "stage": "runtime"
+              },
+              {
+                "blocking": false,
+                "detail": "主绑定 deepseek-flash（provider 1）：provider_configured, provider_reachable, selected_model_responded",
+                "evaluated_at": "2026-09-20T11:14:00.551564+00:00",
+                "expires_at": "2026-09-20T11:15:29.508484+00:00",
+                "facts": {
+                  "binding_id": 2,
+                  "model": "deepseek-flash",
+                  "probes": {
+                    "provider_configuration": {
+                      "checked_at": "2026-09-20T11:14:00.551485+00:00",
+                      "expires_at": "2026-09-20T11:15:30.551485+00:00",
+                      "reason": "provider_configured",
+                      "state": "passed"
+                    },
+                    "provider_connectivity": {
+                      "checked_at": "2026-09-20T11:13:59.508484+00:00",
+                      "expires_at": "2026-09-20T11:15:29.508484+00:00",
+                      "reason": "provider_reachable",
+                      "state": "passed"
+                    },
+                    "selected_model": {
+                      "checked_at": "2026-09-20T11:14:00.530947+00:00",
+                      "expires_at": "2026-09-20T12:14:00.530947+00:00",
+                      "reason": "selected_model_responded",
+                      "state": "passed"
+                    }
+                  },
+                  "provider_enabled": true,
+                  "provider_id": 1,
+                  "required": true
+                },
+                "item": "provider",
+                "observed_at": "2026-09-20T11:13:59.508484+00:00",
+                "ready": true,
+                "reason_codes": [
+                  "provider_ready"
+                ],
+                "required_for_execution": true,
+                "source": "model_bindings (is_primary) + providers.enabled",
+                "stage": "runtime"
+              }
+            ],
+            "policy": {
+              "deployment_mode": "docker",
+              "model": "deepseek-flash",
+              "provider_id": 1,
+              "runtime_config": {},
+              "runtime_type": "hermes",
+              "source": "companies.settings['runtime_defaults']"
+            },
+            "ready_to_work": true,
+            "required_for_execution": [
+              "workspace",
+              "runtime",
+              "provider"
+            ],
+            "runtime_type": "hermes",
+            "stages": [
+              {
+                "blocking": false,
+                "evaluated_at": "2026-09-20T11:14:00.551564+00:00",
+                "facts": {
+                  "employment_active": true,
+                  "position_is_soft": true
+                },
+                "ready": true,
+                "reason_codes": [
+                  "position_ready"
+                ],
+                "stage": "employment"
+              },
+              {
+                "blocking": false,
+                "evaluated_at": "2026-09-20T11:14:00.551564+00:00",
+                "facts": {
+                  "binding_id": 2,
+                  "instance_id": 2,
+                  "job": {
+                    "job_id": 1,
+                    "status": "done",
+                    "steps": [
+                      {
+                        "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/recruitment-hermes-explicit-slot/test_real_manager_recruits_sel0/workspaces/candidate-359380afebe1",
+                        "reason_code": null,
+                        "status": "done",
+                        "step": "workspace"
+                      },
+                      {
+                        "detail": "runtime environment ensured",
+                        "reason_code": null,
+                        "status": "done",
+                        "step": "runtime"
+                      },
+                      {
+                        "detail": "primary binding created",
+                        "reason_code": null,
+                        "status": "done",
+                        "step": "provider"
+                      }
+                    ]
+                  },
+                  "workspace_present": true
+                },
+                "ready": true,
+                "reason_codes": [
+                  "resources_present"
+                ],
+                "stage": "provisioning"
+              },
+              {
+                "blocking": false,
+                "evaluated_at": "2026-09-20T11:14:00.551564+00:00",
+                "facts": {
+                  "provider_ready": true,
+                  "runtime_ready": true
+                },
+                "ready": true,
+                "reason_codes": [
+                  "runtime_ready",
+                  "provider_ready"
+                ],
+                "stage": "runtime"
+              },
+              {
+                "blocking": false,
+                "evaluated_at": "2026-09-20T11:14:00.551564+00:00",
+                "facts": {
+                  "blocking_gaps": [],
+                  "busy": false,
+                  "task_scope_checked_separately": true
+                },
+                "ready": true,
+                "reason_codes": [
+                  "execution_requirements_met"
+                ],
+                "stage": "execution"
+              }
+            ]
+          },
+          "runtime": "hermes"
+        },
+        "transcript": [
+          {
+            "request_id": "host-fb2f8ef354224000822d41282fa87f25",
+            "run_id": "run_22226f5263f34841b72720ab518618db",
+            "response_text": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-1\",\"tool\":\"inspect_project\",\"args\":{\"project_id\":1}}",
+            "feedback": null
+          },
+          {
+            "request_id": "host-f6f3a3e5b2f84adabde7a68e1b2234d3",
+            "run_id": "run_3f1a34fcd30e4876a0547c8ad81e4666",
+            "response_text": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-2\",\"tool\":\"search_market\",\"args\":{\"text\":\"359380afebe1\",\"limit\":20}}",
+            "feedback": {
+              "request_id": "host-fb2f8ef354224000822d41282fa87f25",
+              "run_id": "run_22226f5263f34841b72720ab518618db",
+              "request": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-1",
+                "tool": "inspect_project",
+                "args": {
+                  "project_id": 1
+                }
+              },
+              "result": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-1",
+                "operation_id": 1,
+                "decision_id": null,
+                "status": "completed",
+                "results": [
+                  {
+                    "ok": true,
+                    "tool": "inspect_project",
+                    "side_effect": "read",
+                    "autonomy": "auto_allowed",
+                    "transport": "internal",
+                    "data": {
+                      "project": {
+                        "project_id": 1,
+                        "name": "Confirmed market hiring",
+                        "status": "in_progress",
+                        "work_mode": "managed",
+                        "planning_fixture": "none",
+                        "owner_id": null,
+                        "management_employee_id": 1,
+                        "management_person_id": 1,
+                        "priority": "medium",
+                        "deadline": null
+                      },
+                      "spec": {
+                        "background": "",
+                        "goal": "Find the market candidate whose name contains 359380afebe1. Read search_market, then inspect_candidate for its actual commercial_terms. Propose hiring that candidate by submitting one recruit decision with one recruit_from_market action at the exact listed price. Wait for human confirmation; do not claim hiring already succeeded. Once you receive confirmation_pending, finish with summary exactly confirmation=<confirmation id>;audit=<proposal audit id>.",
+                        "requirements": [],
+                        "acceptance_criteria": [],
+                        "constraints": [],
+                        "deliverables": [],
+                        "priority": "medium",
+                        "deadline": null,
+                        "context": ""
+                      },
+                      "completeness": {
+                        "is_complete": false,
+                        "missing": [
+                          "background",
+                          "requirements",
+                          "deliverables",
+                          "acceptance_criteria"
+                        ],
+                        "optional_fields": [
+                          "constraints",
+                          "context",
+                          "deadline"
+                        ]
+                      },
+                      "execution": {
+                        "entered": false,
+                        "task_count": 0,
+                        "task_status_counts": {},
+                        "phase_count": 0,
+                        "artifact_count": 0,
+                        "planning_fixture": "none"
+                      },
+                      "work_intake": {
+                        "responsibility": "work_intake",
+                        "status": "no_position",
+                        "position_code": "ceo",
+                        "default_position_code": "ceo",
+                        "is_configured": false,
+                        "position_definition_id": null,
+                        "assignment": null,
+                        "candidate_employee_ids": [],
+                        "owner_user_id": null,
+                        "reason": "公司没有「ceo」这个职位，也没有人承担 Work Intake 责任。请先建立该职位并任命，或由 Owner 手动处理。"
+                      },
+                      "management": {
+                        "employee_id": 1,
+                        "person_id": 1,
+                        "assigned_at": null,
+                        "position_code": null,
+                        "position_definition_id": null,
+                        "current_responsible_employee_id": null,
+                        "stale": false,
+                        "dispatches": [
+                          {
+                            "id": 1,
+                            "source_event_id": 1,
+                            "source_type": "project.replan_required",
+                            "purpose": "management",
+                            "company_id": 1,
+                            "project_id": 1,
+                            "task_id": null,
+                            "review_request_id": null,
+                            "recipient_employee_id": 1,
+                            "work_session_id": 1,
+                            "duplicate_of_id": null,
+                            "checked_at": "2026-09-20T11:13:41.685241+00:00",
+                            "waiting_reason": null,
+                            "details": {},
+                            "resolution": null,
+                            "resolution_reason": null,
+                            "work_session": {
+                              "id": 1,
+                              "status": "running",
+                              "started_at": "2026-09-20T11:13:41.689060+00:00",
+                              "ended_at": null,
+                              "error": null
+                            }
+                          }
+                        ],
+                        "dispatches_next_before_id": null
+                      },
+                      "tasks": [],
+                      "artifacts": [],
+                      "result_kind": "facts_only"
+                    },
+                    "reason": "ok",
+                    "error": "",
+                    "authority": null,
+                    "audit_id": 1,
+                    "actor": {
+                      "employee_id": 1,
+                      "person_id": 1,
+                      "company_id": 1,
+                      "origin": "work_session",
+                      "work_session_id": 1,
+                      "task_id": null,
+                      "project_id": 1,
+                      "runtime_type": "hermes",
+                      "purpose": "management",
+                      "review_request_id": null
+                    }
+                  }
+                ],
+                "action_indices": [
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "request_id": "host-9ff8d4f42eae4036bdbe67c18f7886fd",
+            "run_id": "run_93cd3f83ff24473eaf9e23e7138bb3dd",
+            "response_text": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-3\",\"tool\":\"inspect_candidate\",\"args\":{\"listing_id\":1,\"timeline_limit\":20,\"evidence_limit\":20}}",
+            "feedback": {
+              "request_id": "host-f6f3a3e5b2f84adabde7a68e1b2234d3",
+              "run_id": "run_3f1a34fcd30e4876a0547c8ad81e4666",
+              "request": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-2",
+                "tool": "search_market",
+                "args": {
+                  "text": "359380afebe1",
+                  "limit": 20
+                }
+              },
+              "result": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-2",
+                "operation_id": 2,
+                "decision_id": null,
+                "status": "completed",
+                "results": [
+                  {
+                    "ok": true,
+                    "tool": "search_market",
+                    "side_effect": "read",
+                    "autonomy": "auto_allowed",
+                    "transport": "internal",
+                    "data": {
+                      "items": [
+                        {
+                          "listing_id": 1,
+                          "identity_id": "EU-U11-359380afebe1",
+                          "name": "Engineer 359380afebe1",
+                          "avatar": "",
+                          "origin": "blank",
+                          "cultivation_state": "ready",
+                          "status": "active",
+                          "quality_tier": null,
+                          "listed_at": "2026-09-20T11:13:41.663106",
+                          "closed_at": null,
+                          "listed_by": "Isolated issuer",
+                          "fit": null
+                        }
+                      ],
+                      "total": 1,
+                      "limit": 20,
+                      "offset": 0,
+                      "result_kind": "facts_only"
+                    },
+                    "reason": "ok",
+                    "error": "",
+                    "authority": null,
+                    "audit_id": 2,
+                    "actor": {
+                      "employee_id": 1,
+                      "person_id": 1,
+                      "company_id": 1,
+                      "origin": "work_session",
+                      "work_session_id": 1,
+                      "task_id": null,
+                      "project_id": 1,
+                      "runtime_type": "hermes",
+                      "purpose": "management",
+                      "review_request_id": null
+                    }
+                  }
+                ],
+                "action_indices": [
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "request_id": "host-98f67d863ee94947bd27d74bade922c3",
+            "run_id": "run_92f86965de35423ab47b8f8d2251be90",
+            "response_text": "{\"version\":1,\"kind\":\"decision\",\"operation_key\":\"decision-1\",\"decision\":{\"decision_type\":\"recruit\",\"reason\":\"项目 1 的目标是找到名字含 359380afebe1 的市场候选人并按挂牌价提案雇佣。search_market 只返回一条挂牌 listing_id=1（Engineer 359380afebe1，active/ready），inspect_candidate 读到其 commercial_terms 为 price=1200 CREDIT、sale_mode=buyout。我有 approve_hiring 与 spend_credits 授权（上限 2000，1200 在额度内），按挂牌原价 1200 提交一次雇佣提案，等待人工 Owner 确认，不声称雇佣已成功。\",\"scope\":\"project:1\",\"intended_outcome\":\"提交 listing 1 的固定价雇佣提案，进入人工确认；确认后按确认号与提案审计号收尾。\",\"context\":{\"project_id\":1,\"candidate_employee_ids\":[1]},\"actions\":[{\"tool\":\"recruit_from_market\",\"args\":{\"project_id\":1,\"listing_id\":1,\"amount\":1200}}]}}",
+            "feedback": {
+              "request_id": "host-9ff8d4f42eae4036bdbe67c18f7886fd",
+              "run_id": "run_93cd3f83ff24473eaf9e23e7138bb3dd",
+              "request": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-3",
+                "tool": "inspect_candidate",
+                "args": {
+                  "listing_id": 1,
+                  "timeline_limit": 20,
+                  "evidence_limit": 20
+                }
+              },
+              "result": {
+                "version": 1,
+                "kind": "read",
+                "operation_key": "read-3",
+                "operation_id": 3,
+                "decision_id": null,
+                "status": "completed",
+                "results": [
+                  {
+                    "ok": true,
+                    "tool": "inspect_candidate",
+                    "side_effect": "read",
+                    "autonomy": "auto_allowed",
+                    "transport": "internal",
+                    "data": {
+                      "listing": {
+                        "listing_id": 1,
+                        "status": "active",
+                        "quality_tier": null,
+                        "listed_at": "2026-09-20T11:13:41.663106",
+                        "listed_by": "Isolated issuer"
+                      },
+                      "identity": {
+                        "identity_id": "EU-U11-359380afebe1",
+                        "name": "Engineer 359380afebe1",
+                        "avatar": "",
+                        "origin": "blank",
+                        "cultivation_state": "ready"
+                      },
+                      "traits": [
+                        {
+                          "code": "curiosity",
+                          "label": "好奇心",
+                          "description": "探索倾向：专注当前任务 ↔ 主动查阅相邻知识",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": true
+                        },
+                        {
+                          "code": "warmth",
+                          "label": "热情与亲和",
+                          "description": "热情与亲和：克制事务化 ↔ 积极回应、解释、鼓励",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "independence",
+                          "label": "独立倾向",
+                          "description": "独立倾向：频繁确认 ↔ 自主拆解推进",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "conscientiousness",
+                          "label": "严谨倾向",
+                          "description": "严谨倾向：快速推进 ↔ 检查、验证、守流程",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "collaboration",
+                          "label": "协作倾向",
+                          "description": "协作倾向：独立完成 ↔ 沟通、peer review、分享",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "risk_tolerance",
+                          "label": "风险偏好",
+                          "description": "风险偏好：成熟方案 ↔ 实验性技术",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "adaptability",
+                          "label": "变化适应",
+                          "description": "变化适应：偏好稳定 ↔ 新岗位/新栈快速调整",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        },
+                        {
+                          "code": "creativity",
+                          "label": "创新倾向",
+                          "description": "创新倾向：既有方案 ↔ 替代方案与新组合",
+                          "value": 0.5,
+                          "display": 50,
+                          "affects_execution": false
+                        }
+                      ],
+                      "competencies": {
+                        "general": [],
+                        "professional": []
+                      },
+                      "knowledge_summary": {
+                        "total": 0,
+                        "by_scope": {},
+                        "top_topics": []
+                      },
+                      "timeline": [],
+                      "evidence": [],
+                      "market_state": "listed",
+                      "commercial_terms": {
+                        "price": 1200,
+                        "currency": "CREDIT",
+                        "sale_mode": "buyout"
+                      },
+                      "result_kind": "facts_only"
+                    },
+                    "reason": "ok",
+                    "error": "",
+                    "authority": null,
+                    "audit_id": 3,
+                    "actor": {
+                      "employee_id": 1,
+                      "person_id": 1,
+                      "company_id": 1,
+                      "origin": "work_session",
+                      "work_session_id": 1,
+                      "task_id": null,
+                      "project_id": 1,
+                      "runtime_type": "hermes",
+                      "purpose": "management",
+                      "review_request_id": null
+                    }
+                  }
+                ],
+                "action_indices": [
+                  0
+                ]
+              }
+            }
+          },
+          {
+            "request_id": "host-ff55b0a3737a4d7ca07160da5151ba98",
+            "run_id": "run_e6585b367cd1464d857a94c3fcbb838b",
+            "response_text": "{\"version\":1,\"kind\":\"finish\",\"operation_key\":\"finish-1\",\"summary\":\"confirmation=1;audit=4\"}",
+            "feedback": {
+              "request_id": "host-98f67d863ee94947bd27d74bade922c3",
+              "run_id": "run_92f86965de35423ab47b8f8d2251be90",
+              "request": {
+                "version": 1,
+                "kind": "decision",
+                "operation_key": "decision-1",
+                "decision": {
+                  "decision_type": "recruit",
+                  "reason": "项目 1 的目标是找到名字含 359380afebe1 的市场候选人并按挂牌价提案雇佣。search_market 只返回一条挂牌 listing_id=1（Engineer 359380afebe1，active/ready），inspect_candidate 读到其 commercial_terms 为 price=1200 CREDIT、sale_mode=buyout。我有 approve_hiring 与 spend_credits 授权（上限 2000，1200 在额度内），按挂牌原价 1200 提交一次雇佣提案，等待人工 Owner 确认，不声称雇佣已成功。",
+                  "scope": "project:1",
+                  "actions": [
+                    {
+                      "tool": "recruit_from_market",
+                      "args": {
+                        "project_id": 1,
+                        "listing_id": 1,
+                        "amount": 1200
+                      }
+                    }
+                  ],
+                  "intended_outcome": "提交 listing 1 的固定价雇佣提案，进入人工确认；确认后按确认号与提案审计号收尾。",
+                  "context": {
+                    "project_id": 1,
+                    "candidate_employee_ids": [
+                      1
+                    ]
+                  },
+                  "parent_decision_id": null
+                }
+              },
+              "result": {
+                "version": 1,
+                "kind": "decision",
+                "operation_key": "decision-1",
+                "operation_id": 4,
+                "decision_id": 1,
+                "status": "completed",
+                "results": [
+                  {
+                    "ok": false,
+                    "tool": "recruit_from_market",
+                    "side_effect": "high_impact",
+                    "autonomy": "requires_confirmation",
+                    "transport": "internal",
+                    "data": {
+                      "confirmation": {
+                        "id": 1,
+                        "status": "pending",
+                        "arguments_digest": "b39e9637454a5b14f943526543811459c2ab1c1daec6a211273b81a1e211156f",
+                        "target_ref": "market_listing:1",
+                        "target_version": "123807d1350dd8e20b547dfebf337e9120a30c22c4b498a4b5fb4548af5d7a11",
+                        "amount": 1200,
+                        "expires_at": "2026-09-20T12:13:47.750132+00:00"
+                      }
+                    },
+                    "reason": "confirmation_pending",
+                    "error": "",
+                    "authority": {
+                      "snapshot_version": 1,
+                      "authority_kind": "approve_hiring",
+                      "allowed": true,
+                      "reason": "authorized",
+                      "actor_employee_id": 1,
+                      "position_definition_id": 1,
+                      "action_ref": "tool:recruit_from_market",
+                      "grant_ids": [
+                        2
+                      ],
+                      "grant_scopes": [
+                        [
+                          "approve_hiring",
+                          "company",
+                          "0",
+                          ""
+                        ]
+                      ],
+                      "grants_hash": "25792518f2af59768deede3fc7eda636b3458e6b484c753cce60282a5c918f88",
+                      "position_grants_hash": "ec77b5893b4132452b92e713bc4768f71aca7bbe660394e972819acf47745e0e",
+                      "evaluated_at": "2026-09-20T11:13:47.747264",
+                      "additional_checks": [
+                        {
+                          "snapshot_version": 1,
+                          "authority_kind": "spend_credits",
+                          "allowed": true,
+                          "reason": "authorized",
+                          "actor_employee_id": 1,
+                          "position_definition_id": 1,
+                          "action_ref": "tool:recruit_from_market",
+                          "grant_ids": [
+                            3
+                          ],
+                          "grant_scopes": [
+                            [
+                              "spend_credits",
+                              "company",
+                              "0",
+                              "2000"
+                            ]
+                          ],
+                          "grants_hash": "0560edb43600077bdae1f747574889c53bdc051d33ea844c06fa5d0c61c3967c",
+                          "position_grants_hash": "ec77b5893b4132452b92e713bc4768f71aca7bbe660394e972819acf47745e0e",
+                          "evaluated_at": "2026-09-20T11:13:47.748109"
+                        }
+                      ]
+                    },
+                    "audit_id": 4,
+                    "actor": {
+                      "employee_id": 1,
+                      "person_id": 1,
+                      "company_id": 1,
+                      "origin": "work_session",
+                      "work_session_id": 1,
+                      "task_id": null,
+                      "project_id": 1,
+                      "runtime_type": "hermes",
+                      "purpose": "management",
+                      "review_request_id": null
+                    }
+                  }
+                ],
+                "action_indices": [
+                  0
+                ],
+                "decision_status": "EXECUTING"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "total_requests": 18,
+    "peak_rate_estimate_usd": "0.0551475",
+    "unit_budget_cap_usd": "0.15",
+    "per_attempt_budget_cap_usd": "0.05",
+    "final_pass_seconds": 28.68,
+    "pricing_source": "https://api-docs.deepseek.com/quick_start/pricing/",
+    "pricing_check": {
+      "verified_at": "2026-09-20T11:10:15.066260+00:00",
+      "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+      "requested_model": "deepseek-flash",
+      "model_version": "DeepSeek-V4.1-Flash",
+      "peak_usd_per_million_input_cache_miss": "0.3",
+      "peak_usd_per_million_output": "1.2",
+      "max_requests_per_attempt": 8,
+      "max_output_tokens_per_request": 768,
+      "max_usd_per_attempt": "0.05",
+      "max_unit_attempts": 3,
+      "max_unit_usd": "0.15",
+      "scope": "One real Hermes Manager discovers, proposes, acknowledges pending; Owner approves; new employee provisioned with second actual paid probe. No real worker task or reviewer claim."
+    },
+    "raw_attempts_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/real-attempts.json",
+    "raw_attempts_sha256": "873e4114149bf50faceda0edf6294a7e8e42deac7ec11467e194270a297e5122",
+    "before_containers_sha256": "5ebbfb5774877411be2c5cf4827bcb1793cc7441d9d22b0e8f69ac17628c4d67",
+    "after_containers_sha256": "5ebbfb5774877411be2c5cf4827bcb1793cc7441d9d22b0e8f69ac17628c4d67"
+  },
+  "intermediate_failures": [
+    "Wrong initial Python path and fixture uncommitted lock were setup errors.",
+    "Behavior-02 wrong fixture signatures corrected; behavior-03 exposed missing provisioning job facts.",
+    "Focused-01 included missing select import and three outdated/layering assertions. Original T2 economic isolation guard retained by moving M1 composition outside T2 module.",
+    "Exact T2 API fields and actual high-impact tool assertions updated without removing privacy or Authority checks.",
+    "Real first attempt stopped at fixture max_actions=2; second completed Manager proposal and hire then hit duplicate PositionSlot headcount_index=1. Third used explicit headcount_index=2 and passed entire chain.",
+    "Static formatter feedback corrected; final make lint passed."
+  ],
+  "implementation_receipt": {
+    "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u11-ndihm4jp/u11-return.json",
+    "sha256": "4d3df9c95645c78244cfa1e4e10971bcea735b6fee4027f34f097e099d2c274b"
+  },
+  "standalone_shipping_skipped": true
+}

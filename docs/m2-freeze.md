@@ -434,6 +434,26 @@ inspect_action_confirmation / list_action_confirmations；精确目录守卫随�
 56b215ea43f0 后，临时库 up/down/up、无漂移及历史不可变守卫必须通过。旧迁移自身版本
 断言保留，仅当前 head 断言推进；有确认历史的降级须在 DDL 前拒绝。
 
+### U11：确认招聘与既有交易接入（实施登记，2026-09-20）
+
+实施前招聘、T2/M1 黄金路径、不变量和 M2/M3 相关锚点 251 passed。新增测试已观察到
+候选人商业条款缺失、recruit_from_market 未注册、外层交易未保存成交来源事件三项失败。
+首次测试夹具未提交导致的锁冲突已修正；它不作为业务缺陷证据。
+
+新增 recruit_from_market 高影响工具，绑定 recruit 决策及 U10 确认策略，同时要求
+approve_hiring 和带金额上限的 spend_credits；附加授权为交集，普通写工具的门禁不变。
+执行前重查固定挂牌、商业条款、结算政策及金额。只适配 M1 一口价成交；议价明确要求卖方
+接受，未设条款不推定为免费。人类既有 T2/议价入口保持其原领域语义，后续统一入口加固归 U26。
+
+复用 TalentTradeService → RecruitmentService → U2 开通意图，不另写账本、招聘或定价。
+招聘、扣款、成交来源事件和最终 ToolAudit 同事务；既有 Event 行在外层提交后才分发，
+回滚不发通知。Person 及其资产不复制，Agent 发起者留在真实 Employee 审计中，不伪装成 User。
+结果分开返回招聘、交易和开通；待开通或 partial 不冒充 ready。候选人详情增补 M1 既有
+price/currency/sale_mode 白名单投影，API 与工具共用，无新增商业事实表。
+
+目录守卫由“尚无 high_impact 工具”改为“仅有具备确认策略的真实招聘工具”；无确认策略的
+动作仍拒绝。P12/P13、资金原子性、并发抢人、重放、撤权、条款变化和开通失败都有行为检查。
+
 **M3 开工前的三条纪律（沿用 M2）**：
 
 ```text

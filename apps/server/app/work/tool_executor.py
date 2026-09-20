@@ -743,6 +743,20 @@ def execute_tool(
         snapshot = C.authority_snapshot(decision, action_ref=f"tool:{spec.name}")
         if not decision.allowed:
             return fail("not_authorized", f"not authorized: {decision.reason}", snapshot=snapshot)
+        checks = []
+        for kind in spec.additional_authorities:
+            extra = authority_service.authorizes(
+                db, employee_id=context.employee_id, kind=kind, target=target, amount=amount
+            )
+            check = C.authority_snapshot(extra, action_ref=f"tool:{spec.name}")
+            checks.append(check)
+            if not extra.allowed:
+                check["prior_checks"] = [snapshot, *checks[:-1]]
+                return fail(
+                    "not_authorized", f"not authorized: {kind.value}:{extra.reason}", snapshot=check
+                )
+        if checks:
+            snapshot["additional_checks"] = checks
 
     # ③b 决策语义门禁（DR7）—— 放在 Authority **之后**：安全边界先判，
     # 否则"这个工具需要决策"会盖住"你没权限"这个更重要的回答。

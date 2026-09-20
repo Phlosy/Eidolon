@@ -8,9 +8,8 @@
    `authority_target`，T4）—— 授权不是 handler 的职责，但也不是它的可选步骤；
 3. 只返回"系统实际应用了什么"的事实（T7）。
 
-**刻意不做**（用户拍板 §9）：`spend_credits` / `offboard_employee` / `purchase_talent`
-等高影响动作 —— 它们的授权已存在（`HIGH_IMPACT_AUTHORITIES_RESERVED`），
-但 M2.3 不写空业务。
+U11 的 `recruit_from_market` 适配 M1/T2 真实成交，具有独立确认策略并同时要求招聘和支出
+授权。其余高影响能力仍保留原边界，不注册空业务。
 
 **M2.3 的诚实边界**：`request_review` 目前只做状态推进 + 留痕 + 事件，
 持久的 `ReviewRequest` 实体是 M2.7 的交付物；返回值里用
@@ -41,7 +40,7 @@ from app.repositories import review as review_repo
 from app.services import learning as learning_service
 from app.services import tasks as task_service
 from app.work import contracts as C
-from app.work import handoff, reviews, tools
+from app.work import handoff, reviews, tool_recruitment, tools
 
 #: 允许由管理 Agent 创建的任务类型（`general` 刻意放开：不是每个工作项都能塞进固定分类）
 CREATABLE_TASK_KINDS = tuple(kind.value for kind in TaskKind)
@@ -706,6 +705,7 @@ def _replan_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict
 def build_write_tools() -> tuple[tools.ToolSpec, ...]:
     """写工具清单（**只有内部执行面**；人类管理动作走各领域自己的正式 API）。"""
     return (
+        tool_recruitment.build_tool(),
         tools.ToolSpec(
             name="create_learning_priority",
             decision_semantics=DecisionSemantics.required,

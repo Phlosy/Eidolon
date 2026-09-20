@@ -270,6 +270,7 @@ def test_acceptance_c_issued_and_trained_share_one_pipeline(client, db, default_
             "timeline",
             "evidence",
             "market_state",
+            "commercial_terms",
         }
         assert len(body["traits"]) == 8
         assert len(body["competencies"]["general"]) == 10

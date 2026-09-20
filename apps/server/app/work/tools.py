@@ -251,12 +251,21 @@ class ToolSpec:
     #: 写动作**必须**显式声明 —— 不允许"不知道自己算不算决策"。
     decision_semantics: DecisionSemantics = DecisionSemantics.none
     confirmation_policy: ConfirmationPolicy | None = None
+    #: Conjunctive requirements for a compound domain action, never alternatives.
+    additional_authorities: tuple[AuthorityKind, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.name.strip():
             raise ToolError("tool name must not be empty")
         if not self.description.strip():
             raise ToolError(f"{self.name}: description must not be empty")
+        if (
+            not isinstance(self.additional_authorities, tuple)
+            or any(not isinstance(kind, AuthorityKind) for kind in self.additional_authorities)
+            or len(set(self.additional_authorities)) != len(self.additional_authorities)
+            or self.required_authority in self.additional_authorities
+        ):
+            raise ToolError(f"{self.name}: invalid additional authorities")
         if self.confirmation_policy is not None and (
             self.side_effect is not ToolSideEffect.high_impact
             or not isinstance(self.confirmation_policy, ConfirmationPolicy)
@@ -272,7 +281,11 @@ class ToolSpec:
                 f"{self.name}: confirmation requires a project-bound high-impact decision"
             )
         if self.side_effect is ToolSideEffect.read:
-            if self.required_authority is not None or self.authority_target is not None:
+            if (
+                self.required_authority is not None
+                or self.authority_target is not None
+                or self.additional_authorities
+            ):
                 raise ToolError(
                     f"{self.name}: read tools must not declare authority "
                     "(facts inside the company scope need no management authority)"
@@ -330,6 +343,7 @@ class ToolSpec:
             "required_authority": (
                 self.required_authority.value if self.required_authority else None
             ),
+            "additional_authorities": [kind.value for kind in self.additional_authorities],
             "decision_semantics": self.decision_semantics.value,
             "input_schema": self.input_schema,
             "output_schema": self.output_schema,
