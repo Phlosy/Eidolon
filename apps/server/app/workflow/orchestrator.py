@@ -106,10 +106,14 @@ class Orchestrator:
         self._workers: dict[int, asyncio.Task] = {}  # original WorkSession id -> owned coroutine
         self._recovery_cursor = 0
         self._recovery_through: int | None = None
+        self._action_recovery_cursor = 0
+        self._action_recovery_through: int | None = None
 
     def start(self) -> None:
         self._recovery_through = recovery.work_session_boundary() or None
         self._recovery_cursor = 0
+        self._action_recovery_through = recovery.confirmation_boundary() or None
+        self._action_recovery_cursor = 0
         self._loop = asyncio.get_running_loop()
         self._runner = asyncio.create_task(self._run(), name="eidolon-orchestrator")
 
@@ -155,6 +159,13 @@ class Orchestrator:
                 self._recovery_cursor = recovered.cursor
                 if recovered.complete:
                     self._recovery_through = None
+            if self._action_recovery_through is not None:
+                actions = recovery.reconcile_approved_actions(
+                    after_id=self._action_recovery_cursor, through_id=self._action_recovery_through
+                )
+                self._action_recovery_cursor = actions.cursor
+                if actions.complete:
+                    self._action_recovery_through = None
             await self._dispatch_pending()
         elif signal["type"] == "stop_work":
             identifier = signal.get("work_session_id")

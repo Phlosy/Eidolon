@@ -332,8 +332,16 @@ async def test_lifespan_stops_event_producers_before_draining_engine(
         "runtime_provisioner",
         SimpleNamespace(start=lambda: None, stop=producer("provisioner")),
     )
+
+    def start_orchestrator():
+        assert engine._task is not None, "Recovery must not emit before event consumers start"
+        if management_enabled:
+            assert lifecycle == ["registered"]
+
     monkeypatch.setattr(
-        main, "orchestrator", SimpleNamespace(start=lambda: None, stop=producer("orchestrator"))
+        main,
+        "orchestrator",
+        SimpleNamespace(start=start_orchestrator, stop=producer("orchestrator")),
     )
     monkeypatch.setattr(
         main,

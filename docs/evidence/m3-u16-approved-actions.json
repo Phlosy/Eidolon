@@ -1,0 +1,282 @@
+{
+  "unit": "U16 component4",
+  "status": "locally_verified_component_only",
+  "base_commit": "d40fa7547cf1bc7d5fddd0aae4f90c64923e9850",
+  "plan": "docs/m3-implementation-plan.md",
+  "requirements": [
+    "R4"
+  ],
+  "key_technical_decision": "KTD8",
+  "migration": null,
+  "behavior": "Bounded startup scan resumes only already-approved fixed actions through existing original Owner/approval/authority/terms/funds checks and atomic execution receipts. Event consumers start before orchestrator recovery.",
+  "process_proof": {
+    "test": "apps/server/tests/test_m3_confirmation_recovery.py::test_process_death_after_approval_and_effect_commit_never_buys_twice",
+    "crashes": [
+      "os._exit(23) after original human approval commit before effect",
+      "os._exit(24) after original action outer transaction commit, before recovery returns"
+    ],
+    "real_services": [
+      "Runtime bridge and ActionConfirmation",
+      "recruit_from_market",
+      "M1 internal CREDIT ledger",
+      "T2 buyout and employment",
+      "Provisioning intent only",
+      "Decision/ToolAudit final receipt and source Events"
+    ],
+    "replay": "Two subsequent fresh interpreters scan original confirmation, both already_resolved; same final receipt, one employee, one pending runtime job, one1200 CREDIT debit, two original recruitment/purchase Events",
+    "limits": "Isolated test data; no Docker provisioner execution, native Runtime or Provider/model call"
+  },
+  "checks": [
+    {
+      "label": "approved-actions-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_confirmation_recovery.py",
+        "apps/server/tests/test_review_event_shutdown.py::test_lifespan_stops_event_producers_before_draining_engine",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.55,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/approved-actions-red.log",
+      "outcome": "expected_failure",
+      "summary": "13 failed before production changes: 7 missing recovery API checks, including successful approval commit and os._exit(23) followed by missing new scanner; 6 existing lifespan variants expose producer startup before consumer",
+      "log_sha256": "fb868d92075ae72f34f217e3b5a22f43387a20c716a7ce3ece43b880d6be6447"
+    },
+    {
+      "label": "approved-actions-first-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_confirmation_recovery.py",
+        "apps/server/tests/test_review_event_shutdown.py",
+        "apps/server/tests/test_m3_recovery.py",
+        "apps/server/tests/test_m3_action_confirmations.py",
+        "apps/server/tests/test_m3_recruitment_flow.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 14.96,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/approved-actions-first-green.log",
+      "outcome": "passed",
+      "summary": "120 passed; original confirmation/recruitment, U16 and lifecycle regressions",
+      "log_sha256": "0efa3d78160ed43547683883ad851f1d9d760cbcdb29979370859eeacf160e75"
+    },
+    {
+      "label": "approved-actions-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_confirmation_recovery.py",
+        "apps/server/tests/test_review_event_shutdown.py",
+        "apps/server/tests/test_m3_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 9.74,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/approved-actions-boundaries.log",
+      "outcome": "passed",
+      "summary": "68 passed; added scope, paging, current authorization, source races and real SQLite rollback/retry",
+      "log_sha256": "be7b1d1da17dab0ff4a80a7e17a13d46df92b65f8d3ca21c76daa25238979628"
+    },
+    {
+      "label": "approved-actions-final-focused",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_confirmation_recovery.py",
+        "apps/server/tests/test_m3_recovery.py",
+        "apps/server/tests/test_m3_action_confirmations.py",
+        "apps/server/tests/test_m3_recruitment_flow.py",
+        "apps/server/tests/test_review_event_shutdown.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_provisioning.py",
+        "apps/server/tests/test_talent_trade.py",
+        "apps/server/tests/test_economy_costs.py",
+        "apps/server/tests/test_m1_invariants.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 26.9,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/approved-actions-final-focused.log",
+      "outcome": "passed",
+      "summary": "255 passed after simplification; includes real M1/T2/recruitment/management/provisioning and event lifecycle",
+      "log_sha256": "d0e0a7fad565ac224ad4490af95956901d6e29dd2e5851b6ef5c724e1d6cb225"
+    },
+    {
+      "label": "approved-actions-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/approved-actions-python-lint.log",
+      "outcome": "passed",
+      "summary": "All server Python lint checks passed",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "approved-actions-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/approved-actions-python-format.log",
+      "outcome": "passed",
+      "summary": "545 files already formatted",
+      "log_sha256": "d4191c0bb8c6ffbaa6aa5d87880d39e95bcec717fabe4fec2189c3f556e1fcfe"
+    },
+    {
+      "label": "approved-actions-web-types",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 3.32,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/approved-actions-web-types.log",
+      "outcome": "passed",
+      "summary": "Project web tsc --noEmit passed",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "approved-actions-web-lint",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "eslint",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 1.8,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/approved-actions-web-lint.log",
+      "outcome": "passed",
+      "summary": "Project web eslint passed",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "approved-actions-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 281.64,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/approved-actions-full-backend.log",
+      "outcome": "passed",
+      "summary": "2997 passed,26 deselected,118 existing warnings; pytest279.66 seconds",
+      "log_sha256": "855000a02fd14ce00525995edc9cfbad560e350199819fea6a07b384c7c0c419"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/main.py": "603752e2228e8fc9b0d191f25f333d8c6a8ffedc570be87a8f7e0b036d2f0ac4",
+    "apps/server/app/work/recovery.py": "b717f3411838420dec99cff23bd1b30a2a43491e0f552156451103699d16e448",
+    "apps/server/app/workflow/orchestrator.py": "81e8aa8bc19b7f38f3c2f773bb525878398a3d7c2e32e33bd9e9badc4f14768c",
+    "apps/server/tests/test_m3_confirmation_recovery.py": "a0319bc8da1e4ced93482b1da5d48b9231722b1c05c91677ce3952ab52004ace",
+    "apps/server/tests/test_review_event_shutdown.py": "74ef550062628933d1681e50a576bdec96ed0ab77f70131978ae478d596b8d22",
+    "docs/m2-freeze.md": "071958aa093e1901909ac1d065147395c7d05adad032e5f58030fd3c713852ea",
+    "docs/m3-u16-crash-recovery.md": "e9340d54b4d39f5862f5b838a1cda0e1d6878b7f93fa557bd1db81e84e674e4c"
+  },
+  "simplification": {
+    "skill": "ce-simplify-code",
+    "scope": "Production changes in U16 components3/4 since 5d64b14; mutation restricted to current component4 recovery.py",
+    "plan_structure_pins": "docs/m3-implementation-plan.md KTDs/session-settled entries preserved; plan used as context, not broadening scope",
+    "route": "All three prompt assets read in full and applied inline by caller",
+    "fallback": "Reuse recorded unrecoverable fresh-worker prelaunch thread limit; no new dispatch attempt and no completed agent reuse; no independent review claimed",
+    "reviews": [
+      {
+        "persona": "code-reuse-reviewer",
+        "status": "complete",
+        "applied": 0,
+        "skipped": [
+          {
+            "candidate": "Replace remaining_timeout numeric admission with worker_timeout",
+            "reason": "Not behavior-equivalent: worker_timeout historically coerces strings/bools; remaining_timeout intentionally requires numeric non-bool input. Preserve both boundary checks."
+          }
+        ]
+      },
+      {
+        "persona": "code-quality-reviewer",
+        "status": "complete",
+        "applied": 1,
+        "finding": "Replace nested status ternary in _observe_action with explicit if/elif/else; exact outcomes and ordering preserved",
+        "skipped": [
+          {
+            "candidate": "Generic batch/observation types across Worker and confirmation recovery",
+            "reason": "Distinct source IDs and return contracts are useful; a generic wrapper adds indirection for two short types."
+          }
+        ]
+      },
+      {
+        "persona": "efficiency-reviewer",
+        "status": "complete",
+        "applied": 1,
+        "finding": "Approved-action read phase selects only ID/status/final_audit_id; original parameters are loaded only for eligible sources after acquiring write transaction. Retain every source/authorization recheck."
+      }
+    ],
+    "verification": {
+      "scoped": "approved-actions-final-focused:255 passed",
+      "python_lint": "approved-actions-python-lint:pass",
+      "python_format": "approved-actions-python-format:545 files",
+      "web_types": "approved-actions-web-types:pass",
+      "web_lint": "approved-actions-web-lint:pass",
+      "full_backend": "approved-actions-full-backend:2997 passed,26 deselected,118 existing warnings"
+    },
+    "behavior_changes": false
+  },
+  "independent_review_completed": false,
+  "paid_calls": 0,
+  "docker_operations": 0,
+  "not_run": [
+    "26 opt-in native integration cases",
+    "Browser/frontend build/tests: no frontend behavior changes"
+  ],
+  "open_gates": [
+    "Full U16 running-session, ordinary structured action and downstream-effect recovery",
+    "U14 additional paid allowance unanswered",
+    "U15-U17 joint real business/monetary evidence"
+  ],
+  "notes": [
+    "No schema, production action-executor or authority-contract changes in this component",
+    "Revoked original Owner/session leaves approved intact with an explicit returned denial reason, never a substitute approver",
+    "Original user tmp/ excluded and unread; no dev DB or shared fixture writes",
+    "All three simplification personas executed inline after documented unavailable fresh-worker capacity; not independent reviewers"
+  ]
+}

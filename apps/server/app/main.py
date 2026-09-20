@@ -47,7 +47,6 @@ async def lifespan(app: FastAPI):
         authority_seed.seed_default_authority(db)
         get_secret_store().register_existing(db)  # arm log/event redaction
     bus.attach_loop()
-    orchestrator.start()
     # E0：事件引擎是 lifespan 里唯一的事件消费入口（无处理器时空转无害）。
     from app.events import engine as engine_module
     from app.evidence import pipeline as evidence_pipeline
@@ -90,6 +89,9 @@ async def lifespan(app: FastAPI):
     runtime_provisioner.start()
     logger.info("eidolon server started (runtime_mode=%s)", settings.runtime_mode)
     try:
+        # Startup recovery may commit approved actions and emit domain events.
+        # Register/start their consumers before allowing the orchestrator to run.
+        orchestrator.start()
         if management_started:
             management_runner.start()
         yield
