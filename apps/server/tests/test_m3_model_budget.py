@@ -390,6 +390,114 @@ def test_existing_ledger_cannot_be_reopened_with_larger_allowance(relay, monkeyp
     assert len(relay.calls) == 1
 
 
+def native_tool_payload(*, description="Write an isolated test file", result=None):
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "write_file",
+                "description": description,
+                "parameters": {
+                    "type": "object",
+                    "properties": {"path": {"type": "string"}},
+                    "required": ["path"],
+                    "additionalProperties": False,
+                },
+            },
+        }
+    ]
+    messages = [{"role": "user", "content": "Produce the file"}]
+    if result is not None:
+        messages.extend(
+            [
+                {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [
+                        {
+                            "id": "write-1",
+                            "type": "function",
+                            "function": {
+                                "name": "write_file",
+                                "arguments": '{"path":"output.txt"}',
+                            },
+                        }
+                    ],
+                },
+                {"role": "tool", "tool_call_id": "write-1", "content": result},
+            ]
+        )
+    return {"model": "deepseek-flash", "messages": messages, "tools": tools}
+
+
+def test_explicit_native_tool_gate_preserves_definitions_calls_and_results(relay, monkeypatch):
+    monkeypatch.setenv("ALLOW_NATIVE_TOOLS", "1")
+    first, followup = native_tool_payload(), native_tool_payload(result="File written")
+    assert relay.post(first)[0] == 200
+    assert relay.calls[0]["body"]["tools"] == first["tools"]
+    assert relay.post(followup)[0] == 200
+    assert relay.calls[1]["body"]["messages"] == followup["messages"]
+    receipt = read_receipt(relay)
+    assert receipt["allow_native_tools"] is True
+    assert receipt["attempts"] == 2
+    assert Decimal(receipt["reserved_cost_usd"]) == 0
+    assert "File written" not in relay.receipt.read_text()
+    assert "write_file" not in relay.receipt.read_text()
+
+
+@pytest.mark.parametrize("large_part", ["schema", "tool_result"])
+def test_native_tool_schema_and_results_are_reserved_before_any_dispatch(
+    relay, monkeypatch, large_part
+):
+    monkeypatch.setenv("ALLOW_NATIVE_TOOLS", "1")
+    monkeypatch.setenv("MAX_COST_USD", "0.0003")
+    payload = native_tool_payload(
+        description="x" * 20_000 if large_part == "schema" else "write",
+        result="x" * 20_000 if large_part == "tool_result" else None,
+    )
+    assert relay.post(payload)[0] == 429
+    assert relay.calls == []
+
+
+def test_native_tool_schema_changes_are_part_of_durable_request_digest(relay, monkeypatch):
+    monkeypatch.setenv("ALLOW_NATIVE_TOOLS", "1")
+    assert relay.post(native_tool_payload(description="first schema"))[0] == 200
+    assert relay.post(native_tool_payload(description="changed schema"))[0] == 200
+    first, second = read_receipt(relay)["requests"]
+    assert first["request_sha256"] != second["request_sha256"]
+
+
+def test_existing_text_ledger_cannot_enable_tools_mid_run(relay, monkeypatch):
+    assert relay.post()[0] == 200
+    monkeypatch.setenv("ALLOW_NATIVE_TOOLS", "1")
+    assert relay.post(native_tool_payload())[0] == 503
+    assert len(relay.calls) == 1
+
+
+@pytest.mark.parametrize(
+    "damage",
+    ["non_function", "duplicate_name", "bad_schema", "orphan_result", "bad_call", "invalid_gate"],
+)
+def test_native_tools_reject_malformed_protocol_before_spending(relay, monkeypatch, damage):
+    monkeypatch.setenv("ALLOW_NATIVE_TOOLS", "1")
+    payload = native_tool_payload()
+    if damage == "non_function":
+        payload["tools"][0]["type"] = "web_search"
+    elif damage == "duplicate_name":
+        payload["tools"] *= 2
+    elif damage == "bad_schema":
+        payload["tools"][0]["function"]["parameters"] = "not a schema object"
+    elif damage == "orphan_result":
+        payload["messages"].append({"role": "tool", "tool_call_id": "unknown", "content": "done"})
+    elif damage == "bad_call":
+        payload = native_tool_payload(result="done")
+        payload["messages"][1]["tool_calls"][0]["function"]["arguments"] = {"not": "a string"}
+    elif damage == "invalid_gate":
+        monkeypatch.setenv("ALLOW_NATIVE_TOOLS", "yes")
+    assert relay.post(payload)[0] == 422
+    assert relay.calls == []
+
+
 @pytest.mark.parametrize(
     ("options", "expected"),
     [({}, (1, 32)), ({"max_requests": 4, "output_limit": 512}, (4, 512))],

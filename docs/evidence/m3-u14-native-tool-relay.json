@@ -1,0 +1,72 @@
+{
+  "unit": "U14",
+  "status": "component_verified_not_unit_complete",
+  "component": "Opt-in native tools through the finite paid-test relay",
+  "base_commit": "9ce883d08f71b8c1150d341ff2f48b69df585d0a",
+  "source_sha256": {
+    "apps/server/tests/integration/model_budget_proxy.py": "87dca32d7f3e174b7983cd32b7aecefd9e85ec05195ce35a007a68254b4cf675",
+    "apps/server/tests/test_m3_model_budget.py": "99ccbcd118a756d65e25c74f54b7e5dffcaea21238b3a47d08a8e99e45c006ca"
+  },
+  "checks": [
+    {
+      "label": "relay-tools-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_model_budget.py",
+        "-q",
+        "--tb=short",
+        "-k",
+        "native_tool or text_ledger"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.73,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/relay-tools-red.log"
+    },
+    {
+      "label": "relay-tools-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_model_budget.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 6.88,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/relay-tools-green.log"
+    },
+    {
+      "label": "relay-tools-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/tests/integration/model_budget_proxy.py",
+        "apps/server/tests/test_m3_model_budget.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.04,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/relay-tools-static.log"
+    }
+  ],
+  "proof_first": {
+    "expected_failures": 9,
+    "existing_rejections_passed": 2
+  },
+  "final_tests_passed": 49,
+  "evidence_kind": "local synthetic HTTP upstream, actual durable budget ledger",
+  "paid_model_requests": 0,
+  "limits": "same fixed model, bounded output, at most 8 calls and USD 0.05; complete forwarded inputs reserved; explicit immutable native-tools gate",
+  "remaining": "Both pinned runtimes must generate actual files; durable acceptance, exact revision handoff and real formal review remain."
+}

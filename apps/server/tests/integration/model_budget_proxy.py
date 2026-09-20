@@ -7,6 +7,7 @@ cost, and time limits. Receipts contain counts and usage, never prompts/keys.
 import hashlib
 import json
 import os
+import re
 import tempfile
 import threading
 import urllib.error
@@ -53,6 +54,7 @@ def budget_config():
     budget = Decimal(os.environ["MAX_COST_USD"])
     max_requests = int(os.environ.get("MAX_REQUESTS", "1"))
     output_limit = int(os.environ.get("OUTPUT_LIMIT", "32"))
+    native_tools = os.environ.get("ALLOW_NATIVE_TOOLS", "0")
     valid_until = datetime.fromisoformat(os.environ["PRICING_VALID_UNTIL"])
     now = datetime.now(UTC)
     if (
@@ -60,6 +62,7 @@ def budget_config():
         or not 0 < budget <= Decimal("0.05")
         or not 1 <= max_requests <= 8
         or not 32 <= output_limit <= 1024
+        or native_tools not in {"0", "1"}
         or not valid_until.tzinfo
         or not now < valid_until <= now + timedelta(days=1)
     ):
@@ -69,6 +72,7 @@ def budget_config():
         "max_cost_usd": str(budget),
         "max_requests": max_requests,
         "output_limit": output_limit,
+        "allow_native_tools": native_tools == "1",
         "pricing_valid_until": valid_until.isoformat(),
         "input_price_usd_per_million": str(INPUT_PRICE),
         "output_price_usd_per_million": str(OUTPUT_PRICE),
@@ -161,10 +165,10 @@ class BudgetExhausted(Exception):
     pass
 
 
-def reserve(config, messages):
-    # Text UTF-8 bytes plus framing safely overestimate input tokens for these
-    # text-only requests. No requested tool schema or hidden channel is forwarded.
-    bound = len(json.dumps(messages, ensure_ascii=False).encode()) + 512
+def reserve(config, inputs):
+    # Reserve for every forwarded input byte, including tool schemas, arguments
+    # and results when explicitly enabled. Receipts retain only the digest.
+    bound = len(json.dumps(inputs, ensure_ascii=False, allow_nan=False).encode()) + 512
     ceiling = token_cost(bound, config["output_limit"])
     with lock:
         receipt = load_receipt(config)
@@ -178,7 +182,7 @@ def reserve(config, messages):
             "input_token_bound": bound,
             "estimated_ceiling_usd": str(ceiling),
             "request_sha256": hashlib.sha256(
-                json.dumps(messages, sort_keys=True).encode()
+                json.dumps(inputs, sort_keys=True, allow_nan=False).encode()
             ).hexdigest(),
             "usage": None,
             "cost_usd": None,
@@ -242,6 +246,109 @@ def trusted_usage(raw, *, stream, reservation, output_limit):
     return {"input_tokens": count_in, "output_tokens": count_out}
 
 
+def function_name(value):
+    if not isinstance(value, str) or not re.fullmatch(r"[a-zA-Z0-9_.:-]{1,128}", value):
+        raise ValueError("invalid function name")
+    return value
+
+
+def text_content(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list) and all(
+        isinstance(part, dict) and part.get("type") == "text" and isinstance(part.get("text"), str)
+        for part in value
+    ):
+        return [{"type": "text", "text": part["text"]} for part in value]
+    raise ValueError("only text content is supported")
+
+
+def native_inputs(payload):
+    """Forward the native function protocol; tools execute only in the runtime."""
+    definitions = payload.get("tools", [])
+    if not isinstance(definitions, list) or len(definitions) > 128:
+        raise ValueError("invalid tools")
+    tools, names = [], set()
+    for definition in definitions:
+        if not isinstance(definition, dict) or definition.get("type") != "function":
+            raise ValueError("only function tools are supported")
+        function = definition["function"]
+        if not isinstance(function, dict) or not isinstance(function.get("parameters"), dict):
+            raise ValueError("invalid function schema")
+        name = function_name(function["name"])
+        if name in names:
+            raise ValueError("duplicate function name")
+        names.add(name)
+        forwarded = {"name": name, "parameters": function["parameters"]}
+        for key, kind in (("description", str), ("strict", bool)):
+            if key in function:
+                if not isinstance(function[key], kind):
+                    raise ValueError("invalid function property")
+                forwarded[key] = function[key]
+        tools.append({"type": "function", "function": forwarded})
+
+    messages, pending, seen = [], set(), set()
+    for original in payload["messages"]:
+        if not isinstance(original, dict):
+            raise ValueError("invalid message")
+        role = original.get("role")
+        if role not in {"system", "user", "assistant", "tool"}:
+            raise ValueError("invalid message role")
+        if pending and role != "tool":
+            raise ValueError("missing tool result")
+        calls = original.get("tool_calls")
+        content = original.get("content")
+        message = {
+            "role": role,
+            "content": None
+            if role == "assistant" and calls and content is None
+            else text_content(content),
+        }
+        if calls is not None:
+            if role != "assistant" or not isinstance(calls, list) or not 1 <= len(calls) <= 128:
+                raise ValueError("invalid function calls")
+            message["tool_calls"] = []
+            for call in calls:
+                if not isinstance(call, dict) or call.get("type") != "function":
+                    raise ValueError("invalid function call")
+                call_id, function = call["id"], call["function"]
+                if (
+                    not isinstance(call_id, str)
+                    or not 1 <= len(call_id) <= 256
+                    or call_id in seen
+                    or not isinstance(function, dict)
+                    or not isinstance(function.get("arguments"), str)
+                ):
+                    raise ValueError("invalid function call identity or arguments")
+                seen.add(call_id)
+                pending.add(call_id)
+                message["tool_calls"].append(
+                    {
+                        "id": call_id,
+                        "type": "function",
+                        "function": {
+                            "name": function_name(function["name"]),
+                            "arguments": function["arguments"],
+                        },
+                    }
+                )
+        if role == "tool":
+            call_id = original.get("tool_call_id")
+            if not isinstance(call_id, str) or call_id not in pending:
+                raise ValueError("orphan or duplicate tool result")
+            pending.remove(call_id)
+            message["tool_call_id"] = call_id
+        messages.append(message)
+    if pending:
+        raise ValueError("missing tool result")
+    inputs = {"messages": messages}
+    if tools:
+        inputs["tools"] = tools
+    # Reject NaN/Infinity in nested schemas before reserving or dispatching.
+    json.dumps(inputs, allow_nan=False)
+    return inputs
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -277,22 +384,29 @@ class Handler(BaseHTTPRequestHandler):
             messages = payload["messages"]
             if not isinstance(messages, list) or not 1 <= len(messages) <= 32:
                 raise ValueError
-            if any(
-                not isinstance(m, dict)
-                or m.get("role") not in {"system", "user", "assistant"}
-                or not isinstance(m.get("content"), str)
-                for m in messages
-            ):
-                raise ValueError
             if type(payload.get("stream", False)) is not bool:
                 raise ValueError
-            messages = [{"role": item["role"], "content": item["content"]} for item in messages]
             config = budget_config()
+            if config["allow_native_tools"]:
+                inputs = native_inputs(payload)
+            else:
+                if any(
+                    not isinstance(m, dict)
+                    or m.get("role") not in {"system", "user", "assistant"}
+                    or not isinstance(m.get("content"), str)
+                    for m in messages
+                ):
+                    raise ValueError
+                inputs = {
+                    "messages": [
+                        {"role": item["role"], "content": item["content"]} for item in messages
+                    ]
+                }
         except (ValueError, KeyError, TypeError, ArithmeticError):
             self.respond(422, b'{"error":"relay model/input/budget rejected"}')
             return
         try:
-            reservation = reserve(config, messages)
+            reservation = reserve(config, inputs)
         except BudgetExhausted:
             self.respond(429, b'{"error":"request or cumulative cost budget exhausted"}')
             return
@@ -301,7 +415,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         body = {
             "model": MODEL,
-            "messages": messages,
+            **inputs,
             "max_tokens": config["output_limit"],
             "thinking": {"type": "disabled"},
             "stream": bool(payload.get("stream")),
