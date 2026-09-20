@@ -692,7 +692,28 @@ class Orchestrator:
                 # 并发的 HTTP 读会吃 `database is locked`）。
                 fixture_review_enabled = review_fixture.enabled_for(project)
             elif advance_task:
-                task_service.transition_task(db, task, TaskStatus.failed.value)
+                # KTD6: this worker's technical exit is not a business verdict.
+                # Keep the original failed session and let a manager explicitly
+                # decide whether this still-executable task should resume.
+                task_service.transition_task(db, task, TaskStatus.blocked.value)
+                bus.publish(
+                    "task.blocked",
+                    {
+                        "id": task_id,
+                        "task_id": task_id,
+                        "title": task.title,
+                        "kind": task.kind,
+                        "reason": "runtime_unavailable",
+                        "error": error,
+                        "work_session_id": ws.id,
+                        "technical_retry_count": ws.technical_retry_count,
+                    },
+                    company_id=company_id,
+                    actor_employee_id=employee.id if employee else None,
+                    project_id=task.project_id,
+                    task_id=task_id,
+                    db=db,
+                )
             released_employee = employee is not None and employee.current_task_id == task_id
             if released_employee:
                 employee.status = EmployeeStatus.idle.value
@@ -757,9 +778,9 @@ class Orchestrator:
                     project_id=task_project_id,
                     task_id=task_id,
                 )
-        if advance_task:
+        if advance_task and success:
             bus.publish(
-                "task.completed" if success else "task.failed",
+                "task.completed",
                 {"id": task_id, "title": task_title, "kind": task_kind, "error": error},
                 company_id=company_id,
                 actor_employee_id=employee_id,
@@ -777,8 +798,8 @@ class Orchestrator:
             )
         if employee_id is not None:
             reflection.reflect(task_id, employee_id, success, duration, error)
-        if advance_task:
-            self._advance(task_id, success)
+        if advance_task and success:
+            self._advance(task_id, True)
         else:
             self.notify({"type": "dispatch"})
 

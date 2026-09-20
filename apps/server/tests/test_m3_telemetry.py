@@ -600,7 +600,7 @@ async def test_worker_orchestrator_persists_intent_acceptance_and_honest_eof(
     assert attempt.status == ("completed" if completed else "unknown")
     assert bool(attempt.ended_at) == completed
     assert work.status == ("completed" if completed else "failed")
-    assert bound.task.status == ("in_review" if completed else "failed")
+    assert bound.task.status == ("in_review" if completed else "blocked")
     assert "tokens" not in work.cost
     if completed:
         from app.models.drive import DriveNode

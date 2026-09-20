@@ -166,6 +166,7 @@ async def test_observation_failure_drains_producer_before_ownership_release(
     assert attempt.host_outcome == "failed" and attempt.terminal_source is None
     assert attempt.stop_requested_at is not None and attempt.stop_state == "unconfirmed"
     assert db.get(WorkSession, attempt.work_session_id).status == "failed"
+    assert bound.task.status == "blocked" and bound.task.rework_count == 0
     assert bound.actor.current_task_id is None
     assert "private-stop-transport-error" not in caplog.text
     assert "private-observation-error" not in caplog.text
@@ -231,6 +232,7 @@ async def test_completed_run_with_missing_artifact_records_host_failure(db, boun
     assert attempt.status == "completed"  # Observed remote fact remains unchanged.
     assert attempt.host_outcome == "failed"
     assert db.get(WorkSession, attempt.work_session_id).status == "failed"
+    assert bound.task.status == "blocked" and bound.task.rework_count == 0
 
 
 @pytest.mark.parametrize("kind", ["hermes", "openclaw"])

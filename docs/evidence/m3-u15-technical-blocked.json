@@ -1,0 +1,212 @@
+{
+  "unit": "U15",
+  "component": "technical_worker_exit_preserves_blocked_task",
+  "status": "component_verified_unit_in_progress",
+  "base_commit": "89414811fa09b8bb5539cb91a1597af1f01c9873",
+  "raw_directory": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p",
+  "behavior_changed": true,
+  "existing_tests_inspected": [
+    "test_m3_retry_cancel.py",
+    "test_m3_telemetry.py",
+    "test_review_task_lifecycle.py",
+    "test_m2_dag_runtime.py",
+    "test_m2_review.py",
+    "test_m3_pinned_handoff.py",
+    "test_m3_artifact_acceptance.py",
+    "test_m2_decisions.py",
+    "test_m3_management_runtime.py",
+    "test_project_workflow.py",
+    "test_m1_hardening.py"
+  ],
+  "changes": [
+    "Technical worker finalization keeps failed WorkSession history and moves only an in_progress Task to existing blocked; administrative and terminal business states are preserved.",
+    "The existing task.blocked source event, session failure and blocked task share one transaction; lost broadcast is recoverable by the existing management source scanner.",
+    "Technical failure no longer emits task.failed or invokes automatic replan-required reporting. Explicit business-failure/manual paths remain unchanged.",
+    "A manager decision through the actual bridge and update_task tool can explicitly unblock a stopped task while preserving original session and attempt history; no force or rework increment.",
+    "Repeated original-session finalization cannot duplicate blocked events or compute usage."
+  ],
+  "observed_red_before_implementation": [
+    "Existing lifecycle, DAG and economic baseline: 49 passed.",
+    "Initial changed tests: 14 failed, 51 passed. Eleven failures were expected failed-versus-blocked or missing atomic blocked-event behavior; three were a test helper choosing the current preference instead of original runtime-row type.",
+    "Corrected manager-session fixture runtime identity and refreshed stored timestamps before comparing; all three terminal business-state characterizations passed before production edits.",
+    "Initial implementation: 114 passed. Final relevant regression: 404 passed."
+  ],
+  "verification": [
+    {
+      "label": "technical-blocked-baseline",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_m1_hardening.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 6.17,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/technical-blocked-baseline.log",
+      "log_sha256": "2d3b6b6a284b578b1bf601aec3e9832457f5c35108aa2be12dad4acb7cee9198",
+      "output_tail": ".................................................                        [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n49 passed, 1 warning in 4.45s\n"
+    },
+    {
+      "label": "technical-blocked-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_technical_failure.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 11.92,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/technical-blocked-red.log",
+      "log_sha256": "d0c75e9f60a58dbe136294a4bd998d095fe6d523aa2317e5f2145ac7c304a96e",
+      "output_tail": "ical_failure.py::test_only_a_real_manager_action_resumes_a_technically_failed_task[hermes]\nFAILED apps/server/tests/test_m3_technical_failure.py::test_only_a_real_manager_action_resumes_a_technically_failed_task[openclaw]\nFAILED apps/server/tests/test_m3_technical_failure.py::test_blocked_fact_survives_lost_broadcast_and_repeated_finalization\nFAILED apps/server/tests/test_m3_technical_failure.py::test_blocked_notification_and_session_failure_commit_atomically\nFAILED apps/server/tests/test_m3_technical_failure.py::test_existing_business_terminal_cannot_be_reopened_by_failure_or_manager[failed]\nFAILED apps/server/tests/test_m3_technical_failure.py::test_existing_business_terminal_cannot_be_reopened_by_failure_or_manager[cancelled]\nFAILED apps/server/tests/test_m3_technical_failure.py::test_existing_business_terminal_cannot_be_reopened_by_failure_or_manager[done]\nFAILED apps/server/tests/test_m3_retry_cancel.py::test_observation_failure_drains_producer_before_ownership_release[False-hermes]\nFAILED apps/server/tests/test_m3_retry_cancel.py::test_observation_failure_drains_producer_before_ownership_release[False-openclaw]\nFAILED apps/server/tests/test_m3_retry_cancel.py::test_observation_failure_drains_producer_before_ownership_release[True-hermes]\nFAILED apps/server/tests/test_m3_retry_cancel.py::test_observation_failure_drains_producer_before_ownership_release[True-openclaw]\nFAILED apps/server/tests/test_m3_retry_cancel.py::test_completed_run_with_missing_artifact_records_host_failure[hermes]\nFAILED apps/server/tests/test_m3_retry_cancel.py::test_completed_run_with_missing_artifact_records_host_failure[openclaw]\nFAILED apps/server/tests/test_m3_telemetry.py::test_worker_orchestrator_persists_intent_acceptance_and_honest_eof[False]\n14 failed, 51 passed, 1 warning in 10.31s\n"
+    },
+    {
+      "label": "technical-terminal-characterization",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_technical_failure.py",
+        "-k",
+        "existing_business_terminal",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 2.59,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/technical-terminal-characterization.log",
+      "log_sha256": "4acc8ad22f2aeee4376f2cffd4ff7217c5e13ec8d7dc11f533cf3ea93069e735",
+      "output_tail": "...                                                                      [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n3 passed, 4 deselected, 1 warning in 0.90s\n"
+    },
+    {
+      "label": "technical-blocked-green-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_technical_failure.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_m1_hardening.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 16.1,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/technical-blocked-green-1.log",
+      "log_sha256": "ff29bf3627b88fac9237da6024e18460c6ce70b81e77c7d0ec5d6c1aed170e84",
+      "output_tail": "........................................................................ [ 63%]\n..........................................                               [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n114 passed, 1 warning in 14.34s\n"
+    },
+    {
+      "label": "technical-blocked-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_technical_failure.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_telemetry.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/technical-blocked-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "technical-blocked-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_technical_failure.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_telemetry.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/technical-blocked-format.log",
+      "log_sha256": "177f260a5645724013185e4b140c7045cc39e56c0c97b120f5cb23599f85f0de",
+      "output_tail": "4 files already formatted\n"
+    },
+    {
+      "label": "technical-blocked-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_technical_failure.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_m1_hardening.py",
+        "apps/server/tests/test_task_lifecycle.py",
+        "apps/server/tests/test_m2_contract.py",
+        "apps/server/tests/test_m2_review.py",
+        "apps/server/tests/test_m2_golden_path.py",
+        "apps/server/tests/test_m2_decisions.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_pinned_handoff.py",
+        "apps/server/tests/test_m3_management_dispatch.py",
+        "apps/server/tests/test_project_workflow.py",
+        "apps/server/tests/test_event_engine.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 38.55,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/technical-blocked-final.log",
+      "log_sha256": "0aea3b02e66dd46f9cc169930d5438edc1e95053394d057ce28721e8f2e2b6cc",
+      "output_tail": "........................................................................ [ 17%]\n........................................................................ [ 35%]\n........................................................................ [ 53%]\n........................................................................ [ 71%]\n........................................................................ [ 89%]\n............................................                             [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n404 passed, 1 warning in 36.74s\n"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/workflow/orchestrator.py": "50a346c68469aef20b9f83987787b61778a5ff9249446e9aeff3fe53f54b220f",
+    "apps/server/tests/test_m3_technical_failure.py": "3348085dd2538144635c9a9203272a836e03cbff816fed1df705daf7b20a3a2e",
+    "apps/server/tests/test_m3_retry_cancel.py": "32c62c61a11577ac7cdc19872aa4d1a5a70bb385cd6d86141efb53e8ec33cb1d",
+    "apps/server/tests/test_m3_telemetry.py": "0df3ad72b0a7f526f494649a3ea881dc7d92fd3669c5df5fcd659245b4ff05ed",
+    "docs/m2-freeze.md": "0a3b8e7f5233d4f3fa510fee0fda11870cdd766408f9235136bd14e19b3e83b0",
+    "docs/m3-u15-retry-and-cancel.md": "19c7821c15730da01595d1de99dd877e87d386c785b0879690910d0a99ab9240"
+  },
+  "exceptions": [
+    "Seven new scenarios and strengthened existing failure expectations. Real services, bridge, decisions, isolated SQLite, cost recording and both runtime adapters; transport doubles only for the remote runtimes.",
+    "The manager-resume scenario deliberately starts from an observed completed original run with missing artifacts. It proves explicit readmission after a decision, not safe readmission while the original run is unknown.",
+    "The final 404 include M1/M2 contracts and lifecycle, review, decisions, administrative stop, accepted artifacts, pinned handoff, management dispatch, event engine and the mock project golden path; no full backend rerun.",
+    "No schema, shared fixtures, paid model, Docker, development database or user tmp changes.",
+    "This component supplies the final technical-exit policy. It does not yet implement the bounded retry loop or cumulative budget policy."
+  ],
+  "remaining": [
+    "Reconcile and fence unresolved original runs before new execution",
+    "Safe finite retry and bounded backoff",
+    "Cumulative budget admission and stop",
+    "Cross-process startup reconciliation (U16)",
+    "Actual remote stop and unconfirmed-stop acceptance",
+    "U14 additional paid whole-chain allowance answer pending"
+  ],
+  "paid_model_requests": 0,
+  "standalone_shipping_skipped": true
+}
