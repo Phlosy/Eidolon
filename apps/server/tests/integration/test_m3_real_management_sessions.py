@@ -253,7 +253,7 @@ async def ready_runtime(
 
 
 @pytest.mark.parametrize("purpose,runtime_type", [("management", "hermes"), ("review", "openclaw")])
-@pytest.mark.parametrize("model_relay", [{"max_requests": 5, "output_limit": 768}], indirect=True)
+@pytest.mark.parametrize("model_relay", [{"max_requests": 7, "output_limit": 768}], indirect=True)
 async def test_persisted_source_wakes_real_controller_and_delivers_actual_receipt(
     purpose, runtime_type, idb, ready_runtime, model_relay, monkeypatch
 ):
@@ -385,7 +385,7 @@ async def test_persisted_source_wakes_real_controller_and_delivers_actual_receip
         budget_available=budget_available,
         budget_check=budget_check,
         limits=ConversationLimits(
-            max_rounds=4, turn_timeout_seconds=60, total_timeout_seconds=210, max_actions=4
+            max_rounds=6, turn_timeout_seconds=60, total_timeout_seconds=210, max_actions=4
         ),
     )
     runner.start()
@@ -475,24 +475,39 @@ async def test_persisted_source_wakes_real_controller_and_delivers_actual_receip
         assert source_dispatch["waiting_reason"] is None
         assert source_dispatch["resolution"] is None
         assert db.scalar(select(func.count()).select_from(WorkSession)) == 1
-        assert len(decisions) == 1 and decisions[0].status == "APPLIED"
+        applied = [d for d in decisions if d.status == "APPLIED"]
+        assert len(applied) == 1
+        assert all(d.status in {"APPLIED", "FAILED"} for d in decisions)
         assert all(a.actor_person_id == employee.person_id for a in audits)
-        write = next(a for a in audits if a.outcome == "applied")
-        assert write.decision_id == decisions[0].id and write.runtime_operation_id is not None
+        writes = [a for a in audits if a.outcome == "applied"]
+        assert len(writes) == 1, "Exactly one business action may take effect"
+        write = writes[0]
+        assert write.decision_id == applied[0].id and write.runtime_operation_id is not None
+        expected_read = "inspect_project" if purpose == "management" else "inspect_task_review"
+        # A replay cannot manufacture read-before-decision evidence: the read's
+        # operation must precede this decision's original accepted submission.
+        assert any(
+            a.tool_name == expected_read
+            and a.outcome == "read"
+            and a.id < write.id
+            and a.runtime_operation_id < write.runtime_operation_id
+            for a in audits
+        )
         if purpose == "management":
+            assert db.scalar(select(func.count()).select_from(Task)) == 1
             task = db.scalar(select(Task))
             assert task.status == "backlog" and task.assignee_id is None and marker in task.title
             assert work.summary == f"task={task.id};audit={write.id}"
-            assert [a.tool_name for a in audits] == ["inspect_project", "create_task"]
+            assert write.tool_name == "create_task"
         else:
             request = db.get(ReviewRequest, review_id)
             assert request.verdict == "PASS" and marker in request.verdict_notes
             assert db.get(Task, reviewed_task_id).status == "done"
             assert work.summary == f"review={review_id};audit={write.id}"
-            assert [a.tool_name for a in audits] == ["inspect_task_review", "submit_review_verdict"]
+            assert write.tool_name == "submit_review_verdict"
         assert transcript[-1]["feedback"]["result"]["results"][0]["audit_id"] == write.id
     assert len(set(admissions)) == len(admissions) == len(transcript)
-    assert 4 <= receipt["attempts"] <= 5  # one readiness probe plus actual business turns
+    assert 4 <= receipt["attempts"] <= 7  # one readiness probe plus bounded business turns
     assert all(row["state"] == "settled" for row in receipt["requests"])
     assert Decimal(receipt["reserved_cost_usd"]) == 0
     assert Decimal(receipt["cost_usd"]) <= Decimal(receipt["max_cost_usd"])

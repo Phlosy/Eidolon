@@ -98,10 +98,15 @@ def reply_contract() -> dict:
             "Every object rejects unlisted properties; send JSON only, without code fences.",
             "Actor identity and authority come from the host; never supply them.",
             "read requires a read tool; decision actions require optional/required semantics.",
+            "For kind=decision, nest decision_type, reason, scope and actions inside the "
+            "decision object; never place those fields at the top level.",
             "Tool args follow the supplied tool catalog; employee_id is a target, not actor.",
             "knowledge_refs are KnowledgeItem IDs; artifact_refs are project DriveNode IDs "
             "returned as artifact_id by the read tools.",
             "Reuse an operation_key only for the identical request; retransmit its whole body.",
+            "Use short opaque operation keys such as read-1, decision-1 and finish-1. "
+            "Only letters, digits, period, underscore, colon and hyphen are allowed. "
+            "Put receipt text in summary, never in operation_key.",
             "finish ends this conversation only; it does not complete any business object.",
         ],
     }

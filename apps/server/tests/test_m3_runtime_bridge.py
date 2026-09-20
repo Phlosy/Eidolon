@@ -163,6 +163,31 @@ def test_finish_only_acknowledges_conversation_and_never_changes_business_state(
     assert db.get(Project, world.project.id).status == "in_progress"
 
 
+def test_unknown_produces_is_rejected_before_any_decision_or_audit(world):
+    request = _decision(world)
+    request["decision"]["actions"][0]["args"]["produces"] = ["contributor_onboarding_runbook"]
+    before = _counts()
+    with pytest.raises(BridgeError) as error:
+        _send(world, request)
+    assert error.value.reason == "invalid_request"
+    assert _counts() == before
+
+
+def test_catalog_exposes_valid_produces_and_bridge_preserves_them(db, world):
+    from app.models.enums import ArtifactType
+
+    catalog = next(item for item in executor.catalog() if item["name"] == "create_task")
+    allowed = catalog["input_schema"]["properties"]["produces"]["items"]["enum"]
+    assert set(allowed) == {kind.value for kind in ArtifactType}
+    request = _decision(world)
+    request["decision"]["actions"][0]["args"]["produces"] = ["readme"]
+    reply = _send(world, request)
+    assert reply["decision_status"] == "APPLIED"
+    task_id = reply["results"][0]["data"]["task"]["task_id"]
+    db.expire_all()
+    assert db.get(Task, task_id).produces_json == ["readme"]
+
+
 def test_read_is_saved_and_replayed_after_source_and_desired_runtime_change(db, world):
     request = _read(world)
     result = _send(world, request)

@@ -658,7 +658,10 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
                     "depends_on": {"type": "array", "items": _INT},
                     # M2.6：声明要用谁的产品（必须是 DAG 祖先，H5）/ 预期产出什么
                     "consumes": {"type": "array", "items": _INT},
-                    "produces": {"type": "array", "items": _STR},
+                    "produces": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": [kind.value for kind in ArtifactType]},
+                    },
                 },
                 ("project_id", "title"),
             ),
