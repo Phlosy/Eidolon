@@ -139,10 +139,15 @@ def context_for_work_session(db: Session, work_session_id: int) -> tool_machiner
     management / review 绑定原项目 / 评审请求。缺少主职不阻断事实读取，写工具
     仍由既有 Authority / Autonomy 门禁逐次校验。
     """
+    return _context_for_work_session(db, work_session_id, require_running=True)
+
+
+def _context_for_work_session(db, work_session_id, *, require_running):
+    """Shared identity checks; only confirmed execution may use an ended proposal."""
     session = db.get(WorkSession, int(work_session_id), populate_existing=True)
     if session is None:
         raise ToolExecutionError("work_session_not_found", "work session not found")
-    if session.status != "running" or session.ended_at is not None:
+    if require_running and (session.status != "running" or session.ended_at is not None):
         raise ToolExecutionError(
             "work_session_not_running",
             "only a running work session without an end time may call management tools",
@@ -429,6 +434,8 @@ def _nonworker_write_allowed(db, ctx, spec, args):
         # Learning remains an action of this management conversation, not a
         # blanket permission to mutate any company/person target.
         return ctx.purpose == "management" and args.get("project_id") == ctx.project_id
+    if spec.confirmation_policy is not None:
+        return ctx.purpose == "management" and args.get("project_id") == ctx.project_id
     # Every present management write has a concrete project, task or review
     # target. Future company/person actions must explicitly define their scope.
     if spec.name not in {
@@ -610,6 +617,8 @@ def execute_tool(
     commit: bool = True,
     registry_override: tool_machinery.ToolRegistry | None = None,
     decision_id: int | None = None,
+    _runtime_action: tuple[int, int] | None = None,
+    _confirmation=None,
 ) -> ToolResult:
     """执行一次工具调用（唯一入口）。
 
@@ -678,6 +687,12 @@ def execute_tool(
         return fail("transport_not_allowed", f"{spec.name} is not available over {transport.value}")
 
     # ② 参数校验（含身份字段拒绝，T5）
+    if _confirmation is not None and (
+        spec.side_effect is not C.ToolSideEffect.high_impact or spec.confirmation_policy is None
+    ):
+        return fail(
+            "confirmation_policy_changed", "the approved tool policy is no longer available"
+        )
     try:
         tool_machinery.validate_arguments(spec.input_schema, arguments, tool=spec.name)
     except tool_machinery.ToolError as exc:
@@ -694,7 +709,9 @@ def execute_tool(
                 "work_session_write_forbidden", "non-worker writes require a bound work session"
             )
         try:
-            current = context_for_work_session(db, context.work_session_id)
+            current = _context_for_work_session(
+                db, context.work_session_id, require_running=_confirmation is None
+            )
         except ToolExecutionError as exc:
             return fail(exc.reason, str(exc))
         if current != context:
@@ -751,12 +768,63 @@ def execute_tool(
 
     # ④ Autonomy 门禁（Authority ≠ Autonomy，用户拍板 §11）
     if spec.autonomy is not AutonomyLevel.auto_allowed:
-        return fail(
-            "autonomy_requires_confirmation",
-            f"{spec.side_effect.value} actions need human confirmation "
-            f"(autonomy={spec.autonomy.value}); no confirmation channel in M2.3",
-            snapshot=snapshot,
-        )
+        if spec.confirmation_policy is None:
+            return fail(
+                "autonomy_requires_confirmation",
+                "this action has no registered confirmation path",
+                snapshot=snapshot,
+            )
+        from app.work import action_confirmations as confirmations
+
+        ensure_sqlite_transaction(db)
+        try:
+            if _confirmation is None:
+                if commit:
+                    raise confirmations.ConfirmationError("runtime_transaction_required")
+                with db.begin_nested():
+                    row = confirmations.propose(
+                        db,
+                        spec=spec,
+                        ctx=context,
+                        args=arguments,
+                        decision_id=decision_id,
+                        runtime_action=_runtime_action,
+                    )
+                    data = {"confirmation": confirmations.proposal_ref(row)}
+                    audit_id = _record_tool_audit(
+                        db,
+                        spec=spec,
+                        ctx=context,
+                        transport=transport,
+                        args=arguments,
+                        outcome="confirmation_pending",
+                        result=data,
+                        authority_snapshot=snapshot,
+                        decision_id=decision_id,
+                        started_at=started_at,
+                    )
+                # Only the trusted runtime coordinator correlates and commits this
+                # original receipt. A proposal cannot originate from the debug CLI.
+                return ToolResult(
+                    ok=False,
+                    reason="confirmation_pending",
+                    data=data,
+                    authority=snapshot,
+                    audit_id=audit_id,
+                    **base,
+                )
+            confirmations.validate_execution(
+                db,
+                _confirmation,
+                spec=spec,
+                ctx=context,
+                args=arguments,
+                decision_id=decision_id,
+            )
+        except confirmations.ConfirmationError as exc:
+            return fail(exc.reason, str(exc), snapshot=snapshot)
+        except tool_machinery.ToolError as exc:
+            return fail("confirmation_terms_unavailable", str(exc), snapshot=snapshot)
 
     # ⑤ 应用 + 审计
     #

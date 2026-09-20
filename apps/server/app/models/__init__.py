@@ -1,3 +1,4 @@
+from app.models.action_confirmation import ActionConfirmation
 from app.models.assessment import (
     AssessmentCriterion,
     AssessmentCriterionCompetency,
@@ -166,6 +167,7 @@ __all__ = [
     "LedgerEntry",
     "LedgerTransaction",
     "RewardGrant",
+    "ActionConfirmation",
     "WorkOrder",
     "WorkOrderProjectLink",
     "WorkOrderSubmission",

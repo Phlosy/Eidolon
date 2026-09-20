@@ -97,7 +97,7 @@ def test_v54_up_down_up_check_and_metadata_parity(tmp_path):
                         + "'"
                     )
         scripts = ScriptDirectory.from_config(_alembic_config())
-        assert scripts.get_heads() == ["56b215ea43f0"]
+        assert scripts.get_heads() == ["57c326fb5401"]
         assert scripts.get_revision(REVISION).down_revision == PREVIOUS
     finally:
         migrated.dispose()

@@ -306,8 +306,7 @@ FORBIDDEN_AUTHORITY_SOURCES: frozenset[str] = frozenset(
 #: `ToolSideEffect` → 当前**行为**的自主等级（M2.3 冻结的 Authority/Autonomy 边界）。
 #:
 #: 这张表是"现在到底会不会在无人确认下执行"的**唯一**声明处；它不实现策略引擎，
-#: 只把边界钉下来。`requires_confirmation` 在 M2.3 **没有确认通道**，
-#: 因此执行面会**拒绝**执行该类动作 —— 这条比"先放行、以后再补确认"安全得多。
+#: 只把边界钉下来。U10 增补固定动作确认通道；没有有效批准时不能执行。
 AUTONOMY_BY_SIDE_EFFECT: dict[ToolSideEffect, AutonomyLevel] = {
     ToolSideEffect.read: AutonomyLevel.auto_allowed,
     # M2.3 的写工具都在授权内可自主执行（正是"让管理 Agent 自己组织工作"这一步）；
@@ -317,7 +316,7 @@ AUTONOMY_BY_SIDE_EFFECT: dict[ToolSideEffect, AutonomyLevel] = {
 }
 
 #: **M2.3 刻意不实现**的高影响授权（用户拍板：不为完整列表写空业务）。
-#: 它们只作为"下一阶段放这里"的显式清单存在；注册表里不允许出现这类工具。
+#: U10 允许带明确 ConfirmationPolicy 的工具；具体业务按后续工作包接入。
 HIGH_IMPACT_AUTHORITIES_RESERVED: frozenset[AuthorityKind] = frozenset(
     {
         AuthorityKind.spend_credits,

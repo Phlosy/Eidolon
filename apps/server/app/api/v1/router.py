@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.dependencies import require_user
 from app.api.v1 import (
+    action_confirmations,
     artifacts,
     assessment,
     auth,
@@ -54,6 +55,7 @@ protected.include_router(project_delivery.router)
 protected.include_router(reviews.router)
 protected.include_router(tasks.router)
 protected.include_router(decisions.router)  # M2.4 决策读面（只读）
+protected.include_router(action_confirmations.router)
 protected.include_router(artifacts.router)
 protected.include_router(drive.router)
 protected.include_router(economy.router)

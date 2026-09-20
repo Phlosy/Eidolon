@@ -190,6 +190,45 @@ TargetFn = Callable[[Any, ToolCallContext, dict], C.AuthorityTarget]
 
 
 @dataclass(frozen=True)
+class ConfirmationTerms:
+    """Server-derived quote and resource version, checked again before the effect."""
+
+    target_ref: str
+    target_version: str
+    amount: int
+
+    def __post_init__(self):
+        if (
+            not isinstance(self.target_ref, str)
+            or not 1 <= len(self.target_ref) <= 256
+            or not isinstance(self.target_version, str)
+            or not 1 <= len(self.target_version) <= 256
+            or type(self.amount) is not int
+            or not 0 <= self.amount <= 2**63 - 1
+        ):
+            raise ToolError("invalid confirmation terms")
+
+
+@dataclass(frozen=True)
+class ConfirmationPolicy:
+    decision_kind: C.DecisionKind
+    resolve_terms: Callable[[Any, ToolCallContext, dict], ConfirmationTerms]
+    version: str = "1"
+    expires_in_seconds: int = 3600
+
+    def __post_init__(self):
+        if (
+            not isinstance(self.decision_kind, C.DecisionKind)
+            or not callable(self.resolve_terms)
+            or not isinstance(self.version, str)
+            or not 1 <= len(self.version) <= 64
+            or type(self.expires_in_seconds) is not int
+            or not 1 <= self.expires_in_seconds <= 86400
+        ):
+            raise ToolError("invalid confirmation policy")
+
+
+@dataclass(frozen=True)
 class ToolSpec:
     """一个管理工具的自描述（用户拍板 §4 的六个字段 + 校验所需的两处）。
 
@@ -211,12 +250,27 @@ class ToolSpec:
     #: 与「管理决策」的关系（M2.4，用户拍板 §6）：none | optional | required。
     #: 写动作**必须**显式声明 —— 不允许"不知道自己算不算决策"。
     decision_semantics: DecisionSemantics = DecisionSemantics.none
+    confirmation_policy: ConfirmationPolicy | None = None
 
     def __post_init__(self) -> None:
         if not self.name.strip():
             raise ToolError("tool name must not be empty")
         if not self.description.strip():
             raise ToolError(f"{self.name}: description must not be empty")
+        if self.confirmation_policy is not None and (
+            self.side_effect is not ToolSideEffect.high_impact
+            or not isinstance(self.confirmation_policy, ConfirmationPolicy)
+            or self.decision_semantics is not DecisionSemantics.required
+            or self.input_schema.get("properties", {}).get("project_id", {}).get("type")
+            != "integer"
+            or "project_id" not in self.input_schema.get("required", [])
+            or self.input_schema.get("properties", {}).get(self.amount_arg, {}).get("type")
+            != "integer"
+            or self.amount_arg not in self.input_schema.get("required", [])
+        ):
+            raise ToolError(
+                f"{self.name}: confirmation requires a project-bound high-impact decision"
+            )
         if self.side_effect is ToolSideEffect.read:
             if self.required_authority is not None or self.authority_target is not None:
                 raise ToolError(
@@ -321,10 +375,9 @@ class ToolRegistry:
 def assert_registry_is_sound(registry: ToolRegistry) -> None:
     """注册表的整体校验（启动/测试时调；把"漏声明"变成一次明确的失败）。"""
     for spec in registry.specs():
-        if spec.side_effect is ToolSideEffect.high_impact:
+        if spec.side_effect is ToolSideEffect.high_impact and spec.confirmation_policy is None:
             raise ToolError(
-                f"{spec.name}: M2.3 不注册 high_impact 工具 "
-                "(用户拍板：不为完整列表写空业务；等级与自主边界已冻结)"
+                f"{spec.name}: high_impact tools require an explicit confirmation policy"
             )
         for key in spec.input_schema.get("properties") or {}:
             if key in C.FORBIDDEN_TOOL_ARGUMENT_KEYS:

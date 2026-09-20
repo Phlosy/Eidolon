@@ -170,6 +170,7 @@ class RuntimeExecution:
                 context=ctx,
                 decision_id=decision_id,
                 commit=False,
+                _runtime_action=(op.id, index),
             )
             audit = db.get(ToolAudit, result.audit_id) if result.audit_id is not None else None
             if audit is None:
@@ -177,6 +178,10 @@ class RuntimeExecution:
             audit.runtime_operation_id = op.id
             audit.action_index = index
             db.flush()
+            if audit.outcome == "confirmation_pending":
+                from app.work.action_confirmations import attach_proposal_receipt
+
+                attach_proposal_receipt(db, audit)
             # Always use the persisted JSON representation, including on first
             # delivery (handlers may return datetimes or other domain values).
             saved = receipt_result(db, audit)

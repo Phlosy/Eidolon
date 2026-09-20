@@ -398,6 +398,42 @@ test_m3_telemetry 与 test_m3_execution_migration 验证真实宿主接缝、引
 未知值和独立进程读取。本包提供 U15–U17 所需执行事实，不代替重试、远端停止、崩溃
 接管或费用归集的后续验收。
 
+### U10：固定动作的人工确认（实施前登记，2026-09-20）
+
+`high_impact` 只允许登记具有明确 ConfirmationPolicy 的内部工具；策略必须声明
+DecisionKind、版本、有限有效期和服务器端条款查询。仍要求 Authority、额度入参及
+required 决策语义，Autonomy 继续为 requires_confirmation。无策略的高影响动作、
+普通写工具和调试入口保持原守卫。本包不登记虚构招聘业务；真实 T2 招聘归 U11。
+
+action_confirmations 由 work/action_confirmations.py 唯一写入。提案绑定原 Person、
+Employee、公司、管理 WorkSession、项目、DecisionRecord、RuntimeOperation/action_index、
+工具及策略版本、固定入参及摘要、目标版本、服务器金额和到期时间。只接收已绑定管理信封
+的提案，Agent 只能提案和查询。原等待 ToolAudit 保持 U7 不可变；执行另存最终 ToolAudit，
+由确认记录关联两份回执。领域效果、最终审计、确认终态同事务，重发不得重做已完成效果。
+
+正式 /action-confirmations 资源 API 使用真实 UserSession，即使开发模式未强制登录也
+不例外。批准、拒绝、执行要求当前本公司 OWNER，且校验 cookie/header/会话中 CSRF。
+授权依赖在业务事务之前解析，事务内重新读取 User、会话和成员身份。人工决定另记
+UserAuditEvent，与确认审阅事实同事务；批准事实独立提交，崩溃后可重新执行。执行还须
+确认原批准人及会话仍有效，并重新核对原提案人的任职、当前指定 Manager、Authority、
+固定参数、条款版本、金额及领域资源状态。不可把旧批准移给另一动作或另一人。
+
+允许经过确认服务验证的延迟动作在原管理会话已结束后执行；它仅复用不可变出处，重查
+当前身份及范围，不重新打开会话。普通 Runtime 入口仍要求 running，模型参数不能提供
+确认凭据或跳过会话校验。批准/拒绝/过期/结果均持久化；过期扫描有界，读查询不改写事实。
+
+等待确认继续使用 EXECUTING、resolved_at=NULL，不能算作成功或失败。确认结果聚合按
+逻辑动作计算，不将初始与最终两份回执算成两个动作；完整审计历史仍可查询。RuntimeOperation
+尚有未提交的原动作回执时也保持 EXECUTING，防止首项动作提前获批导致后续动作不能执行。
+既有普通批次的 APPLIED/PARTIALLY_APPLIED/FAILED 语义不变。读目录增补
+inspect_action_confirmation / list_action_confirmations；精确目录守卫随之增补。
+
+实施前相关 M2/M3 工具、决策、契约、桥、管理及学习锚点 411 passed；新行为测试
+1 passed、2 failed（缺 ConfirmationPolicy、缺正式路由）。原始日志保存在本包独立证据目录。
+新增并发、丢回执、跨进程、撤权/改价/资源变化、审计失败回滚和提前批准反例；v57 接在
+56b215ea43f0 后，临时库 up/down/up、无漂移及历史不可变守卫必须通过。旧迁移自身版本
+断言保留，仅当前 head 断言推进；有确认历史的降级须在 DDL 前拒绝。
+
 **M3 开工前的三条纪律（沿用 M2）**：
 
 ```text

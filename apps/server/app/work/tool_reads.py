@@ -508,9 +508,64 @@ def _inspect_readiness(db: Session, ctx: tools.ToolCallContext, args: dict) -> d
     return readiness.readiness_report(db, employee).as_dict()
 
 
+def _inspect_action_confirmation(db, ctx, args):
+    from app.work import action_confirmations as confirmations
+
+    return {
+        "confirmation": confirmations.view(
+            db,
+            confirmations.get_for_company(
+                db,
+                ctx.company_id,
+                args["confirmation_id"],
+            ),
+        )
+    }
+
+
+def _list_action_confirmations(db, ctx, args):
+    from app.work import action_confirmations as confirmations
+
+    filters = {key: value for key, value in args.items() if value is not None}
+    return {"confirmations": confirmations.list_for_company(db, ctx.company_id, **filters)}
+
+
 def build_read_tools() -> tuple[tools.ToolSpec, ...]:
     """读工具清单（**共享能力**：同一批事实也由既有领域读面服务 UI/CLI）。"""
     return (
+        tools.ToolSpec(
+            name="inspect_action_confirmation",
+            description="读取本公司固定动作的人工确认、到期时间与最终执行回执",
+            side_effect=C.ToolSideEffect.read,
+            input_schema=tools.object_schema({"confirmation_id": _INT}, ("confirmation_id",)),
+            output_schema=tools.object_schema({"confirmation": {"type": "object"}}),
+            handler=_inspect_action_confirmation,
+        ),
+        tools.ToolSpec(
+            name="list_action_confirmations",
+            description="分页读取本公司动作确认；Agent 只能提案和查询，批准由 Owner 完成",
+            side_effect=C.ToolSideEffect.read,
+            input_schema=tools.object_schema(
+                {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "expired",
+                            "executed",
+                            "failed",
+                        ],
+                    },
+                    "project_id": _INT,
+                    "after_id": _INT,
+                    "limit": _INT,
+                }
+            ),
+            output_schema=tools.object_schema({"confirmations": {"type": "array"}}),
+            handler=_list_action_confirmations,
+        ),
         tools.ToolSpec(
             name="inspect_gap",
             description="读任务需求与候选人的能力、负载和就绪缺口；未知保留，不推荐动作",

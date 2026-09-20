@@ -42,10 +42,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.transaction_effects import ensure_sqlite_transaction
+from app.models.action_confirmation import ActionConfirmation
 from app.models.base import utcnow
 from app.models.decision import DecisionRecord, ToolAudit
 from app.models.enums import DecisionStatus
 from app.models.organization import Employee
+from app.models.runtime_operation import RuntimeOperation
 from app.repositories import position as position_repo
 from app.work import authority as authority_service
 from app.work import contracts as C
@@ -212,6 +214,7 @@ class DecisionEnvelopeResult:
     outcomes: tuple[ActionOutcome, ...] = ()
     applied: int = 0
     failed: int = 0
+    pending: int = 0
 
     @property
     def ok(self) -> bool:
@@ -291,6 +294,8 @@ def resolve_status(outcomes: Sequence[ActionOutcome]) -> DecisionStatus:
     """按事实聚合状态（DR6）：全成 → APPLIED；全败 → FAILED；其余 → PARTIALLY_APPLIED。"""
     if not outcomes:
         return DecisionStatus.failed
+    if any(item.reason == "confirmation_pending" for item in outcomes):
+        return DecisionStatus.executing
     applied = sum(1 for item in outcomes if item.ok)
     if applied == len(outcomes):
         return DecisionStatus.applied
@@ -310,7 +315,7 @@ def resolve_decision(
     """把聚合结果写回决策行（追加式推进，不重写语义字段）。"""
     status = resolve_status(outcomes)
     decision.status = status.value
-    decision.resolved_at = utcnow()
+    decision.resolved_at = None if status is DecisionStatus.executing else utcnow()
     decision.outcome_note = note or (
         f"{sum(1 for item in outcomes if item.ok)}/{len(outcomes)} actions applied"
     )
@@ -371,7 +376,10 @@ def submit_envelope(
         and decision.resolved_at is None
         and decision.superseded_by_id is None
     ):
-        resolve_decision(db, decision, outcomes, commit=False)
+        if _runtime is not None:
+            refresh_from_receipts(db, decision.id)
+        else:
+            resolve_decision(db, decision, outcomes, commit=False)
     db.commit()
     applied = sum(1 for item in outcomes if item.ok)
     return DecisionEnvelopeResult(
@@ -379,7 +387,8 @@ def submit_envelope(
         status=DecisionStatus(decision.status),
         outcomes=outcomes,
         applied=applied,
-        failed=len(outcomes) - applied,
+        failed=sum(not item.ok and item.reason != "confirmation_pending" for item in outcomes),
+        pending=sum(item.reason == "confirmation_pending" for item in outcomes),
     )
 
 
@@ -434,7 +443,7 @@ def tool_audits_for(db: Session, decision_id: int) -> list[ToolAudit]:
 
 def action_summary(db: Session, decision_id: int) -> dict:
     """派生计数（**不落列** —— 存下来就是第二份真相，DR5）。"""
-    rows = tool_audits_for(db, decision_id)
+    rows = effective_action_audits(db, decision_id)
     counts: dict[str, int] = {}
     for row in rows:
         counts[row.outcome] = counts.get(row.outcome, 0) + 1
@@ -443,6 +452,59 @@ def action_summary(db: Session, decision_id: int) -> dict:
         "applied": counts.get("applied", 0),
         "by_outcome": counts,
     }
+
+
+def effective_action_audits(db, decision_id):
+    """One logical action; its immutable proposal remains in the full audit history."""
+    rows = tool_audits_for(db, decision_id)
+    confirmations = list(
+        db.scalars(
+            select(ActionConfirmation).where(
+                ActionConfirmation.decision_id == decision_id,
+            )
+        )
+    )
+    final_by_proposal = {
+        row.proposal_audit_id: row.final_audit_id
+        for row in confirmations
+        if row.final_audit_id is not None
+    }
+    by_id = {row.id: row for row in rows}
+    finals = set(final_by_proposal.values())
+    return [by_id.get(final_by_proposal.get(row.id), row) for row in rows if row.id not in finals]
+
+
+def refresh_from_receipts(db, decision_id):
+    """Resolve from committed logical effects, including incomplete envelopes."""
+    decision = db.get(DecisionRecord, decision_id, populate_existing=True)
+    if (
+        decision.status != DecisionStatus.executing.value
+        or decision.resolved_at is not None
+        or decision.superseded_by_id is not None
+    ):
+        return decision
+    rows = effective_action_audits(db, decision_id)
+    op = db.scalar(select(RuntimeOperation).where(RuntimeOperation.decision_id == decision_id))
+    if op is not None:
+        received = db.scalar(
+            select(func.count())
+            .select_from(ToolAudit)
+            .where(
+                ToolAudit.runtime_operation_id == op.id,
+            )
+        )
+        if received < op.requested_action_count:
+            return decision
+    outcomes = [
+        ActionOutcome(
+            tool=row.tool_name,
+            ok=row.outcome == "applied",
+            reason=row.outcome,
+            audit_id=row.id,
+        )
+        for row in rows
+    ]
+    return resolve_decision(db, decision, outcomes, commit=False)
 
 
 def child_decisions(db: Session, decision_id: int) -> list[DecisionRecord]:
@@ -461,7 +523,7 @@ def decision_view(db: Session, decision: DecisionRecord) -> dict:
     只给 `ToolAudit` 的定位信息（tool/outcome/时间/audit_id），
     完整入参出参走 `tool_audits_for()` —— 决策读面不该变成审计转储。
     """
-    rows = tool_audits_for(db, int(decision.id))
+    rows = effective_action_audits(db, int(decision.id))
     return {
         "decision_id": int(decision.id),
         "company_id": int(decision.company_id),

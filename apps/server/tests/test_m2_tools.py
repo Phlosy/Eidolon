@@ -1102,6 +1102,9 @@ def test_read_and_write_tool_names_are_the_agreed_first_batch():
         "get_runtime_status",
         "search_company_knowledge",
         "inspect_artifact",
+        # U10: the same persisted facts as the formal confirmation resource API.
+        "inspect_action_confirmation",
+        "list_action_confirmations",
         # M2.6（H7）：交付物全景（产出 / 使用 / 上游链），与 HTTP 读面同一服务
         "list_task_artifacts",
         # M2.7（RV1）：评审全景（请求 / 系统事实 / 结论 / 返工次数）

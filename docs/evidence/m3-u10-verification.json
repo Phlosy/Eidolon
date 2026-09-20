@@ -1,0 +1,405 @@
+{
+  "schema_version": 1,
+  "unit": "U10",
+  "requirements": [
+    "R3",
+    "R9"
+  ],
+  "status": "verified",
+  "baseline_head": "6a99c88d3e1b9071c5c4e28b4eca7d17f4eafb7e",
+  "generated_at": "2026-09-20T10:56:44.820031+00:00",
+  "execution_context": {
+    "mode": "native_inline",
+    "worker_started": false,
+    "fresh_worker_attempt": "Rejected before launch by agent thread limit; no handle created. Historical workers were terminal and no release capability was available. Parent continued inline in the same goal; no worker reuse or engine change."
+  },
+  "behavior_changed": true,
+  "strategy": "Relevant frozen baseline, witnessed initial feature reds before production, registered M2 amendment, stateful database/API/bridge and failure-injection checks, temporary migration checks, then complete server/lint/web/build gates.",
+  "tests_inspected": [
+    "test_m2_tools.py",
+    "test_m2_decisions.py",
+    "test_m3_runtime_bridge.py",
+    "test_m3_management_runtime.py",
+    "test_m3_gap_actions.py",
+    "test_authentication.py",
+    "test_m3_execution_migration.py",
+    "test_m3_session_purpose_migration.py",
+    "test_economy_ledger.py"
+  ],
+  "tests_added": [
+    "apps/server/tests/test_m3_action_confirmations.py",
+    "apps/server/tests/test_m3_confirmation_migration.py"
+  ],
+  "tests_changed": [
+    "apps/server/tests/test_m2_tools.py",
+    "apps/server/tests/test_m3_execution_migration.py",
+    "apps/server/tests/test_m3_management_discovery_migration.py",
+    "apps/server/tests/test_m3_management_dispatch_migration.py",
+    "apps/server/tests/test_m3_runtime_operation_migration.py",
+    "apps/server/tests/test_m3_session_purpose_migration.py"
+  ],
+  "test_counts": {
+    "new_behavior_cases": 38,
+    "new_migration_cases": 4,
+    "baseline_passed": 411,
+    "initial_failed": 2,
+    "initial_passed": 1,
+    "intermediate_combined_passed": 410,
+    "final_focused_passed": 42,
+    "full_server_passed": 2351,
+    "full_server_deselected": 16,
+    "full_server_warnings": 118,
+    "web_passed": 392,
+    "web_files_passed": 89
+  },
+  "witnessed_corrections": [
+    {
+      "case": "Date-time wire stability on first response and reread",
+      "raw_log": "u10-behavior-02.log",
+      "failed_cases": 2
+    },
+    {
+      "case": "Policy reclassified as ordinary write could reuse prior approval",
+      "raw_log": "u10-classification-red.log",
+      "failed_cases": 1,
+      "note": "Final reproducer used existing update_task scope with no mocked scope gate. Earlier behavior-03 isolated probe patched one scope gate; retained but not the final proof."
+    },
+    {
+      "case": "Expired rejection did not persist expiry; explicit expiry endpoint missing",
+      "raw_log": "u10-expiry-balance-red.log",
+      "failed_cases": 2,
+      "passed_cases": 3
+    },
+    {
+      "case": "Lower revision refuses downgrade after v57 DDL; version marker and schema diverged",
+      "raw_log": "u10-migration-atomic-red.log",
+      "failed_cases": 1
+    },
+    {
+      "case": "Final identity denial copied original Authority snapshot instead of preserving unknown",
+      "raw_log": "u10-audit-attribution-red.log",
+      "failed_cases": 4
+    }
+  ],
+  "intermediate_limits": [
+    "u10-initial-implementation.log contains a test setup TypeError (AuthorityTarget has no project_id), corrected before meaningful behavior testing.",
+    "u10-behavior-01.log has 20 missing-table failures while the v57 migration was not yet implemented; not independent product defects.",
+    "u10-migration-01.log includes one old current-head assertion failure; own historical revision anchors retained and head assertion advanced.",
+    "Intermediate Ruff failures are formatting feedback, not passing gates. Final scoped and complete lint passed."
+  ],
+  "verification_boundaries": [
+    "Test high-impact handler is stateful and uses actual runtime bridge, SQL transactions and formal human-auth APIs. Real recruitment handler and real Manager recruitment acceptance belong to U11.",
+    "Funds exhaustion uses the actual M1 ledger and proves handler partial-write rollback; closed-resource test uses a Task, not a real market listing.",
+    "Concurrent approval uses two actual database sessions. Pending and approved records are queried by a separate Python process.",
+    "No paid model calls, Docker operations, development database migrations or shared fixture changes.",
+    "No formal independent review claimed; phase-level review remains due at M3.3 closure.",
+    "Local commit only; no push or PR. User tmp/ was unread and unchanged."
+  ],
+  "checks": [
+    {
+      "argv": [
+        "make",
+        "test-server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T10:51:12.273237+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 283.8482657079585,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-parent-server.log",
+      "pytest_addopts": "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/parent-server-tmp",
+      "metadata_sha256": "be1fea3b2265f63b57558f2e28fd38ef8dbfa61c5b0f59ea5abb57869ba04e7d",
+      "log_sha256": "afcc59bef51c8c337a6f8eaffa8332a7996acf73d017f8c686c4202621eab838"
+    },
+    {
+      "argv": [
+        "make",
+        "lint"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T10:51:12.289442+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 20.20614237501286,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-parent-lint.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "ae703394478cea446e4775181b8d2063b446b4d5e3cf4d38f6b971ff369b6ddc",
+      "log_sha256": "f28bbf5676f3a71b52048ffb61514b731f67102515df690131d488843bc1c016"
+    },
+    {
+      "argv": [
+        "make",
+        "test-web"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T10:51:12.277173+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 14.633176249917597,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-parent-web.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "a1ed375679e1e3995f7917c48c9d45ca698f58fd38f5af7fe6f47cbab57c497c",
+      "log_sha256": "5db8fdac91c7342a9d71d0ca3f41564c3958904ae681fd14a09b86dad28ef26c"
+    },
+    {
+      "argv": [
+        "make",
+        "build"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T10:51:55.152558+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 13.535392957972363,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-parent-build.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "b894351b3bba9c13176676113b96c5df6f0a7cb450f0d9f8ab6ca16d24559f1e",
+      "log_sha256": "4a388656684b89c0386fc9bc78ddaf8c3d2e49ce02cf96608ed013081c8fd849"
+    }
+  ],
+  "raw_logs": [
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-audit-attribution-red.log",
+      "sha256": "4a1bdb751e555c9588b18ea1acc379ce5c0fe3edd8766fb62df9d2c49ff7e140",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "4 failed, 33 deselected, 1 warning in 1.49s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-baseline.log",
+      "sha256": "daf98bdf350a34ca66a073dae0632674b34c572f61508fa2657a1e436b571895",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "411 passed, 1 warning in 35.79s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-behavior-01.log",
+      "sha256": "faa6cc69912a28c4e8ca58a7300ec177cbe86b2211267e8736b40847bfdd2852",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "20 failed, 2 passed, 1 warning in 6.33s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-behavior-02.log",
+      "sha256": "10373669d0e280a41d81fb5bf9fcf129184f56eab327d112b71854bba06c00bc",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "2 failed, 20 passed, 1 warning in 3.76s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-behavior-03.log",
+      "sha256": "38ea18129dd25a8c9226de8caec839ee848b3140a7f54c6f2ff0efa0aebd1930",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "3 failed, 24 passed, 1 warning in 5.15s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-behavior-04.log",
+      "sha256": "83ded9e496bd6c74e6660e68a6e7ecdf2ead0d1f1ecf35b00e0303a3e5a3dbea",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "27 passed, 1 warning in 5.34s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-classification-red.log",
+      "sha256": "b66dd595429c7a386fc5e635e10c7b7176d0364f3c9024939e1c6ed5c1dc2fcb",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "1 failed, 26 deselected, 1 warning in 1.08s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-expiry-balance-red.log",
+      "sha256": "99b01f2d3ffcde59c774147676d4af0c8e4a9d714c78e6c9a26f1c1113fb9980",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "2 failed, 3 passed, 27 deselected, 1 warning in 1.84s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-final-focused-02.log",
+      "sha256": "10c0e4b534c2fdf2824e7f0c1ea7a2e13dac2bf26b16e0fdd9fdaea31547cba1",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "42 passed, 1 warning in 8.76s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-final-focused.log",
+      "sha256": "ccb316d50369dbd69d3e39187f545190c2954556686567101ddd5c8ac738e1ab",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "41 passed, 1 warning in 8.61s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-final-static.log",
+      "sha256": "8dcdbd5260d499eee37ebc2815583762d7483acd5d6dee084e2fe545de49c88f",
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "observed_result_lines": [
+        "All checks passed!",
+        "21 files already formatted"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-focused-01.log",
+      "sha256": "fe702f5acbb4a3ccd04c97e42ee0966b2c9b5bbfb703452e1ebf2f23766d1a36",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "410 passed, 1 warning in 52.70s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-initial-implementation.log",
+      "sha256": "87380c335c76371364df59c8e3b628cd8dfb4b0049642c32c5e538d442ba3b77",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "1 failed, 2 passed, 1 warning in 1.11s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-initial-red.log",
+      "sha256": "3b43d46a9b0f7d371cf8eb7244e43845cd786ac95ca67596bb02c0ca74e80903",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "2 failed, 1 passed, 1 warning in 1.12s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-migration-01.log",
+      "sha256": "0e0df8845fef1cacc64fde30917245baa69154d6af09991d24d34976abdd04ef",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "1 failed, 15 passed, 1 warning in 13.34s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-migration-atomic-red.log",
+      "sha256": "3368b15e99dcfa9419850246f36f5e85587bc7f81c772ec2d35e623ca3648379",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "1 failed, 3 deselected, 1 warning in 1.54s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-parent-build.log",
+      "sha256": "4a388656684b89c0386fc9bc78ddaf8c3d2e49ce02cf96608ed013081c8fd849",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "✓ built in 7.55s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-parent-lint.log",
+      "sha256": "f28bbf5676f3a71b52048ffb61514b731f67102515df690131d488843bc1c016",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "All checks passed!",
+        "498 files already formatted"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-parent-server.log",
+      "sha256": "afcc59bef51c8c337a6f8eaffa8332a7996acf73d017f8c686c4202621eab838",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "2351 passed, 16 deselected, 118 warnings in 278.38s (0:04:38)"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-parent-web.log",
+      "sha256": "5db8fdac91c7342a9d71d0ca3f41564c3958904ae681fd14a09b86dad28ef26c",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        " Test Files  89 passed (89)",
+        "      Tests  392 passed (392)"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-static-intermediate.log",
+      "sha256": "e643dd935bb75fc8facb51e6232ddac9eaddf90676bcd3c853160bc3e309ba17",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": []
+    }
+  ],
+  "source_sha256": {
+    "/Users/ponk/workspace/Eidolon/apps/server/app/api/v1/action_confirmations.py": "6c69bd80cb3ec2cb905da22e8c02dca05eda6b2f284f5cc538eda4d6459e6b26",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/api/v1/router.py": "5be2b807897286f8bd8dd2c4717a23d985abd61f158c60d68da6ffb004747a3a",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/models/__init__.py": "9c165d206e77bc0757ea3c3948a02268f81a5a3dd10a0668681b69f6521143e1",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/models/action_confirmation.py": "ceea82bcab1efa2615f977c7f09606d6f4827ab050202887cd286795f44c419f",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/schemas/action_confirmation.py": "cecc2d336bfd65a41782c804e37b523c0c3a0435fb9ffdd04b54aef223db72d1",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/action_confirmations.py": "01b9428332564b82ab360e2cdf921c7cda8547291a4058279910d7cd7653afc8",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/contracts.py": "c1710eb806bddfaf52628d7fd1ae76bba68334859c73d6e119ddb3aceae9be07",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/decisions.py": "c65bdcce719be813522d534e1ded430ee8a02c8d06b7569d1a2f9da3753a2e31",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/runtime_operations.py": "a1df7b90b2ad1da8aa555646646ec18109ae4f4ae6c2bfd0d3c1f1601840a410",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/tool_executor.py": "b0b886e3285cd81a9b3f237d8a5c6713923538ffee257ab41235ba55772b28e3",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/tool_reads.py": "b5e2b93cb54f9981c142eeaaad666e095a6d00a9515af34fdf0ff1dc6bea7dbd",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/tools.py": "456d1a12e907e3d851c7260176fa66f158556c694053731b57756b2fa55d57a7",
+    "/Users/ponk/workspace/Eidolon/apps/server/migrations/versions/57c326fb5401_v57_action_confirmations.py": "d9e20a35fb29e7708843e6528616d53e0f1fd46389ab80c0dbb1d7039cd24c9c",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m2_tools.py": "9396f32d1b04f7a17f9fd3cbcd5b82f420d6091caf61ac22668b8044af2351bb",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_action_confirmations.py": "5a17a725c66da45a349bbc3978d130525fcead4114b0c8d2f96adb11d6ecb743",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_confirmation_migration.py": "afdf151a5e37f510bebea1f01925bfda9350e38f416c5488cf13b8a15db74672",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_execution_migration.py": "a926bb7b6a02c7596cc7297d3e2530ce2bddfd3857816a5470d73fb8c03688c7",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_discovery_migration.py": "964b3b9682e6b98d6e0363019cfb284c63ba5cc5cbbdd8cbad31e6ba81b69103",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_dispatch_migration.py": "014d2356e8449a18617403234148d97512db1145b939aca0ba362205d8f6598a",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_runtime_operation_migration.py": "436ec8151c3bfabcdfb0de8da69e7b7d5f7cb68aa9637b663580d0652927a5aa",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_session_purpose_migration.py": "4c30770b7e3589f8fe3328ef697959e72e2a20cb191a23a54d277afa507b1b04"
+  },
+  "no_test_exceptions": {
+    "randomized_order": "No shared fixture changes; repeated random-order gate remains required for U31.",
+    "browser_ui": "U10 delivers formal API only; interactive confirmation UI is U25.",
+    "paid_runtime": "U10 requires no new paid Runtime acceptance; U11 must provide actual Manager recruitment evidence."
+  },
+  "standalone_shipping_skipped": true,
+  "implementation_receipt": {
+    "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u10-n3c5fmd3/u10-return.json",
+    "sha256": "001277a24ed2fc932fb158ad3c60f9bb0e11e7afafa2403cd92dbffcb4134ea3"
+  }
+}
