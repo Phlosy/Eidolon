@@ -1,0 +1,2492 @@
+{
+  "unit": "U14",
+  "status": "real_chain_not_passed",
+  "base_commit": "6b69cfe0cbf8d88ed704ed5519d1754262508c84",
+  "raw_directory": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p",
+  "evidence_scope": "Two actual paid isolated file/handoff attempts, not U28-U30 manager project acceptance.",
+  "failures": [
+    "chain-1: upstream file accepted; reviewer read task/body but native intermediate decision was not its controlled final response. No formal verdict/audit exists; final audit3 claim was rejected by assertions.",
+    "chain-2: upstream file accepted and model-authored formal PASS applied. Downstream consumed actual original input and wrote matching content in the wrong directory, so canonical collection rejected it. No downstream review ran."
+  ],
+  "changes_after_attempts": [
+    "chain-1 -> chain-2: reviewer relay uses existing text-only controlled-turn mode; explicit string scope and receipt protocol; require source/body read audits before verdict.",
+    "after chain-2: output instructions require verbatim complete directory including repeated components. Directory mapping, content guards, approval requirements and attempt cap unchanged. Not yet paid-reverified."
+  ],
+  "allowance": {
+    "whole_chain_attempts": 2,
+    "used": 2,
+    "exhausted": true,
+    "stages_per_attempt": 4,
+    "requests_per_stage": 8,
+    "output_tokens_per_request": 1024,
+    "usd_per_stage": "0.05",
+    "aggregate_usd_cap": "0.40"
+  },
+  "provider_requests": 27,
+  "conservative_peak_cost_usd": "0.0726252",
+  "remaining_reserved_usd": "0",
+  "pricing": {
+    "url": "https://api-docs.deepseek.com/quick_start/pricing/",
+    "retrieval": "urllib.request HTTPS status200; web tool timed out twice",
+    "verified_at": "2026-09-20T14:46:32.348049+00:00",
+    "source_sha256": "2fecee48bf6ad791bce38d1d5504d8ad5c8b0fd4da93e6dc198ae88ff1a4506a",
+    "requested_model": "deepseek-flash",
+    "model_version": "DeepSeek-V4.1-Flash",
+    "peak_usd_per_million_input_cache_miss": "0.3",
+    "peak_usd_per_million_output": "1.2",
+    "accounting": "conservative peak rate; not provider invoice"
+  },
+  "attempts": [
+    {
+      "manifest": {
+        "label": "chain-1",
+        "started_at": "2026-09-20T14:49:25.300063+00:00",
+        "base_commit": "6b69cfe0cbf8d88ed704ed5519d1754262508c84",
+        "source_sha256": "70c53d5df1dbf260988cef99e2d169d031482c7f2cfaec23f6f1ec11413a6f01",
+        "allowance": {
+          "attempts": 2,
+          "stages_per_attempt": 4,
+          "requests_per_stage": 8,
+          "output_tokens_per_request": 1024,
+          "usd_per_stage": "0.05",
+          "aggregate_usd": "0.40"
+        },
+        "pricing": {
+          "url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "retrieval": "urllib.request HTTPS status200; web tool timed out twice",
+          "verified_at": "2026-09-20T14:46:32.348049+00:00",
+          "source_sha256": "2fecee48bf6ad791bce38d1d5504d8ad5c8b0fd4da93e6dc198ae88ff1a4506a",
+          "requested_model": "deepseek-flash",
+          "model_version": "DeepSeek-V4.1-Flash",
+          "peak_usd_per_million_input_cache_miss": "0.3",
+          "peak_usd_per_million_output": "1.2",
+          "accounting": "conservative peak rate; not provider invoice"
+        },
+        "before": {
+          "containers": [
+            "1c7efbddffc9",
+            "253a2e92d906",
+            "45a69a1e31fc",
+            "9ae3fb4a2389",
+            "a40789671906",
+            "aabe131b102d",
+            "b4ca5f1f8021",
+            "c6c84fae99f5",
+            "d8bcfa02c768"
+          ],
+          "networks": [
+            "06132a3d79f0",
+            "2a5409177340",
+            "4248e1594c33",
+            "4879096677e5",
+            "49959b13947d",
+            "5cf7f198a443",
+            "684fcce015e0",
+            "85c8db10addb",
+            "9fce2753baef",
+            "c21a6432d656",
+            "ccf7cf58b81f",
+            "efbe1d89a522"
+          ]
+        },
+        "exit_code": 1,
+        "finished_at": "2026-09-20T14:49:53.137822+00:00",
+        "after": {
+          "containers": [
+            "1c7efbddffc9",
+            "253a2e92d906",
+            "45a69a1e31fc",
+            "9ae3fb4a2389",
+            "a40789671906",
+            "aabe131b102d",
+            "b4ca5f1f8021",
+            "c6c84fae99f5",
+            "d8bcfa02c768"
+          ],
+          "networks": [
+            "06132a3d79f0",
+            "2a5409177340",
+            "4248e1594c33",
+            "4879096677e5",
+            "49959b13947d",
+            "5cf7f198a443",
+            "684fcce015e0",
+            "85c8db10addb",
+            "9fce2753baef",
+            "c21a6432d656",
+            "ccf7cf58b81f",
+            "efbe1d89a522"
+          ]
+        },
+        "original_containers_preserved": true,
+        "new_containers_remaining": [],
+        "budgets": [
+          {
+            "stage": "budget-upstream",
+            "receipt_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/handoff-chain-1/test_actual_upstream_to_downst0/budget-upstream/receipt.json",
+            "attempts": 6,
+            "cost_usd": "0.0116055",
+            "reserved_cost_usd": "0"
+          },
+          {
+            "stage": "budget-upstream-review",
+            "receipt_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/handoff-chain-1/test_actual_upstream_to_downst0/budget-upstream-review/receipt.json",
+            "attempts": 4,
+            "cost_usd": "0.0170628",
+            "reserved_cost_usd": "0"
+          }
+        ],
+        "total_cost_usd": "0.0286683"
+      },
+      "workers": [
+        {
+          "artifact": {
+            "artifact_id": 10,
+            "doc_type": "source_code",
+            "revision_id": 1,
+            "sha256": "80aefb1e1f1925cb7d8be2dbca5691de29c1e6f550630f7a3ea863c5e6183d11",
+            "task_id": 1,
+            "task_title": "Produce original source",
+            "title": "Source",
+            "version": 1,
+            "work_session_id": 1
+          },
+          "attempt_id": 1,
+          "body": "def acceptance_marker():\n    return '7f52460f3009'\n",
+          "consumed": [],
+          "image_id": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+          "input_refs": [],
+          "local_session_ref": "hermes-d233e752edff",
+          "origin": {
+            "local_session_ref": "hermes-d233e752edff",
+            "remote_run_id": "run_3972df85aff14759ba3b6c45ecd6944d",
+            "remote_session_ref": "hermes-d233e752edff",
+            "sha256": "80aefb1e1f1925cb7d8be2dbca5691de29c1e6f550630f7a3ea863c5e6183d11",
+            "size_bytes": 51,
+            "source_ref": "source.py"
+          },
+          "run_id": "run_3972df85aff14759ba3b6c45ecd6944d",
+          "runtime": "hermes",
+          "stage": "upstream",
+          "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b",
+          "work_session_id": 1,
+          "workspace_file": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/handoff-chain-1/test_actual_upstream_to_downst0/workspaces/u14-upstream/.eidolon/outputs/0537f7b0ebce5b0fb2de19c3cd5fc4d7b92fa67c4c650ffa978b7ae0c1fcb281/0537f7b0ebce5b0fb2de19c3cd5fc4d7b92fa67c4c650ffa978b7ae0c1fcb281/source.py"
+        }
+      ],
+      "reviews": [
+        {
+          "audits": [
+            {
+              "actor_person_id": 2,
+              "arguments": {
+                "task_id": 1
+              },
+              "decision_id": null,
+              "id": 1,
+              "outcome": "read",
+              "result": {
+                "result_kind": "facts_only",
+                "review": {
+                  "decided_at": null,
+                  "facts": [
+                    {
+                      "kind": "artifacts",
+                      "payload": {
+                        "count": 1,
+                        "items": [
+                          {
+                            "artifact_id": 10,
+                            "doc_type": "source_code",
+                            "revision_id": 1,
+                            "sha256": "80aefb1e1f1925cb7d8be2dbca5691de29c1e6f550630f7a3ea863c5e6183d11",
+                            "title": "Source",
+                            "version": 1
+                          }
+                        ]
+                      },
+                      "source": "app.work.review_facts"
+                    },
+                    {
+                      "kind": "produces_gap",
+                      "payload": {
+                        "declaration_present": true,
+                        "declared": [
+                          "source_code"
+                        ],
+                        "declared_not_produced": [],
+                        "produced": [
+                          "source_code"
+                        ],
+                        "produced_not_declared": []
+                      },
+                      "source": "app.work.review_facts"
+                    },
+                    {
+                      "kind": "acceptance_criteria",
+                      "payload": {
+                        "present": true,
+                        "text": "The Python source defines acceptance_marker() returning literal '7f52460f3009'."
+                      },
+                      "source": "app.work.review_facts"
+                    },
+                    {
+                      "kind": "inputs",
+                      "payload": {
+                        "count": 0,
+                        "items": []
+                      },
+                      "source": "app.work.review_facts"
+                    },
+                    {
+                      "kind": "session",
+                      "payload": {
+                        "duration_sec": 1.0,
+                        "employee_id": 1,
+                        "ended_at": "2026-09-20T14:49:41.253306",
+                        "error": "",
+                        "present": true,
+                        "provenance": {
+                          "runtime_session_ref": "hermes-d233e752edff",
+                          "snapshot": {
+                            "assignments": [
+                              {
+                                "assignment_type": "primary",
+                                "department": {
+                                  "id": 1,
+                                  "name": "upstream"
+                                },
+                                "effective_from": "2026-09-20T14:49:27.475915+00:00",
+                                "id": 1,
+                                "is_primary": true,
+                                "position": {
+                                  "code": "upstream",
+                                  "id": 1,
+                                  "job_family": "engineering",
+                                  "level": 1,
+                                  "name": "upstream",
+                                  "responsibilities": [
+                                    "Perform the bound task using actual inputs and report exact results."
+                                  ]
+                                },
+                                "position_title_at_assignment": "upstream",
+                                "slot": {
+                                  "code": "upstream",
+                                  "id": 1
+                                }
+                              }
+                            ],
+                            "captured_at": "2026-09-20T14:49:31.214240+00:00",
+                            "company": {
+                              "id": 1,
+                              "name": "U14 actual handoff",
+                              "slug": "u14-b4942e4dca8e"
+                            },
+                            "employee": {
+                              "id": 1,
+                              "name": "upstream",
+                              "slug": "u14-upstream"
+                            },
+                            "model": "deepseek-flash",
+                            "person": {
+                              "id": 1,
+                              "name": "upstream",
+                              "slug": "u14-upstream"
+                            },
+                            "project": {
+                              "goal": "",
+                              "id": 1,
+                              "name": "U14 real handoff",
+                              "work_mode": "managed"
+                            },
+                            "provider": {
+                              "id": 1,
+                              "name": "upstream",
+                              "type": "custom"
+                            },
+                            "purpose": "worker",
+                            "review_request": null,
+                            "runtime": {
+                              "deployment_mode": "docker",
+                              "execution_mode": "real",
+                              "image_digest": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+                              "instance_id": 1,
+                              "resource_key": "37086466-43f4-4e33-b6b4-0b26aea37967",
+                              "type": "hermes",
+                              "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b"
+                            },
+                            "task": {
+                              "acceptance_criteria": "The Python source defines acceptance_marker() returning literal '7f52460f3009'.",
+                              "assignee_id": 1,
+                              "description": "Create source.py with a function acceptance_marker whose literal return is '7f52460f3009'.",
+                              "id": 1,
+                              "kind": "development",
+                              "milestone": null,
+                              "milestone_id": null,
+                              "phase": null,
+                              "phase_id": null,
+                              "produces": [
+                                "source_code"
+                              ],
+                              "title": "Produce original source"
+                            },
+                            "version": 1
+                          },
+                          "state": "captured"
+                        },
+                        "started_at": "2026-09-20T14:49:31.211062",
+                        "status": "completed",
+                        "summary": "产出 1 个交付物",
+                        "work_session_id": 1
+                      },
+                      "source": "app.work.review_facts"
+                    },
+                    {
+                      "kind": "rework",
+                      "payload": {
+                        "rework_count": 0
+                      },
+                      "source": "app.work.review_facts"
+                    }
+                  ],
+                  "notes": "",
+                  "project_id": 1,
+                  "reason": "Read the actual saved artifact body and task criteria, then give your verdict.",
+                  "request_id": 1,
+                  "requested_at": "2026-09-20T14:49:45.411321",
+                  "requested_by_employee_id": 1,
+                  "reviewer_employee_id": 2,
+                  "rework_count": 0,
+                  "status": "open",
+                  "target_status": null,
+                  "task_id": 1,
+                  "task_status": "in_review",
+                  "verdict": null,
+                  "verdict_decision_id": null
+                },
+                "rework_count": 0,
+                "task_id": 1,
+                "task_status": "in_review",
+                "verdict_targets": {
+                  "ESCALATE": null,
+                  "PASS": "done",
+                  "REJECT": "rejected",
+                  "REWORK": "todo"
+                }
+              },
+              "tool": "inspect_task_review"
+            },
+            {
+              "actor_person_id": 2,
+              "arguments": {
+                "artifact_id": 10
+              },
+              "decision_id": null,
+              "id": 2,
+              "outcome": "read",
+              "result": {
+                "artifact_id": 10,
+                "content": "def acceptance_marker():\n    return '7f52460f3009'\n",
+                "content_truncated": false,
+                "current_version": 1,
+                "doc_type": "source_code",
+                "kind": "document",
+                "name": "Source",
+                "project_id": 1,
+                "result_kind": "facts_only",
+                "revision_id": 1,
+                "sha256": "80aefb1e1f1925cb7d8be2dbca5691de29c1e6f550630f7a3ea863c5e6183d11",
+                "version": 1,
+                "zone": "projects"
+              },
+              "tool": "inspect_artifact"
+            }
+          ],
+          "image_id": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+          "result": {
+            "reason": "finish",
+            "runtime_session_id": "hermes-fd9c191c521b",
+            "status": "finished",
+            "submitted_actions": 2,
+            "summary": "review=1;audit=3",
+            "turns": [
+              {
+                "request": {
+                  "args": {
+                    "task_id": 1
+                  },
+                  "kind": "read",
+                  "operation_key": "read-1",
+                  "tool": "inspect_task_review",
+                  "version": 1
+                },
+                "request_id": "host-1e8bc77f0adb44929a60bfe3f498cced",
+                "result": {
+                  "action_indices": [
+                    0
+                  ],
+                  "decision_id": null,
+                  "kind": "read",
+                  "operation_id": 1,
+                  "operation_key": "read-1",
+                  "results": [
+                    {
+                      "actor": {
+                        "company_id": 1,
+                        "employee_id": 2,
+                        "origin": "work_session",
+                        "person_id": 2,
+                        "project_id": 1,
+                        "purpose": "review",
+                        "review_request_id": 1,
+                        "runtime_type": "hermes",
+                        "task_id": null,
+                        "work_session_id": 2
+                      },
+                      "audit_id": 1,
+                      "authority": null,
+                      "autonomy": "auto_allowed",
+                      "data": {
+                        "result_kind": "facts_only",
+                        "review": {
+                          "decided_at": null,
+                          "facts": [
+                            {
+                              "kind": "artifacts",
+                              "payload": {
+                                "count": 1,
+                                "items": [
+                                  {
+                                    "artifact_id": 10,
+                                    "doc_type": "source_code",
+                                    "revision_id": 1,
+                                    "sha256": "80aefb1e1f1925cb7d8be2dbca5691de29c1e6f550630f7a3ea863c5e6183d11",
+                                    "title": "Source",
+                                    "version": 1
+                                  }
+                                ]
+                              },
+                              "source": "app.work.review_facts"
+                            },
+                            {
+                              "kind": "produces_gap",
+                              "payload": {
+                                "declaration_present": true,
+                                "declared": [
+                                  "source_code"
+                                ],
+                                "declared_not_produced": [],
+                                "produced": [
+                                  "source_code"
+                                ],
+                                "produced_not_declared": []
+                              },
+                              "source": "app.work.review_facts"
+                            },
+                            {
+                              "kind": "acceptance_criteria",
+                              "payload": {
+                                "present": true,
+                                "text": "The Python source defines acceptance_marker() returning literal '7f52460f3009'."
+                              },
+                              "source": "app.work.review_facts"
+                            },
+                            {
+                              "kind": "inputs",
+                              "payload": {
+                                "count": 0,
+                                "items": []
+                              },
+                              "source": "app.work.review_facts"
+                            },
+                            {
+                              "kind": "session",
+                              "payload": {
+                                "duration_sec": 1.0,
+                                "employee_id": 1,
+                                "ended_at": "2026-09-20T14:49:41.253306",
+                                "error": "",
+                                "present": true,
+                                "provenance": {
+                                  "runtime_session_ref": "hermes-d233e752edff",
+                                  "snapshot": {
+                                    "assignments": [
+                                      {
+                                        "assignment_type": "primary",
+                                        "department": {
+                                          "id": 1,
+                                          "name": "upstream"
+                                        },
+                                        "effective_from": "2026-09-20T14:49:27.475915+00:00",
+                                        "id": 1,
+                                        "is_primary": true,
+                                        "position": {
+                                          "code": "upstream",
+                                          "id": 1,
+                                          "job_family": "engineering",
+                                          "level": 1,
+                                          "name": "upstream",
+                                          "responsibilities": [
+                                            "Perform the bound task using actual inputs and report exact results."
+                                          ]
+                                        },
+                                        "position_title_at_assignment": "upstream",
+                                        "slot": {
+                                          "code": "upstream",
+                                          "id": 1
+                                        }
+                                      }
+                                    ],
+                                    "captured_at": "2026-09-20T14:49:31.214240+00:00",
+                                    "company": {
+                                      "id": 1,
+                                      "name": "U14 actual handoff",
+                                      "slug": "u14-b4942e4dca8e"
+                                    },
+                                    "employee": {
+                                      "id": 1,
+                                      "name": "upstream",
+                                      "slug": "u14-upstream"
+                                    },
+                                    "model": "deepseek-flash",
+                                    "person": {
+                                      "id": 1,
+                                      "name": "upstream",
+                                      "slug": "u14-upstream"
+                                    },
+                                    "project": {
+                                      "goal": "",
+                                      "id": 1,
+                                      "name": "U14 real handoff",
+                                      "work_mode": "managed"
+                                    },
+                                    "provider": {
+                                      "id": 1,
+                                      "name": "upstream",
+                                      "type": "custom"
+                                    },
+                                    "purpose": "worker",
+                                    "review_request": null,
+                                    "runtime": {
+                                      "deployment_mode": "docker",
+                                      "execution_mode": "real",
+                                      "image_digest": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+                                      "instance_id": 1,
+                                      "resource_key": "37086466-43f4-4e33-b6b4-0b26aea37967",
+                                      "type": "hermes",
+                                      "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b"
+                                    },
+                                    "task": {
+                                      "acceptance_criteria": "The Python source defines acceptance_marker() returning literal '7f52460f3009'.",
+                                      "assignee_id": 1,
+                                      "description": "Create source.py with a function acceptance_marker whose literal return is '7f52460f3009'.",
+                                      "id": 1,
+                                      "kind": "development",
+                                      "milestone": null,
+                                      "milestone_id": null,
+                                      "phase": null,
+                                      "phase_id": null,
+                                      "produces": [
+                                        "source_code"
+                                      ],
+                                      "title": "Produce original source"
+                                    },
+                                    "version": 1
+                                  },
+                                  "state": "captured"
+                                },
+                                "started_at": "2026-09-20T14:49:31.211062",
+                                "status": "completed",
+                                "summary": "产出 1 个交付物",
+                                "work_session_id": 1
+                              },
+                              "source": "app.work.review_facts"
+                            },
+                            {
+                              "kind": "rework",
+                              "payload": {
+                                "rework_count": 0
+                              },
+                              "source": "app.work.review_facts"
+                            }
+                          ],
+                          "notes": "",
+                          "project_id": 1,
+                          "reason": "Read the actual saved artifact body and task criteria, then give your verdict.",
+                          "request_id": 1,
+                          "requested_at": "2026-09-20T14:49:45.411321",
+                          "requested_by_employee_id": 1,
+                          "reviewer_employee_id": 2,
+                          "rework_count": 0,
+                          "status": "open",
+                          "target_status": null,
+                          "task_id": 1,
+                          "task_status": "in_review",
+                          "verdict": null,
+                          "verdict_decision_id": null
+                        },
+                        "rework_count": 0,
+                        "task_id": 1,
+                        "task_status": "in_review",
+                        "verdict_targets": {
+                          "ESCALATE": null,
+                          "PASS": "done",
+                          "REJECT": "rejected",
+                          "REWORK": "todo"
+                        }
+                      },
+                      "error": "",
+                      "ok": true,
+                      "reason": "ok",
+                      "side_effect": "read",
+                      "tool": "inspect_task_review",
+                      "transport": "internal"
+                    }
+                  ],
+                  "status": "completed",
+                  "version": 1
+                },
+                "run_id": "run_f0cae712f7884c05afb50d8c1be26a09"
+              },
+              {
+                "request": {
+                  "args": {
+                    "artifact_id": 10
+                  },
+                  "kind": "read",
+                  "operation_key": "read-2",
+                  "tool": "inspect_artifact",
+                  "version": 1
+                },
+                "request_id": "host-3a5a182c20c04a6b8a1b9abcf8dd6ee8",
+                "result": {
+                  "action_indices": [
+                    0
+                  ],
+                  "decision_id": null,
+                  "kind": "read",
+                  "operation_id": 2,
+                  "operation_key": "read-2",
+                  "results": [
+                    {
+                      "actor": {
+                        "company_id": 1,
+                        "employee_id": 2,
+                        "origin": "work_session",
+                        "person_id": 2,
+                        "project_id": 1,
+                        "purpose": "review",
+                        "review_request_id": 1,
+                        "runtime_type": "hermes",
+                        "task_id": null,
+                        "work_session_id": 2
+                      },
+                      "audit_id": 2,
+                      "authority": null,
+                      "autonomy": "auto_allowed",
+                      "data": {
+                        "artifact_id": 10,
+                        "content": "def acceptance_marker():\n    return '7f52460f3009'\n",
+                        "content_truncated": false,
+                        "current_version": 1,
+                        "doc_type": "source_code",
+                        "kind": "document",
+                        "name": "Source",
+                        "project_id": 1,
+                        "result_kind": "facts_only",
+                        "revision_id": 1,
+                        "sha256": "80aefb1e1f1925cb7d8be2dbca5691de29c1e6f550630f7a3ea863c5e6183d11",
+                        "version": 1,
+                        "zone": "projects"
+                      },
+                      "error": "",
+                      "ok": true,
+                      "reason": "ok",
+                      "side_effect": "read",
+                      "tool": "inspect_artifact",
+                      "transport": "internal"
+                    }
+                  ],
+                  "status": "completed",
+                  "version": 1
+                },
+                "run_id": "run_685ad173d11f4a6eb5068602a6217812"
+              },
+              {
+                "request": {
+                  "kind": "finish",
+                  "operation_key": "finish-1",
+                  "summary": "review=1;audit=3",
+                  "version": 1
+                },
+                "request_id": "host-fffda10470294e42b146224f8ba85221",
+                "result": {
+                  "action_indices": [],
+                  "decision_id": null,
+                  "kind": "finish",
+                  "operation_id": 3,
+                  "operation_key": "finish-1",
+                  "results": [],
+                  "status": "finished",
+                  "version": 1
+                },
+                "run_id": "run_67e52a74f9884bc59663e2b7a78a0cf2"
+              }
+            ],
+            "work_session_id": 2
+          },
+          "review_request_id": 1,
+          "runtime": "hermes",
+          "stage": "upstream-review",
+          "task_status": "in_review",
+          "verdict": null,
+          "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b",
+          "work_session_id": 2,
+          "model_turns": [
+            {
+              "run_id": "run_f0cae712f7884c05afb50d8c1be26a09",
+              "response": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-1\",\"tool\":\"inspect_task_review\",\"args\":{\"task_id\":1}}"
+            },
+            {
+              "run_id": "run_685ad173d11f4a6eb5068602a6217812",
+              "response": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-2\",\"tool\":\"inspect_artifact\",\"args\":{\"artifact_id\":10}}"
+            },
+            {
+              "run_id": "run_67e52a74f9884bc59663e2b7a78a0cf2",
+              "response": "{\"version\":1,\"kind\":\"finish\",\"operation_key\":\"finish-1\",\"summary\":\"review=1;audit=3\"}"
+            }
+          ]
+        }
+      ],
+      "ledgers": [
+        {
+          "stage": "budget-upstream",
+          "receipt": {
+            "accounted_cost_usd": "0.0116055",
+            "allow_native_tools": true,
+            "attempts": 6,
+            "cost_usd": "0.0116055",
+            "estimated_ceiling_usd": "0.0454668",
+            "http_status": 200,
+            "input_price_usd_per_million": "0.3",
+            "max_cost_usd": "0.05",
+            "max_requests": 8,
+            "model": "deepseek-flash",
+            "output_limit": 1024,
+            "output_price_usd_per_million": "1.2",
+            "pricing_valid_until": "2026-09-20T16:46:32.348049+00:00",
+            "request_sha256": "b27a90885cf90534c24d80f9dea0823c796e866c80fb4115d7d5c086515cf0c4",
+            "requests": [
+              {
+                "cost_usd": "0.0021198",
+                "estimated_ceiling_usd": "0.0076128",
+                "http_status": 200,
+                "input_token_bound": 21280,
+                "request_sha256": "d6a48d380e9d06ab81eae6e40881a543aa3b3d72ad74f20cbd5816937f9a6887",
+                "sequence": 1,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 4958,
+                  "output_tokens": 527
+                }
+              },
+              {
+                "cost_usd": "0.0022083",
+                "estimated_ceiling_usd": "0.0082914",
+                "http_status": 200,
+                "input_token_bound": 23542,
+                "request_sha256": "4555f12100a0e022f8a7ab28851f77f72734af58b491bcf44e65cbdd38a84e02",
+                "sequence": 2,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 5957,
+                  "output_tokens": 351
+                }
+              },
+              {
+                "cost_usd": "0.0001443",
+                "estimated_ceiling_usd": "0.0019419",
+                "http_status": 200,
+                "input_token_bound": 2377,
+                "request_sha256": "97fe036b4122dccae1bdbf6442b60108ace8f029ca242d7aeadcc440982a96ea",
+                "sequence": 3,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 469,
+                  "output_tokens": 3
+                }
+              },
+              {
+                "cost_usd": "0.0023031",
+                "estimated_ceiling_usd": "0.0087663",
+                "http_status": 200,
+                "input_token_bound": 25125,
+                "request_sha256": "839905ec3d8c63596e61adf813d9ee78b4a4fafb6ab2a5da89c75c7d42ef7369",
+                "sequence": 4,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 6493,
+                  "output_tokens": 296
+                }
+              },
+              {
+                "cost_usd": "0.0023181",
+                "estimated_ceiling_usd": "0.0092298",
+                "http_status": 200,
+                "input_token_bound": 26670,
+                "request_sha256": "a65deb891002fe1598624c8797e1d232ff4092c0dc9cd912f4358ced0c55efcf",
+                "sequence": 5,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 7067,
+                  "output_tokens": 165
+                }
+              },
+              {
+                "cost_usd": "0.0025119",
+                "estimated_ceiling_usd": "0.0096246",
+                "http_status": 200,
+                "input_token_bound": 27986,
+                "request_sha256": "b27a90885cf90534c24d80f9dea0823c796e866c80fb4115d7d5c086515cf0c4",
+                "sequence": 6,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 7541,
+                  "output_tokens": 208
+                }
+              }
+            ],
+            "reserved_cost_usd": "0",
+            "spent_cost_usd": "0.0116055",
+            "usage": {
+              "input_tokens": 32485,
+              "output_tokens": 1550
+            }
+          }
+        },
+        {
+          "stage": "budget-upstream-review",
+          "receipt": {
+            "accounted_cost_usd": "0.0170628",
+            "allow_native_tools": true,
+            "attempts": 4,
+            "cost_usd": "0.0170628",
+            "estimated_ceiling_usd": "0.0768627",
+            "http_status": 200,
+            "input_price_usd_per_million": "0.3",
+            "max_cost_usd": "0.05",
+            "max_requests": 8,
+            "model": "deepseek-flash",
+            "output_limit": 1024,
+            "output_price_usd_per_million": "1.2",
+            "pricing_valid_until": "2026-09-20T16:46:32.348049+00:00",
+            "request_sha256": "9f6f8d6ccf8947daf385781ab97cb73343af2e32b2ceed2689eaab73adc1980d",
+            "requests": [
+              {
+                "cost_usd": "0.0035763",
+                "estimated_ceiling_usd": "0.0169524",
+                "http_status": 200,
+                "input_token_bound": 52412,
+                "request_sha256": "b70b897a399409d5160add2f4b1eedab39ca0bbc9bed3f31f6521dbe5608e762",
+                "sequence": 1,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 11797,
+                  "output_tokens": 31
+                }
+              },
+              {
+                "cost_usd": "0.0041133",
+                "estimated_ceiling_usd": "0.0190479",
+                "http_status": 200,
+                "input_token_bound": 59397,
+                "request_sha256": "25bfd7b7274a31b0081406393ca3dac7f0ec47c1736924fcb3339959dad7dc21",
+                "sequence": 2,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 13591,
+                  "output_tokens": 30
+                }
+              },
+              {
+                "cost_usd": "0.0048612",
+                "estimated_ceiling_usd": "0.0201435",
+                "http_status": 200,
+                "input_token_bound": 63049,
+                "request_sha256": "4b2e362a4c44b2672b9c0c0b05187d56991a2ebd6d273352ab510f047d551df3",
+                "sequence": 3,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 14456,
+                  "output_tokens": 437
+                }
+              },
+              {
+                "cost_usd": "0.004512",
+                "estimated_ceiling_usd": "0.0207189",
+                "http_status": 200,
+                "input_token_bound": 64967,
+                "request_sha256": "9f6f8d6ccf8947daf385781ab97cb73343af2e32b2ceed2689eaab73adc1980d",
+                "sequence": 4,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 14924,
+                  "output_tokens": 29
+                }
+              }
+            ],
+            "reserved_cost_usd": "0",
+            "spent_cost_usd": "0.0170628",
+            "usage": {
+              "input_tokens": 54768,
+              "output_tokens": 527
+            }
+          }
+        }
+      ],
+      "log_sha256": "9593d918f5754e51d3d4ec43e96f543d84c38688c9084525e24c82ce54d4f956"
+    },
+    {
+      "manifest": {
+        "label": "chain-2",
+        "started_at": "2026-09-20T14:55:13.157941+00:00",
+        "base_commit": "6b69cfe0cbf8d88ed704ed5519d1754262508c84",
+        "source_sha256": "0d99a81a0d8adb14533be1550ed7b6e056a1cdf123a577960f59819ef0e4961c",
+        "allowance": {
+          "attempts": 2,
+          "stages_per_attempt": 4,
+          "requests_per_stage": 8,
+          "output_tokens_per_request": 1024,
+          "usd_per_stage": "0.05",
+          "aggregate_usd": "0.40"
+        },
+        "pricing": {
+          "url": "https://api-docs.deepseek.com/quick_start/pricing/",
+          "retrieval": "urllib.request HTTPS status200; web tool timed out twice",
+          "verified_at": "2026-09-20T14:46:32.348049+00:00",
+          "source_sha256": "2fecee48bf6ad791bce38d1d5504d8ad5c8b0fd4da93e6dc198ae88ff1a4506a",
+          "requested_model": "deepseek-flash",
+          "model_version": "DeepSeek-V4.1-Flash",
+          "peak_usd_per_million_input_cache_miss": "0.3",
+          "peak_usd_per_million_output": "1.2",
+          "accounting": "conservative peak rate; not provider invoice"
+        },
+        "before": {
+          "containers": [
+            "1c7efbddffc9",
+            "253a2e92d906",
+            "45a69a1e31fc",
+            "9ae3fb4a2389",
+            "a40789671906",
+            "aabe131b102d",
+            "b4ca5f1f8021",
+            "c6c84fae99f5",
+            "d8bcfa02c768"
+          ],
+          "networks": [
+            "06132a3d79f0",
+            "2a5409177340",
+            "4248e1594c33",
+            "4879096677e5",
+            "49959b13947d",
+            "5cf7f198a443",
+            "684fcce015e0",
+            "85c8db10addb",
+            "9fce2753baef",
+            "c21a6432d656",
+            "ccf7cf58b81f",
+            "efbe1d89a522"
+          ]
+        },
+        "exit_code": 1,
+        "finished_at": "2026-09-20T14:55:58.099829+00:00",
+        "after": {
+          "containers": [
+            "1c7efbddffc9",
+            "253a2e92d906",
+            "45a69a1e31fc",
+            "9ae3fb4a2389",
+            "a40789671906",
+            "aabe131b102d",
+            "b4ca5f1f8021",
+            "c6c84fae99f5",
+            "d8bcfa02c768"
+          ],
+          "networks": [
+            "06132a3d79f0",
+            "2a5409177340",
+            "4248e1594c33",
+            "4879096677e5",
+            "49959b13947d",
+            "5cf7f198a443",
+            "684fcce015e0",
+            "85c8db10addb",
+            "9fce2753baef",
+            "c21a6432d656",
+            "ccf7cf58b81f",
+            "efbe1d89a522"
+          ]
+        },
+        "original_containers_preserved": true,
+        "new_containers_remaining": [],
+        "budgets": [
+          {
+            "stage": "budget-downstream",
+            "receipt_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/handoff-chain-2/test_actual_upstream_to_downst0/budget-downstream/receipt.json",
+            "attempts": 6,
+            "cost_usd": "0.0184644",
+            "reserved_cost_usd": "0"
+          },
+          {
+            "stage": "budget-upstream",
+            "receipt_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/handoff-chain-2/test_actual_upstream_to_downst0/budget-upstream/receipt.json",
+            "attempts": 7,
+            "cost_usd": "0.0110685",
+            "reserved_cost_usd": "0"
+          },
+          {
+            "stage": "budget-upstream-review",
+            "receipt_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/handoff-chain-2/test_actual_upstream_to_downst0/budget-upstream-review/receipt.json",
+            "attempts": 4,
+            "cost_usd": "0.0144240",
+            "reserved_cost_usd": "0"
+          }
+        ],
+        "total_cost_usd": "0.0439569"
+      },
+      "workers": [
+        {
+          "artifact": {
+            "artifact_id": 10,
+            "doc_type": "source_code",
+            "revision_id": 1,
+            "sha256": "c670377825953cb9d36f6b51d2802ddd063ec9e8c32b76f3a96dc231a7793c8c",
+            "task_id": 1,
+            "task_title": "Produce original source",
+            "title": "Acceptance marker source",
+            "version": 1,
+            "work_session_id": 1
+          },
+          "attempt_id": 1,
+          "body": "\"\"\"Deliverable source module for the acceptance-marker task.\"\"\"\n\n\ndef acceptance_marker():\n    \"\"\"Return the literal acceptance marker string.\"\"\"\n    return '7ec49553b159'\n",
+          "consumed": [],
+          "image_id": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+          "input_refs": [],
+          "local_session_ref": "hermes-d966ef9fe018",
+          "origin": {
+            "local_session_ref": "hermes-d966ef9fe018",
+            "remote_run_id": "run_843269bd336f4cf2af1ebd541c1912be",
+            "remote_session_ref": "hermes-d966ef9fe018",
+            "sha256": "c670377825953cb9d36f6b51d2802ddd063ec9e8c32b76f3a96dc231a7793c8c",
+            "size_bytes": 172,
+            "source_ref": "source.py"
+          },
+          "run_id": "run_843269bd336f4cf2af1ebd541c1912be",
+          "runtime": "hermes",
+          "stage": "upstream",
+          "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b",
+          "work_session_id": 1,
+          "workspace_file": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/handoff-chain-2/test_actual_upstream_to_downst0/workspaces/u14-upstream/.eidolon/outputs/e8b7e4ff053762709320b433ead8c02f312d3ceb1c94c8d29f9636c36d94a1ea/e8b7e4ff053762709320b433ead8c02f312d3ceb1c94c8d29f9636c36d94a1ea/source.py"
+        }
+      ],
+      "reviews": [
+        {
+          "audits": [
+            {
+              "actor_person_id": 2,
+              "arguments": {
+                "task_id": 1
+              },
+              "decision_id": null,
+              "id": 1,
+              "outcome": "read",
+              "result": {
+                "result_kind": "facts_only",
+                "review": {
+                  "decided_at": null,
+                  "facts": [
+                    {
+                      "kind": "artifacts",
+                      "payload": {
+                        "count": 1,
+                        "items": [
+                          {
+                            "artifact_id": 10,
+                            "doc_type": "source_code",
+                            "revision_id": 1,
+                            "sha256": "c670377825953cb9d36f6b51d2802ddd063ec9e8c32b76f3a96dc231a7793c8c",
+                            "title": "Acceptance marker source",
+                            "version": 1
+                          }
+                        ]
+                      },
+                      "source": "app.work.review_facts"
+                    },
+                    {
+                      "kind": "produces_gap",
+                      "payload": {
+                        "declaration_present": true,
+                        "declared": [
+                          "source_code"
+                        ],
+                        "declared_not_produced": [],
+                        "produced": [
+                          "source_code"
+                        ],
+                        "produced_not_declared": []
+                      },
+                      "source": "app.work.review_facts"
+                    },
+                    {
+                      "kind": "acceptance_criteria",
+                      "payload": {
+                        "present": true,
+                        "text": "The Python source defines acceptance_marker() returning literal '7ec49553b159'."
+                      },
+                      "source": "app.work.review_facts"
+                    },
+                    {
+                      "kind": "inputs",
+                      "payload": {
+                        "count": 0,
+                        "items": []
+                      },
+                      "source": "app.work.review_facts"
+                    },
+                    {
+                      "kind": "session",
+                      "payload": {
+                        "duration_sec": 1.0,
+                        "employee_id": 1,
+                        "ended_at": "2026-09-20T14:55:28.506985",
+                        "error": "",
+                        "present": true,
+                        "provenance": {
+                          "runtime_session_ref": "hermes-d966ef9fe018",
+                          "snapshot": {
+                            "assignments": [
+                              {
+                                "assignment_type": "primary",
+                                "department": {
+                                  "id": 1,
+                                  "name": "upstream"
+                                },
+                                "effective_from": "2026-09-20T14:55:15.299338+00:00",
+                                "id": 1,
+                                "is_primary": true,
+                                "position": {
+                                  "code": "upstream",
+                                  "id": 1,
+                                  "job_family": "engineering",
+                                  "level": 1,
+                                  "name": "upstream",
+                                  "responsibilities": [
+                                    "Perform the bound task using actual inputs and report exact results."
+                                  ]
+                                },
+                                "position_title_at_assignment": "upstream",
+                                "slot": {
+                                  "code": "upstream",
+                                  "id": 1
+                                }
+                              }
+                            ],
+                            "captured_at": "2026-09-20T14:55:19.135708+00:00",
+                            "company": {
+                              "id": 1,
+                              "name": "U14 actual handoff",
+                              "slug": "u14-a71b19599991"
+                            },
+                            "employee": {
+                              "id": 1,
+                              "name": "upstream",
+                              "slug": "u14-upstream"
+                            },
+                            "model": "deepseek-flash",
+                            "person": {
+                              "id": 1,
+                              "name": "upstream",
+                              "slug": "u14-upstream"
+                            },
+                            "project": {
+                              "goal": "",
+                              "id": 1,
+                              "name": "U14 real handoff",
+                              "work_mode": "managed"
+                            },
+                            "provider": {
+                              "id": 1,
+                              "name": "upstream",
+                              "type": "custom"
+                            },
+                            "purpose": "worker",
+                            "review_request": null,
+                            "runtime": {
+                              "deployment_mode": "docker",
+                              "execution_mode": "real",
+                              "image_digest": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+                              "instance_id": 1,
+                              "resource_key": "80501b43-2c80-4dc7-8571-029bf3e0cfdb",
+                              "type": "hermes",
+                              "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b"
+                            },
+                            "task": {
+                              "acceptance_criteria": "The Python source defines acceptance_marker() returning literal '7ec49553b159'.",
+                              "assignee_id": 1,
+                              "description": "Create source.py with a function acceptance_marker whose literal return is '7ec49553b159'.",
+                              "id": 1,
+                              "kind": "development",
+                              "milestone": null,
+                              "milestone_id": null,
+                              "phase": null,
+                              "phase_id": null,
+                              "produces": [
+                                "source_code"
+                              ],
+                              "title": "Produce original source"
+                            },
+                            "version": 1
+                          },
+                          "state": "captured"
+                        },
+                        "started_at": "2026-09-20T14:55:19.133220",
+                        "status": "completed",
+                        "summary": "产出 1 个交付物",
+                        "work_session_id": 1
+                      },
+                      "source": "app.work.review_facts"
+                    },
+                    {
+                      "kind": "rework",
+                      "payload": {
+                        "rework_count": 0
+                      },
+                      "source": "app.work.review_facts"
+                    }
+                  ],
+                  "notes": "",
+                  "project_id": 1,
+                  "reason": "Read the actual saved artifact body and task criteria, then give your verdict.",
+                  "request_id": 1,
+                  "requested_at": "2026-09-20T14:55:32.605985",
+                  "requested_by_employee_id": 1,
+                  "reviewer_employee_id": 2,
+                  "rework_count": 0,
+                  "status": "open",
+                  "target_status": null,
+                  "task_id": 1,
+                  "task_status": "in_review",
+                  "verdict": null,
+                  "verdict_decision_id": null
+                },
+                "rework_count": 0,
+                "task_id": 1,
+                "task_status": "in_review",
+                "verdict_targets": {
+                  "ESCALATE": null,
+                  "PASS": "done",
+                  "REJECT": "rejected",
+                  "REWORK": "todo"
+                }
+              },
+              "tool": "inspect_task_review"
+            },
+            {
+              "actor_person_id": 2,
+              "arguments": {
+                "artifact_id": 10
+              },
+              "decision_id": null,
+              "id": 2,
+              "outcome": "read",
+              "result": {
+                "artifact_id": 10,
+                "content": "\"\"\"Deliverable source module for the acceptance-marker task.\"\"\"\n\n\ndef acceptance_marker():\n    \"\"\"Return the literal acceptance marker string.\"\"\"\n    return '7ec49553b159'\n",
+                "content_truncated": false,
+                "current_version": 1,
+                "doc_type": "source_code",
+                "kind": "document",
+                "name": "Acceptance marker source",
+                "project_id": 1,
+                "result_kind": "facts_only",
+                "revision_id": 1,
+                "sha256": "c670377825953cb9d36f6b51d2802ddd063ec9e8c32b76f3a96dc231a7793c8c",
+                "version": 1,
+                "zone": "projects"
+              },
+              "tool": "inspect_artifact"
+            },
+            {
+              "actor_person_id": 2,
+              "arguments": {
+                "notes": "Read artifact 10 body in full (not truncated). It contains def acceptance_marker(): return '7ec49553b159' — literal matches the required marker char-for-char. No upstream inputs declared (count 0); produces_gap has none missing/extra. Reviewer's criteria: satisfied.",
+                "review_request_id": 1,
+                "verdict": "PASS"
+              },
+              "decision_id": 1,
+              "id": 3,
+              "outcome": "applied",
+              "result": {
+                "applied": "done",
+                "authority": {
+                  "action_ref": "tool:submit_review_verdict",
+                  "actor_employee_id": 2,
+                  "allowed": true,
+                  "authority_kind": "accept_delivery",
+                  "evaluated_at": "2026-09-20T14:55:37.269477",
+                  "grant_ids": [
+                    1
+                  ],
+                  "grant_scopes": [
+                    [
+                      "accept_delivery",
+                      "company",
+                      "0",
+                      ""
+                    ]
+                  ],
+                  "grants_hash": "9ddb43d0f25aea7bb9470c8b86665cee0039da1228e46553bace65c53d8750cf",
+                  "position_definition_id": 2,
+                  "position_grants_hash": "9ddb43d0f25aea7bb9470c8b86665cee0039da1228e46553bace65c53d8750cf",
+                  "reason": "authorized",
+                  "snapshot_version": 1
+                },
+                "review_request_id": 1,
+                "target_status": "done",
+                "task_id": 1,
+                "verdict": "PASS"
+              },
+              "tool": "submit_review_verdict"
+            }
+          ],
+          "image_id": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+          "result": {
+            "reason": "finish",
+            "runtime_session_id": "hermes-42d4f4d3df63",
+            "status": "finished",
+            "submitted_actions": 3,
+            "summary": "review=1;audit=3",
+            "turns": [
+              {
+                "request": {
+                  "args": {
+                    "task_id": 1
+                  },
+                  "kind": "read",
+                  "operation_key": "read-1",
+                  "tool": "inspect_task_review",
+                  "version": 1
+                },
+                "request_id": "host-9ac0bc3d983d43dabed15e9857f9caaa",
+                "result": {
+                  "action_indices": [
+                    0
+                  ],
+                  "decision_id": null,
+                  "kind": "read",
+                  "operation_id": 1,
+                  "operation_key": "read-1",
+                  "results": [
+                    {
+                      "actor": {
+                        "company_id": 1,
+                        "employee_id": 2,
+                        "origin": "work_session",
+                        "person_id": 2,
+                        "project_id": 1,
+                        "purpose": "review",
+                        "review_request_id": 1,
+                        "runtime_type": "hermes",
+                        "task_id": null,
+                        "work_session_id": 2
+                      },
+                      "audit_id": 1,
+                      "authority": null,
+                      "autonomy": "auto_allowed",
+                      "data": {
+                        "result_kind": "facts_only",
+                        "review": {
+                          "decided_at": null,
+                          "facts": [
+                            {
+                              "kind": "artifacts",
+                              "payload": {
+                                "count": 1,
+                                "items": [
+                                  {
+                                    "artifact_id": 10,
+                                    "doc_type": "source_code",
+                                    "revision_id": 1,
+                                    "sha256": "c670377825953cb9d36f6b51d2802ddd063ec9e8c32b76f3a96dc231a7793c8c",
+                                    "title": "Acceptance marker source",
+                                    "version": 1
+                                  }
+                                ]
+                              },
+                              "source": "app.work.review_facts"
+                            },
+                            {
+                              "kind": "produces_gap",
+                              "payload": {
+                                "declaration_present": true,
+                                "declared": [
+                                  "source_code"
+                                ],
+                                "declared_not_produced": [],
+                                "produced": [
+                                  "source_code"
+                                ],
+                                "produced_not_declared": []
+                              },
+                              "source": "app.work.review_facts"
+                            },
+                            {
+                              "kind": "acceptance_criteria",
+                              "payload": {
+                                "present": true,
+                                "text": "The Python source defines acceptance_marker() returning literal '7ec49553b159'."
+                              },
+                              "source": "app.work.review_facts"
+                            },
+                            {
+                              "kind": "inputs",
+                              "payload": {
+                                "count": 0,
+                                "items": []
+                              },
+                              "source": "app.work.review_facts"
+                            },
+                            {
+                              "kind": "session",
+                              "payload": {
+                                "duration_sec": 1.0,
+                                "employee_id": 1,
+                                "ended_at": "2026-09-20T14:55:28.506985",
+                                "error": "",
+                                "present": true,
+                                "provenance": {
+                                  "runtime_session_ref": "hermes-d966ef9fe018",
+                                  "snapshot": {
+                                    "assignments": [
+                                      {
+                                        "assignment_type": "primary",
+                                        "department": {
+                                          "id": 1,
+                                          "name": "upstream"
+                                        },
+                                        "effective_from": "2026-09-20T14:55:15.299338+00:00",
+                                        "id": 1,
+                                        "is_primary": true,
+                                        "position": {
+                                          "code": "upstream",
+                                          "id": 1,
+                                          "job_family": "engineering",
+                                          "level": 1,
+                                          "name": "upstream",
+                                          "responsibilities": [
+                                            "Perform the bound task using actual inputs and report exact results."
+                                          ]
+                                        },
+                                        "position_title_at_assignment": "upstream",
+                                        "slot": {
+                                          "code": "upstream",
+                                          "id": 1
+                                        }
+                                      }
+                                    ],
+                                    "captured_at": "2026-09-20T14:55:19.135708+00:00",
+                                    "company": {
+                                      "id": 1,
+                                      "name": "U14 actual handoff",
+                                      "slug": "u14-a71b19599991"
+                                    },
+                                    "employee": {
+                                      "id": 1,
+                                      "name": "upstream",
+                                      "slug": "u14-upstream"
+                                    },
+                                    "model": "deepseek-flash",
+                                    "person": {
+                                      "id": 1,
+                                      "name": "upstream",
+                                      "slug": "u14-upstream"
+                                    },
+                                    "project": {
+                                      "goal": "",
+                                      "id": 1,
+                                      "name": "U14 real handoff",
+                                      "work_mode": "managed"
+                                    },
+                                    "provider": {
+                                      "id": 1,
+                                      "name": "upstream",
+                                      "type": "custom"
+                                    },
+                                    "purpose": "worker",
+                                    "review_request": null,
+                                    "runtime": {
+                                      "deployment_mode": "docker",
+                                      "execution_mode": "real",
+                                      "image_digest": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+                                      "instance_id": 1,
+                                      "resource_key": "80501b43-2c80-4dc7-8571-029bf3e0cfdb",
+                                      "type": "hermes",
+                                      "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b"
+                                    },
+                                    "task": {
+                                      "acceptance_criteria": "The Python source defines acceptance_marker() returning literal '7ec49553b159'.",
+                                      "assignee_id": 1,
+                                      "description": "Create source.py with a function acceptance_marker whose literal return is '7ec49553b159'.",
+                                      "id": 1,
+                                      "kind": "development",
+                                      "milestone": null,
+                                      "milestone_id": null,
+                                      "phase": null,
+                                      "phase_id": null,
+                                      "produces": [
+                                        "source_code"
+                                      ],
+                                      "title": "Produce original source"
+                                    },
+                                    "version": 1
+                                  },
+                                  "state": "captured"
+                                },
+                                "started_at": "2026-09-20T14:55:19.133220",
+                                "status": "completed",
+                                "summary": "产出 1 个交付物",
+                                "work_session_id": 1
+                              },
+                              "source": "app.work.review_facts"
+                            },
+                            {
+                              "kind": "rework",
+                              "payload": {
+                                "rework_count": 0
+                              },
+                              "source": "app.work.review_facts"
+                            }
+                          ],
+                          "notes": "",
+                          "project_id": 1,
+                          "reason": "Read the actual saved artifact body and task criteria, then give your verdict.",
+                          "request_id": 1,
+                          "requested_at": "2026-09-20T14:55:32.605985",
+                          "requested_by_employee_id": 1,
+                          "reviewer_employee_id": 2,
+                          "rework_count": 0,
+                          "status": "open",
+                          "target_status": null,
+                          "task_id": 1,
+                          "task_status": "in_review",
+                          "verdict": null,
+                          "verdict_decision_id": null
+                        },
+                        "rework_count": 0,
+                        "task_id": 1,
+                        "task_status": "in_review",
+                        "verdict_targets": {
+                          "ESCALATE": null,
+                          "PASS": "done",
+                          "REJECT": "rejected",
+                          "REWORK": "todo"
+                        }
+                      },
+                      "error": "",
+                      "ok": true,
+                      "reason": "ok",
+                      "side_effect": "read",
+                      "tool": "inspect_task_review",
+                      "transport": "internal"
+                    }
+                  ],
+                  "status": "completed",
+                  "version": 1
+                },
+                "run_id": "run_d742f3d7312243c287afde8610fbdb1e"
+              },
+              {
+                "request": {
+                  "args": {
+                    "artifact_id": 10
+                  },
+                  "kind": "read",
+                  "operation_key": "read-2",
+                  "tool": "inspect_artifact",
+                  "version": 1
+                },
+                "request_id": "host-56fddac6d7904d87bca4adbcaae0ccfa",
+                "result": {
+                  "action_indices": [
+                    0
+                  ],
+                  "decision_id": null,
+                  "kind": "read",
+                  "operation_id": 2,
+                  "operation_key": "read-2",
+                  "results": [
+                    {
+                      "actor": {
+                        "company_id": 1,
+                        "employee_id": 2,
+                        "origin": "work_session",
+                        "person_id": 2,
+                        "project_id": 1,
+                        "purpose": "review",
+                        "review_request_id": 1,
+                        "runtime_type": "hermes",
+                        "task_id": null,
+                        "work_session_id": 2
+                      },
+                      "audit_id": 2,
+                      "authority": null,
+                      "autonomy": "auto_allowed",
+                      "data": {
+                        "artifact_id": 10,
+                        "content": "\"\"\"Deliverable source module for the acceptance-marker task.\"\"\"\n\n\ndef acceptance_marker():\n    \"\"\"Return the literal acceptance marker string.\"\"\"\n    return '7ec49553b159'\n",
+                        "content_truncated": false,
+                        "current_version": 1,
+                        "doc_type": "source_code",
+                        "kind": "document",
+                        "name": "Acceptance marker source",
+                        "project_id": 1,
+                        "result_kind": "facts_only",
+                        "revision_id": 1,
+                        "sha256": "c670377825953cb9d36f6b51d2802ddd063ec9e8c32b76f3a96dc231a7793c8c",
+                        "version": 1,
+                        "zone": "projects"
+                      },
+                      "error": "",
+                      "ok": true,
+                      "reason": "ok",
+                      "side_effect": "read",
+                      "tool": "inspect_artifact",
+                      "transport": "internal"
+                    }
+                  ],
+                  "status": "completed",
+                  "version": 1
+                },
+                "run_id": "run_03a5c262ca804f9d97b5f4fc68cc1d87"
+              },
+              {
+                "request": {
+                  "decision": {
+                    "actions": [
+                      {
+                        "args": {
+                          "notes": "Read artifact 10 body in full (not truncated). It contains def acceptance_marker(): return '7ec49553b159' — literal matches the required marker char-for-char. No upstream inputs declared (count 0); produces_gap has none missing/extra. Reviewer's criteria: satisfied.",
+                          "review_request_id": 1,
+                          "verdict": "PASS"
+                        },
+                        "tool": "submit_review_verdict"
+                      }
+                    ],
+                    "context": {
+                      "artifact_refs": [
+                        10
+                      ],
+                      "deliverable_count": 1,
+                      "note": "task 1 in_review, rework_count 0, verdict PASS transitions to done.",
+                      "open_task_count": 1,
+                      "project_id": 1,
+                      "task_ids": [
+                        1
+                      ]
+                    },
+                    "decision_type": "accept_delivery",
+                    "intended_outcome": "",
+                    "parent_decision_id": null,
+                    "reason": "Artifact 10 (Acceptance marker source, source_code, v1, sha256 c670377825953cb9d36f6b51d2802ddd063ec9e8c32b76f3a96dc231a7793c8c) defines acceptance_marker() returning the literal '7ec49553b159', exactly matching the task acceptance criteria; declared vs produced produces match, no upstream inputs, session completed cleanly.",
+                    "scope": "task:1"
+                  },
+                  "kind": "decision",
+                  "operation_key": "decision-1",
+                  "version": 1
+                },
+                "request_id": "host-ea66d35431ee41af82e20aeaedef2d29",
+                "result": {
+                  "action_indices": [
+                    0
+                  ],
+                  "decision_id": 1,
+                  "decision_status": "APPLIED",
+                  "kind": "decision",
+                  "operation_id": 3,
+                  "operation_key": "decision-1",
+                  "results": [
+                    {
+                      "actor": {
+                        "company_id": 1,
+                        "employee_id": 2,
+                        "origin": "work_session",
+                        "person_id": 2,
+                        "project_id": 1,
+                        "purpose": "review",
+                        "review_request_id": 1,
+                        "runtime_type": "hermes",
+                        "task_id": null,
+                        "work_session_id": 2
+                      },
+                      "audit_id": 3,
+                      "authority": {
+                        "action_ref": "tool:submit_review_verdict",
+                        "actor_employee_id": 2,
+                        "allowed": true,
+                        "authority_kind": "accept_delivery",
+                        "evaluated_at": "2026-09-20T14:55:37.269477",
+                        "grant_ids": [
+                          1
+                        ],
+                        "grant_scopes": [
+                          [
+                            "accept_delivery",
+                            "company",
+                            "0",
+                            ""
+                          ]
+                        ],
+                        "grants_hash": "9ddb43d0f25aea7bb9470c8b86665cee0039da1228e46553bace65c53d8750cf",
+                        "position_definition_id": 2,
+                        "position_grants_hash": "9ddb43d0f25aea7bb9470c8b86665cee0039da1228e46553bace65c53d8750cf",
+                        "reason": "authorized",
+                        "snapshot_version": 1
+                      },
+                      "autonomy": "auto_allowed",
+                      "data": {
+                        "applied": "done",
+                        "authority": {
+                          "action_ref": "tool:submit_review_verdict",
+                          "actor_employee_id": 2,
+                          "allowed": true,
+                          "authority_kind": "accept_delivery",
+                          "evaluated_at": "2026-09-20T14:55:37.269477",
+                          "grant_ids": [
+                            1
+                          ],
+                          "grant_scopes": [
+                            [
+                              "accept_delivery",
+                              "company",
+                              "0",
+                              ""
+                            ]
+                          ],
+                          "grants_hash": "9ddb43d0f25aea7bb9470c8b86665cee0039da1228e46553bace65c53d8750cf",
+                          "position_definition_id": 2,
+                          "position_grants_hash": "9ddb43d0f25aea7bb9470c8b86665cee0039da1228e46553bace65c53d8750cf",
+                          "reason": "authorized",
+                          "snapshot_version": 1
+                        },
+                        "review_request_id": 1,
+                        "target_status": "done",
+                        "task_id": 1,
+                        "verdict": "PASS"
+                      },
+                      "error": "",
+                      "ok": true,
+                      "reason": "applied",
+                      "side_effect": "write",
+                      "tool": "submit_review_verdict",
+                      "transport": "internal"
+                    }
+                  ],
+                  "status": "completed",
+                  "version": 1
+                },
+                "run_id": "run_cbbcc532e32c4415b15aac07eead427b"
+              },
+              {
+                "request": {
+                  "kind": "finish",
+                  "operation_key": "finish-1",
+                  "summary": "review=1;audit=3",
+                  "version": 1
+                },
+                "request_id": "host-3202a4c5d6434abda6aeca12a1b51056",
+                "result": {
+                  "action_indices": [],
+                  "decision_id": null,
+                  "kind": "finish",
+                  "operation_id": 4,
+                  "operation_key": "finish-1",
+                  "results": [],
+                  "status": "finished",
+                  "version": 1
+                },
+                "run_id": "run_9ad498b772a844ab82f520facb11a78e"
+              }
+            ],
+            "work_session_id": 2
+          },
+          "review_request_id": 1,
+          "runtime": "hermes",
+          "stage": "upstream-review",
+          "task_status": "done",
+          "verdict": "PASS",
+          "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b",
+          "work_session_id": 2,
+          "model_turns": [
+            {
+              "run_id": "run_d742f3d7312243c287afde8610fbdb1e",
+              "response": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-1\",\"tool\":\"inspect_task_review\",\"args\":{\"task_id\":1}}"
+            },
+            {
+              "run_id": "run_03a5c262ca804f9d97b5f4fc68cc1d87",
+              "response": "{\"version\":1,\"kind\":\"read\",\"operation_key\":\"read-2\",\"tool\":\"inspect_artifact\",\"args\":{\"artifact_id\":10}}"
+            },
+            {
+              "run_id": "run_cbbcc532e32c4415b15aac07eead427b",
+              "response": "{\"version\":1,\"kind\":\"decision\",\"operation_key\":\"decision-1\",\"decision\":{\"decision_type\":\"accept_delivery\",\"reason\":\"Artifact 10 (Acceptance marker source, source_code, v1, sha256 c670377825953cb9d36f6b51d2802ddd063ec9e8c32b76f3a96dc231a7793c8c) defines acceptance_marker() returning the literal '7ec49553b159', exactly matching the task acceptance criteria; declared vs produced produces match, no upstream inputs, session completed cleanly.\",\"scope\":\"task:1\",\"actions\":[{\"tool\":\"submit_review_verdict\",\"args\":{\"review_request_id\":1,\"verdict\":\"PASS\",\"notes\":\"Read artifact 10 body in full (not truncated). It contains def acceptance_marker(): return '7ec49553b159' — literal matches the required marker char-for-char. No upstream inputs declared (count 0); produces_gap has none missing/extra. Reviewer's criteria: satisfied.\"}}],\"context\":{\"project_id\":1,\"task_ids\":[1],\"artifact_refs\":[10],\"deliverable_count\":1,\"open_task_count\":1,\"note\":\"task 1 in_review, rework_count 0, verdict PASS transitions to done.\"}}}"
+            },
+            {
+              "run_id": "run_9ad498b772a844ab82f520facb11a78e",
+              "response": "{\"version\":1,\"kind\":\"finish\",\"operation_key\":\"finish-1\",\"summary\":\"review=1;audit=3\"}"
+            }
+          ]
+        }
+      ],
+      "ledgers": [
+        {
+          "stage": "budget-downstream",
+          "receipt": {
+            "accounted_cost_usd": "0.0184644",
+            "allow_native_tools": true,
+            "attempts": 6,
+            "cost_usd": "0.0184644",
+            "estimated_ceiling_usd": "0.0767175",
+            "http_status": 200,
+            "input_price_usd_per_million": "0.3",
+            "max_cost_usd": "0.05",
+            "max_requests": 8,
+            "model": "deepseek-flash",
+            "output_limit": 1024,
+            "output_price_usd_per_million": "1.2",
+            "pricing_valid_until": "2026-09-20T16:46:32.348049+00:00",
+            "request_sha256": "68a8b2bd6d9af661c0fe77db8ab9396daba7cf53a700f3603927d701bef92500",
+            "requests": [
+              {
+                "cost_usd": "0.0027954",
+                "estimated_ceiling_usd": "0.0117888",
+                "http_status": 200,
+                "input_token_bound": 35200,
+                "request_sha256": "31587ed913b9aeaa8633c8b3cbd9c4d83e74019924cfd320ba40149753c5c53c",
+                "sequence": 1,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 8398,
+                  "output_tokens": 230
+                }
+              },
+              {
+                "cost_usd": "0.0028761",
+                "estimated_ceiling_usd": "0.0122289",
+                "http_status": 200,
+                "input_token_bound": 36667,
+                "request_sha256": "20c587ecf40eade8ab629a244656caff50c911a06d87b25b1c7137d7ec811553",
+                "sequence": 2,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 8859,
+                  "output_tokens": 182
+                }
+              },
+              {
+                "cost_usd": "0.003009",
+                "estimated_ceiling_usd": "0.0125229",
+                "http_status": 200,
+                "input_token_bound": 37647,
+                "request_sha256": "159a14c0f5594382c4a4f49af1c3d7c51204ca99cd3f6c1ea2ac02f0b5c9b7a1",
+                "sequence": 3,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 9126,
+                  "output_tokens": 226
+                }
+              },
+              {
+                "cost_usd": "0.0032616",
+                "estimated_ceiling_usd": "0.0128484",
+                "http_status": 200,
+                "input_token_bound": 38732,
+                "request_sha256": "7caaa92a24e55649bb207812988af62c5b75c3ffc42f0f959f7bad875cdb0665",
+                "sequence": 4,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 9440,
+                  "output_tokens": 358
+                }
+              },
+              {
+                "cost_usd": "0.0032088",
+                "estimated_ceiling_usd": "0.0134805",
+                "http_status": 200,
+                "input_token_bound": 40839,
+                "request_sha256": "74b6f58dda824840ab85f0855b9222859b2b278ef2876f809602b56176029029",
+                "sequence": 5,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 10088,
+                  "output_tokens": 152
+                }
+              },
+              {
+                "cost_usd": "0.0033135",
+                "estimated_ceiling_usd": "0.013848",
+                "http_status": 200,
+                "input_token_bound": 42064,
+                "request_sha256": "68a8b2bd6d9af661c0fe77db8ab9396daba7cf53a700f3603927d701bef92500",
+                "sequence": 6,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 10521,
+                  "output_tokens": 131
+                }
+              }
+            ],
+            "reserved_cost_usd": "0",
+            "spent_cost_usd": "0.0184644",
+            "usage": {
+              "input_tokens": 56432,
+              "output_tokens": 1279
+            }
+          }
+        },
+        {
+          "stage": "budget-upstream",
+          "receipt": {
+            "accounted_cost_usd": "0.0110685",
+            "allow_native_tools": true,
+            "attempts": 7,
+            "cost_usd": "0.0110685",
+            "estimated_ceiling_usd": "0.0472146",
+            "http_status": 200,
+            "input_price_usd_per_million": "0.3",
+            "max_cost_usd": "0.05",
+            "max_requests": 8,
+            "model": "deepseek-flash",
+            "output_limit": 1024,
+            "output_price_usd_per_million": "1.2",
+            "pricing_valid_until": "2026-09-20T16:46:32.348049+00:00",
+            "request_sha256": "994c05c543790781c5540dd3d8e6f78190099f22989d2af76a1302ef2c23ba0c",
+            "requests": [
+              {
+                "cost_usd": "0.0018696",
+                "estimated_ceiling_usd": "0.0076128",
+                "http_status": 200,
+                "input_token_bound": 21280,
+                "request_sha256": "63fdac08f67748bced36efa19782bdbe6db4b0273590f52e5c49ad973ca40c49",
+                "sequence": 1,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 4948,
+                  "output_tokens": 321
+                }
+              },
+              {
+                "cost_usd": "0.0020712",
+                "estimated_ceiling_usd": "0.0081324",
+                "http_status": 200,
+                "input_token_bound": 23012,
+                "request_sha256": "e3e7e4e7b9131be74db2990444c816865dd446a49653d0c98285cf9533f78c88",
+                "sequence": 2,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 5544,
+                  "output_tokens": 340
+                }
+              },
+              {
+                "cost_usd": "0.0001434",
+                "estimated_ceiling_usd": "0.00195",
+                "http_status": 200,
+                "input_token_bound": 2404,
+                "request_sha256": "1cd5504b3dc56b432c2e93a5da15cff8c16a3d0e7eb63bc06cc4131126562033",
+                "sequence": 3,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 466,
+                  "output_tokens": 3
+                }
+              },
+              {
+                "cost_usd": "0.0022452",
+                "estimated_ceiling_usd": "0.0087237",
+                "http_status": 200,
+                "input_token_bound": 24983,
+                "request_sha256": "a1f90460c8bef8baa4ebe2b84ccab083a7e649efc6b0ca93d53b270fdf39e92d",
+                "sequence": 4,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 6208,
+                  "output_tokens": 319
+                }
+              },
+              {
+                "cost_usd": "0.0022527",
+                "estimated_ceiling_usd": "0.0092256",
+                "http_status": 200,
+                "input_token_bound": 26656,
+                "request_sha256": "f4a31eaae673d8b7e070d9d798c4746483250a1d8547e52548ffa812ad01ff87",
+                "sequence": 5,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 6789,
+                  "output_tokens": 180
+                }
+              },
+              {
+                "cost_usd": "0.000132",
+                "estimated_ceiling_usd": "0.0019119",
+                "http_status": 200,
+                "input_token_bound": 2277,
+                "request_sha256": "bd635ec01dacdcf2c0066ee071ed3f0832bbf2feeb343935b8a8a33ae3b72b2d",
+                "sequence": 6,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 428,
+                  "output_tokens": 3
+                }
+              },
+              {
+                "cost_usd": "0.0023544",
+                "estimated_ceiling_usd": "0.0096582",
+                "http_status": 200,
+                "input_token_bound": 28098,
+                "request_sha256": "994c05c543790781c5540dd3d8e6f78190099f22989d2af76a1302ef2c23ba0c",
+                "sequence": 7,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 7300,
+                  "output_tokens": 137
+                }
+              }
+            ],
+            "reserved_cost_usd": "0",
+            "spent_cost_usd": "0.0110685",
+            "usage": {
+              "input_tokens": 31683,
+              "output_tokens": 1303
+            }
+          }
+        },
+        {
+          "stage": "budget-upstream-review",
+          "receipt": {
+            "accounted_cost_usd": "0.0144240",
+            "allow_native_tools": false,
+            "attempts": 4,
+            "cost_usd": "0.0144240",
+            "estimated_ceiling_usd": "0.0677013",
+            "http_status": 200,
+            "input_price_usd_per_million": "0.3",
+            "max_cost_usd": "0.05",
+            "max_requests": 8,
+            "model": "deepseek-flash",
+            "output_limit": 1024,
+            "output_price_usd_per_million": "1.2",
+            "pricing_valid_until": "2026-09-20T16:46:32.348049+00:00",
+            "request_sha256": "dbdbf6b85d7461570d69c6dfec5f3b97bd2e113d6c166108b18918f9f9885676",
+            "requests": [
+              {
+                "cost_usd": "0.0028527",
+                "estimated_ceiling_usd": "0.0141885",
+                "http_status": 200,
+                "input_token_bound": 43199,
+                "request_sha256": "eb66e34e7a88294a34f5dc0be19e27284cf013368085f539aa3a670d714ba208",
+                "sequence": 1,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 9385,
+                  "output_tokens": 31
+                }
+              },
+              {
+                "cost_usd": "0.0034017",
+                "estimated_ceiling_usd": "0.0163596",
+                "http_status": 200,
+                "input_token_bound": 50436,
+                "request_sha256": "b59b85b5c91e8b75b9023a44c0653c7bf4298f6bd256d2f832b5cc3d259a9229",
+                "sequence": 2,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 11219,
+                  "output_tokens": 30
+                }
+              },
+              {
+                "cost_usd": "0.0039801",
+                "estimated_ceiling_usd": "0.0175803",
+                "http_status": 200,
+                "input_token_bound": 54505,
+                "request_sha256": "5c63a154fcfa8b3c21a3019ab82f680139dcdbb4dcfca9268273b485302b61d5",
+                "sequence": 3,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 12167,
+                  "output_tokens": 275
+                }
+              },
+              {
+                "cost_usd": "0.0041895",
+                "estimated_ceiling_usd": "0.0195729",
+                "http_status": 200,
+                "input_token_bound": 61147,
+                "request_sha256": "dbdbf6b85d7461570d69c6dfec5f3b97bd2e113d6c166108b18918f9f9885676",
+                "sequence": 4,
+                "state": "settled",
+                "usage": {
+                  "input_tokens": 13849,
+                  "output_tokens": 29
+                }
+              }
+            ],
+            "reserved_cost_usd": "0",
+            "spent_cost_usd": "0.0144240",
+            "usage": {
+              "input_tokens": 46620,
+              "output_tokens": 365
+            }
+          }
+        }
+      ],
+      "log_sha256": "ca06c7da63fa512c370f89706c1597478ddbeb35b1189a4f3252a5be0e296fea"
+    }
+  ],
+  "rejected_downstream_file": {
+    "runtime": "openclaw",
+    "accepted": false,
+    "canonical_revision_id": null,
+    "reason": "artifact_file_missing: required second directory component was omitted",
+    "actual_manifest_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/handoff-chain-2/test_actual_upstream_to_downst0/workspaces/u14-downstream/.eidolon/outputs/e1dbf84b7cb7ee81a763bcbd3427c9383ba8161257b7945cba05363653522b62/manifest.json",
+    "manifest": {
+      "protocol": "eidolon.artifacts.v1",
+      "local_session_ref": "openclaw-725ea423946b",
+      "request_ref": "openclaw-725ea423946b",
+      "complete": true,
+      "artifacts": [
+        {
+          "path": "derived.py",
+          "type": "source_code",
+          "title": "Derived source",
+          "size_bytes": 192,
+          "sha256": "9704ba8cae1a265407e884bf060127f05dcd33a6a6d5a4e3828d126c7e98388b"
+        }
+      ]
+    },
+    "body": "\"\"\"Derived source module consuming the acceptance-marker literal.\"\"\"\n\n\ndef derived_marker():\n    \"\"\"Return the acceptance marker followed by ':consumed'.\"\"\"\n    return '7ec49553b159:consumed'\n",
+    "sha256": "9704ba8cae1a265407e884bf060127f05dcd33a6a6d5a4e3828d126c7e98388b",
+    "size_bytes": 192
+  },
+  "verification": [
+    {
+      "label": "real-chain-collection",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "-m",
+        "integration",
+        "-o",
+        "addopts=",
+        "--collect-only",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 1.27,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-collection.log",
+      "log_sha256": "2e30474a0f2c9139b056244867307a2ebf47a7f859a8f376c7ae52f03fbb1c77",
+      "output_tail": "tests/integration/test_m3_real_artifact_handoff.py::test_actual_upstream_to_downstream_and_formal_reviews\n\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 test collected in 0.03s\n"
+    },
+    {
+      "label": "real-chain-disabled",
+      "argv": [
+        "/usr/bin/env",
+        "-u",
+        "EIDOLON_REAL_HANDOFF_TESTS",
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "-m",
+        "integration",
+        "-o",
+        "addopts=",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 1.15,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-disabled.log",
+      "log_sha256": "5887f15c78cf9758f84afba833ef70844e3fbd17eb5fd2e68fb37eac2abc0e04",
+      "output_tail": "s                                                                        [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 skipped, 1 warning in 0.02s\n"
+    },
+    {
+      "label": "real-chain-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "real-chain-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-format.log",
+      "log_sha256": "fd2299c9f1c6dc869070883e281051bfe93aacf66c1a3b0069f45b4aa410ca50",
+      "output_tail": "1 file already formatted\n"
+    },
+    {
+      "label": "real-chain-2-preflight",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_model_budget_relay.py",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py",
+        "-q",
+        "-o",
+        "addopts=",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 4,
+      "elapsed_seconds": 1.22,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-2-preflight.log",
+      "log_sha256": "eee4f2b84d914e34a72098e9cfe7e39b96e42d00733810f17cdfdb35540e012c",
+      "output_tail": "ERROR: file or directory not found: apps/server/tests/test_model_budget_relay.py\n\n\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 warning in 0.00s\n"
+    },
+    {
+      "label": "real-chain-2-preflight-corrected",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_model_budget.py",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py",
+        "-q",
+        "-o",
+        "addopts=",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 5.24,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-2-preflight-corrected.log",
+      "log_sha256": "ac2378f37f849436543bf378c5965527a2894ffe9496f415779eb614b9d95697",
+      "output_tail": ".................................................s                       [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n49 passed, 1 skipped, 1 warning in 3.91s\n"
+    },
+    {
+      "label": "real-chain-2-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-2-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "real-chain-2-final-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-2-final-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "real-chain-2-final-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-2-final-format.log",
+      "log_sha256": "b9d5585d399e9e8f3aec402d1a32783aee5db1e4e555a626915626bc714f60ef",
+      "output_tail": "unformatted: File would be reformatted\n   --> apps/server/tests/integration/test_m3_real_artifact_handoff.py:479:34\n    |\n478 |             db.scalars(\n    -                 select(ToolAudit)\n    -                 .where(ToolAudit.work_session_id == work.id)\n    -                 .order_by(ToolAudit.id)\n479 +                 select(ToolAudit).where(ToolAudit.work_session_id == work.id).order_by(ToolAudit.id)\n480 |             )\n--------------------------------------------------------------------------------\n520 |             for a in audits\n    -             if a.tool_name == \"inspect_artifact\"\n    -             and a.outcome == \"read\"\n    -             and a.id < writes[0].id\n521 +             if a.tool_name == \"inspect_artifact\" and a.outcome == \"read\" and a.id < writes[0].id\n522 |         }\n523 |         assert output_ids | input_ids <= reads\n524 |         assert any(\n    -             a.tool_name == \"inspect_task_review\"\n    -             and a.outcome == \"read\"\n    -             and a.id < writes[0].id\n525 +             a.tool_name == \"inspect_task_review\" and a.outcome == \"read\" and a.id < writes[0].id\n526 |             for a in audits\n    |\n\n1 file would be reformatted\n"
+    },
+    {
+      "label": "real-chain-2-formatted",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-2-formatted.log",
+      "log_sha256": "fd2299c9f1c6dc869070883e281051bfe93aacf66c1a3b0069f45b4aa410ca50",
+      "output_tail": "1 file already formatted\n"
+    },
+    {
+      "label": "real-chain-verbatim-path",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/test_m3_artifact_workspace_identity.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 5.69,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-verbatim-path.log",
+      "log_sha256": "aea6c17423a07853b49e9b29eef2c810ad57a06cb20af9181fcff181ec330820",
+      "output_tail": "........................................................................ [ 91%]\n.......                                                                  [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n79 passed, 1 warning in 4.14s\n"
+    },
+    {
+      "label": "real-chain-verbatim-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/runtimes/workspace_artifacts.py",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-verbatim-static.log",
+      "log_sha256": "01e2738c77d9802850435898fbb8550584de17176cc6a3fd7186e4f6e157fd17",
+      "output_tail": "E501 Line too long (102 > 100)\n  --> apps/server/app/runtimes/workspace_artifacts.py:89:101\n   |\n87 |         \"complete, write the exact manifest schema to a temporary file and atomically rename \"\n88 |         \"it to manifest.json in that exact directory. Verify the manifest and deliverables \"\n89 |         \"exist at the full supplied path before finishing. Do not add fields. A reply alone is not a \"\n   |                                                                                                     ^^\n90 |         \"file deliverable. The manifest is collection metadata, not a review verdict.\\n\"\n91 |         + json.dumps(contract, ensure_ascii=False, separators=(\",\", \":\"))\n   |\n\nFound 1 error.\n"
+    },
+    {
+      "label": "real-chain-verbatim-static-corrected",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/runtimes/workspace_artifacts.py",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-verbatim-static-corrected.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "real-chain-verbatim-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/runtimes/workspace_artifacts.py",
+        "apps/server/tests/integration/test_m3_real_artifact_handoff.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-chain-verbatim-format.log",
+      "log_sha256": "3bc53bf3e981a98a34a852e175bf9b77af841edea74fca595d9aedcbaf9a4938",
+      "output_tail": "2 files already formatted\n"
+    },
+    {
+      "label": "u14-full-server",
+      "argv": [
+        "make",
+        "test-server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 230.66,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/u14-full-server.log",
+      "log_sha256": "48ef18b3d5de2d4fec734e4cd4127fac97fce746247504b75eb53d99e8a470a6",
+      "output_tail": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest apps/server/tests -q\n........................................................................ [  2%]\n........................................................................ [  5%]\n........................................................................ [  8%]\n........................................................................ [ 10%]\n........................................................................ [ 13%]\n........................................................................ [ 16%]\n........................................................................ [ 19%]\n........................................................................ [ 21%]\n........................................................................ [ 24%]\n........................................................................ [ 27%]\n........................................................................ [ 30%]\n........................................................................ [ 32%]\n........................................................................ [ 35%]\n........................................................................ [ 38%]\n........................................................................ [ 41%]\n........................................................................ [ 43%]\n........................................................................ [ 46%]\n........................................................................ [ 49%]\n........................................................................ [ 52%]\n........................................................................ [ 54%]\n........................................................................ [ 57%]\n........................................................................ [ 60%]\n........................................................................ [ 63%]\n........................................................................ [ 65%]\n........................................................................ [ 68%]\n........................................................................ [ 71%]\n........................................................................ [ 74%]\n........................................................................ [ 76%]\n........................................................................ [ 79%]\n........................................................................ [ 82%]\n........................................................................ [ 85%]\n........................................................................ [ 87%]\n........................................................................ [ 90%]\n........................................................................ [ 93%]\n........................................................................ [ 96%]\n........................................................................ [ 98%]\n.............................                                            [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\ntests/test_position_history.py: 117 warnings\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/sqlalchemy/engine/default.py:952: DeprecationWarning: The default datetime adapter is deprecated as of Python 3.12; see the sqlite3 documentation for suggested replacement recipes\n    cursor.execute(statement, parameters)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2621 passed, 20 deselected, 118 warnings in 227.94s (0:03:47)\n"
+    },
+    {
+      "label": "u14-full-lint",
+      "argv": [
+        "make",
+        "lint"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 7.87,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/u14-full-lint.log",
+      "log_sha256": "f433b723fde7f9873ef6526426bfc2cbeb69ab53d4444da2bd579ae0d4f6d26f",
+      "output_tail": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m ruff check apps/server/app apps/server/tests\nAll checks passed!\n/Users/ponk/miniconda3/envs/eidolon/bin/python -m ruff format --check apps/server/app apps/server/tests\n521 files already formatted\ncd apps/web && pnpm exec tsc --noEmit && pnpm exec eslint .\ncd apps/web && pnpm exec prettier --check .\nChecking formatting...\nAll matched files use Prettier code style!\n"
+    }
+  ],
+  "verification_limits": [
+    "Default real test skip is only opt-in gating, never acceptance.",
+    "One preflight named a nonexistent test path; no test ran. Corrected preflight:49 passed/1 skipped.",
+    "Two formatting/line-length failures were corrected and retained.",
+    "Full backend/lint started before the later prose-only directory hint;79 artifact tests and two-path static/format checked that hint separately.",
+    "Existing four-attempt transport allowance remains exhausted and unchanged."
+  ],
+  "source_sha256": {
+    "apps/server/tests/integration/test_m3_real_artifact_handoff.py": "0d99a81a0d8adb14533be1550ed7b6e056a1cdf123a577960f59819ef0e4961c",
+    "apps/server/app/runtimes/workspace_artifacts.py": "49bfb6780cf03319dc212567f8da0438ec9bed93dd6eee73f5e9efa9f24000ef"
+  },
+  "cleanup": {
+    "all_original_nine_containers_retained": true,
+    "original_network_inventories_retained": true,
+    "owned_new_containers_remaining": [],
+    "paid_processes_remaining": [],
+    "isolated_files_and_databases_retained_for_evidence": true,
+    "development_database_written": false,
+    "user_tmp_read_or_modified": false
+  }
+}

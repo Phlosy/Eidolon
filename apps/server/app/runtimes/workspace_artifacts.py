@@ -79,12 +79,15 @@ def instructions(
     return (
         "\n\n## Required output protocol\n"
         "Create the directory below and write the task's actual UTF-8 deliverable files there. "
+        "Copy the full directory path verbatim, including repeated path components; never "
+        "shorten, recompute or deduplicate it. "
         "Cover every required type. Use regular files, relative paths, and an appropriate "
         "allowed type; do not link files. "
         "Compute byte counts and SHA-256 from the actual finished bytes. When EVERY file is "
         "complete, write the exact manifest schema to a temporary file and atomically rename "
-        "it to manifest.json in that directory. Do not add fields. A reply alone is not a "
-        "file deliverable. The manifest is collection metadata, not a review verdict.\n"
+        "it to manifest.json in that exact directory. Verify the manifest and deliverables "
+        "exist at the full supplied path before finishing. Do not add fields. A reply alone is "
+        "not a file deliverable. The manifest is collection metadata, not a review verdict.\n"
         + json.dumps(contract, ensure_ascii=False, separators=(",", ":"))
     )
 
