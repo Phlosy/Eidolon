@@ -372,3 +372,51 @@ async def test_manager_can_read_partial_provisioning_and_current_readiness(
         "job"
     ]
     assert api_progress == progress
+
+
+@pytest.mark.parametrize("failed_table", ["employees", "events"])
+def test_confirmed_recruitment_storage_failure_remains_retryable(
+    client, db, world, market, failed_table
+):
+    from sqlalchemy import event
+    from sqlalchemy.exc import OperationalError
+
+    identity = owner(client, db, world)
+    _, _, row_id = propose(db, world, market)
+    confirmations.review(db, row_id, approve=True, **identity)
+    original_audits = db.scalar(select(func.count(ToolAudit.id)))
+    failures = []
+
+    def fail_write(conn, cursor, statement, parameters, context, executemany):
+        if statement.startswith(f"INSERT INTO {failed_table} ") and not failures:
+            failures.append(statement)
+            raise OperationalError(statement, None, Exception("injected transient storage failure"))
+
+    event.listen(db.get_bind(), "before_cursor_execute", fail_write)
+    try:
+        with SessionLocal() as transaction, pytest.raises(OperationalError):
+            confirmations.execute(transaction, row_id, **identity)
+    finally:
+        event.remove(db.get_bind(), "before_cursor_execute", fail_write)
+    assert len(failures) == 1
+    db.expire_all()
+    row = db.get(ActionConfirmation, row_id)
+    assert row.status == "approved" and row.final_audit_id is None
+    assert db.scalar(select(func.count(ToolAudit.id))) == original_audits
+    assert market.listing.status == "active"
+    assert not db.scalar(select(Employee).where(Employee.person_id == market.person.id))
+    assert db.scalar(select(func.count(Contract.id))) == 0
+    assert db.scalar(select(func.count(ProvisioningJob.id))) == 0
+    assert (
+        db.scalar(
+            select(func.count(Event.id)).where(
+                Event.type.in_(["person.recruited", "talent.purchased"])
+            )
+        )
+        == 0
+    )
+    assert _wallet(market.account_id)["available"] == 10000
+    assert confirmations.execute(db, row_id, **identity).status == "executed"
+    assert _wallet(market.account_id)["available"] == 8800
+    assert confirmations.execute(db, row_id, **identity).status == "executed"
+    assert _wallet(market.account_id)["available"] == 8800

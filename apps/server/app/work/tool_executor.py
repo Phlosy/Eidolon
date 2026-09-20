@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -866,6 +867,10 @@ def execute_tool(
         except tool_machinery.ToolError as exc:
             savepoint.rollback()
             handler_failure = ("domain_rejected", str(exc))
+        except SQLAlchemyError:
+            # A storage failure has no business outcome. Let the enclosing
+            # transaction roll back so a saved approval/request remains retryable.
+            raise
         except Exception as exc:
             savepoint.rollback()
             logger.exception("tool handler failed", extra={"tool": spec.name})
