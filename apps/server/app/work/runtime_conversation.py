@@ -37,8 +37,8 @@ from app.runtimes.base import (
     RuntimeSession,
     controlled_request_key,
 )
+from app.work import request_budget, telemetry, tools
 from app.work import runtime_bridge as bridge
-from app.work import telemetry, tools
 from app.work import tool_executor as executor
 from app.work.role_context import build_role_context
 
@@ -408,14 +408,23 @@ async def run_conversation(
             result["turns"].append(turn)
             timeout = min(limits.turn_timeout_seconds, _remaining(deadline))
             turn_deadline = asyncio.get_running_loop().time() + timeout
-            attempt = telemetry.prepare_attempt(
-                work_session_id,
-                runtime_session,
-                prompt,
-                request_key=request_id,
-                kind="controlled",
-                session_factory=session_factory,
-            )
+            try:
+                attempt = telemetry.prepare_attempt(
+                    work_session_id,
+                    runtime_session,
+                    prompt,
+                    request_key=request_id,
+                    kind="controlled",
+                    session_factory=session_factory,
+                )
+            except RuntimeProtocolError as exc:
+                if str(exc) in request_budget.DENIED_REASONS:
+                    raise _Stop(
+                        "budget_denied"
+                        if str(exc) == request_budget.EXHAUSTED
+                        else "budget_unavailable"
+                    ) from None
+                raise
             try:
                 reply = await _turn(adapter, runtime_session, prompt, request_id, timeout, turn)
             except TimeoutError:

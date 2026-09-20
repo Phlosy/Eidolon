@@ -1,0 +1,268 @@
+{
+  "unit": "U15",
+  "component": "cumulative_project_host_request_allowance",
+  "status": "component_verified_unit_in_progress",
+  "base_commit": "7ecf76d",
+  "raw_directory": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p",
+  "behavior_changed": true,
+  "existing_tests_inspected": [
+    "test_m3_telemetry.py",
+    "test_m3_runtime_admission.py",
+    "test_m3_runtime_conversation.py",
+    "test_m3_management_runner.py",
+    "test_m3_worker_recovery.py"
+  ],
+  "changes": [
+    "Real Worker, Manager and Reviewer attempts share a finite project allowance. The immutable attempt history and original project snapshot supply the counter; no separate mutable balance or schema was introduced.",
+    "New requests and explicit attempts consume one unit even if their result is unknown, failed or stopped. Idempotent reuse and original-run status reads do not consume another unit. Mock history is excluded.",
+    "Worker and management dispatch expose existing waiting reasons with allowance details. The transaction preparing a new request rechecks and serializes admission; rollback leaves no published attempt.",
+    "The deployed limit defaults to 128 and accepts 1..4096. Changing this operator policy preserves existing counts. The unit is host_request, not actual Provider calls, tokens, runtime seconds, internal credits or dollars."
+  ],
+  "observed_verification": [
+    "93 baseline checks passed before implementation.",
+    "First 27 scenarios: 25 intended behavioral failures, 1 independent-project characterization passed, and 1 subprocess fixture error. The subprocess lacked an accepted original run reference; after correction it reproduced the missing allowance guard before implementation.",
+    "First implementation: 155 failures and 111 passes because Worker work_sessions.project_id is intentionally NULL. Corrected to the immutable provenance project snapshot; 266 checks passed.",
+    "Nine additional boundary cases were added after implementation. The mock test initially attempted two first Worker requests with the same idempotency key; it was corrected to the existing explicit attempt chain without relaxing production identity rules.",
+    "All 36 focused scenarios and 794 related checks passed; static and formatting checks passed on seven Python files."
+  ],
+  "verification": [
+    {
+      "label": "request-budget-baseline",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 14.79,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/request-budget-baseline.log",
+      "log_sha256": "0d5313cabbb8b3dd6ba5690f1c5190e709835c9b611ee3a78a60ceb2ea975074",
+      "output_tail": "........................................................................ [ 77%]\n.....................                                                    [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n93 passed, 1 warning in 13.16s\n"
+    },
+    {
+      "label": "request-budget-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_budget.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 4.15,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/request-budget-red.log",
+      "log_sha256": "6898a6d6b11661ace8b406e4bb00e41c94ce50a2074afb8e9194f0cd36af44ab",
+      "output_tail": "policy_cannot_admit[True]\nFAILED apps/server/tests/test_m3_request_budget.py::test_invalid_request_policy_cannot_admit[inf]\nFAILED apps/server/tests/test_m3_request_budget.py::test_invalid_request_policy_cannot_admit[None]\nFAILED apps/server/tests/test_m3_request_budget.py::test_fresh_process_observes_consumed_project_allowance\nFAILED apps/server/tests/test_m3_request_budget.py::test_worker_dispatch_explains_exhaustion_without_a_new_session[hermes-same_task]\nFAILED apps/server/tests/test_m3_request_budget.py::test_worker_dispatch_explains_exhaustion_without_a_new_session[hermes-other_task]\nFAILED apps/server/tests/test_m3_request_budget.py::test_worker_dispatch_explains_exhaustion_without_a_new_session[hermes-reassigned]\nFAILED apps/server/tests/test_m3_request_budget.py::test_worker_dispatch_explains_exhaustion_without_a_new_session[openclaw-same_task]\nFAILED apps/server/tests/test_m3_request_budget.py::test_worker_dispatch_explains_exhaustion_without_a_new_session[openclaw-other_task]\nFAILED apps/server/tests/test_m3_request_budget.py::test_worker_dispatch_explains_exhaustion_without_a_new_session[openclaw-reassigned]\nFAILED apps/server/tests/test_m3_request_budget.py::test_management_and_review_share_worker_request_allowance[hermes-False]\nFAILED apps/server/tests/test_m3_request_budget.py::test_management_and_review_share_worker_request_allowance[hermes-True]\nFAILED apps/server/tests/test_m3_request_budget.py::test_management_and_review_share_worker_request_allowance[openclaw-False]\nFAILED apps/server/tests/test_m3_request_budget.py::test_management_and_review_share_worker_request_allowance[openclaw-True]\nFAILED apps/server/tests/test_m3_request_budget.py::test_controlled_loop_stops_before_next_model_turn_on_request_exhaustion\n26 failed, 1 passed, 1 warning in 2.62s\n"
+    },
+    {
+      "label": "request-budget-process-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_budget.py",
+        "-k",
+        "fresh_process",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 2.4,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/request-budget-process-red.log",
+      "log_sha256": "40fb2154bfb97cb3b6fd4ccfa7782c70fe84db8a4c0e0715b995198589b63e11",
+      "output_tail": "F                                                                        [100%]\n=================================== FAILURES ===================================\n____________ test_fresh_process_observes_consumed_project_allowance ____________\napps/server/tests/test_m3_request_budget.py:161: in test_fresh_process_observes_consumed_project_allowance\n    assert json.loads(child.stdout) == \"execution_request_budget_exhausted\"\nE   AssertionError: assert 'admitted' == 'execution_re...get_exhausted'\nE     \nE     - execution_request_budget_exhausted\nE     + admitted\n---------------------------- Captured stdout setup -----------------------------\n[v14] employments → PositionAssignment：回填 0 行\n[v14] 重叠主职清洗：employee 轴 0 条、slot 轴 0 条（均在 metadata_json.normalized 留痕）\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_request_budget.py::test_fresh_process_observes_consumed_project_allowance\n1 failed, 26 deselected, 1 warning in 1.06s\n"
+    },
+    {
+      "label": "request-budget-green-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_budget.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 27.27,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/request-budget-green-1.log",
+      "log_sha256": "3fc90fa286cc38ef966bfb4ef35a1b82576e0a344b607d38dfdf0004c38e03ff",
+      "output_tail": "-action_limit-1]\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_loop_limits_stop_without_starting_an_extra_turn[limit3-reply_size_limit-1]\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_loop_limits_stop_without_starting_an_extra_turn[limit4-result_size_limit-1]\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_total_action_allowance_counts_replayed_actions\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_admission_is_checked_for_each_unique_request_and_can_deny_later\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_model_timeouts_target_only_the_known_inflight_run[False]\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_model_timeouts_target_only_the_known_inflight_run[True]\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_late_reply_cannot_evade_the_host_turn_deadline\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_already_stopped_adapter_failure_is_not_cancelled_twice\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_cancellation_propagates_and_stops_only_current_known_run[False]\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_cancellation_propagates_and_stops_only_current_known_run[True]\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_concurrent_and_repeated_host_invocation_cannot_reset_allowance\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_runtime_change_between_actions_stops_with_prior_receipt\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_total_deadline_preserves_committed_action_and_stops_later_actions\nFAILED apps/server/tests/test_m3_runtime_conversation.py::test_storage_failure_stops_without_claiming_prior_action_was_rolled_back\n155 failed, 111 passed, 1 warning in 25.66s\n"
+    },
+    {
+      "label": "request-budget-green-2",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_budget.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 25.12,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/request-budget-green-2.log",
+      "log_sha256": "6ca894198fa90f8c5f91bee72d4ce6fcad897590af247e8b3e2e0ae0eb421e0c",
+      "output_tail": "........................................................................ [ 27%]\n........................................................................ [ 54%]\n........................................................................ [ 81%]\n..................................................                       [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n266 passed, 1 warning in 23.46s\n"
+    },
+    {
+      "label": "request-budget-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_budget.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 6.01,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/request-budget-boundaries.log",
+      "log_sha256": "87f6f4b8325e0cf56767be81ca5b8d26082953f12e184f1611bd80895e33484f",
+      "output_tail": "py:952: in do_execute\n    cursor.execute(statement, parameters)\nE   sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) invalid runtime execution fact\nE   [SQL: INSERT INTO runtime_attempts (work_session_id, request_key, attempt_number, idempotency_key, request_digest, local_session_ref, runtime_instance_id, instance_fingerprint, kind, remote_session_ref, remote_run_id, status, accepted_at, last_progress_at, ended_at, terminal_source, host_outcome, host_reason, host_observed_at, stop_requested_at, stop_reason, artifact_context_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]\nE   [parameters: (2, 'mock-1', 1, 'mock-budget-session', '2fe431e092d511fef1a8138e698c1c0ecbbc1e6be9e598d9dd34228e1d29dceb', 'mock-budget-session', None, None, 'worker', 'mock-budget-session', None, 'prepared', None, '2026-09-20 17:33:49.126173', None, None, None, None, None, None, None, None, '2026-09-20 17:33:49.126225', '2026-09-20 17:33:49.126226')]\nE   (Background on this error at: https://sqlalche.me/e/20/gkpj)\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_request_budget.py::test_mock_requests_do_not_spend_real_allowance\n1 failed, 34 passed, 1 warning in 4.36s\n"
+    },
+    {
+      "label": "request-budget-boundaries-corrected",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_budget.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 6.21,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/request-budget-boundaries-corrected.log",
+      "log_sha256": "ec7d6c8f0468eccdb6c973060d6331edf648acfcc7d87e030078a5d53534a1f3",
+      "output_tail": "....................................                                     [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n36 passed, 1 warning in 4.59s\n"
+    },
+    {
+      "label": "request-budget-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_request_budget.py",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "apps/server/tests/test_m3_technical_failure.py",
+        "apps/server/tests/test_m3_stop_intent.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_pinned_handoff.py",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "apps/server/tests/test_runtimes_behavior.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_task_lifecycle.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_m2_golden_path.py",
+        "apps/server/tests/test_project_workflow.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 86.76,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/request-budget-final.log",
+      "log_sha256": "ba004439888d83f8778abe99cc1496e93eff70e10fd6d817c30ffe56926cf3bf",
+      "output_tail": "........................................................................ [  9%]\n........................................................................ [ 18%]\n........................................................................ [ 27%]\n........................................................................ [ 36%]\n........................................................................ [ 45%]\n........................................................................ [ 54%]\n........................................................................ [ 63%]\n........................................................................ [ 72%]\n........................................................................ [ 81%]\n........................................................................ [ 90%]\n........................................................................ [ 99%]\n..                                                                       [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n794 passed, 1 warning in 85.11s (0:01:25)\n"
+    },
+    {
+      "label": "request-budget-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/work/request_budget.py",
+        "apps/server/app/core/config.py",
+        "apps/server/app/work/telemetry.py",
+        "apps/server/app/work/dispatch.py",
+        "apps/server/app/work/management_dispatch.py",
+        "apps/server/app/work/runtime_conversation.py",
+        "apps/server/tests/test_m3_request_budget.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/request-budget-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "request-budget-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/work/request_budget.py",
+        "apps/server/app/core/config.py",
+        "apps/server/app/work/telemetry.py",
+        "apps/server/app/work/dispatch.py",
+        "apps/server/app/work/management_dispatch.py",
+        "apps/server/app/work/runtime_conversation.py",
+        "apps/server/tests/test_m3_request_budget.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/request-budget-format.log",
+      "log_sha256": "0321fffcb91606a42c0a19d8c1121d5c544379d663821fce616c71a7bb62f6b5",
+      "output_tail": "7 files already formatted\n"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/work/request_budget.py": "af5856aec722c5c72ef620c5ff37148ab414ee3bcf05e575fb249ffcf1a1f023",
+    "apps/server/app/core/config.py": "6d4b37015948ba176810395d61eba9f1df77f46e15dc2f340b4b21348edef408",
+    "apps/server/app/work/telemetry.py": "4cbf3c5295c0a9c1bfa89889b5accc8106aa4d6cc569e72223561ff2b28113b0",
+    "apps/server/app/work/dispatch.py": "c053b7692055345a09561a0a570b2384c35b317d5eb21897040cb7141f15300a",
+    "apps/server/app/work/management_dispatch.py": "0fbbe13fcf9959d1eaab2175011800972ff843e194d392f5299d99db308e3d32",
+    "apps/server/app/work/runtime_conversation.py": "60a74bc28f30d5c3db6d7fd3382ac7e4bb2c7cebd7431d55509fff2f7c8125a9",
+    "apps/server/tests/test_m3_request_budget.py": "f76f9b9f6acc7a94e1b0bbd4a21ecd5a8404d0e770db3cc72233dcf419011ef4",
+    "docs/m2-freeze.md": "82197d2addd9d814fd686e7e3ae74169a822321c7af2c06ec27bf1beec5f8c34",
+    "docs/m3-u15-retry-and-cancel.md": "d4711b007863fd6f3f4116da20e4ba676b6648a527c606e66170883bcc57f62c"
+  },
+  "exceptions": [
+    "Supported SQLite was used for transaction/concurrency evidence, plus a separate Python process. PostgreSQL and the full backend suite were not run.",
+    "Read recovery uses the preceding component fixture: actual Worker orchestration/telemetry/adapters/artifact acceptance, scripted external transport, and the existing Worker admission seam. Dispatch itself is independently exercised with the actual healthy-world fixture.",
+    "No schema, paid model, Docker, development database, shared fixture or user tmp operations.",
+    "This prevents unlimited new host requests within one project. It does not bound native Provider calls inside one Runtime request and does not replace mandatory external spending hooks or a dollar cap."
+  ],
+  "remaining": [
+    "Cumulative monetary-budget admission and in-flight spending revocation",
+    "Actual remote stop and unconfirmed-stop acceptance",
+    "U14 additional paid whole-chain allowance question remains unanswered"
+  ],
+  "paid_model_requests": 0,
+  "standalone_shipping_skipped": true
+}

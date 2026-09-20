@@ -35,7 +35,7 @@ from app.models.organization import Employee
 from app.models.project import Task
 from app.repositories import project as project_repo
 from app.work import contracts as C
-from app.work import handoff, readiness, runtime_admission
+from app.work import handoff, readiness, request_budget, runtime_admission
 
 #: 项目处于这些状态时允许执行（终态与"等管理层"不在此列）
 EXECUTABLE_PROJECT_STATUSES: frozenset[str] = frozenset(
@@ -289,6 +289,18 @@ def evaluate_dispatch(db: Session, task: Task) -> DispatchEvaluation:
             assignee_id=int(assignee_id),
             readiness={**(explanation or {}), "unresolved_attempt_ids": pending},
         )
+    if report is not None and not report.policy.is_mock:
+        budget = request_budget.project_allowance(
+            db, company_id=project.company_id, project_id=project.id
+        )
+        if budget["reason"] is not None:
+            return DispatchEvaluation(
+                task_id=int(task.id),
+                dispatchable=False,
+                reasons=(REASON_RUNTIME_UNAVAILABLE,),
+                assignee_id=int(assignee_id),
+                readiness={**(explanation or {}), "request_budget": budget},
+            )
     return DispatchEvaluation(
         task_id=int(task.id), dispatchable=True, assignee_id=int(assignee_id), readiness=explanation
     )

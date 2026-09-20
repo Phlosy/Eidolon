@@ -32,6 +32,7 @@ from app.runtimes.base import (
     RuntimeRunReference,
 )
 from app.runtimes.probe import instance_fingerprint
+from app.work import request_budget
 
 RETENTION_DAYS = 7
 MAX_PAGE_SIZE = 100
@@ -220,6 +221,7 @@ def prepare_attempt(
             if artifact_context is not None:
                 runtime_artifacts.bind_context(previous.artifact_context_json, session)
             return recorder
+        request_budget.admit_new_attempt(db, work)
         number = previous.attempt_number + 1 if previous else 1
         key = (
             (session.id if kind == "worker" else _digest(f"{session.id}\0{request_key}"))

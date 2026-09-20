@@ -395,6 +395,12 @@ def _evaluate(
     if budget_available is not True:
         _wait(row, "budget_unavailable")
         return None
+    from app.work.request_budget import project_allowance
+
+    budget = project_allowance(db, company_id=row.company_id, project_id=row.project_id)
+    if budget["reason"] is not None:
+        _wait(row, "budget_unavailable", request_budget=budget)
+        return None
     return _environment(db, row, actor)
 
 
