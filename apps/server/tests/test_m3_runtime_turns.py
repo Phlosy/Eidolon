@@ -274,6 +274,9 @@ async def test_openclaw_transport_failure_after_ack_requests_targeted_abort(monk
     async def interrupted(method, params, **kwargs):
         if method == "agent.wait":
             raise ConnectionError("synthetic control connection lost")
+        if method == "chat.abort":
+            await call(method, params, **kwargs)
+            return {"aborted": True, "runIds": [params["runId"]]}
         return await call(method, params, **kwargs)
 
     monkeypatch.setattr(gateway, "call", interrupted)
@@ -284,6 +287,7 @@ async def test_openclaw_transport_failure_after_ack_requests_targeted_abort(monk
     assert len(aborts) == 1
     assert aborts[0]["runId"] == gateway.calls[0][1]["idempotencyKey"]
     assert current.status == "failed"
+    assert current.cancel_confirmed is False  # Abort receipt is not a terminal observation.
 
 
 async def test_openclaw_bad_ack_cannot_redirect_cancellation_to_another_run(monkeypatch):

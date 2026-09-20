@@ -73,6 +73,20 @@ from app.work import (
 logger = get_logger(__name__)
 
 
+async def _stop_worker(adapter, session):
+    """Drain owned local work even when remote stop transport fails."""
+    try:
+        await adapter.cancel_task(session)
+    except (Exception, asyncio.CancelledError):
+        logger.warning("worker stop unconfirmed", extra={"task_id": session.task_id})
+    finally:
+        background = session.background
+        if background is not None:
+            if not background.done() and not background.cancelling():
+                background.cancel()
+            await asyncio.gather(background, return_exceptions=True)
+
+
 class Orchestrator:
     def __init__(self) -> None:
         self._queue: asyncio.Queue = asyncio.Queue()
@@ -245,7 +259,28 @@ class Orchestrator:
         employee_id: int | None = None
         work_session_id: int | None = None
         attempt = None
+        adapter = session = cleanup = None
         started = datetime.now(UTC)
+
+        async def stop_worker():
+            nonlocal cleanup
+            if adapter is None or session is None:
+                return False
+            if cleanup is None:
+                cleanup = asyncio.create_task(
+                    _stop_worker(adapter, session), name=f"worker-cleanup-{task_id}"
+                )
+            interrupted = False
+            while not cleanup.done():
+                try:
+                    await asyncio.shield(cleanup)
+                except asyncio.CancelledError:
+                    # Remember cancellation without releasing the employee while
+                    # its producer/stream is still being drained.
+                    interrupted = True
+            cleanup.result()
+            return interrupted
+
         try:
             with SessionLocal() as db:
                 # Worker and non-worker claims share the same admission lock.
@@ -457,10 +492,10 @@ class Orchestrator:
                         attempt.terminal("completed", "mock.stream")
                     success, error = True, None
                     break
-            attempt.finish_host(
-                "completed" if success else "failed",
-                "stream_completed" if success else "stream_ended",
-            )
+            if success and session.background is not None:
+                await asyncio.shield(session.background)
+            elif not success and await stop_worker():
+                raise asyncio.CancelledError
             produced = await adapter.get_artifacts(session) if success else []
             duration = (datetime.now(UTC) - started).total_seconds()
             self._finalize(
@@ -472,7 +507,12 @@ class Orchestrator:
                 work_session_id=work_session_id,
                 runtime_session=session,
             )
+            attempt.finish_host_safely(
+                "completed" if success else "failed",
+                "stream_completed" if success else "stream_ended",
+            )
         except asyncio.CancelledError:
+            await stop_worker()
             if attempt is not None:
                 attempt.finish_host_safely("cancelled", "cancelled")
             logger.info("work session cancelled", extra={"task_id": task_id})
@@ -482,18 +522,24 @@ class Orchestrator:
                 )
             raise
         except Exception:
+            cancelled = await stop_worker()
             if attempt is not None:
-                attempt.finish_host_safely("failed", "host_error")
+                attempt.finish_host_safely(
+                    "cancelled" if cancelled else "failed",
+                    "cancelled" if cancelled else "host_error",
+                )
             logger.warning("work session crashed", extra={"task_id": task_id})
             if work_session_id is not None:
                 self._finalize(
                     task_id,
                     False,
                     [],
-                    "runtime_error",
+                    "cancelled" if cancelled else "runtime_error",
                     0.0,
                     work_session_id=work_session_id,
                 )
+            if cancelled:
+                raise asyncio.CancelledError from None
 
     # ---- finalization & reflection ----
 

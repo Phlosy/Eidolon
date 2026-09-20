@@ -230,21 +230,15 @@ class OpenClawAdapter(RuntimeAdapter):
                     if run_id:
                         if session.status == "running":
                             session.status = "failed"
-                        confirmed = False
+                        session.cancel_confirmed = False
                         try:
-                            result = await client.call(
+                            await client.call(
                                 "chat.abort",
                                 {"sessionKey": session_key, "runId": run_id},
                                 timeout=5,
                             )
-                            confirmed = (
-                                isinstance(result, dict)
-                                and result.get("aborted") is True
-                                and run_id in result.get("runIds", [])
-                            )
                         except Exception:
                             logger.warning("controlled OpenClaw abort could not be confirmed")
-                        session.cancel_confirmed = confirmed
                     raise
                 finally:
                     if reply_task is not None:
@@ -311,33 +305,25 @@ class OpenClawAdapter(RuntimeAdapter):
 
     async def cancel_task(self, session: RuntimeSession) -> None:
         session.status = "cancelled"
-        if session.background and not session.background.done():
-            session.background.cancel()
-        controlled = session.remote_session_ref != _SESSION_KEY and (
-            session.remote_run_id is not None or session.turn_lock.locked()
-        )
-        run_id = (
-            session.remote_run_id
-            if controlled
-            else session.instance.details.get(f"run_id:{session.id}")
-        )
-        if controlled and run_id is None:
-            # A control connection has not submitted a run yet. Do not redirect
-            # its cancellation to the ordinary shared chat session.
-            return
+        session.cancel_confirmed = False
+        background = session.background
+        if background is not None and not background.done() and not background.cancelling():
+            background.cancel()
         try:
-            async with self._connect(session.instance) as client:
+            run_id, session_key = session.remote_run_id, session.remote_session_ref
+            if not run_id or not session_key:
+                return  # No broad shared-session abort when the original run is unknown.
+            async with asyncio.timeout(5), self._connect(session.instance) as client:
                 await client.call(
                     "chat.abort",
-                    {
-                        "sessionKey": (
-                            f"agent:main:eidolon-{session.id}" if controlled else _SESSION_KEY
-                        ),
-                        **({"runId": run_id} if run_id else {}),
-                    },
+                    {"sessionKey": session_key, "runId": run_id},
+                    timeout=5,
                 )
         except Exception:
-            logger.exception("openclaw abort failed", extra={"task_id": session.task_id})
+            logger.warning("openclaw stop unconfirmed", extra={"task_id": session.task_id})
+        finally:
+            if background is not None:
+                await asyncio.gather(background, return_exceptions=True)
 
     async def get_artifacts(self, session: RuntimeSession) -> list[ProducedArtifact]:
         artifact_transport.require_completed_origin(session)

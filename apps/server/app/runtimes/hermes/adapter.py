@@ -243,18 +243,28 @@ class HermesAdapter(RuntimeAdapter):
 
     async def cancel_task(self, session: RuntimeSession) -> None:
         session.status = "cancelled"
-        if session.background and not session.background.done():
-            session.background.cancel()
-        run_id = session.remote_run_id or session.instance.details.get(f"run_id:{session.id}")
-        if run_id:
-            try:
-                async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-                    await client.post(
-                        f"{session.instance.details['base_url']}/v1/runs/{run_id}/stop",
-                        headers=self._headers(session.instance),
-                    )
-            except Exception:
-                logger.exception("hermes stop run failed", extra={"task_id": session.task_id})
+        session.cancel_confirmed = False
+        background = session.background
+        if background is not None and not background.done() and not background.cancelling():
+            background.cancel()
+        try:
+            run_id = session.remote_run_id
+            if not run_id or not session.remote_session_ref:
+                return  # Never guess a target from a stale legacy cache.
+            async with (
+                asyncio.timeout(5),
+                httpx.AsyncClient(timeout=5, trust_env=False) as client,
+            ):
+                response = await client.post(
+                    f"{session.instance.details['base_url']}/v1/runs/{quote(run_id, safe='')}/stop",
+                    headers=self._headers(session.instance),
+                )
+                response.raise_for_status()
+        except Exception:
+            logger.warning("hermes stop unconfirmed", extra={"task_id": session.task_id})
+        finally:
+            if background is not None:
+                await asyncio.gather(background, return_exceptions=True)
 
     async def get_artifacts(self, session: RuntimeSession) -> list[ProducedArtifact]:
         return await asyncio.to_thread(workspace_artifacts.collect, session)
