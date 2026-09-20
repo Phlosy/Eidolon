@@ -1,0 +1,122 @@
+{
+  "unit": "U8",
+  "scope": "durable management/review source observation and atomic admission only",
+  "u8_complete": false,
+  "base_commit": "b83e8e729aa6e9bf28d68dd839c083f88093d167",
+  "migration": "v54 54e93ab821cd after v53 53d82fa710bc; one head; temporary SQLite empty up/down/up plus alembic check, metadata columns/indexes/checks/FKs/triggers parity, and refusal before DDL for nonempty dedup history",
+  "verification_evidence": [
+    {
+      "unit": "U8 durable dispatch slice",
+      "behavior_changed": true,
+      "existing_tests_inspected": [
+        "test_m3_readiness.py (durable notices, readiness, worker/management locking, concurrency)",
+        "test_m3_management_sessions.py (canonical purpose creator and target constraints)",
+        "test_m3_session_purpose_migration.py",
+        "test_m3_runtime_operation_migration.py",
+        "test_m3_runtime_probes.py"
+      ],
+      "tests_added_or_changed": [
+        "apps/server/tests/test_m3_management_dispatch.py",
+        "apps/server/tests/test_m3_management_dispatch_migration.py",
+        "apps/server/tests/test_m3_runtime_operation_migration.py",
+        "apps/server/tests/test_m3_session_purpose_migration.py"
+      ],
+      "tests_used_unchanged": [],
+      "red_observations": [
+        {
+          "log": "dispatch-red.log",
+          "command": "python -m pytest tests/test_m3_management_dispatch.py -q",
+          "result": "Expected import error: management_dispatch module absent before production edits"
+        },
+        {
+          "log": "dispatch-migration-red.log",
+          "command": "python -m pytest tests/test_m3_management_dispatch_migration.py -q",
+          "result": "2 failed: management_dispatches table absent before migration production edits"
+        },
+        {
+          "log": "dispatch-hardening-red.log",
+          "result": "46 passed, 1 failed: deleted source stayed pending / returned no dispatch"
+        },
+        {
+          "log": "dispatch-occupancy-red.log",
+          "result": "8 failed: deleted source and seven nonidle employee states incorrectly admitted"
+        },
+        {
+          "log": "dispatch-scope-red.log",
+          "result": "1 failed, 1 passed: raw valid project observation could omit original Event task reference"
+        },
+        {
+          "log": "dispatch-fairness-red.log",
+          "result": "1 failed: existing waiting source starved during three continuously arriving full batches"
+        }
+      ],
+      "green_command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_management_dispatch.py tests/test_m3_management_dispatch_migration.py tests/test_m3_session_purpose_migration.py tests/test_m3_runtime_operation_migration.py -q",
+      "green_log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id/dispatch-final-green.log",
+      "cwd": "/Users/ponk/workspace/Eidolon/apps/server",
+      "cases": "Persisted missed broadcasts, immutable canonical targets, unique source and review execution claims, concurrent claims, failclosed designation/person/company/runtime/provider/probe/budget/mock/fixture admission, waiting recovery, closed/old/terminal sources, bounded fair scans, direct SQL and ORM guards, real DB review creation, physical BEGIN IMMEDIATE before reads, worker lock exclusion, rollback after WorkSession insert, scope/pagination/live session facts and redacted errors, no fake tasks or business-state transitions.",
+      "exception_reason": null
+    }
+  ],
+  "parent_verification": {
+    "cwd": "/Users/ponk/workspace/Eidolon/apps/server",
+    "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest -q tests/test_m3_management_dispatch.py tests/test_m3_management_dispatch_migration.py tests/test_m3_session_purpose_migration.py tests/test_m3_runtime_operation_migration.py tests/test_m3_management_sessions.py tests/test_m3_management_runtime.py tests/test_m3_readiness.py tests/test_m3_runtime_identity.py tests/test_m3_provenance.py tests/test_m3_contract.py tests/test_m2_golden_path.py tests/test_m2_review.py tests/test_m2_dag_runtime.py tests/test_review_task_lifecycle.py",
+    "result": "452 passed, 1 warning in 49.55s",
+    "static_command": "make lint",
+    "static_result": "passed; 479 Python files plus frontend checks"
+  },
+  "source_sha256": {
+    "apps/server/app/models/management_dispatch.py": "d90312bb686891bef8ae291786c7ad5988abeb1c9df6f8ed79a7c028496c58f6",
+    "apps/server/app/models/__init__.py": "9728201a84e4fe3636300eafa8d5e39d20fc9f388d25b5ebe17d950f4d45da8a",
+    "apps/server/app/work/management_dispatch.py": "81a2be05f13a3bc7141196d07868a613052d5479636140848f46b0e5ce0077cb",
+    "apps/server/migrations/versions/54e93ab821cd_v54_management_dispatch.py": "8019512b5ea9b0b9e01f3a8457af946fe58a22a55d96e8ed43f56a4fa1292f6d",
+    "apps/server/tests/test_m3_management_dispatch.py": "76262a27d8cf62ee4cde7ac6b4c2fbfbfb0e4c98ee72c1689dd55d9fb2c08bb6",
+    "apps/server/tests/test_m3_management_dispatch_migration.py": "a032864c896cf80910d7900c5c03efad011454c1362b03e7b39bfd5aadd77b9c",
+    "apps/server/tests/test_m3_runtime_operation_migration.py": "c2c1903ce530dfad7e1bcb65020ba408ba9d223c8df3fd9392cb7d023eb118e4",
+    "apps/server/tests/test_m3_session_purpose_migration.py": "76b8b212a196fd884d6f54a08339b44a628ee3153c54dd9ce37574d9b0b7e8d9"
+  },
+  "logs": {
+    "dispatch-red.log": {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id/dispatch-red.log",
+      "sha256": "72e437639148f7143ff3a357748bf33bfffd27723ab462272c6e67a459587600"
+    },
+    "dispatch-migration-red.log": {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id/dispatch-migration-red.log",
+      "sha256": "8f015aae3c1b46c55b94f9916779409620b8e85de96189e9448c5fde254349b5"
+    },
+    "dispatch-hardening-red.log": {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id/dispatch-hardening-red.log",
+      "sha256": "1a8132898c2fd8594b15ef3cae6974c7f022d039035ff61e2babbe7455f24871"
+    },
+    "dispatch-occupancy-red.log": {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id/dispatch-occupancy-red.log",
+      "sha256": "f2cdfe799181b66e2cc8895938e7ca065f0edbd302b1eb39097281519ae48977"
+    },
+    "dispatch-scope-red.log": {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id/dispatch-scope-red.log",
+      "sha256": "00e59807ca8f149833284688d3404b0ed9cd69203af9cb23f460c97c099fe2b9"
+    },
+    "dispatch-fairness-red.log": {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id/dispatch-fairness-red.log",
+      "sha256": "7543b15df6b1f5a817e465a6f29ea994bf1cf15be6c97329ca8dd4fab8382175"
+    },
+    "dispatch-final-green.log": {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id/dispatch-final-green.log",
+      "sha256": "7b776c2aafdb6db645a249caea488db833d87e61dc3d61a67913486364210afb"
+    },
+    "dispatch-parent-integrated.log": {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id/dispatch-parent-integrated.log",
+      "sha256": "0854d9e8cc21b85b39718ee87bf3b30c43a46af7e6220892ae82861279546d2c"
+    },
+    "dispatch-parent-lint.log": {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u8-df8tj2id/dispatch-parent-lint.log",
+      "sha256": "bf9e35684a8d08498bf09b879720fa334699376d1a6940869fc960b16e970e75"
+    }
+  },
+  "compatibility_note": "v52/v53 current-head assertions advance to v54. v53 incompatible-downgrade and FK refusal tests now start/target REVISION (v53), preserving the v53 before-first-DDL behavior without first traversing an empty v54 drop.",
+  "limits": [
+    "No background loop, runner, API/tool read integration, remote execution, or worker finalizer changes in this slice.",
+    "Budget availability is explicit admission only, not reservation or monetary cap; caller must enforce per-turn and real relay caps.",
+    "Runtime observations in local tests are scripted persisted test facts and not real model proof.",
+    "No Docker/model/network probe calls, dependency installs, full suite, developer DB migration, shared fixture changes, Git staging/commit/push/PR, or reads/writes of user tmp/."
+  ]
+}

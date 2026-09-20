@@ -312,7 +312,7 @@ def test_v53_up_down_up_preserves_history_and_inbound_receipts(tmp_path):
                     _assert_original_guards(connection, 1)
                     assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
         scripts = ScriptDirectory.from_config(_alembic_config())
-        assert scripts.get_heads() == [REVISION]
+        assert scripts.get_heads() == ["54e93ab821cd"]
         assert scripts.get_revision(REVISION).down_revision == PREVIOUS
     finally:
         engine.dispose()
@@ -340,7 +340,7 @@ def test_metadata_and_migration_have_identical_session_constraints(tmp_path):
 def test_incompatible_downgrade_refuses_before_any_destructive_ddl(tmp_path, purpose):
     engine = create_engine(f"sqlite:///{tmp_path / 'refused-downgrade.db'}")
     try:
-        _migrate(engine, "head")
+        _migrate(engine, REVISION)
         with engine.begin() as connection:
             _targets(connection)
             _old_session(connection)
@@ -369,7 +369,7 @@ def test_incompatible_downgrade_refuses_before_any_destructive_ddl(tmp_path, pur
 def test_fk_enabled_rebuild_is_rejected_before_schema_changes(tmp_path, downgrade):
     engine = create_engine(f"sqlite:///{tmp_path / 'fk-enabled.db'}")
     try:
-        _migrate(engine, "head" if downgrade else PREVIOUS)
+        _migrate(engine, REVISION if downgrade else PREVIOUS)
         with engine.begin() as connection:
             _targets(connection)
             _old_session(connection)
@@ -382,7 +382,7 @@ def test_fk_enabled_rebuild_is_rejected_before_schema_changes(tmp_path, downgrad
             config.attributes["connection"] = connection
             with pytest.raises(RuntimeError, match="foreign_keys=OFF"):
                 (command.downgrade if downgrade else command.upgrade)(
-                    config, PREVIOUS if downgrade else "head"
+                    config, PREVIOUS if downgrade else REVISION
                 )
             assert _sqlite_schema(connection) == before
             assert connection.scalar(text("SELECT COUNT(*) FROM work_sessions")) == 1
