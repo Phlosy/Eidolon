@@ -1,10 +1,43 @@
 """Stop a saved original attempt without starting or resubmitting any work."""
 
+from sqlalchemy import select
+
 from app.core.database import SessionLocal
+from app.core.transaction_effects import after_commit
 from app.models.project import WorkSession
 from app.models.runtime_execution import RuntimeAttempt
 from app.runtimes.base import RuntimeProtocolError, RuntimeSession
-from app.work.telemetry import AttemptRecorder, reconstruct_attempt
+from app.work.telemetry import AttemptRecorder, reconstruct_attempt, record_stop_intent
+
+
+def request_task_stop(db, task_id, *, reason):
+    """Task state and worker stop intent commit together; notification is only a nudge."""
+    work_ids = list(
+        db.scalars(
+            select(WorkSession.id).where(
+                WorkSession.task_id == task_id,
+                WorkSession.purpose == "worker",
+                WorkSession.status == "running",
+            )
+        )
+    )
+    if not work_ids:
+        return
+    for attempt_id in db.scalars(
+        select(RuntimeAttempt.id).where(
+            RuntimeAttempt.work_session_id.in_(work_ids),
+        )
+    ):
+        record_stop_intent(db, attempt_id, reason)
+    db.flush()
+
+    def notify(identifier):
+        from app.workflow.orchestrator import orchestrator
+
+        orchestrator.notify({"type": "stop_work", "work_session_id": identifier})
+
+    for work_id in work_ids:
+        after_commit(db, lambda identifier=work_id: notify(identifier))
 
 
 async def stop_attempt(attempt_id, *, adapter, reason, session_factory=SessionLocal):

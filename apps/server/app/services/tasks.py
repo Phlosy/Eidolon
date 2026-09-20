@@ -62,6 +62,12 @@ def transition_task(db: Session, task: Task, target: str, *, force: bool = False
     elif target == TaskStatus.todo.value:
         task.actual_end_at = None
     db.flush()
+    if target != TaskStatus.in_progress.value:
+        from app.work.runtime_stop import request_task_stop
+
+        request_task_stop(
+            db, task.id, reason="blocked" if target == TaskStatus.blocked.value else "cancelled"
+        )
     return task
 
 

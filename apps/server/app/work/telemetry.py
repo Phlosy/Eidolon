@@ -20,7 +20,7 @@ from app.core.request_context import get_request_identity
 from app.core.transaction_effects import ensure_sqlite_transaction
 from app.models.base import as_utc, utcnow
 from app.models.organization import Employee
-from app.models.project import WorkSession
+from app.models.project import Task, WorkSession
 from app.models.runtime import RuntimeInstance as RuntimeRow
 from app.models.runtime_execution import STOP_REASONS, RuntimeAttempt, RuntimeTelemetry
 from app.providers.secrets.store import get_secret_store
@@ -170,6 +170,10 @@ def prepare_attempt(
             or (kind == "worker" and work.purpose != "worker")
         ):
             raise RuntimeProtocolError("execution_session_ended")
+        if work.purpose == "worker":
+            task = db.get(Task, work.task_id)
+            if task is None or task.status != "in_progress":
+                raise RuntimeProtocolError("execution_task_not_running")
         if (
             db.scalar(
                 select(RuntimeAttempt.id)
@@ -256,6 +260,18 @@ def _attempt(db, identifier):
     return row
 
 
+def record_stop_intent(db, attempt_id, reason):
+    """Single writer, usable inside the caller's task-control transaction."""
+    if reason not in STOP_REASONS:
+        raise RuntimeProtocolError("invalid_stop_reason")
+    ensure_sqlite_transaction(db)
+    row = _attempt(db, attempt_id)
+    _read_scope(db, row.work_session_id)
+    if row.stop_requested_at is None:
+        row.stop_requested_at, row.stop_reason = utcnow(), reason
+    return row
+
+
 @dataclass(frozen=True)
 class AttemptRecorder:
     attempt_id: int
@@ -270,14 +286,8 @@ class AttemptRecorder:
         remote I/O. Neither current employee preferences nor stale caches choose
         the stop target. All transactions end before returning to the adapter.
         """
-        if reason not in STOP_REASONS:
-            raise RuntimeProtocolError("invalid_stop_reason")
         with self.session_factory() as db:
-            ensure_sqlite_transaction(db)
-            row = _attempt(db, self.attempt_id)
-            _read_scope(db, row.work_session_id)
-            if row.stop_requested_at is None:
-                row.stop_requested_at, row.stop_reason = utcnow(), reason
+            row = record_stop_intent(db, self.attempt_id, reason)
             db.commit()
             if session is not None:
                 work = db.get(WorkSession, row.work_session_id)

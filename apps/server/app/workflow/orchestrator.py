@@ -31,6 +31,8 @@ Worker executes.   ← WorkSession → Runtime
 import asyncio
 from datetime import UTC, datetime
 
+from sqlalchemy import select
+
 from app.brain import DEFAULT_POLICY
 from app.brain import policy_for as behavior_policy_for
 from app.core.config import settings
@@ -47,8 +49,9 @@ from app.models.enums import (
     TaskStatus,
     WorkSessionStatus,
 )
-from app.models.project import Milestone, WorkSession
+from app.models.project import Milestone, Task, WorkSession
 from app.models.provider import ModelBinding
+from app.models.runtime_execution import STOP_REASONS, RuntimeAttempt
 from app.repositories import knowledge as knowledge_repo
 from app.repositories import organization as org_repo
 from app.repositories import project as project_repo
@@ -93,19 +96,24 @@ class Orchestrator:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._runner: asyncio.Task | None = None
         self._running: dict[int, asyncio.Task] = {}  # employee_id -> session task
+        self._workers: dict[int, asyncio.Task] = {}  # original WorkSession id -> owned coroutine
 
     def start(self) -> None:
         self._loop = asyncio.get_running_loop()
         self._runner = asyncio.create_task(self._run(), name="eidolon-orchestrator")
 
     async def stop(self) -> None:
-        for task in self._running.values():
-            task.cancel()
-        if self._running:
-            await asyncio.gather(*self._running.values(), return_exceptions=True)
+        self._loop = None
         if self._runner is not None:
             self._runner.cancel()
             await asyncio.gather(self._runner, return_exceptions=True)
+            self._runner = None
+        owned = set(self._running.values()) | set(self._workers.values())
+        for task in owned:
+            if not task.cancelling():
+                task.cancel("shutdown")
+        if owned:
+            await asyncio.gather(*owned, return_exceptions=True)
 
     def notify(self, signal: dict) -> None:
         """Thread-safe signal submission from sync request handlers."""
@@ -127,10 +135,51 @@ class Orchestrator:
 
     async def _handle(self, signal: dict) -> None:
         if signal["type"] in ("dispatch", "sweep"):
+            self._stop_requested_workers()
             await self._dispatch_pending()
+        elif signal["type"] == "stop_work":
+            identifier = signal.get("work_session_id")
+            if type(identifier) is int:
+                self._stop_requested_workers({identifier})
         elif signal["type"] == "task_finished":
             # manual completion via PATCH /tasks/{id}
             self._finalize_external(signal["task_id"], signal["success"])
+
+    def _stop_requested_workers(self, identifiers=None):
+        if not self._workers:
+            return
+        with SessionLocal() as db:
+            for work_id, owned in tuple(self._workers.items()):
+                if identifiers is not None and work_id not in identifiers:
+                    continue
+                if owned.done() or owned.cancelling():
+                    continue
+                work = db.get(WorkSession, work_id)
+                task = db.get(Task, work.task_id) if work is not None else None
+                reason = db.scalar(
+                    select(RuntimeAttempt.stop_reason)
+                    .where(
+                        RuntimeAttempt.work_session_id == work_id,
+                        RuntimeAttempt.stop_requested_at.is_not(None),
+                    )
+                    .order_by(RuntimeAttempt.id)
+                    .limit(1)
+                )
+                if reason is None and (
+                    work is None
+                    or work.status != "running"
+                    or task is None
+                    or task.status != "in_progress"
+                ):
+                    reason = (
+                        "blocked" if task is not None and task.status == "blocked" else "cancelled"
+                    )
+                if reason is not None:
+                    owned.cancel(reason)
+
+    def _release_running(self, employee_id, completed):
+        if self._running.get(employee_id) is completed:
+            self._running.pop(employee_id)
 
     # ---- dispatcher ----
 
@@ -252,7 +301,7 @@ class Orchestrator:
             # 那里有若干早退分支（任务被别处改状态、员工不 idle 等），
             # 任何一次早退漏掉释放，这个员工就会被永久跳过（实测踩过）。
             session_task.add_done_callback(
-                lambda _task, employee=employee_id: self._running.pop(employee, None)
+                lambda completed, employee=employee_id: self._release_running(employee, completed)
             )
 
     async def _run_task(self, task_id: int) -> None:
@@ -357,6 +406,7 @@ class Orchestrator:
                         milestone.status = MilestoneStatus.in_progress.value
                 db.commit()
                 work_session_id = int(ws.id)
+                self._workers[work_session_id] = asyncio.current_task()
                 runtime_config = dict(employee.runtime_config or {})
                 # v0.2: inject the assignee's own relevant learning into the task context
                 # v1: 额度由 BehaviorPolicy 决定；解析/检索异常时本任务回落 DEFAULT_POLICY
@@ -512,8 +562,9 @@ class Orchestrator:
                 "completed" if success else "failed",
                 "stream_completed" if success else "stream_ended",
             )
-        except asyncio.CancelledError:
-            await stop_worker("cancelled")
+        except asyncio.CancelledError as exc:
+            reason = exc.args[0] if exc.args and exc.args[0] in STOP_REASONS else "cancelled"
+            await stop_worker(reason)
             if attempt is not None:
                 attempt.finish_host_safely("cancelled", "cancelled")
             logger.info("work session cancelled", extra={"task_id": task_id})
@@ -541,6 +592,9 @@ class Orchestrator:
                 )
             if cancelled:
                 raise asyncio.CancelledError from None
+        finally:
+            if self._workers.get(work_session_id) is asyncio.current_task():
+                self._workers.pop(work_session_id)
 
     # ---- finalization & reflection ----
 
