@@ -6,6 +6,7 @@ from threading import Barrier
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy import event as sa_event
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 
@@ -186,6 +187,57 @@ def test_review_duplicate_sources_reuse_one_execution_even_after_end(db, targets
     assert duplicate.dispatch.duplicate_of_id == first.dispatch.id
     assert duplicate.dispatch.as_dict()["work_session"]["status"] == "failed"
     assert db.scalar(select(func.count()).select_from(WorkSession)) == 1
+
+
+def test_dispatch_page_loads_canonical_sessions_in_bounded_queries(db, targets):
+    expected = {}
+    for _ in range(6):
+        source_id = source(db, targets)
+        result = claim(source_id)
+        assert result.created
+        expected[source_id] = result.dispatch.work_session_id
+        db.expire_all()
+        work = db.get(WorkSession, result.dispatch.work_session_id)
+        work.status, work.ended_at = "completed", utcnow()
+        db.commit()
+    review = claim(targets.review_event.id)
+    assert review.created
+    db.expire_all()
+    work = db.get(WorkSession, review.dispatch.work_session_id)
+    work.status, work.ended_at = "completed", utcnow()
+    db.commit()
+    expected[targets.review_event.id] = work.id
+    for _ in range(4):
+        source_id = source(db, targets, "task.review_named")
+        duplicate = claim(source_id)
+        assert duplicate.dispatch.resolution == "duplicate"
+        expected[source_id] = work.id
+
+    selects = []
+
+    def record_select(_conn, _cursor, statement, *_args):
+        if statement.lstrip().upper().startswith("SELECT"):
+            selects.append(statement)
+
+    bind = db.get_bind()
+    sa_event.listen(bind, "before_cursor_execute", record_select)
+    try:
+        with SessionLocal() as observer:
+            rows = management_dispatch.list_dispatches(
+                observer, company_id=targets.project.company_id, project_id=targets.project.id
+            )
+    finally:
+        sa_event.remove(bind, "before_cursor_execute", record_select)
+
+    assert len(rows) == len(expected)
+    assert [row["id"] for row in rows] == sorted((row["id"] for row in rows), reverse=True)
+    for row in rows:
+        assert row["work_session"]["id"] == expected[row["source_event_id"]]
+        assert row["work_session"]["status"] == "completed"
+        assert row["work_session"]["ended_at"] is not None
+        if row["resolution"] == "duplicate":
+            assert row["work_session_id"] is None and row["duplicate_of_id"] == review.dispatch.id
+    assert len(selects) <= 4, f"Page projection used {len(selects)} SELECTs for {len(rows)} rows"
 
 
 @pytest.mark.parametrize("duplicate_source", [False, True])

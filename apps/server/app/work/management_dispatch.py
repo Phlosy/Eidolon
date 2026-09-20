@@ -363,13 +363,7 @@ def _evaluate(
     return _environment(db, row, actor)
 
 
-def _view(db: Session, row: ManagementDispatch) -> DispatchView:
-    linked = row
-    if row.duplicate_of_id is not None:
-        linked = db.get(ManagementDispatch, row.duplicate_of_id)
-    work = (
-        db.get(WorkSession, linked.work_session_id) if linked and linked.work_session_id else None
-    )
+def _view(row: ManagementDispatch, work: WorkSession | None) -> DispatchView:
     facts = None
     if work is not None and work.company_id == row.company_id and work.project_id == row.project_id:
         facts = {
@@ -450,7 +444,13 @@ def _process(
             except ValueError:
                 _wait(row, "provenance_invalid")
         db.flush()
-        result = ClaimResult(created, _view(db, row))
+        linked = db.get(ManagementDispatch, row.duplicate_of_id) if row.duplicate_of_id else row
+        work = (
+            db.get(WorkSession, linked.work_session_id)
+            if linked and linked.work_session_id
+            else None
+        )
+        result = ClaimResult(created, _view(row, work))
         db.commit()
         return result
 
@@ -518,4 +518,28 @@ def list_dispatches(
     )
     if before_id is not None:
         query = query.where(ManagementDispatch.id < before_id)
-    return [_view(db, row).as_dict() for row in db.scalars(query)]
+    rows = list(db.scalars(query))
+    linked = {row.id: row for row in rows}
+    missing = {row.duplicate_of_id for row in rows if row.duplicate_of_id} - linked.keys()
+    if missing:
+        linked.update(
+            (row.id, row)
+            for row in db.scalars(
+                select(ManagementDispatch).where(ManagementDispatch.id.in_(missing))
+            )
+        )
+    session_ids = {row.work_session_id for row in linked.values() if row.work_session_id}
+    sessions = (
+        {
+            work.id: work
+            for work in db.scalars(select(WorkSession).where(WorkSession.id.in_(session_ids)))
+        }
+        if session_ids
+        else {}
+    )
+    result = []
+    for row in rows:
+        canonical = linked.get(row.duplicate_of_id or row.id)
+        work = sessions.get(canonical.work_session_id) if canonical else None
+        result.append(_view(row, work).as_dict())
+    return result
