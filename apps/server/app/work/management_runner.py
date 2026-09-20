@@ -11,9 +11,10 @@ from __future__ import annotations
 import asyncio
 import math
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from weakref import WeakSet
 
-from sqlalchemy import update
+from sqlalchemy import select, update
 
 from app.core.config import settings
 from app.core.database import SessionLocal
@@ -22,6 +23,7 @@ from app.core.redaction import redact
 from app.models.base import utcnow
 from app.models.organization import Employee
 from app.models.project import Project, WorkSession
+from app.models.runtime_execution import STOP_REASONS, RuntimeAttempt
 from app.runtimes.base import RuntimeSession, TaskContext
 from app.runtimes.container_common import resolve_container_instance
 from app.runtimes.gateway import gateway
@@ -29,10 +31,18 @@ from app.work import management_dispatch as dispatch
 from app.work import tool_executor
 from app.work.dispatch_notices import begin_observation
 from app.work.runtime_conversation import ConversationLimits, run_conversation
+from app.work.telemetry import record_stop_intent
 
 logger = get_logger(__name__)
 _DEFAULT_LIMITS = ConversationLimits()
 _FINALIZATION_DELAYS = (0, 0.1, 0.5)
+
+
+@dataclass
+class _OwnedConversation:
+    view: dispatch.DispatchView
+    task: asyncio.Task
+    finalizing: bool = False
 
 
 class ManagementFinalizationError(RuntimeError):
@@ -86,6 +96,7 @@ class ManagementRunner:
         self._scanner: asyncio.Task | None = None
         self._stop_task: asyncio.Task | None = None
         self._jobs: dict[int, asyncio.Task] = {}
+        self._owned: dict[int, _OwnedConversation] = {}
         self._finalization_failures: dict[int, dict] = {}
         self._wake: asyncio.Event | None = None
         self._engines = WeakSet()
@@ -133,11 +144,12 @@ class ManagementRunner:
     async def _shutdown(self) -> None:
         # Admission is already fenced. Cancel every owner before draining a
         # potentially slow scan, so a late model reply cannot write meanwhile.
-        tasks = list(self._jobs.values())
+        tasks = set(self._jobs.values()) | {owned.task for owned in self._owned.values()}
         if self._scanner is not None:
-            tasks.append(self._scanner)
+            tasks.add(self._scanner)
         for task in tasks:
-            task.cancel()
+            if not task.cancelling():
+                task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         self._scanner = None
         self._jobs.clear()
@@ -178,6 +190,8 @@ class ManagementRunner:
         while self._running:
             self._wake.clear()
             try:
+                await self._interrupt_invalid_owned()
+                self._check_running()
                 await self._database(
                     dispatch.discover_sources,
                     limit=self._batch_size,
@@ -264,23 +278,75 @@ class ManagementRunner:
         """Validate the original actor/target again before and after setup awaits."""
         with self._session_factory() as db:
             begin_observation(db)
-            ctx = tool_executor.context_for_work_session(db, view.work_session_id)
-            work = db.get(WorkSession, view.work_session_id)
-            actor = db.get(Employee, ctx.employee_id)
-            project = db.get(Project, ctx.project_id)
+            return self._validate_runtime_type(db, view)
+
+    def _validate_runtime_type(self, db, view: dispatch.DispatchView) -> str:
+        ctx = tool_executor.context_for_work_session(db, view.work_session_id)
+        work = db.get(WorkSession, view.work_session_id)
+        actor = db.get(Employee, ctx.employee_id)
+        project = db.get(Project, ctx.project_id)
+        if (
+            not self._enabled
+            or settings.runtime_mode != "auto"
+            or project.planning_fixture not in (None, "", "none")
+            or work.runtime_type not in {"hermes", "openclaw"}
+            or actor.runtime_type != work.runtime_type
+            or work.purpose != view.purpose
+            or work.project_id != view.project_id
+            or work.employee_id != view.recipient_employee_id
+            or work.review_request_id != view.review_request_id
+        ):
+            raise tool_executor.ToolExecutionError("runtime_binding_mismatch", "setup changed")
+        return work.runtime_type
+
+    def _stop_reason(self, view: dispatch.DispatchView) -> str | None:
+        """Observe committed withdrawal and save intent before cancelling an owner."""
+        with self._session_factory() as db:
+            begin_observation(db)
+            attempts = list(
+                db.scalars(
+                    select(RuntimeAttempt)
+                    .where(RuntimeAttempt.work_session_id == view.work_session_id)
+                    .order_by(RuntimeAttempt.id)
+                )
+            )
+            for attempt in attempts:
+                if attempt.stop_requested_at is not None:
+                    return attempt.stop_reason
+            try:
+                self._validate_runtime_type(db, view)
+            except tool_executor.ToolExecutionError as exc:
+                reason = (
+                    "reassigned" if exc.reason == "work_session_manager_invalid" else "cancelled"
+                )
+                for attempt in attempts:
+                    # A scanner snapshot can outlive normal completion. Completed
+                    # turns remain historical facts without a synthetic stop request.
+                    if attempt.ended_at is None:
+                        record_stop_intent(db, attempt.id, reason)
+                db.commit()
+                return reason
+        return None
+
+    async def _interrupt_invalid_owned(self) -> None:
+        for work_id, owned in list(self._owned.items()):
+            owner = owned.task
+            if owned.finalizing or owner.done() or owner.cancelling():
+                continue
+            try:
+                reason = await self._database(self._stop_reason, owned.view)
+            except Exception:
+                # A transient read/write failure is not proof of scope withdrawal.
+                logger.warning("management stop observation failed: session=%s", work_id)
+                continue
             if (
-                not self._enabled
-                or settings.runtime_mode != "auto"
-                or project.planning_fixture not in (None, "", "none")
-                or work.runtime_type not in {"hermes", "openclaw"}
-                or actor.runtime_type != work.runtime_type
-                or work.purpose != view.purpose
-                or work.project_id != view.project_id
-                or work.employee_id != view.recipient_employee_id
-                or work.review_request_id != view.review_request_id
+                reason is not None
+                and self._owned.get(work_id) is owned
+                and not owned.finalizing
+                and not owner.done()
+                and not owner.cancelling()
             ):
-                raise tool_executor.ToolExecutionError("runtime_binding_mismatch", "setup changed")
-            return work.runtime_type
+                owner.cancel(reason)
 
     async def _checked_runtime_type(self, view: dispatch.DispatchView) -> str:
         self._check_running()
@@ -307,6 +373,8 @@ class ManagementRunner:
     async def _run_owned(self, view: dispatch.DispatchView) -> None:
         outcome = {"status": "failed", "reason": "runtime_setup_failed"}
         runtime_session = None
+        owned = _OwnedConversation(view, asyncio.current_task())
+        self._owned[view.work_session_id] = owned
         try:
             self._check_running()
             runtime_type = await self._checked_runtime_type(view)
@@ -358,8 +426,9 @@ class ManagementRunner:
                 session_factory=self._session_factory,
             )
             self._check_running()
-        except asyncio.CancelledError:
-            outcome = {"status": "cancelled", "reason": "runner_cancelled"}
+        except asyncio.CancelledError as exc:
+            reason = exc.args[0] if exc.args and exc.args[0] in STOP_REASONS else "runner_cancelled"
+            outcome = {"status": "cancelled", "reason": reason}
             raise
         except tool_executor.ToolExecutionError as exc:
             outcome = {"status": "failed", "reason": exc.reason}
@@ -369,16 +438,21 @@ class ManagementRunner:
             # Never persist provider/connection/exception bodies.
             pass
         finally:
+            owned.finalizing = True
             # The terminal outcome is fixed before this await. Shutdown must not
             # replace a completed result or abandon a retry already in progress.
-            cleanup = asyncio.create_task(
-                self._retry_finalization(view, outcome, runtime_session),
-                name=f"management-finalize-{view.work_session_id}",
-            )
-            cancelled = await self._drain(cleanup)
-            cleanup.result()
-            if cancelled:
-                raise asyncio.CancelledError
+            try:
+                cleanup = asyncio.create_task(
+                    self._retry_finalization(view, outcome, runtime_session),
+                    name=f"management-finalize-{view.work_session_id}",
+                )
+                cancelled = await self._drain(cleanup)
+                cleanup.result()
+                if cancelled:
+                    raise asyncio.CancelledError
+            finally:
+                if self._owned.get(view.work_session_id) is owned:
+                    self._owned.pop(view.work_session_id)
 
     async def _retry_finalization(self, view, outcome, runtime_session) -> None:
         for attempt, delay in enumerate(_FINALIZATION_DELAYS, start=1):

@@ -1,0 +1,260 @@
+{
+  "unit": "U15",
+  "component": "controlled_management_review_administrative_stop",
+  "status": "component_verified_unit_in_progress",
+  "base_commit": "8b7b54d5c46a2169c6cf038a787664ddd5670a7b",
+  "raw_directory": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p",
+  "behavior_changed": true,
+  "existing_tests_inspected": [
+    "test_m3_management_runner.py",
+    "test_m3_management_runtime.py",
+    "test_m3_runtime_conversation.py",
+    "test_m3_runtime_turns.py",
+    "test_m3_stop_intent.py",
+    "test_m3_admin_stop.py",
+    "test_m3_retry_cancel.py",
+    "test_m3_telemetry.py"
+  ],
+  "changes": [
+    "Periodic scanner checks only conversations owned by this runner, using the same immutable scope and runtime binding validator as turn boundaries.",
+    "Committed project cancellation, manager replacement or invalid review scope persist stop intent for unfinished original attempts before cancelling their owned coroutine; existing durable stop intent is also honored.",
+    "Original adapter stop and query distinguish terminal observation from a still-running remote run; no Task, Project or ReviewRequest mutation during session cleanup.",
+    "Own formal verdict receipt remains authorized under the existing narrow receipt scope; rollback and database faults do not fabricate withdrawal.",
+    "Ownership is rechecked after asynchronous observation and retained through finalization. Shutdown drains direct conversations and their in-flight terminal writes.",
+    "No synthetic attempts for a withdrawn startup and no synthetic stop intent for already-ended historical turns."
+  ],
+  "observed_red_before_implementation": [
+    "Existing management/role-scope baseline: 151 passed.",
+    "First 24 scenarios: 20 expected TimeoutError failures while awaiting interrupted-session completion, 4 compatibility characterizations passed.",
+    "Additional directly owned shutdown cases: 2 expected failures before main implementation.",
+    "Initial main implementation: 177 passed; a further 2 direct-finalization ownership failures were observed before fixing that race.",
+    "After ownership correction: 179 passed. Two storage-failure scenarios were added after implementation, with no pre-implementation red claimed."
+  ],
+  "verification": [
+    {
+      "label": "controlled-stop-baseline",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 14.75,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-stop-baseline.log",
+      "log_sha256": "0462ef13282f1ea5b5ed2c6df190ad11236708f4a622813443d8e0a1350f48f9",
+      "output_tail": "........................................................................ [ 47%]\n........................................................................ [ 95%]\n.......                                                                  [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n151 passed, 1 warning in 12.96s\n"
+    },
+    {
+      "label": "controlled-stop-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 65.32,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-stop-red.log",
+      "log_sha256": "734e9a346ea6dd79fd224c3b91d2b855ea3bacb8dbf934dfc2093c0a369a3e92",
+      "output_tail": "elled]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_committed_scope_withdrawal_interrupts_original_controlled_run[openclaw-aborted-project_cancelled]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_committed_scope_withdrawal_interrupts_original_controlled_run[openclaw-aborted-manager_reassigned]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_committed_scope_withdrawal_interrupts_original_controlled_run[openclaw-aborted-blocked]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_committed_scope_withdrawal_interrupts_original_controlled_run[openclaw-aborted-cancelled]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_committed_scope_withdrawal_interrupts_original_controlled_run[openclaw-running-project_cancelled]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_committed_scope_withdrawal_interrupts_original_controlled_run[openclaw-running-manager_reassigned]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_committed_scope_withdrawal_interrupts_original_controlled_run[openclaw-running-blocked]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_committed_scope_withdrawal_interrupts_original_controlled_run[openclaw-running-cancelled]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_saved_stop_intent_interrupts_an_otherwise_valid_controlled_scope[hermes]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_saved_stop_intent_interrupts_an_otherwise_valid_controlled_scope[openclaw]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_scope_withdrawal_during_setup_stops_without_inventing_an_attempt[hermes]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_scope_withdrawal_during_setup_stops_without_inventing_an_attempt[openclaw]\n20 failed, 4 passed, 1 warning in 63.76s (0:01:03)\n"
+    },
+    {
+      "label": "controlled-owned-shutdown-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "-k",
+        "directly_owned",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 2.26,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-owned-shutdown-red.log",
+      "log_sha256": "4042524ad193089e21fd1090c9c7de15a2c7b27f50e3afd31ce5f379aca571ff",
+      "output_tail": "tdout setup -----------------------------\n[v14] employments → PositionAssignment：回填 0 行\n[v14] 重叠主职清洗：employee 轴 0 条、slot 轴 0 条（均在 metadata_json.normalized 留痕）\n___ test_shutdown_drains_a_directly_owned_controlled_conversation[openclaw] ____\napps/server/tests/test_m3_controlled_stop.py:323: in test_shutdown_drains_a_directly_owned_controlled_conversation\n    assert pending.done(), \"shutdown abandoned a directly owned controlled conversation\"\nE   AssertionError: shutdown abandoned a directly owned controlled conversation\nE   assert False\nE    +  where False = <built-in method done of _asyncio.Task object at 0x10f7ac700>()\nE    +    where <built-in method done of _asyncio.Task object at 0x10f7ac700> = <Task pending name='Task-34' coro=<ManagementRunner._run_owned() running at /Users/ponk/workspace/Eidolon/apps/server/app/work/management_runner.py:351> wait_for=<Future pending cb=[Task.task_wakeup()]>>.done\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_shutdown_drains_a_directly_owned_controlled_conversation[hermes]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_shutdown_drains_a_directly_owned_controlled_conversation[openclaw]\n2 failed, 24 deselected, 1 warning in 0.83s\n"
+    },
+    {
+      "label": "controlled-stop-green-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 18.49,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-stop-green-1.log",
+      "log_sha256": "ac7e2bfbbd96c7abaf629a60aa12512ffa645b9d54f5c049076212f877d3b486",
+      "output_tail": "........................................................................ [ 40%]\n........................................................................ [ 81%]\n.................................                                        [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n177 passed, 1 warning in 16.55s\n"
+    },
+    {
+      "label": "controlled-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/work/management_runner.py",
+        "apps/server/tests/test_m3_controlled_stop.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 0.06,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-static.log",
+      "log_sha256": "10d5c1c5ba4c30c4085fc3cc76020784b376c3639b7c59179554acc8590121d0",
+      "output_tail": "E501 Line too long (103 > 100)\n   --> apps/server/tests/test_m3_controlled_stop.py:163:101\n    |\n163 | @pytest.mark.parametrize(\"change\", [\"project_cancelled\", \"manager_reassigned\", \"blocked\", \"cancelled\"])\n    |                                                                                                     ^^^\n164 | @pytest.mark.parametrize(\"remote_state\", [\"aborted\", \"running\"])\n165 | async def test_committed_scope_withdrawal_interrupts_original_controlled_run(\n    |\n\nFound 1 error.\n"
+    },
+    {
+      "label": "controlled-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/work/management_runner.py",
+        "apps/server/tests/test_m3_controlled_stop.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 0.06,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-format.log",
+      "log_sha256": "3563c5f30476d9c462c9708150c685675b5dbc3b6672e10f45c3c8d57acdfbbd",
+      "output_tail": "unformatted: File would be reformatted\n   --> apps/server/tests/test_m3_controlled_stop.py:98:31\n    |\n97  |         output = await reply(index)\n    -         return httpx.Response(\n    -             200, json={\"run_id\": run_id, \"status\": \"completed\", \"output\": output}\n    -         )\n98  +         return httpx.Response(200, json={\"run_id\": run_id, \"status\": \"completed\", \"output\": output})\n99  |\n--------------------------------------------------------------------------------\n160 |\n    - @pytest.mark.parametrize(\"change\", [\"project_cancelled\", \"manager_reassigned\", \"blocked\", \"cancelled\"])\n161 + @pytest.mark.parametrize(\n162 +     \"change\", [\"project_cancelled\", \"manager_reassigned\", \"blocked\", \"cancelled\"]\n163 + )\n164 | @pytest.mark.parametrize(\"remote_state\", [\"aborted\", \"running\"])\n    |\n\n1 file would be reformatted, 1 file already formatted\n"
+    },
+    {
+      "label": "controlled-finalization-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "-k",
+        "during_finalization",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.09,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-finalization-red.log",
+      "log_sha256": "99698e83da527c8ca427e2257c92f11f70a6d84eac55a9ffe76d486ed397f0bd",
+      "output_tail": "lt=None>.done\n---------------------------- Captured stdout setup -----------------------------\n[v14] employments → PositionAssignment：回填 0 行\n[v14] 重叠主职清洗：employee 轴 0 条、slot 轴 0 条（均在 metadata_json.normalized 留痕）\n_ test_shutdown_still_owns_a_direct_conversation_during_finalization[openclaw] _\napps/server/tests/test_m3_controlled_stop.py:361: in test_shutdown_still_owns_a_direct_conversation_during_finalization\n    assert not stopping.done(), \"shutdown abandoned original finalization\"\nE   AssertionError: shutdown abandoned original finalization\nE   assert not True\nE    +  where True = <built-in method done of _asyncio.Task object at 0x136e2f1c0>()\nE    +    where <built-in method done of _asyncio.Task object at 0x136e2f1c0> = <Task finished name='Task-47' coro=<ManagementRunner.stop() done, defined at /Users/ponk/workspace/Eidolon/apps/server/app/work/management_runner.py:123> result=None>.done\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_shutdown_still_owns_a_direct_conversation_during_finalization[hermes]\nFAILED apps/server/tests/test_m3_controlled_stop.py::test_shutdown_still_owns_a_direct_conversation_during_finalization[openclaw]\n2 failed, 26 deselected, 1 warning in 1.05s\n"
+    },
+    {
+      "label": "controlled-stop-green-2",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 19.27,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-stop-green-2.log",
+      "log_sha256": "9db9367f9ad080a08d67f1058de8921ef8fbb486aa2f9faae0c30ea16cefc8bb",
+      "output_tail": "........................................................................ [ 40%]\n........................................................................ [ 80%]\n...................................                                      [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n179 passed, 1 warning in 17.42s\n"
+    },
+    {
+      "label": "controlled-stop-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "apps/server/tests/test_m3_stop_intent.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 35.32,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-stop-final.log",
+      "log_sha256": "0abd15ecca9705a5411766658a3a4bc0357eedcc0150b2015afa996454ce923f",
+      "output_tail": "........................................................................ [ 18%]\n........................................................................ [ 36%]\n........................................................................ [ 54%]\n........................................................................ [ 73%]\n........................................................................ [ 91%]\n.................................                                        [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n393 passed, 1 warning in 33.28s\n"
+    },
+    {
+      "label": "controlled-static-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/work/management_runner.py",
+        "apps/server/tests/test_m3_controlled_stop.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.05,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-static-final.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "controlled-format-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/work/management_runner.py",
+        "apps/server/tests/test_m3_controlled_stop.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.05,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/controlled-format-final.log",
+      "log_sha256": "3bc53bf3e981a98a34a852e175bf9b77af841edea74fca595d9aedcbaf9a4938",
+      "output_tail": "2 files already formatted\n"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/work/management_runner.py": "320a65b91b42425bf81d284c218fe70ab47aac80df2319a7a92a5432bd35c1ef",
+    "apps/server/tests/test_m3_controlled_stop.py": "1a6d9a5ce25d8e915b9d32e62778c4c81d90c6c7f05bfa8c15c5092264bbe366",
+    "docs/m2-freeze.md": "b2555aafa565d092e721755d7cd2d9f7392932a71c9949f5e8a176c5d3391bd0",
+    "docs/m3-u15-retry-and-cancel.md": "8211593da162d65a745ead0e0006074fbba02f509a4eb5a8160633f552cf52fa"
+  },
+  "exceptions": [
+    "Uses actual ManagementRunner, bridge, services, SQLite and both adapters; only runtime transports are doubled. Management scope mutation is committed through the repository rows, review Task changes use the actual task service.",
+    "Initial Ruff line-length and formatting failures were corrected before the final static and format checks.",
+    "Final 393 targeted tests include the new 30 scenarios and overlapping management, conversation, adapter and worker-stop regressions. Counts from successive runs are not additive.",
+    "No schema changes, shared fixtures, paid model calls, Docker operations, development database writes or user tmp access.",
+    "Saved budget_denied delivery is tested, but cumulative budget enforcement is not implemented by this component."
+  ],
+  "remaining": [
+    "Safe finite technical retry and exhaustion to blocked",
+    "Cumulative budget admission and stop",
+    "Cross-process startup reconciliation (U16)",
+    "Actual remote stop and unconfirmed-stop acceptance",
+    "U14 additional paid whole-chain allowance answer pending"
+  ],
+  "paid_model_requests": 0,
+  "standalone_shipping_skipped": true
+}
