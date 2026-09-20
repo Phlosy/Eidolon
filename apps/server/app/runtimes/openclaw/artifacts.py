@@ -5,6 +5,7 @@ import base64
 import binascii
 import re
 
+from app.runtimes import workspace_artifacts
 from app.runtimes.artifacts import (
     MAX_ARTIFACT_BYTES,
     MAX_ARTIFACTS,
@@ -27,6 +28,61 @@ _SUMMARY_FIELDS = (
     "source",
     "download",
 )
+
+
+async def collect_worker(client, session: RuntimeSession) -> list[ProducedArtifact]:
+    """The worker manifest is the complete inventory and business type source.
+
+    Some fixed-image tools write workspace files without transcript attachments.
+    An empty native list can use that verified workspace; RPC failure cannot.
+    """
+    attempt = session.attempt
+    original = (
+        session.id,
+        session.remote_run_id,
+        session.remote_session_ref,
+        session.instance.home_path,
+        getattr(attempt, "idempotency_key", None),
+    )
+    native = await collect(client, session)
+    if attempt is None:
+        return native
+    manifest = await asyncio.to_thread(workspace_artifacts.collect, session)
+    require_completed_origin(session)
+    if original != (
+        session.id,
+        session.remote_run_id,
+        session.remote_session_ref,
+        session.instance.home_path,
+        getattr(session.attempt, "idempotency_key", None),
+    ):
+        raise RuntimeProtocolError("artifact_origin_mismatch")
+    if not native:
+        return manifest
+    if len(native) != len(manifest):
+        raise RuntimeProtocolError("artifact_inventory_mismatch")
+    remaining, result = list(native), []
+    for declared in manifest:
+        downloaded = next(
+            (
+                item
+                for item in remaining
+                if item.content == declared.content and item.origin.sha256 == declared.origin.sha256
+            ),
+            None,
+        )
+        if downloaded is None:
+            raise RuntimeProtocolError("artifact_inventory_mismatch")
+        if any(
+            getattr(downloaded.origin, name) != getattr(declared.origin, name)
+            for name in ("local_session_ref", "remote_run_id", "remote_session_ref", "size_bytes")
+        ):
+            raise RuntimeProtocolError("artifact_origin_mismatch")
+        remaining.remove(downloaded)
+        result.append(
+            ProducedArtifact(declared.type, declared.title, downloaded.content, downloaded.origin)
+        )
+    return result
 
 
 def _summary(value: object, session: RuntimeSession) -> dict:

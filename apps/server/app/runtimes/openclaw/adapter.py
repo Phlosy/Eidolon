@@ -19,6 +19,7 @@ import httpx
 from app.brain.projection import append_behavior_block
 from app.core.logging import get_logger
 from app.models.enums import RuntimeType
+from app.runtimes import workspace_artifacts
 from app.runtimes.base import (
     EmployeeRef,
     ProducedArtifact,
@@ -122,6 +123,15 @@ class OpenClawAdapter(RuntimeAdapter):
 
     async def send_task(self, session: RuntimeSession, prompt: str, context: dict) -> None:
         config = context.get("runtime_config") or {}
+        if session.attempt is not None:
+            task = context.get("task_context")
+            prompt += workspace_artifacts.instructions(
+                session,
+                self.type.value,
+                required_types=task.required_artifact_types
+                if isinstance(task, TaskContext)
+                else [],
+            )
         # 接缝 7 / §8 T1：投影拼进 chat.send 的 message（brain 目录不挂载，写文件不会生效）。
         prompt = append_behavior_block(prompt, context.get("behavior_policy"))
         timeout = float(config.get("run_timeout_seconds", _DEFAULT_RUN_TIMEOUT))
@@ -331,7 +341,7 @@ class OpenClawAdapter(RuntimeAdapter):
         artifact_transport.require_completed_origin(session)
         try:
             async with self._connect(session.instance) as client:
-                return await artifact_transport.collect(client, session)
+                return await artifact_transport.collect_worker(client, session)
         except RuntimeProtocolError:
             raise
         except Exception:

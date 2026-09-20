@@ -7,10 +7,12 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
+from test_m3_runtime_artifacts import ArtifactGateway
 from test_m3_runtime_turns import hermes_transport, session
 
 from app.runtimes.base import RuntimeProtocolError, TaskContext
 from app.runtimes.hermes.adapter import HermesAdapter
+from app.runtimes.openclaw.adapter import OpenClawAdapter
 
 BODY = b"print('exact bytes')\r\n"
 
@@ -195,8 +197,12 @@ async def test_hermes_worker_marks_observed_terminal_before_artifact_collection(
     assert current.remote_run_id == "terminal-run"
 
 
+@pytest.mark.parametrize(
+    "adapter_type,mount",
+    [(HermesAdapter, "/opt/data/workspace"), (OpenClawAdapter, "/home/node/.openclaw/workspace")],
+)
 async def test_worker_output_protocol_carries_declared_types_without_host_paths(
-    workspace_output, monkeypatch
+    workspace_output, monkeypatch, adapter_type, mount
 ):
     w = workspace_output
     task = TaskContext(task_id=1, project_id=1, title="Source", kind="development")
@@ -206,15 +212,83 @@ async def test_worker_output_protocol_carries_declared_types_without_host_paths(
     async def capture(session, prompt, timeout):
         captured.append(prompt)
 
-    adapter = HermesAdapter()
+    adapter = adapter_type()
     monkeypatch.setattr(adapter, "_pump", capture)
     await adapter.send_task(w.session, "Build files.", {"task_context": task})
     await w.session.background
     protocol = json.loads(captured[0].splitlines()[-1])
     assert protocol["required_types"] == ["source_code", "readme"]
     assert protocol["manifest"]["request_ref"] == "original-attempt"
-    assert protocol["directory"].startswith("/opt/data/workspace/.eidolon/outputs/")
+    assert protocol["directory"].startswith(mount + "/.eidolon/outputs/")
     assert w.session.instance.home_path not in captured[0]
+
+
+@pytest.mark.parametrize(
+    "native", ["empty", "matching", "different_bytes", "partial", "transport_failed"]
+)
+async def test_openclaw_worker_requires_complete_manifest_and_checks_native_inventory(
+    workspace_output, monkeypatch, native
+):
+    import base64
+    from copy import deepcopy
+
+    w = workspace_output
+    client, adapter = ArtifactGateway(), OpenClawAdapter()
+    client.summary.update(
+        runId=w.session.remote_run_id, sessionKey=w.session.remote_session_ref, sizeBytes=len(BODY)
+    )
+    client.listed = [] if native in {"empty", "transport_failed"} else [deepcopy(client.summary)]
+    client.download = {
+        "artifact": deepcopy(client.summary),
+        "encoding": "base64",
+        "data": base64.b64encode(
+            BODY if native != "different_bytes" else b"x" * len(BODY)
+        ).decode(),
+    }
+    if native == "partial":
+        (w.root / "second.txt").write_bytes(b"another")
+        w.manifest["artifacts"].append(
+            {
+                "path": "second.txt",
+                "type": "readme",
+                "title": "Second",
+                "size_bytes": 7,
+                "sha256": hashlib.sha256(b"another").hexdigest(),
+            }
+        )
+        w.save()
+    elif native == "transport_failed":
+        client.failure = RuntimeError("remote failure")
+    monkeypatch.setattr(adapter, "_connect", lambda instance: client)
+    if native in {"different_bytes", "partial", "transport_failed"}:
+        reason = (
+            "artifact_transport_failed"
+            if native == "transport_failed"
+            else "artifact_inventory_mismatch"
+        )
+        with pytest.raises(RuntimeProtocolError, match=reason):
+            await adapter.get_artifacts(w.session)
+    else:
+        outputs = await adapter.get_artifacts(w.session)
+        assert len(outputs) == 1
+        assert outputs[0].type == "source_code" and outputs[0].title == "Source"
+        assert outputs[0].content.encode() == BODY
+        assert outputs[0].origin.source_ref == (
+            "source.py" if native == "empty" else "artifact_original"
+        )
+        assert client.calls[0][0] == "artifacts.list"
+
+
+async def test_openclaw_empty_native_list_does_not_hide_missing_manifest(
+    workspace_output, monkeypatch
+):
+    w = workspace_output
+    (w.root / "manifest.json").unlink()
+    client, adapter = ArtifactGateway(), OpenClawAdapter()
+    client.listed = []
+    monkeypatch.setattr(adapter, "_connect", lambda instance: client)
+    with pytest.raises(RuntimeProtocolError, match="artifact_file_missing"):
+        await adapter.get_artifacts(w.session)
 
 
 @pytest.mark.parametrize("status", ["running", "failed", "cancelled"])

@@ -1,0 +1,537 @@
+{
+  "unit": "U14",
+  "status": "real_transport_verified_not_unit_complete",
+  "base_commit": "3be1c56d792d05ddbf62fb3724f9016fd1b68731",
+  "source_sha256": {
+    "apps/server/app/runtimes/openclaw/adapter.py": "3c262ec100c1785db94f91ca57d4f952fa4330ff1bc2972674a3779ccac099a0",
+    "apps/server/app/runtimes/openclaw/artifacts.py": "7660ca4e579255bf33c46e74a3a9cf6e2e378b00ab6f4ecf3f0abce94d9567ea",
+    "apps/server/tests/test_m3_workspace_artifacts.py": "840399abff095716cbd76e1400bc883f94baa7eca9118763a7ee2f1a45f8b489",
+    "apps/server/tests/integration/test_m3_real_runtime_artifacts.py": "0c6138fd93478920d8ed7649455324d6aa52e1129fb0b13cde7d68a2968ba39d"
+  },
+  "source_note": "After paid runs only the evidence event list was compacted to counts; acceptance assertions unchanged. Failed native cases used the earlier explicit attachment prompt.",
+  "pricing_check": {
+    "verified_at": "2026-09-20T12:44:52.639862+00:00",
+    "source": "https://api-docs.deepseek.com/quick_start/pricing/",
+    "requested_model": "deepseek-flash",
+    "peak_usd_per_million_input_cache_miss": "0.3",
+    "peak_usd_per_million_output": "1.2",
+    "check": "Official primary source read through web tool; peak values retained as conservative bound even off peak.",
+    "paid_attempt_cap": 4,
+    "cost_cap_per_attempt_usd": "0.05",
+    "aggregate_authorized_test_cap_usd": "0.20"
+  },
+  "attempts": [
+    {
+      "case": "openclaw-native1",
+      "outcome": "reservation_ceiling_rejected_next_request",
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-artifact-openclaw-native1.log",
+      "log_sha256": "07eac4de5692b07ad2bd59636e4b51a611fcf40d07a04f5808a284d9731d80ac",
+      "budget_receipt": {
+        "accounted_cost_usd": "0.0227211",
+        "allow_native_tools": true,
+        "attempts": 3,
+        "cost_usd": "0.0227211",
+        "estimated_ceiling_usd": "0.0938685",
+        "http_status": 200,
+        "input_price_usd_per_million": "0.3",
+        "max_cost_usd": "0.05",
+        "max_requests": 8,
+        "model": "deepseek-flash",
+        "output_limit": 1024,
+        "output_price_usd_per_million": "1.2",
+        "pricing_valid_until": "2026-09-20T14:44:52.639862+00:00",
+        "request_sha256": "a4ce423696257dff4a7c25da0be49a1786f1858fafb3fdc4448d57307c117ff2",
+        "requests": [
+          {
+            "cost_usd": "0.0075513",
+            "estimated_ceiling_usd": "0.031143",
+            "http_status": 200,
+            "input_token_bound": 99714,
+            "request_sha256": "6b60af9e3702a1c7cd7dc865988dd34279e326b5b2b3b242303a7bdc4096c556",
+            "sequence": 1,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 24771,
+              "output_tokens": 100
+            }
+          },
+          {
+            "cost_usd": "0.007539",
+            "estimated_ceiling_usd": "0.0313071",
+            "http_status": 200,
+            "input_token_bound": 100261,
+            "request_sha256": "489326ed93683890fa67f95861c4a28b731bb6b2f8454e94be4cb3c602b96e41",
+            "sequence": 2,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 24910,
+              "output_tokens": 55
+            }
+          },
+          {
+            "cost_usd": "0.0076308",
+            "estimated_ceiling_usd": "0.0314184",
+            "http_status": 200,
+            "input_token_bound": 100632,
+            "request_sha256": "a4ce423696257dff4a7c25da0be49a1786f1858fafb3fdc4448d57307c117ff2",
+            "sequence": 3,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 24992,
+              "output_tokens": 111
+            }
+          }
+        ],
+        "reserved_cost_usd": "0",
+        "spent_cost_usd": "0.0227211",
+        "usage": {
+          "input_tokens": 74673,
+          "output_tokens": 266
+        }
+      }
+    },
+    {
+      "case": "openclaw-native2",
+      "outcome": "file_written_native_list_empty",
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-artifact-openclaw-native2.log",
+      "log_sha256": "de319da28040c3bbe5901e39ff1448a8157bacb6236a9bddb815db12b16b5920",
+      "transport": {
+        "artifacts": [],
+        "attempt_id": 1,
+        "expected_body": "def acceptance_marker():\n    return \"63daf31369fb\"\n",
+        "expected_sha256": "c0f043c913041bb67ac0de6076d21c305a03625e77b6b63e37b31fa4fcc63560",
+        "gate": "transport only; no handoff or review claimed",
+        "image_id": "sha256:e7849cb6c1ef1ead39ab4be7d85edb2df89611f486e283284c7cf35ce39a20d4",
+        "remote_session_ref": "agent:main:main",
+        "run_id": "openclaw-4068074d96c9",
+        "runtime": "openclaw",
+        "session_ref": "openclaw-4068074d96c9",
+        "version": "OpenClaw 2026.8.1 (ea80657)",
+        "workspace_file_matches": true,
+        "event_counts": {
+          "status": 1,
+          "completed": 1
+        }
+      },
+      "budget_receipt": {
+        "accounted_cost_usd": "0.0106461",
+        "allow_native_tools": true,
+        "attempts": 4,
+        "cost_usd": "0.0106461",
+        "estimated_ceiling_usd": "0.0464490",
+        "http_status": 200,
+        "input_price_usd_per_million": "0.3",
+        "max_cost_usd": "0.05",
+        "max_requests": 8,
+        "model": "deepseek-flash",
+        "output_limit": 1024,
+        "output_price_usd_per_million": "1.2",
+        "pricing_valid_until": "2026-09-20T14:44:52.639862+00:00",
+        "request_sha256": "da94988ebb28ace8260c94e9ecd1402527d2175b02052f4a21a066dbc8c11f7d",
+        "requests": [
+          {
+            "cost_usd": "0.0024777",
+            "estimated_ceiling_usd": "0.0111762",
+            "http_status": 200,
+            "input_token_bound": 33158,
+            "request_sha256": "7a92ed86edeb2d3bb342eb08d18d9a3c5dff598aa0db7b73adefa6e6300fcd0c",
+            "sequence": 1,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 7879,
+              "output_tokens": 95
+            }
+          },
+          {
+            "cost_usd": "0.0026499",
+            "estimated_ceiling_usd": "0.0113349",
+            "http_status": 200,
+            "input_token_bound": 33687,
+            "request_sha256": "dfba239e3e5df565bcfb0aeb7c81cb245f794ef82fc4317dabcedf231c934fcb",
+            "sequence": 2,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 8013,
+              "output_tokens": 205
+            }
+          },
+          {
+            "cost_usd": "0.0027822",
+            "estimated_ceiling_usd": "0.0118008",
+            "http_status": 200,
+            "input_token_bound": 35240,
+            "request_sha256": "3dcbf3dad594cc644466c4efc25f8e38d257d6c23a290d856cea9aa2de0c5d6b",
+            "sequence": 3,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 8418,
+              "output_tokens": 214
+            }
+          },
+          {
+            "cost_usd": "0.0027363",
+            "estimated_ceiling_usd": "0.0121371",
+            "http_status": 200,
+            "input_token_bound": 36361,
+            "request_sha256": "da94988ebb28ace8260c94e9ecd1402527d2175b02052f4a21a066dbc8c11f7d",
+            "sequence": 4,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 8729,
+              "output_tokens": 98
+            }
+          }
+        ],
+        "reserved_cost_usd": "0",
+        "spent_cost_usd": "0.0106461",
+        "usage": {
+          "input_tokens": 33039,
+          "output_tokens": 612
+        }
+      }
+    },
+    {
+      "case": "hermes-manifest1",
+      "outcome": "passed",
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-artifact-hermes-manifest1.log",
+      "log_sha256": "ac4b1db21cd01cc21513f95a579652619542b769ecee274cf61e8aaac6953cc1",
+      "transport": {
+        "artifacts": [
+          {
+            "content": "def acceptance_marker():\n    return \"9b12c3b5535e\"\n",
+            "origin": {
+              "local_session_ref": "hermes-e7cb9512e9b0",
+              "remote_run_id": "run_100e7ec3ca674c9982c46f18683da26b",
+              "remote_session_ref": "hermes-e7cb9512e9b0",
+              "sha256": "6b0aba5074887bff51893d1dd3138c04218c9a66a5686146ada99cb7b7e23511",
+              "size_bytes": 51,
+              "source_ref": "result-9b12c3b5535e.py"
+            },
+            "title": "Result",
+            "type": "source_code"
+          }
+        ],
+        "attempt_id": 1,
+        "expected_body": "def acceptance_marker():\n    return \"9b12c3b5535e\"\n",
+        "expected_sha256": "6b0aba5074887bff51893d1dd3138c04218c9a66a5686146ada99cb7b7e23511",
+        "gate": "transport only; no handoff or review claimed",
+        "image_id": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+        "remote_session_ref": "hermes-e7cb9512e9b0",
+        "run_id": "run_100e7ec3ca674c9982c46f18683da26b",
+        "runtime": "hermes",
+        "session_ref": "hermes-e7cb9512e9b0",
+        "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b",
+        "workspace_file_matches": true,
+        "event_counts": {
+          "status": 4,
+          "message": 289,
+          "tool_call": 10,
+          "completed": 1
+        }
+      },
+      "budget_receipt": {
+        "accounted_cost_usd": "0.0106848",
+        "allow_native_tools": true,
+        "attempts": 6,
+        "cost_usd": "0.0106848",
+        "estimated_ceiling_usd": "0.0442353",
+        "http_status": 200,
+        "input_price_usd_per_million": "0.3",
+        "max_cost_usd": "0.05",
+        "max_requests": 8,
+        "model": "deepseek-flash",
+        "output_limit": 1024,
+        "output_price_usd_per_million": "1.2",
+        "pricing_valid_until": "2026-09-20T14:44:52.639862+00:00",
+        "request_sha256": "a7975e6156d58fdf22ca02a4f6cce0fec7d0ffe1215810f82e9c4dab78d69888",
+        "requests": [
+          {
+            "cost_usd": "0.001725",
+            "estimated_ceiling_usd": "0.0076242",
+            "http_status": 200,
+            "input_token_bound": 21318,
+            "request_sha256": "01742e347fca46d634f53a9f45dc8445c9ef5261fc6ada607530b29e4d72d820",
+            "sequence": 1,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 4982,
+              "output_tokens": 192
+            }
+          },
+          {
+            "cost_usd": "0.0020316",
+            "estimated_ceiling_usd": "0.007968",
+            "http_status": 200,
+            "input_token_bound": 22464,
+            "request_sha256": "61d936bf7a3a9bc9e1994dcd8789c896a4e995d87f88d23714336ad1b48e3a7b",
+            "sequence": 2,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 5452,
+              "output_tokens": 330
+            }
+          },
+          {
+            "cost_usd": "0.0001362",
+            "estimated_ceiling_usd": "0.001899",
+            "http_status": 200,
+            "input_token_bound": 2234,
+            "request_sha256": "997f97f6f943f9e3de6494fa8c09129679f61196e76b4c6473dec349d78e8481",
+            "sequence": 3,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 442,
+              "output_tokens": 3
+            }
+          },
+          {
+            "cost_usd": "0.0021924",
+            "estimated_ceiling_usd": "0.0084738",
+            "http_status": 200,
+            "input_token_bound": 24150,
+            "request_sha256": "c0c916df4ba8b11507f972875b21505e7907189ef71edaa856b8b90579f05dbb",
+            "sequence": 4,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 6088,
+              "output_tokens": 305
+            }
+          },
+          {
+            "cost_usd": "0.0021789",
+            "estimated_ceiling_usd": "0.0089529",
+            "http_status": 200,
+            "input_token_bound": 25747,
+            "request_sha256": "c95aaecdcbdfa6cf61151178010a599ed02084d62f2886ece6575f732a50b4c3",
+            "sequence": 5,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 6663,
+              "output_tokens": 150
+            }
+          },
+          {
+            "cost_usd": "0.0024207",
+            "estimated_ceiling_usd": "0.0093174",
+            "http_status": 200,
+            "input_token_bound": 26962,
+            "request_sha256": "a7975e6156d58fdf22ca02a4f6cce0fec7d0ffe1215810f82e9c4dab78d69888",
+            "sequence": 6,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 7093,
+              "output_tokens": 244
+            }
+          }
+        ],
+        "reserved_cost_usd": "0",
+        "spent_cost_usd": "0.0106848",
+        "usage": {
+          "input_tokens": 30720,
+          "output_tokens": 1224
+        }
+      }
+    },
+    {
+      "case": "openclaw-manifest1",
+      "outcome": "passed",
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-artifact-openclaw-manifest1.log",
+      "log_sha256": "12f996990b5d199336c019668cfc920323a80a33d6a6a9e167457a0b1751e63f",
+      "transport": {
+        "artifacts": [
+          {
+            "content": "def acceptance_marker():\n    return \"8c1d08859f76\"\n",
+            "origin": {
+              "local_session_ref": "openclaw-892e97f25fb4",
+              "remote_run_id": "openclaw-892e97f25fb4",
+              "remote_session_ref": "agent:main:main",
+              "sha256": "4ece754f2b47e7f4eb05b4275b2c53921fcc915f6a739e7de944e94497b49e71",
+              "size_bytes": 51,
+              "source_ref": "result-8c1d08859f76.py"
+            },
+            "title": "Result",
+            "type": "source_code"
+          }
+        ],
+        "attempt_id": 1,
+        "expected_body": "def acceptance_marker():\n    return \"8c1d08859f76\"\n",
+        "expected_sha256": "4ece754f2b47e7f4eb05b4275b2c53921fcc915f6a739e7de944e94497b49e71",
+        "gate": "transport only; no handoff or review claimed",
+        "image_id": "sha256:e7849cb6c1ef1ead39ab4be7d85edb2df89611f486e283284c7cf35ce39a20d4",
+        "remote_session_ref": "agent:main:main",
+        "run_id": "openclaw-892e97f25fb4",
+        "runtime": "openclaw",
+        "session_ref": "openclaw-892e97f25fb4",
+        "version": "OpenClaw 2026.8.1 (ea80657)",
+        "workspace_file_matches": true,
+        "event_counts": {
+          "status": 1,
+          "completed": 1
+        }
+      },
+      "budget_receipt": {
+        "accounted_cost_usd": "0.0117723",
+        "allow_native_tools": true,
+        "attempts": 4,
+        "cost_usd": "0.0117723",
+        "estimated_ceiling_usd": "0.0484944",
+        "http_status": 200,
+        "input_price_usd_per_million": "0.3",
+        "max_cost_usd": "0.05",
+        "max_requests": 8,
+        "model": "deepseek-flash",
+        "output_limit": 1024,
+        "output_price_usd_per_million": "1.2",
+        "pricing_valid_until": "2026-09-20T14:44:52.639862+00:00",
+        "request_sha256": "5e0b20de92b55db3c3d460e84dd23a5b8a48a623e5ed749b5ba661f6fa10ec9e",
+        "requests": [
+          {
+            "cost_usd": "0.00288",
+            "estimated_ceiling_usd": "0.0115668",
+            "http_status": 200,
+            "input_token_bound": 34460,
+            "request_sha256": "a27d767b966e5300f06970e50830fc71bb14964a12e89b1e4b5feaeaf1b8e9e6",
+            "sequence": 1,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 8212,
+              "output_tokens": 347
+            }
+          },
+          {
+            "cost_usd": "0.0029631",
+            "estimated_ceiling_usd": "0.011928",
+            "http_status": 200,
+            "input_token_bound": 35664,
+            "request_sha256": "e3fe145d69a859e746bcfa9a1e96d1fff17a52c80f330935f5f742005acd4f76",
+            "sequence": 2,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 8621,
+              "output_tokens": 314
+            }
+          },
+          {
+            "cost_usd": "0.0029352",
+            "estimated_ceiling_usd": "0.0123036",
+            "http_status": 200,
+            "input_token_bound": 36916,
+            "request_sha256": "fbe03023ba6a2220e1399ffc71313fc25edb39738e231d09284785369da62544",
+            "sequence": 3,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 9036,
+              "output_tokens": 187
+            }
+          },
+          {
+            "cost_usd": "0.002994",
+            "estimated_ceiling_usd": "0.012696",
+            "http_status": 200,
+            "input_token_bound": 38224,
+            "request_sha256": "5e0b20de92b55db3c3d460e84dd23a5b8a48a623e5ed749b5ba661f6fa10ec9e",
+            "sequence": 4,
+            "state": "settled",
+            "usage": {
+              "input_tokens": 9544,
+              "output_tokens": 109
+            }
+          }
+        ],
+        "reserved_cost_usd": "0",
+        "spent_cost_usd": "0.0117723",
+        "usage": {
+          "input_tokens": 35413,
+          "output_tokens": 957
+        }
+      }
+    }
+  ],
+  "peak_accounted_usd": "0.0558243",
+  "checks": [
+    {
+      "label": "openclaw-manifest-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "-q",
+        "--tb=short",
+        "-k",
+        "openclaw or OpenClaw"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.25,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/openclaw-manifest-red.log"
+    },
+    {
+      "label": "openclaw-manifest-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 9.24,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/openclaw-manifest-green.log"
+    },
+    {
+      "label": "openclaw-manifest-focused",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "-c",
+        "apps/server/pyproject.toml",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_model_budget.py",
+        "apps/server/tests/test_runtimes_behavior.py",
+        "apps/server/tests/test_capabilities.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 22.11,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/openclaw-manifest-focused.log"
+    },
+    {
+      "label": "real-files-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/runtimes/openclaw/adapter.py",
+        "apps/server/app/runtimes/openclaw/artifacts.py",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/integration/test_m3_real_runtime_artifacts.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.06,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u14-0pk12e7p/real-files-static.log"
+    }
+  ],
+  "cleanup": {
+    "original_count": 9,
+    "exact_original_container_set_retained": true
+  },
+  "evidence_boundary": "Actual files, native runtime tools, manifests and durable original attempts; isolated DB/environment prepared by test. No host-written output, synthetic provider answer or artifact response. No business handoff or formal review claimed.",
+  "remaining": "Durable whole-collection acceptance/dedup, original workspace snapshot, accepted Drive revisions, downstream handoff and real formal review."
+}
