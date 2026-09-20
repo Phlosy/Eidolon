@@ -17,12 +17,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.database import SessionLocal
 from app.core.transaction_effects import ensure_sqlite_transaction
 from app.models.decision import DecisionRecord, ToolAudit
-from app.models.project import Task
+from app.models.drive import DriveNode
+from app.models.enums import DriveNodeKind, DriveZone
+from app.models.project import Project, Task
 from app.models.review import ReviewRequest
 from app.models.runtime_operation import RuntimeOperation
 from app.repositories import knowledge as knowledge_repo
 from app.repositories import position as position_repo
-from app.repositories import project as project_repo
 from app.work import contracts as C
 from app.work import decisions, tool_reads, tool_writes, tools
 from app.work import tool_executor as executor
@@ -62,7 +63,7 @@ CONTEXT_SCHEMA = {
             "properties": {"load": {"type": "array", "items": _LOAD_ROW_SCHEMA}},
             "required": ["load"],
         },
-        # These are stable project Artifact / KnowledgeItem IDs, never snapshots
+        # These are stable project DriveNode / KnowledgeItem IDs, never snapshots
         # of their bodies. Their company visibility is checked before intent writes.
         "knowledge_refs": {"type": "array", "items": _ID},
         "artifact_refs": {"type": "array", "items": _ID},
@@ -98,7 +99,8 @@ def reply_contract() -> dict:
             "Actor identity and authority come from the host; never supply them.",
             "read requires a read tool; decision actions require optional/required semantics.",
             "Tool args follow the supplied tool catalog; employee_id is a target, not actor.",
-            "knowledge_refs are KnowledgeItem IDs; artifact_refs are project Artifact IDs.",
+            "knowledge_refs are KnowledgeItem IDs; artifact_refs are project DriveNode IDs "
+            "returned as artifact_id by the read tools.",
             "Reuse an operation_key only for the identical request; retransmit its whole body.",
             "finish ends this conversation only; it does not complete any business object.",
         ],
@@ -333,9 +335,22 @@ def _validate_references(db, ctx, decision):
         tool_reads._employee_or_none(db, ctx, row["employee_id"])
         if row.get("current_task_id") is not None:
             tool_writes._task_in_company(db, ctx, row["current_task_id"])
-    for artifact_id in context.get("artifact_refs", []):
-        artifact = project_repo.get_artifact(db, artifact_id)
-        if artifact is None or artifact.company_id != ctx.company_id:
+    if context.get("artifact_refs"):
+        references = set(context["artifact_refs"])
+        visible = set(
+            db.scalars(
+                select(DriveNode.id)
+                .join(Project, Project.id == DriveNode.project_id)
+                .where(
+                    DriveNode.id.in_(references),
+                    DriveNode.company_id == ctx.company_id,
+                    Project.company_id == ctx.company_id,
+                    DriveNode.kind == DriveNodeKind.document.value,
+                    DriveNode.zone == DriveZone.projects.value,
+                )
+            )
+        )
+        if not references <= visible:
             raise tools.ToolError("artifact not found in this company")
     if context.get("knowledge_refs"):
         references = set(context["knowledge_refs"])

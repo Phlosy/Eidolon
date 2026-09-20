@@ -16,6 +16,7 @@ from app.core.database import SessionLocal, engine
 from app.events.bus import bus
 from app.models.base import utcnow
 from app.models.decision import DecisionRecord, ToolAudit
+from app.models.drive import DriveNode
 from app.models.event import Event
 from app.models.knowledge import KnowledgeItem
 from app.models.organization import Company, Employee
@@ -25,6 +26,7 @@ from app.models.project import Artifact, Project, Task, WorkSession
 from app.models.runtime_operation import RuntimeOperation
 from app.repositories import position as position_repo
 from app.repositories import project as project_repo
+from app.services import artifacts as artifact_service
 from app.work import decisions
 from app.work import tool_executor as executor
 from app.work.runtime_bridge import BridgeError, handle_reply, parse_reply, reply_contract
@@ -787,6 +789,89 @@ def test_foreign_scope_parent_and_context_rejected_before_any_writes(world, fore
     assert _counts() == before
 
 
+@pytest.mark.parametrize("other_project", [False, True])
+def test_project_read_artifact_ids_are_valid_decision_references(db, world, other_project):
+    project = world.project
+    if other_project:
+        project = Project(company_id=world.project.company_id, name="Visible supporting project")
+        db.add(project)
+        db.flush()
+    node = artifact_service.record_project_artifact(
+        db,
+        project,
+        artifact_type="source_code",
+        title="Current Drive artifact",
+        content="Actual project document",
+    )
+    db.commit()
+    read = _read(world)
+    read["args"]["project_id"] = project.id
+    read_result = _send(world, read)
+    refs = [item["artifact_id"] for item in read_result["results"][0]["data"]["artifacts"]]
+    assert refs == [node.id]
+    request = _decision(world)
+    request["decision"]["context"]["artifact_refs"] = refs
+
+    result = _send(world, request)
+
+    assert result["decision_status"] == "APPLIED"
+    assert all(row["ok"] for row in result["results"])
+    saved = db.get(DecisionRecord, result["decision_id"])
+    assert saved.context_json["artifact_refs"] == refs
+    assert _send(world, request) == result
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    ["foreign", "foreign_project", "folder", "no_project", "no_company", "private", "legacy"],
+)
+def test_legacy_id_collision_cannot_authorize_invalid_drive_reference(db, world, foreign, invalid):
+    reference_id = 500_001
+    if invalid != "legacy":
+        db.add(
+            DriveNode(
+                id=reference_id,
+                company_id=(
+                    foreign.company.id
+                    if invalid == "foreign"
+                    else None
+                    if invalid == "no_company"
+                    else world.project.company_id
+                ),
+                project_id=(
+                    foreign.project.id
+                    if invalid == "foreign_project"
+                    else None
+                    if invalid == "no_project"
+                    else world.project.id
+                ),
+                kind="folder" if invalid == "folder" else "document",
+                zone="personal" if invalid == "private" else "projects",
+                path=f"u8-reference-{invalid}",
+                name="Not a visible project artifact",
+            )
+        )
+    # The deprecated namespace must not authorize a same-numbered Drive reference.
+    db.add(
+        Artifact(
+            id=reference_id,
+            company_id=world.project.company_id,
+            project_id=world.project.id,
+            title="Legacy identity collision",
+        )
+    )
+    db.commit()
+    request = _decision(world)
+    request["decision"]["context"]["artifact_refs"] = [reference_id]
+    before = _counts()
+
+    with pytest.raises(BridgeError) as error:
+        _send(world, request)
+
+    assert error.value.reason == "invalid_reference"
+    assert _counts() == before
+
+
 def test_knowledge_references_do_not_hydrate_the_corpus_for_each_action(db, world):
     items = [
         KnowledgeItem(
@@ -943,5 +1028,5 @@ def test_parser_help_documents_closed_context_and_reference_encoding():
         "note",
     }
     assert "authority" not in contract["decision"]["context_schema"]["properties"]
-    assert any("project Artifact" in note for note in contract["notes"])
+    assert any("project DriveNode" in note and "artifact_id" in note for note in contract["notes"])
     json.dumps(contract, allow_nan=False)
