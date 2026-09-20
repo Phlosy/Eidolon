@@ -8,6 +8,17 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base, TimestampMixin
 from app.models.project import WorkSession
 
+STOP_REASONS = (
+    "cancelled",
+    "budget_denied",
+    "reassigned",
+    "blocked",
+    "shutdown",
+    "host_error",
+    "runtime_error",
+    "timeout",
+)
+
 
 class RuntimeAttempt(TimestampMixin, Base):
     __tablename__ = "runtime_attempts"
@@ -81,10 +92,18 @@ class RuntimeAttempt(TimestampMixin, Base):
     host_outcome: Mapped[str | None] = mapped_column(String(16), nullable=True)
     host_reason: Mapped[str | None] = mapped_column(String(48), nullable=True)
     host_observed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    stop_requested_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    stop_reason: Mapped[str | None] = mapped_column(String(48), nullable=True)
     # Captured before worker dispatch; legacy, mock and controlled turns stay NULL.
     artifact_context_json: Mapped[dict | None] = mapped_column(
         JSON(none_as_null=True), nullable=True
     )
+
+    @property
+    def stop_state(self):
+        if self.stop_requested_at is None:
+            return "not_recorded"
+        return "terminal_observed" if self.ended_at is not None else "unconfirmed"
 
 
 class RuntimeTelemetry(Base):
@@ -142,7 +161,49 @@ _ATTEMPT_INSERT = (
     "AND a.request_key=NEW.request_key AND (a.request_digest<>NEW.request_digest OR "
     "a.kind<>NEW.kind))"
 )
+_STOP_VALID = (
+    "(NEW.stop_requested_at IS NULL) <> (NEW.stop_reason IS NULL) OR "
+    "(NEW.stop_reason IS NOT NULL AND (NEW.stop_reason NOT IN ("
+    + ", ".join(f"'{reason}'" for reason in STOP_REASONS)
+    + ") OR julianday(NEW.stop_requested_at) IS NULL))"
+)
+STOP_GUARDS = (
+    (
+        "runtime_attempt_stop_insert",
+        "INSERT",
+        "NEW.stop_requested_at IS NOT NULL OR NEW.stop_reason IS NOT NULL",
+    ),
+    ("runtime_attempt_stop_valid", "UPDATE", _STOP_VALID),
+    (
+        "runtime_attempt_stop_once",
+        "UPDATE",
+        "OLD.stop_requested_at IS NOT NULL AND (NEW.stop_requested_at IS NOT "
+        "OLD.stop_requested_at OR NEW.stop_reason IS NOT OLD.stop_reason)",
+    ),
+    (
+        "runtime_attempt_no_replace",
+        "INSERT",
+        "EXISTS (SELECT 1 FROM runtime_attempts a WHERE a.id=NEW.id OR "
+        "a.idempotency_key=NEW.idempotency_key)",
+    ),
+)
 GUARDS = (
+    (
+        WorkSession.__table__,
+        "work_session_execution_no_replace",
+        "INSERT",
+        "EXISTS (SELECT 1 FROM runtime_attempts a WHERE a.work_session_id=NEW.id)",
+    ),
+    (
+        WorkSession.__table__,
+        "work_session_execution_no_delete",
+        "DELETE",
+        "EXISTS (SELECT 1 FROM runtime_attempts a WHERE a.work_session_id=OLD.id)",
+    ),
+    *(
+        (RuntimeAttempt.__table__, name, operation, condition)
+        for name, operation, condition in STOP_GUARDS
+    ),
     (RuntimeAttempt.__table__, "runtime_attempt_insert_valid", "INSERT", _ATTEMPT_INSERT),
     (
         RuntimeAttempt.__table__,

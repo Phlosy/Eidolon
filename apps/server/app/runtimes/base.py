@@ -90,6 +90,7 @@ class RuntimeSession:
     turn_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
     remote_run_id: str | None = None
     cancel_confirmed: bool | None = None
+    stop_reason: str = "cancelled"
     completed_turns: dict[str, tuple[str, "RuntimeReply"]] = field(default_factory=dict, repr=False)
     # One finite host loop per local session. Durable attempts/recovery are separate.
     conversation_started: bool = False
@@ -113,6 +114,8 @@ class RuntimeAttemptObserver(Protocol):
     def terminal(self, status: str, source: str) -> None: ...
 
     def observe(self, event: "RuntimeEvent") -> None: ...
+
+    def request_stop(self, reason: str, *, session: RuntimeSession | None = None) -> str: ...
 
 
 def accept_remote_run(session: RuntimeSession, run_id: str, remote_session_ref: str) -> None:

@@ -158,6 +158,7 @@ def test_entire_batch_is_preflighted_before_any_visible_write(db, completed_worl
     [
         "cancelled_handle",
         "cancelled_host",
+        "durable_stop",
         "closed_work",
         "cancelled_task",
         "runtime_replaced",
@@ -171,6 +172,8 @@ def test_late_or_rebound_output_cannot_be_accepted(db, completed_world, damage):
         w.runtime.status = "cancelled"
     elif damage == "cancelled_host":
         w.recorder.finish_host("cancelled", "cancelled")
+    elif damage == "durable_stop":
+        w.recorder.request_stop("cancelled")
     elif damage == "closed_work":
         w.work.status, w.work.ended_at = "cancelled", utcnow()
     elif damage == "cancelled_task":
@@ -187,6 +190,15 @@ def test_late_or_rebound_output_cannot_be_accepted(db, completed_world, damage):
     with pytest.raises(RuntimeProtocolError):
         accept(w)
     assert_no_outputs(db, w)
+
+
+def test_later_stop_preserves_already_accepted_collection_history(db, completed_world):
+    w = completed_world
+    original = accept(w)
+    w.recorder.request_stop("cancelled")
+    assert accept(w) == original
+    db.expire_all()
+    assert receipt(db, w) is not None
 
 
 def test_collection_cannot_be_accepted_from_another_company(db, completed_world):
@@ -477,7 +489,9 @@ def test_accepted_node_cannot_be_relabelled_or_replaced(db, completed_world, sta
     db.rollback()
 
 
-@pytest.mark.parametrize("damage", ["missing_type", "foreign_revision", "extra_key", "duplicate"])
+@pytest.mark.parametrize(
+    "damage", ["missing_type", "foreign_revision", "extra_key", "duplicate", "stopped"]
+)
 def test_sql_cannot_insert_a_receipt_with_invalid_canonical_references(db, completed_world, damage):
     from app.models.runtime_artifact import RuntimeArtifactCollection
     from app.services import artifacts
@@ -503,6 +517,8 @@ def test_sql_cannot_insert_a_receipt_with_invalid_canonical_references(db, compl
         entries[0]["invented"] = "ignored?"
     elif damage == "duplicate":
         entries *= 2
+    elif damage == "stopped":
+        w.recorder.request_stop("cancelled")
     db.add(
         RuntimeArtifactCollection(
             attempt_id=w.recorder.attempt_id, digest="a" * 64, entries_json=entries

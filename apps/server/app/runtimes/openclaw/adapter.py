@@ -43,6 +43,7 @@ from app.runtimes.base import (
     observe_remote_terminal,
     remember_controlled_reply,
 )
+from app.runtimes.cancellation import cancel_run
 from app.runtimes.container_common import refresh_status, resolve_container_instance
 from app.runtimes.docker.service import get_docker_service
 from app.runtimes.openclaw import artifacts as artifact_transport
@@ -226,8 +227,15 @@ class OpenClawAdapter(RuntimeAdapter):
                     # another turn. Only the final event with both identities qualifies.
                     text = await reply_task
                     reply = RuntimeReply(session.id, request_id, run_id, text)
-                except (Exception, asyncio.CancelledError):
-                    if run_id:
+                except (Exception, asyncio.CancelledError) as exc:
+                    if session.attempt is not None:
+                        cancelled = (
+                            isinstance(exc, asyncio.CancelledError) or session.status == "cancelled"
+                        )
+                        session.stop_reason = "cancelled" if cancelled else "runtime_error"
+                        await self.cancel_task(session)
+                        session.status = "cancelled" if cancelled else "failed"
+                    elif run_id:
                         if session.status == "running":
                             session.status = "failed"
                         session.cancel_confirmed = False
@@ -304,26 +312,15 @@ class OpenClawAdapter(RuntimeAdapter):
             return complete_reply_text(content)
 
     async def cancel_task(self, session: RuntimeSession) -> None:
-        session.status = "cancelled"
-        session.cancel_confirmed = False
-        background = session.background
-        if background is not None and not background.done() and not background.cancelling():
-            background.cancel()
-        try:
-            run_id, session_key = session.remote_run_id, session.remote_session_ref
-            if not run_id or not session_key:
-                return  # No broad shared-session abort when the original run is unknown.
-            async with asyncio.timeout(5), self._connect(session.instance) as client:
+        async def send_stop(instance, reference):
+            async with self._connect(instance) as client:
                 await client.call(
                     "chat.abort",
-                    {"sessionKey": session_key, "runId": run_id},
+                    {"sessionKey": reference.remote_session_ref, "runId": reference.remote_run_id},
                     timeout=5,
                 )
-        except Exception:
-            logger.warning("openclaw stop unconfirmed", extra={"task_id": session.task_id})
-        finally:
-            if background is not None:
-                await asyncio.gather(background, return_exceptions=True)
+
+        await cancel_run(self, session, send_stop)
 
     async def get_artifacts(self, session: RuntimeSession) -> list[ProducedArtifact]:
         artifact_transport.require_completed_origin(session)

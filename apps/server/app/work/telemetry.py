@@ -22,7 +22,7 @@ from app.models.base import as_utc, utcnow
 from app.models.organization import Employee
 from app.models.project import WorkSession
 from app.models.runtime import RuntimeInstance as RuntimeRow
-from app.models.runtime_execution import RuntimeAttempt, RuntimeTelemetry
+from app.models.runtime_execution import STOP_REASONS, RuntimeAttempt, RuntimeTelemetry
 from app.providers.secrets.store import get_secret_store
 from app.repositories import persons
 from app.runtimes.base import (
@@ -170,6 +170,18 @@ def prepare_attempt(
             or (kind == "worker" and work.purpose != "worker")
         ):
             raise RuntimeProtocolError("execution_session_ended")
+        if (
+            db.scalar(
+                select(RuntimeAttempt.id)
+                .where(
+                    RuntimeAttempt.work_session_id == work.id,
+                    RuntimeAttempt.stop_requested_at.is_not(None),
+                )
+                .limit(1)
+            )
+            is not None
+        ):
+            raise RuntimeProtocolError("execution_stop_requested")
         previous = db.scalar(
             select(RuntimeAttempt)
             .where(
@@ -250,6 +262,38 @@ class AttemptRecorder:
     request_key: str
     idempotency_key: str
     session_factory: object = SessionLocal
+
+    def request_stop(self, reason, *, session=None):
+        """Persist first intent even if the original transport is no longer usable.
+
+        When called by an adapter, validate its exact live handle before permitting
+        remote I/O. Neither current employee preferences nor stale caches choose
+        the stop target. All transactions end before returning to the adapter.
+        """
+        if reason not in STOP_REASONS:
+            raise RuntimeProtocolError("invalid_stop_reason")
+        with self.session_factory() as db:
+            ensure_sqlite_transaction(db)
+            row = _attempt(db, self.attempt_id)
+            _read_scope(db, row.work_session_id)
+            if row.stop_requested_at is None:
+                row.stop_requested_at, row.stop_reason = utcnow(), reason
+            db.commit()
+            if session is not None:
+                work = db.get(WorkSession, row.work_session_id)
+                validate_identity(db, work, session, fingerprint=row.instance_fingerprint)
+                if (
+                    row.local_session_ref != session.id
+                    or row.idempotency_key != self.idempotency_key
+                    or row.request_key != self.request_key
+                    or row.remote_run_id != session.remote_run_id
+                    or (
+                        row.remote_run_id is not None
+                        and row.remote_session_ref != session.remote_session_ref
+                    )
+                ):
+                    raise RuntimeProtocolError("execution_stop_identity_mismatch")
+            return row.status
 
     def accepted(self, run_id, remote_session_ref):
         if not isinstance(run_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:/-]{1,256}", run_id):
@@ -513,6 +557,8 @@ def reconstruct_attempt(attempt_id, *, session_factory=SessionLocal):
                 "base_url": f"http://{row.internal_host}:{row.internal_port}",
                 "api_key": token,
                 "device_key": device,
+                "row_id": row.id,
+                "instance_fingerprint": attempt.instance_fingerprint,
             },
         )
         return (

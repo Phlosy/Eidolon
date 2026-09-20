@@ -89,6 +89,13 @@ _WORK_REFERENCED = (
 COLLECTION_GUARDS = (
     (
         "runtime_artifact_collections",
+        "artifact_collection_stop_fence",
+        "INSERT",
+        "EXISTS (SELECT 1 FROM runtime_attempts a WHERE a.id=NEW.attempt_id "
+        "AND a.stop_requested_at IS NOT NULL)",
+    ),
+    (
+        "runtime_artifact_collections",
         "artifact_collection_valid",
         "INSERT",
         f"NOT ({_ORIGIN}) OR {_ENTRY_INVALID} OR {_DUPLICATE} OR {_MISSING_TYPES} OR "

@@ -44,6 +44,7 @@ from app.runtimes.base import (
     observe_remote_terminal,
     remember_controlled_reply,
 )
+from app.runtimes.cancellation import cancel_run
 from app.runtimes.container_common import refresh_status, resolve_container_instance
 from app.runtimes.docker.service import get_docker_service
 
@@ -188,13 +189,18 @@ class HermesAdapter(RuntimeAdapter):
                             raise RuntimeProtocolError("run_not_successful")
                         await asyncio.sleep(0.1)
                 return remember_controlled_reply(session, prompt, reply)
-        except (Exception, asyncio.CancelledError):
+        except (Exception, asyncio.CancelledError) as exc:
             if submitted:
                 # A stop request is not proof that a remote model has terminated.
                 if session.status == "running":
                     session.status = "failed"
                 session.cancel_confirmed = False
-            if run_id:
+            if session.attempt is not None:
+                cancelled = isinstance(exc, asyncio.CancelledError) or session.status == "cancelled"
+                session.stop_reason = "cancelled" if cancelled else "runtime_error"
+                await self.cancel_task(session)
+                session.status = "cancelled" if cancelled else "failed"
+            elif run_id:
                 try:
                     stop_path = f"/v1/runs/{quote(run_id, safe='')}/stop"
                     async with httpx.AsyncClient(timeout=5, trust_env=False) as client:
@@ -242,29 +248,16 @@ class HermesAdapter(RuntimeAdapter):
                 break
 
     async def cancel_task(self, session: RuntimeSession) -> None:
-        session.status = "cancelled"
-        session.cancel_confirmed = False
-        background = session.background
-        if background is not None and not background.done() and not background.cancelling():
-            background.cancel()
-        try:
-            run_id = session.remote_run_id
-            if not run_id or not session.remote_session_ref:
-                return  # Never guess a target from a stale legacy cache.
-            async with (
-                asyncio.timeout(5),
-                httpx.AsyncClient(timeout=5, trust_env=False) as client,
-            ):
+        async def send_stop(instance, reference):
+            path = f"/v1/runs/{quote(reference.remote_run_id, safe='')}/stop"
+            async with httpx.AsyncClient(timeout=5, trust_env=False) as client:
                 response = await client.post(
-                    f"{session.instance.details['base_url']}/v1/runs/{quote(run_id, safe='')}/stop",
-                    headers=self._headers(session.instance),
+                    instance.details["base_url"] + path,
+                    headers=self._headers(instance),
                 )
                 response.raise_for_status()
-        except Exception:
-            logger.warning("hermes stop unconfirmed", extra={"task_id": session.task_id})
-        finally:
-            if background is not None:
-                await asyncio.gather(background, return_exceptions=True)
+
+        await cancel_run(self, session, send_stop)
 
     async def get_artifacts(self, session: RuntimeSession) -> list[ProducedArtifact]:
         return await asyncio.to_thread(workspace_artifacts.collect, session)

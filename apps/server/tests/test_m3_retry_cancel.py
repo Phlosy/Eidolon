@@ -92,6 +92,8 @@ async def running_worker(db, bound, monkeypatch, tmp_path, request):
             return httpx.Response(200, json={"ok": True})
         if req.method == "POST":
             return httpx.Response(202, json={"run_id": "live-original-run"})
+        if not req.url.path.endswith("/events"):
+            return httpx.Response(200, json={"run_id": "live-original-run", "status": "running"})
         return httpx.Response(200, stream=PendingStream())
 
     class Gateway:
@@ -111,6 +113,8 @@ async def running_worker(db, bound, monkeypatch, tmp_path, request):
                 self.worker = True
                 return {"runId": "live-original-run"}
             if method == "agent.wait":
+                if not self.worker:
+                    return {"runId": "live-original-run", "status": "running"}
                 env.stream_entered.set()
                 if env.completed:
                     return {"status": "ok", "runId": "live-original-run"}
@@ -160,6 +164,7 @@ async def test_observation_failure_drains_producer_before_ownership_release(
     assert attempt.remote_run_id == "live-original-run"
     assert attempt.status == "unknown" and attempt.ended_at is None
     assert attempt.host_outcome == "failed" and attempt.terminal_source is None
+    assert attempt.stop_requested_at is not None and attempt.stop_state == "unconfirmed"
     assert db.get(WorkSession, attempt.work_session_id).status == "failed"
     assert bound.actor.current_task_id is None
     assert "private-stop-transport-error" not in caplog.text
@@ -180,6 +185,7 @@ async def test_host_cancellation_stops_and_drains_before_finalization(db, bound,
         db.expire_all()
         attempt = db.scalar(select(RuntimeAttempt))
         assert attempt.host_outcome == "cancelled"
+        assert attempt.stop_requested_at is not None and attempt.stop_state == "unconfirmed"
         assert bound.actor.current_task_id is None
     finally:
         runner.cancel()

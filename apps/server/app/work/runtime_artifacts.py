@@ -189,6 +189,7 @@ def _validate_current(db, work, attempt, session):
         or project is None
         or project.company_id != work.company_id
         or attempt.status != "completed"
+        or attempt.stop_requested_at is not None
         or attempt.host_outcome not in {None, "completed"}
         or attempt.id != latest
         or attempt.runtime_instance_id != work.runtime_instance_id

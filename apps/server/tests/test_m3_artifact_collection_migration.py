@@ -17,7 +17,7 @@ completed_world = _completed_world
 conversation_world = _conversation_world
 workspace_world = _workspace_world
 PREVIOUS = "59e548bd7603"
-REVISION = "61a76adf9805"
+REVISION = "62b87bef0916"
 
 
 def contract(connection):
@@ -52,14 +52,21 @@ def test_v60_up_down_up_preserves_old_attempts_without_inventing_collections(tmp
         _migrate(migrated, PREVIOUS)
         with migrated.begin() as connection:
             legacy_attempt(connection)
-            before = connection.exec_driver_sql("SELECT * FROM runtime_attempts").all()
+            before = dict(
+                connection.exec_driver_sql("SELECT * FROM runtime_attempts").mappings().one()
+            )
         Base.metadata.create_all(fresh)
         for iteration in range(2):
             _migrate(migrated, "head")
             with migrated.begin() as connection, fresh.connect() as metadata:
                 assert "runtime_artifact_collections" in inspect(connection).get_table_names()
                 assert contract(connection) == contract(metadata)
-                assert connection.exec_driver_sql("SELECT * FROM runtime_attempts").all() == before
+                after = dict(
+                    connection.exec_driver_sql("SELECT * FROM runtime_attempts").mappings().one()
+                )
+                assert after.pop("stop_requested_at") is None
+                assert after.pop("stop_reason") is None
+                assert after == before
                 assert (
                     connection.exec_driver_sql(
                         "SELECT COUNT(*) FROM runtime_artifact_collections"
@@ -77,7 +84,12 @@ def test_v60_up_down_up_preserves_old_attempts_without_inventing_collections(tmp
                         "runtime_artifact_collections" not in inspect(connection).get_table_names()
                     )
                     assert (
-                        connection.exec_driver_sql("SELECT * FROM runtime_attempts").all() == before
+                        dict(
+                            connection.exec_driver_sql("SELECT * FROM runtime_attempts")
+                            .mappings()
+                            .one()
+                        )
+                        == before
                     )
     finally:
         migrated.dispose()

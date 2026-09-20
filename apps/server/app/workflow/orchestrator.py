@@ -262,11 +262,12 @@ class Orchestrator:
         adapter = session = cleanup = None
         started = datetime.now(UTC)
 
-        async def stop_worker():
+        async def stop_worker(reason="runtime_error"):
             nonlocal cleanup
             if adapter is None or session is None:
                 return False
             if cleanup is None:
+                session.stop_reason = reason
                 cleanup = asyncio.create_task(
                     _stop_worker(adapter, session), name=f"worker-cleanup-{task_id}"
                 )
@@ -512,7 +513,7 @@ class Orchestrator:
                 "stream_completed" if success else "stream_ended",
             )
         except asyncio.CancelledError:
-            await stop_worker()
+            await stop_worker("cancelled")
             if attempt is not None:
                 attempt.finish_host_safely("cancelled", "cancelled")
             logger.info("work session cancelled", extra={"task_id": task_id})
@@ -522,7 +523,7 @@ class Orchestrator:
                 )
             raise
         except Exception:
-            cancelled = await stop_worker()
+            cancelled = await stop_worker("host_error")
             if attempt is not None:
                 attempt.finish_host_safely(
                     "cancelled" if cancelled else "failed",
