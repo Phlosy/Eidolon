@@ -125,7 +125,7 @@ Codex / Claude Code / OpenCode / Custom 新 Runtime（保持 placeholder）
 | M3.1 | Real Runtime Provisioning | 开通归属、出处快照按需 | **DONE**（U1–U5） |
 | M3.2 | Ready-to-Work & Runtime Readiness | 通知周期、管理会话 / 调用幂等按需 | **DONE**（U6–U8） |
 | M3.3 | Capability Gap Actions | 动作确认记录按需 | IN_PROGRESS（U9 完成） |
-| M3.4 | Execution Telemetry & Recovery | 遥测 / 恢复元数据按需 | PLANNED |
+| M3.4 | Execution Telemetry & Recovery | 遥测 / 恢复元数据按需 | IN_PROGRESS |
 | M3.5 | Work Experience & Unified Resume | 视裁决 | PLANNED |
 | M3.6 | Reliability / Specialization / Collaboration | 无 | PLANNED |
 | M3.7 | Agent Asset Read Model | 无 | PLANNED |
@@ -682,7 +682,7 @@ docs/m3-freeze.md（机器可检：形态 / 不变量 / 唯一写入路径 / 模
 | M3.1 | **DONE** | `d838823`（U1）、`146dca3`（U2）、`d814476`（U3）、`bb6a3ea`（U4）、`3718881`（U5） | U1–U5 完成。阶段收尾 1532 passed / 10 deselected，v50 往返及检查、lint、前端 390 项与构建通过；U4 五组随机序和两种 Runtime 的真实调用证据保留。历史快照已有创建写者、历史读者和数据库保护。[B1–B5 与完整证据](m3-u5-execution-snapshots.md)。真实业务交付及管理工具桥仍属后续阶段 |
 | M3.2 | **DONE** | `76636c1`（U6）、`cbaa771`（U7）、`7e3f865`–`c8df9b4`（U8）及本次验收提交 | U6–U8 完成：共享就绪与等待事实、持久工具请求/回执、指定管理与评审会话、来源去重及有限收尾。最终后端 2231 passed / 16 deselected，lint、前端 392 项及构建、v51–v55 迁移检查通过；Hermes 管理和 OpenClaw 评审真实往返完成，七次尝试与失败费用全部保留。四项正式审阅问题已关闭。[U8 验收与范围限制](m3-u8-management-sessions.md)。真实 Worker 产物链与跨进程恢复继续归后续阶段 |
 | M3.3 | IN_PROGRESS | 本次 U9 提交 | U9 完成：共享缺口和 T2 候选读面、受决策与授权约束的学习计划、回执重放与并发去重。最终后端 2267 passed / 16 deselected，lint、前端 392 项与构建通过；新增 36 个行为场景，未进行真实训练或付费调用。U10–U12 待完成。[U9 验收](m3-u9-gap-and-learning.md) |
-| M3.4 | PLANNED | — | |
+| M3.4 | IN_PROGRESS | 本次 U13 提交 | U13 完成：持久请求 / 尝试 / 远端引用，主机与远端结果分离，有限保留的结构化遥测和跨进程只读查询。v56 迁移、原归属守卫、后端 2309 passed / 16 deselected、完整 lint 通过；新增 40 个行为场景与 2 个迁移测试。U14–U17 的真实产物、重试取消、接管和费用归集待完成。[U13 验收](m3-u13-durable-execution.md) |
 | M3.5 | PLANNED | — | |
 | M3.6 | PLANNED | — | |
 | M3.7 | PLANNED | — | |

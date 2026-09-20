@@ -31,12 +31,16 @@ from app.runtimes.base import (
     RuntimeInstance,
     RuntimeProtocolError,
     RuntimeReply,
+    RuntimeRunReference,
+    RuntimeRunStatus,
     RuntimeSession,
     RuntimeStatus,
     TaskContext,
+    accept_remote_run,
     cached_controlled_reply,
     complete_reply_text,
     controlled_request_key,
+    observe_remote_terminal,
     remember_controlled_reply,
 )
 from app.runtimes.container_common import refresh_status, resolve_container_instance
@@ -143,8 +147,7 @@ class HermesAdapter(RuntimeAdapter):
                 )
                 if not isinstance(run_id, str) or not run_id:
                     raise RuntimeProtocolError("run_id_missing")
-                session.remote_run_id = run_id
-                session.cancel_confirmed = None
+                accept_remote_run(session, run_id, session.id)
                 controlled_request_key(session, request_id, timeout)
                 url = f"{session.instance.details['base_url']}/v1/runs/{quote(run_id, safe='')}"
                 async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT, trust_env=False) as client:
@@ -156,6 +159,7 @@ class HermesAdapter(RuntimeAdapter):
                             raise RuntimeProtocolError("run_identity_mismatch")
                         status = payload.get("status")
                         if status == "completed":
+                            observe_remote_terminal(session, "completed", "hermes.status")
                             reply = RuntimeReply(
                                 session_id=session.id,
                                 request_id=request_id,
@@ -167,6 +171,8 @@ class HermesAdapter(RuntimeAdapter):
                             )
                             break
                         if status not in {"started", "running", "queued"}:
+                            if status in {"failed", "error", "cancelled", "aborted"}:
+                                observe_remote_terminal(session, "failed", "hermes.status")
                             raise RuntimeProtocolError("run_not_successful")
                         await asyncio.sleep(0.1)
                 return remember_controlled_reply(session, prompt, reply)
@@ -187,6 +193,34 @@ class HermesAdapter(RuntimeAdapter):
                 except Exception:
                     logger.warning("controlled Hermes stop could not be confirmed")
             raise
+
+    async def query_run(
+        self, instance: RuntimeInstance, reference: RuntimeRunReference
+    ) -> RuntimeRunStatus:
+        path = f"/v1/runs/{quote(reference.remote_run_id, safe='')}"
+        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT, trust_env=False) as client:
+            response = await client.get(
+                instance.details["base_url"] + path, headers=self._headers(instance)
+            )
+            response.raise_for_status()
+            payload = response.json()
+        if (
+            not isinstance(payload, dict)
+            or payload.get("run_id", payload.get("id", reference.remote_run_id))
+            != reference.remote_run_id
+        ):
+            raise RuntimeProtocolError("run_identity_mismatch")
+        status = payload.get("status")
+        normalized = (
+            "completed"
+            if status == "completed"
+            else "failed"
+            if status in {"failed", "error", "cancelled", "aborted"}
+            else "running"
+            if status in {"started", "running", "queued"}
+            else "unknown"
+        )
+        return RuntimeRunStatus(normalized, "hermes.status")
 
     async def stream_events(self, session: RuntimeSession) -> AsyncIterator[RuntimeEvent]:
         while True:
@@ -254,9 +288,11 @@ class HermesAdapter(RuntimeAdapter):
     async def _pump(self, session: RuntimeSession, prompt: str, timeout: float) -> None:
         instance = session.instance
         try:
-            run_id = await self._create_run(instance, prompt, session.id)
+            key = session.attempt.idempotency_key if session.attempt is not None else session.id
+            run_id = await self._create_run(instance, prompt, key, session_id=session.id)
             if not run_id:
                 raise RuntimeError("hermes /v1/runs returned no run id")
+            accept_remote_run(session, run_id, session.id)
             instance.details[f"run_id:{session.id}"] = run_id
             await session.queue.put(
                 RuntimeEvent(RuntimeEventKind.status, {"detail": "run created", "run_id": run_id})
@@ -265,11 +301,11 @@ class HermesAdapter(RuntimeAdapter):
         except asyncio.CancelledError:
             session.status = "cancelled"
             raise
-        except Exception as exc:
+        except Exception:
             session.status = "failed"
-            logger.exception("hermes run failed", extra={"task_id": session.task_id})
+            logger.warning("hermes run failed", extra={"task_id": session.task_id})
             await session.queue.put(
-                RuntimeEvent(RuntimeEventKind.error, {"message": str(exc)[:500]})
+                RuntimeEvent(RuntimeEventKind.error, {"message": "runtime_error"})
             )
 
     async def _stream_run(self, session: RuntimeSession, run_id: str, timeout: float) -> None:
@@ -293,7 +329,16 @@ class HermesAdapter(RuntimeAdapter):
                     payload = json.loads(data)
                 except json.JSONDecodeError:
                     continue
+                if (
+                    isinstance(payload, dict)
+                    and payload.get("run_id", payload.get("runId", run_id)) != run_id
+                ):
+                    raise RuntimeProtocolError("run_identity_mismatch")
                 event = self._map_event(payload)
+                if event is not None and event.kind == RuntimeEventKind.completed:
+                    observe_remote_terminal(session, "completed", "hermes.sse")
+                elif event is not None and event.kind == RuntimeEventKind.error:
+                    observe_remote_terminal(session, "failed", "hermes.sse")
                 if event is not None:
                     await session.queue.put(event)
                 if event is not None and event.kind in (
@@ -301,6 +346,7 @@ class HermesAdapter(RuntimeAdapter):
                     RuntimeEventKind.error,
                 ):
                     return
+        raise RuntimeProtocolError("stream_ended_without_terminal")
 
     @staticmethod
     def _map_event(payload: dict) -> RuntimeEvent | None:
@@ -311,21 +357,29 @@ class HermesAdapter(RuntimeAdapter):
         status = str(payload.get("status") or "")
         text = payload.get("delta") or payload.get("text") or payload.get("content")
 
-        if etype in ("run.completed", "completed") or status == "completed":
+        if etype in ("run.completed", "completed") or (
+            etype in ("", "run.status") and status == "completed"
+        ):
             return RuntimeEvent(
                 RuntimeEventKind.completed, {"summary": payload.get("summary") or ""}
             )
-        if etype in ("run.failed", "run.error", "error") or status in ("failed", "error"):
-            message = payload.get("error") or payload.get("message") or "hermes run failed"
-            return RuntimeEvent(RuntimeEventKind.error, {"message": str(message)[:500]})
+        if etype in ("run.failed", "run.error", "error") or (
+            etype in ("", "run.status") and status in ("failed", "error")
+        ):
+            return RuntimeEvent(RuntimeEventKind.error, {"message": "remote_failed"})
         if "tool" in etype:
             return RuntimeEvent(
                 RuntimeEventKind.tool_call,
                 {"tool": payload.get("tool") or payload.get("name") or "unknown", "event": etype},
             )
-        if etype in ("assistant.delta", "token", "message.delta", "message"):
+        if etype in ("assistant.delta", "token", "message.delta", "message", "message.completed"):
             return RuntimeEvent(
-                RuntimeEventKind.message, {"role": "assistant", "content": text or ""}
+                RuntimeEventKind.message,
+                {
+                    "role": "assistant",
+                    "content": text or "",
+                    "complete": etype == "message.completed",
+                },
             )
         if etype in ("thinking", "reasoning"):
             return RuntimeEvent(RuntimeEventKind.thinking, {"message": text or ""})

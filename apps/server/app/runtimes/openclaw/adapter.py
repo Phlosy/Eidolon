@@ -30,12 +30,16 @@ from app.runtimes.base import (
     RuntimeInstance,
     RuntimeProtocolError,
     RuntimeReply,
+    RuntimeRunReference,
+    RuntimeRunStatus,
     RuntimeSession,
     RuntimeStatus,
     TaskContext,
+    accept_remote_run,
     cached_controlled_reply,
     complete_reply_text,
     controlled_request_key,
+    observe_remote_terminal,
     remember_controlled_reply,
 )
 from app.runtimes.container_common import refresh_status, resolve_container_instance
@@ -183,6 +187,7 @@ class OpenClawAdapter(RuntimeAdapter):
                     )
                     if not isinstance(started, dict) or started.get("runId") != run_id:
                         raise RuntimeProtocolError("run_identity_mismatch")
+                    accept_remote_run(session, run_id, session_key)
                     controlled_request_key(session, request_id, timeout)
                     reply_task = asyncio.create_task(
                         self._complete_chat_reply(client, session_key, run_id),
@@ -193,6 +198,11 @@ class OpenClawAdapter(RuntimeAdapter):
                         {"runId": run_id, "timeoutMs": max(1, int(timeout * 1000))},
                         timeout=timeout,
                     )
+                    if isinstance(terminal, dict) and terminal.get("runId", run_id) == run_id:
+                        if terminal.get("status") == "ok":
+                            observe_remote_terminal(session, "completed", "openclaw.wait")
+                        elif terminal.get("status") in {"failed", "error", "aborted"}:
+                            observe_remote_terminal(session, "failed", "openclaw.wait")
                     if (
                         not isinstance(terminal, dict)
                         or terminal.get("status") != "ok"
@@ -228,6 +238,30 @@ class OpenClawAdapter(RuntimeAdapter):
                         reply_task.cancel()
                         await asyncio.gather(reply_task, return_exceptions=True)
             return remember_controlled_reply(session, prompt, reply)
+
+    async def query_run(
+        self, instance: RuntimeInstance, reference: RuntimeRunReference
+    ) -> RuntimeRunStatus:
+        async with self._connect(instance) as client:
+            payload = await client.call(
+                "agent.wait", {"runId": reference.remote_run_id, "timeoutMs": 1}, timeout=5
+            )
+        if (
+            not isinstance(payload, dict)
+            or payload.get("runId", reference.remote_run_id) != reference.remote_run_id
+        ):
+            raise RuntimeProtocolError("run_identity_mismatch")
+        state = payload.get("state") or payload.get("status")
+        normalized = (
+            "completed"
+            if state in {"ok", "completed"}
+            else "failed"
+            if state in {"failed", "error", "aborted"}
+            else "running"
+            if state in {"running", "queued", "started"}
+            else "unknown"
+        )
+        return RuntimeRunStatus(normalized, "openclaw.wait")
 
     @staticmethod
     async def _complete_chat_reply(client: GatewayClient, session_key: str, run_id: str) -> str:
@@ -266,7 +300,9 @@ class OpenClawAdapter(RuntimeAdapter):
         session.status = "cancelled"
         if session.background and not session.background.done():
             session.background.cancel()
-        controlled = session.remote_run_id is not None or session.turn_lock.locked()
+        controlled = session.remote_session_ref != _SESSION_KEY and (
+            session.remote_run_id is not None or session.turn_lock.locked()
+        )
         run_id = (
             session.remote_run_id
             if controlled
@@ -350,6 +386,7 @@ class OpenClawAdapter(RuntimeAdapter):
 
     async def _pump(self, session: RuntimeSession, prompt: str, timeout: float) -> None:
         instance = session.instance
+        waiter = None
         try:
             async with asyncio.timeout(timeout), self._connect(instance) as client:
                 result = await client.call(
@@ -357,12 +394,14 @@ class OpenClawAdapter(RuntimeAdapter):
                     {
                         "sessionKey": _SESSION_KEY,
                         "message": prompt,
-                        "idempotencyKey": session.id,
+                        "idempotencyKey": session.attempt.idempotency_key
+                        if session.attempt is not None
+                        else session.id,
                     },
                 )
                 run_id = (result or {}).get("runId") or (result or {}).get("run_id")
-                if run_id:
-                    instance.details[f"run_id:{session.id}"] = run_id
+                accept_remote_run(session, run_id, _SESSION_KEY)
+                instance.details[f"run_id:{session.id}"] = run_id
                 await session.queue.put(
                     RuntimeEvent(
                         RuntimeEventKind.status, {"detail": "run started", "run_id": run_id}
@@ -383,30 +422,43 @@ class OpenClawAdapter(RuntimeAdapter):
                         message = await asyncio.wait_for(client.events.get(), timeout=1.0)
                     except TimeoutError:
                         continue
+                    payload = message.get("params") or message.get("payload") or {}
+                    if not isinstance(payload, dict) or payload.get("runId", run_id) != run_id:
+                        continue
                     event = self._map_event(message)
                     if event is not None:
                         await session.queue.put(event)
                 terminal = waiter.result() if waiter is not None and not waiter.cancelled() else {}
+                if not isinstance(terminal, dict) or terminal.get("runId", run_id) != run_id:
+                    raise RuntimeProtocolError("run_identity_mismatch")
                 state = str((terminal or {}).get("state") or (terminal or {}).get("status") or "")
                 if state in ("failed", "error", "aborted"):
+                    observe_remote_terminal(session, "failed", "openclaw.wait")
                     session.status = "failed"
                     await session.queue.put(
                         RuntimeEvent(RuntimeEventKind.error, {"message": f"run {state}"})
                     )
-                else:
+                elif state in ("completed", "ok"):
+                    observe_remote_terminal(session, "completed", "openclaw.wait")
                     session.status = "completed"
                     await session.queue.put(
                         RuntimeEvent(RuntimeEventKind.completed, {"summary": "run completed"})
                     )
+                else:
+                    raise RuntimeProtocolError("run_terminal_unknown")
         except asyncio.CancelledError:
             session.status = "cancelled"
             raise
-        except Exception as exc:
+        except Exception:
             session.status = "failed"
-            logger.exception("openclaw run failed", extra={"task_id": session.task_id})
+            logger.warning("openclaw run failed", extra={"task_id": session.task_id})
             await session.queue.put(
-                RuntimeEvent(RuntimeEventKind.error, {"message": str(exc)[:500]})
+                RuntimeEvent(RuntimeEventKind.error, {"message": "runtime_error"})
             )
+        finally:
+            if waiter is not None:
+                waiter.cancel()
+                await asyncio.gather(waiter, return_exceptions=True)
 
     @staticmethod
     def _map_event(message: dict) -> RuntimeEvent | None:
@@ -433,7 +485,7 @@ class OpenClawAdapter(RuntimeAdapter):
             if state in ("failed", "error"):
                 return RuntimeEvent(
                     RuntimeEventKind.error,
-                    {"message": str(payload.get("error") or "operation failed")[:500]},
+                    {"message": "remote_operation_failed"},
                 )
             return RuntimeEvent(
                 RuntimeEventKind.status, {"detail": f"operation {state or 'update'}"}

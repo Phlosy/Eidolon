@@ -132,6 +132,7 @@ def list_dependencies(db: Session, project_id: int) -> list[TaskDependency]:
 
 
 def create_work_session(db: Session, **fields) -> WorkSession:
+    fields["technical_retry_count"] = 0
     from app.work import provenance
     from app.work.production import WorkSessionPurpose
 

@@ -370,6 +370,34 @@ create_learning_priority 与 request_training 通过已有 DecisionEnvelope、Au
 目录与语义清单的精确集合分别在 test_m2_tools 和 test_m2_decisions 增补两个学习工具；
 它们均为 required，原有 optional 集合及缺失决策时的拒绝断言不变。
 
+### U13：执行尝试与结构化遥测（实施前登记，2026-09-20）
+
+WorkSession.runtime_session_ref 继续表示原有本地会话引用，快照、身份、用途与目标保护
+保持不变。runtime_attempts 另存请求键、尝试次序、实际幂等键、原实例指纹、远端 run /
+session 引用、进展和终态出处；请求身份先于外部副作用持久化，远端接受后保存引用再等待。
+管理对话的正常轮次是不同请求，不增加 technical_retry_count；仅同一请求的显式技术
+重试增加计数。旧会话未采集的重试历史保持 NULL，新会话才初始化为 0。
+
+app/work/telemetry.py 是执行事实的唯一写者。adapter 通过不依赖领域模型的观察接口
+回报结构化事实；宿主接入普通执行及受控管理 / 评审会话。remote 引用写入一次，原请求
+身份和已确认终态不可重写。未知结果、断流和主机传输错误保留不确定性，可由以后查得的
+远端事实收敛，不能伪装成功或提前封死为已确认远端失败。主机结果与远端结果明确区分。
+
+runtime_telemetry 只保存冻结词表中的有界结构化观察，保留 7 天，分页最多 100 条并有界
+清理；不保存原始 token、完整提示词、工具参数、隐藏推理或凭证。未知 / 非法事件只记
+通用诊断，重复、乱序和晚到消息不直接修改 Task、Review 或 Decision，不扩大领域事件集。
+重建读取使用已存执行引用，并核对原实例指纹；不能在换绑后查询替换实例来解释旧执行。
+
+test_m3_contract 的欠账守卫同步改为核验已落地的 runtime_attempts / runtime_telemetry
+及可空 technical_retry_count，不再强制它们缺失。重试语义的事实来源指向新载体，
+系统技术重试与 Manager 重新规划的所有者、计数器和自动执行边界保持独立；U15 的
+重试策略仍待实施。未观测到的 token 用量不再在 WorkSession.cost 中补造为 0。
+
+v56 增量迁移须通过临时库 up/down/up、单 head、无漂移及原有归属 / 快照守卫；新增
+test_m3_telemetry 与 test_m3_execution_migration 验证真实宿主接缝、引用持久顺序、历史
+未知值和独立进程读取。本包提供 U15–U17 所需执行事实，不代替重试、远端停止、崩溃
+接管或费用归集的后续验收。
+
 **M3 开工前的三条纪律（沿用 M2）**：
 
 ```text

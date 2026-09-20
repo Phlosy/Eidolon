@@ -338,9 +338,13 @@ RUNTIME_TELEMETRY_KINDS: tuple[str, ...] = tuple(kind.value for kind in RuntimeT
 #: 遥测 → 现有 adapter 事件（`app/runtimes/base.RuntimeEventKind`）的映射。
 #: **不新造第二套 adapter 词表**：能对上的就直接对上。
 TELEMETRY_ADAPTER_EVENT: dict[str, str] = {
+    RuntimeTelemetryKind.session_started.value: "status",
     RuntimeTelemetryKind.session_completed.value: "completed",
+    RuntimeTelemetryKind.session_failed.value: "error",
     RuntimeTelemetryKind.message_completed.value: "message",
     RuntimeTelemetryKind.tool_called.value: "tool_call",
+    RuntimeTelemetryKind.tool_completed.value: "tool_call",
+    RuntimeTelemetryKind.tool_failed.value: "tool_call",
     RuntimeTelemetryKind.artifact_created.value: "artifact",
     RuntimeTelemetryKind.runtime_error.value: "error",
     RuntimeTelemetryKind.runtime_warning.value: "status",
@@ -422,10 +426,10 @@ MANAGEMENT_REPLAN_OWNER = "manager_agent"
 RETRY_SEMANTICS: dict[str, RetrySemantics] = {
     "technical_retry": RetrySemantics(
         owner=TECHNICAL_RETRY_OWNER,
-        fact_host="runtime telemetry（work_sessions.error / runtime.error）",
+        fact_host="runtime_attempts + work_sessions.technical_retry_count",
         counter="technical_retry_count",
         auto=True,
-        note="网络抖动/超时/容器重启：有限次 + 退避；耗尽 ⇒ 上报事实，不自动改方案",
+        note="U13 已保存请求/尝试事实；U15 待实现有限次 + 退避策略；不自动改方案",
     ),
     "management_replan": RetrySemantics(
         owner=MANAGEMENT_REPLAN_OWNER,

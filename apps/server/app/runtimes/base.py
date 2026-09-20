@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
+from typing import Protocol
 
 from app.models.enums import RuntimeType
 
@@ -84,10 +85,53 @@ class RuntimeSession:
     completed_turns: dict[str, tuple[str, "RuntimeReply"]] = field(default_factory=dict, repr=False)
     # One finite host loop per local session. Durable attempts/recovery are separate.
     conversation_started: bool = False
+    # Installed by the host before sending. Adapters know no database/domain types.
+    attempt: "RuntimeAttemptObserver | None" = field(default=None, repr=False)
+    remote_session_ref: str | None = None
 
 
 class RuntimeProtocolError(RuntimeError):
     """A controlled response was unavailable or could not be authenticated to its run."""
+
+
+class RuntimeAttemptObserver(Protocol):
+    request_key: str
+    idempotency_key: str
+
+    def accepted(self, run_id: str, remote_session_ref: str) -> None: ...
+
+    def terminal(self, status: str, source: str) -> None: ...
+
+    def observe(self, event: "RuntimeEvent") -> None: ...
+
+
+def accept_remote_run(session: RuntimeSession, run_id: str, remote_session_ref: str) -> None:
+    if not isinstance(run_id, str) or not re.fullmatch(r"[A-Za-z0-9_.:/-]{1,256}", run_id):
+        raise RuntimeProtocolError("run_id_invalid")
+    session.remote_run_id = run_id
+    session.remote_session_ref = remote_session_ref
+    session.cancel_confirmed = None
+    if session.attempt is not None:
+        # A failed durable acknowledgement aborts the path before remote waiting.
+        session.attempt.accepted(run_id, remote_session_ref)
+
+
+def observe_remote_terminal(session: RuntimeSession, status: str, source: str) -> None:
+    if session.attempt is not None:
+        session.attempt.terminal(status, source)
+
+
+@dataclass(frozen=True)
+class RuntimeRunReference:
+    local_session_ref: str
+    remote_run_id: str
+    remote_session_ref: str
+
+
+@dataclass(frozen=True)
+class RuntimeRunStatus:
+    status: str  # running / completed / failed / unknown; never a domain status
+    source: str
 
 
 @dataclass(frozen=True)
@@ -99,7 +143,9 @@ class RuntimeReply:
     usage: dict | None = None
 
 
-def controlled_request_key(session: RuntimeSession, request_id: str, timeout: float) -> str:
+def controlled_request_key(
+    session: RuntimeSession, request_id: str, timeout: float, *, validate_only: bool = False
+) -> str:
     if session.status != "running":
         raise RuntimeProtocolError("session_not_running")
     if session.background and not session.background.done():
@@ -110,6 +156,10 @@ def controlled_request_key(session: RuntimeSession, request_id: str, timeout: fl
         raise RuntimeProtocolError("invalid_session_id")
     if not math.isfinite(timeout) or not 0 < timeout <= 900:
         raise RuntimeProtocolError("invalid_turn_timeout")
+    if session.attempt is not None and not validate_only:
+        if session.attempt.request_key != request_id:
+            raise RuntimeProtocolError("attempt_request_mismatch")
+        return session.attempt.idempotency_key
     # Both runtimes scope idempotency beyond a conversation. Include its identity.
     return hashlib.sha256(f"{session.id}\0{request_id}".encode()).hexdigest()
 
@@ -223,6 +273,12 @@ class RuntimeAdapter(ABC):
         A completed turn leaves the session running for the next host receipt.
         """
         raise RuntimeProtocolError("controlled_turn_unsupported")
+
+    async def query_run(
+        self, instance: RuntimeInstance, reference: RuntimeRunReference
+    ) -> RuntimeRunStatus:
+        """Read-only reconciliation; never starts or resumes a remote execution."""
+        raise RuntimeProtocolError("run_query_unsupported")
 
     @abstractmethod
     def stream_events(self, session: RuntimeSession) -> AsyncIterator[RuntimeEvent]: ...

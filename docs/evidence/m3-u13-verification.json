@@ -1,0 +1,360 @@
+{
+  "schema_version": 1,
+  "unit": "U13",
+  "requirements": [
+    "R4"
+  ],
+  "status": "verified",
+  "baseline_head": "5058da956044557b348911dc657ecf5c196e4153",
+  "generated_at": "2026-09-20T10:16:25.917820+00:00",
+  "worker_receipt": {
+    "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-return.json",
+    "sha256": "4ee42125116719e1de3c265426016d7b9ba481acf18736f0426b84c9d7f5821b"
+  },
+  "worker_verification": [
+    {
+      "unit": "U13",
+      "behavior_changed": true,
+      "strategy": "Existing focused baseline followed by proof-first new behavior and separately witnessed fault/SQL counterexamples.",
+      "existing_tests_inspected": [
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_provenance.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_runtime_turns.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_runtime_conversation.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_runtime.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_sessions.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_runtimes_behavior.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_session_purpose_migration.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_discovery_migration.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_runtime_operation_migration.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_dispatch_migration.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_contract.py"
+      ],
+      "tests_added_or_changed": [
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_contract.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_execution_migration.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_discovery_migration.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_dispatch_migration.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_runtime_operation_migration.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_session_purpose_migration.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_telemetry.py"
+      ],
+      "tests_used_unchanged": [
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m2_contract.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_provenance.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_runtime_turns.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_runtime_conversation.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_sessions.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_runtime.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_management_runner.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m2_dag_runtime.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m2_golden_path.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_runtimes_behavior.py",
+        "/Users/ponk/workspace/Eidolon/apps/server/tests/test_mock_runtime.py"
+      ],
+      "witnessed_transcript_receipts": [
+        {
+          "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-preimplementation-receipt.json",
+          "sha256": "7cdb5f70adecb073dbc686b42cb9bd9df7b56740420a0712c37f6cfccb235f44",
+          "evidence_type": "Transcribed contemporaneously from witnessed tool output; not a preserved raw log.",
+          "contents": {
+            "evidence_type": "Contemporaneous receipt transcribed from witnessed tool output; these first two runs were not redirected to raw log files.",
+            "baseline": {
+              "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m2_contract.py tests/test_m3_provenance.py tests/test_m3_runtime_turns.py tests/test_m3_runtime_conversation.py tests/test_m3_management_sessions.py tests/test_runtimes_behavior.py -q --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-baseline-1",
+              "cwd": "/Users/ponk/workspace/Eidolon/apps/server",
+              "exit_code": 0,
+              "result": "293 passed, 1 warning in 20.66s",
+              "warning": "existing Starlette/httpx testclient deprecation"
+            },
+            "red": {
+              "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py -q --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-red-1",
+              "exit_code": 1,
+              "result": "5 failed, 1 warning in 4.13s",
+              "failures": [
+                "OpenClaw worker terminal={} emitted completed",
+                "OpenClaw worker terminal.status=unrecognized emitted completed",
+                "OpenClaw worker terminal.status=timeout emitted completed",
+                "Hermes EOF last event was message, expected error",
+                "Management durable-ordering test: ModuleNotFoundError app.models.runtime_execution"
+              ],
+              "production_writes_before_red": false
+            }
+          }
+        },
+        {
+          "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-first-implementation-receipt.json",
+          "sha256": "75d93bf0bf94e86b20d52d0d68684cef64fb26a48b2c27c603b292619f406409",
+          "evidence_type": "Transcribed contemporaneously from witnessed tool output; not a preserved raw log.",
+          "contents": {
+            "evidence_type": "Transcribed from witnessed tool output; original command not redirected",
+            "command": "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py tests/test_m3_runtime_turns.py tests/test_m3_runtime_conversation.py -q --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-focused-1",
+            "exit_code": 0,
+            "result": "135 passed, 1 warning in 13.40s"
+          }
+        }
+      ],
+      "preserved_runs": [
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-focused-2.log",
+          "sha256": "f439a9a801f365a9a3884fe1a3e3285ef073c567ff3457f23e71e35d66b34288",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py tests/test_m3_execution_migration.py -q --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-focused-2"
+          ],
+          "exit_code": 1,
+          "result": "18 passed, 1 failed, 1 warning in 7.41s",
+          "note": "RuntimeAttempt migration/metadata column ordering differed; corrected before subsequent runs.",
+          "evidence_type": "preserved process stdout/stderr"
+        },
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-focused-3.log",
+          "sha256": "eca82efe537b2ecd14f5d9a1394b844fbb70d564ff4c7f26a76f90abf577b0a7",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py tests/test_m3_execution_migration.py -q --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-focused-3"
+          ],
+          "exit_code": 0,
+          "result": "28 passed, 1 warning in 8.53s",
+          "note": null,
+          "evidence_type": "preserved process stdout/stderr"
+        },
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-fault-red-1.log",
+          "sha256": "9f9f9f4c90e6238e5bb902e8e8e6dda379921bab9c9781b9f92ff10233206ea0",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py -q -k host_outcome_storage_failure or worker_orchestrator --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-fault-red-1"
+          ],
+          "exit_code": 1,
+          "result": "6 failed, 24 deselected, 1 warning in 1.50s",
+          "note": "Before fixes: two Hermes worker POSTs omitted the persisted session_id; four host outcome-write failures overrode conversation return/cancellation and cleanup.",
+          "evidence_type": "preserved process stdout/stderr"
+        },
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-fault-red-2.log",
+          "sha256": "22ccbe4524a484730ba91d22da9d88b8b15bf979949167f059d53cf4962c94b9",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py -q -k skip_worker_finalization or operation_error_has_only --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-fault-red-2"
+          ],
+          "exit_code": 1,
+          "result": "5 failed, 30 deselected, 1 warning in 1.35s",
+          "note": "Before fixes: four host outcome-write failures bypassed worker finalization; OpenClaw operation error copied secret-bearing raw error text.",
+          "evidence_type": "preserved process stdout/stderr"
+        },
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-guards-red-1.log",
+          "sha256": "d19ce518f2b70aa0a286860dfb22e84fc49e146ae1ebf2f4b24991161d54037e",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py -q -k sql_cannot_fabricate --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-guards-red-1"
+          ],
+          "exit_code": 1,
+          "result": "4 failed, 35 deselected, 1 warning in 1.13s",
+          "note": "Before fixes: raw SQL admitted acceptance without run ID, unreferenced Hermes/OpenClaw terminal claims, and mock-source claims on real sessions.",
+          "evidence_type": "preserved process stdout/stderr"
+        },
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-focused-4.log",
+          "sha256": "e76f68412753c70b8f20831ec5cf10f153010262fd32fc1238b071f4f52b8e50",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py tests/test_m3_execution_migration.py -q --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-focused-4"
+          ],
+          "exit_code": 0,
+          "result": "41 passed, 1 warning in 9.78s",
+          "note": null,
+          "evidence_type": "preserved process stdout/stderr"
+        },
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-regression-1.log",
+          "sha256": "1abb38fece0792741d432564f94469a731757dcaf149fe710b72d9642b194be6",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py tests/test_m3_execution_migration.py tests/test_m2_contract.py tests/test_m3_contract.py tests/test_m3_provenance.py tests/test_m3_runtime_turns.py tests/test_m3_runtime_conversation.py tests/test_m3_management_sessions.py tests/test_m3_management_runtime.py tests/test_m3_management_runner.py tests/test_m2_dag_runtime.py tests/test_m2_golden_path.py tests/test_runtimes_behavior.py tests/test_mock_runtime.py tests/test_m3_runtime_operation_migration.py tests/test_m3_session_purpose_migration.py tests/test_m3_management_dispatch_migration.py tests/test_m3_management_discovery_migration.py -q --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-regression-1"
+          ],
+          "exit_code": 1,
+          "result": "574 passed, 2 failed, 1 warning in 63.65s",
+          "note": "Only obsolete M3 contract debt guards failed: telemetry registry was required nonempty and technical_retry_count was required absent. Narrow test updates were authorized and both passed in final focused run. This combined run is not described as fully green.",
+          "evidence_type": "preserved process stdout/stderr"
+        },
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-guards-red-2.log",
+          "sha256": "2bb1d71d4a013fde6f0798baeaa3a30e686fef5325555db9d36ca90a1e7033a7",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py -q -k sql_cannot_fabricate --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-guards-red-2"
+          ],
+          "exit_code": 1,
+          "result": "1 failed, 4 passed, 35 deselected, 1 warning in 1.19s",
+          "note": "Before fix: optional host-outcome tuple admitted NULL outcome with reason/timestamp; explicit non-NULL requirement added to model and migration.",
+          "evidence_type": "preserved process stdout/stderr"
+        },
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-final-focused.log",
+          "sha256": "4e67fd2c86b5f309a83b448e1a2674d6d89cf719935e2c5261a4c9291d5da6ca",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m pytest tests/test_m3_telemetry.py tests/test_m3_execution_migration.py tests/test_m3_contract.py -q --basetemp /var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-final-focused"
+          ],
+          "exit_code": 0,
+          "result": "97 passed, 1 warning in 14.13s",
+          "note": "Final U13 behavior/migration and complete M3 contract checks.",
+          "evidence_type": "preserved process stdout/stderr"
+        },
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-static-1.log",
+          "sha256": "d0e7b87e44b2ac4e93229b2a9d108a73164caead051afb9b7ae8e9ec2d753102",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m ruff check app/models/runtime_execution.py app/models/project.py app/models/__init__.py app/repositories/project.py app/runtimes/base.py app/runtimes/hermes/adapter.py app/runtimes/openclaw/adapter.py app/workflow/orchestrator.py app/work/production.py app/work/runtime_conversation.py app/work/telemetry.py migrations/versions/56b215ea43f0_v56_durable_execution.py tests/test_m3_telemetry.py tests/test_m3_execution_migration.py tests/test_m3_runtime_operation_migration.py tests/test_m3_session_purpose_migration.py tests/test_m3_management_dispatch_migration.py tests/test_m3_management_discovery_migration.py",
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m ruff format --check app/models/runtime_execution.py app/models/project.py app/models/__init__.py app/repositories/project.py app/runtimes/base.py app/runtimes/hermes/adapter.py app/runtimes/openclaw/adapter.py app/workflow/orchestrator.py app/work/production.py app/work/runtime_conversation.py app/work/telemetry.py migrations/versions/56b215ea43f0_v56_durable_execution.py tests/test_m3_telemetry.py tests/test_m3_execution_migration.py tests/test_m3_runtime_operation_migration.py tests/test_m3_session_purpose_migration.py tests/test_m3_management_dispatch_migration.py tests/test_m3_management_discovery_migration.py",
+            "git diff --check"
+          ],
+          "exit_code": 0,
+          "result": "Ruff check passed; 18 files formatted; git diff --check passed.",
+          "note": null,
+          "evidence_type": "preserved process stdout/stderr"
+        },
+        {
+          "log_path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-final-static.log",
+          "sha256": "2a51fff9cad4e4b0d6677955b5cb1c265722b52ac8c592ec02dfbd00eb2d0dbc",
+          "commands": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m ruff check app/models/runtime_execution.py app/models/project.py app/models/__init__.py app/repositories/project.py app/runtimes/base.py app/runtimes/hermes/adapter.py app/runtimes/openclaw/adapter.py app/workflow/orchestrator.py app/work/production.py app/work/runtime_conversation.py app/work/telemetry.py migrations/versions/56b215ea43f0_v56_durable_execution.py tests/test_m3_telemetry.py tests/test_m3_execution_migration.py tests/test_m3_contract.py tests/test_m3_runtime_operation_migration.py tests/test_m3_session_purpose_migration.py tests/test_m3_management_dispatch_migration.py tests/test_m3_management_discovery_migration.py",
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python -m ruff format --check app/models/runtime_execution.py app/models/project.py app/models/__init__.py app/repositories/project.py app/runtimes/base.py app/runtimes/hermes/adapter.py app/runtimes/openclaw/adapter.py app/workflow/orchestrator.py app/work/production.py app/work/runtime_conversation.py app/work/telemetry.py migrations/versions/56b215ea43f0_v56_durable_execution.py tests/test_m3_telemetry.py tests/test_m3_execution_migration.py tests/test_m3_contract.py tests/test_m3_runtime_operation_migration.py tests/test_m3_session_purpose_migration.py tests/test_m3_management_dispatch_migration.py tests/test_m3_management_discovery_migration.py",
+            "git diff --check"
+          ],
+          "exit_code": 0,
+          "result": "Ruff check passed; 19 files formatted; git diff --check passed.",
+          "note": "Final changed-path static verification.",
+          "evidence_type": "preserved process stdout/stderr"
+        }
+      ],
+      "early_static_failures_witnessed": "Initial Ruff check reported 122 errors (5 fixed, 117 remaining), mostly formatting; after formatting a second check reported 29 errors (27 long literals and two imported pytest fixture names). These two early checks were tool-output-only and were corrected; final static log passes. No raw log is claimed for these early checks.",
+      "verified_behaviors": [
+        "Management and review requests commit intent before POST and acceptance before status waiting across independent database sessions; separate dialogue turns keep retry count zero.",
+        "Worker orchestration uses the real adapter and real finalization database path; intent, idempotency key, local session and submitted Hermes remote session reference agree.",
+        "Fresh Python process reconstructs original persisted references and performs only a read-only Hermes GET; no send/resume occurs, query does not mutate attempt, and unknown outcome can later reconcile to explicit terminal status while host failure remains retained.",
+        "Runtime resource/host/version/Person/employee ownership changes and changed membership/company scope prevent querying replacement credentials/runtime.",
+        "Explicit same-request retries preserve request input digest, use a new attempt/idempotency key, and increment technical_retry_count independently of task rework count; uncertain remote attempts cannot be blindly retried.",
+        "Duplicate, out-of-order, late, malformed and secret-bearing telemetry does not write Task/Review/Decision business state or retain prompts/tool args/hidden reasoning/token fragments; unknown usage never becomes zero.",
+        "Observation reads use historical company scope, pagination is bounded to 100, seven-day expiry is enforced on reads, pruning is bounded and preserves durable attempts.",
+        "Both real adapters stop before waiting when acceptance persistence callback fails; host outcome-write failures retain primary cancellation/error and required cleanup/finalization, with safe disclosure and no claimed receipt.",
+        "OpenClaw unknown/missing terminal and Hermes EOF/unknown completion-shaped event never become success; raw OpenClaw operation errors expose only a fixed structured reason.",
+        "v56 upgrade/down/upgrade, metadata parity, alembic check, single head, old snapshots and NULL retry history; downgrade refuses populated attempt history before destructive DDL.",
+        "Original WorkSession identity/runtime-ref/end/target guards remain intact; new SQL guards reject partial acceptance/host tuples, unreferenced remote terminal claims, attempt identity rewrites and deletion."
+      ],
+      "no_test_exceptions": [],
+      "warnings": "Existing Starlette/httpx TestClient deprecation only."
+    }
+  ],
+  "parent_verification": [
+    {
+      "command": "make test-server",
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "status": "passed",
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-parent-server.log",
+      "result": "2309 passed, 16 deselected, 118 warnings in 267.01s (0:04:27)"
+    },
+    {
+      "command": "make lint",
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "status": "passed",
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-parent-lint.log",
+      "result": "Ruff check and format (492 Python files), TypeScript, ESLint, Prettier passed"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/models/__init__.py": "dd9d087d38fee7d4e0f33b94cdffb309080237544a02c1bb5df3895ddeb1638e",
+    "apps/server/app/models/project.py": "7aaefbea2a30b08f9052c007226d80cdeb48b2bb33962c236691db69f3d50484",
+    "apps/server/app/models/runtime_execution.py": "c5c6061a982b7dad6791e2179e78255a6c64f527cd69de30e0025e24e7c075ef",
+    "apps/server/app/repositories/project.py": "de1113d30f8c3950bd29e5de69167324106d72436d238e5b2ed23605f7808d43",
+    "apps/server/app/runtimes/base.py": "634b75d6df9f423d1a865b64506ca5086a783ca2aa6c09d77bf7199ffc4fcf87",
+    "apps/server/app/runtimes/hermes/adapter.py": "2f3f959d9ce92968fb3260a01b860fc4f0dec9795748fbffd6cd2446e725b259",
+    "apps/server/app/runtimes/openclaw/adapter.py": "261d1f0cb15d8d5607aeb96b4da7f9758d82d390d334af7e81c78a2f669e00e3",
+    "apps/server/app/work/production.py": "94c20df76bc4b932286213aed11fb21fe02a9751364e13f562a249f72896e76f",
+    "apps/server/app/work/runtime_conversation.py": "22f8dff7cf334e39e08e32262d32fff0a33a922700c5527a073b0da56c8a4df1",
+    "apps/server/app/work/telemetry.py": "b9a53e6062cad2db94d08a404b43904b8a91f5fcadb33c6ea78b9048d03c522c",
+    "apps/server/app/workflow/orchestrator.py": "0bb410ae2d855af7797038bff3f85e9a62b341b76d3107457e06dd565198677a",
+    "apps/server/migrations/versions/56b215ea43f0_v56_durable_execution.py": "c174f63040c5a8fa872da355721a4d894dd466804a8c5f38321b3819435ab586",
+    "apps/server/tests/test_m3_contract.py": "f7c6d6e88e415beac5745c33df1c458c99afd5c3840d90f3c74c29defda6d3d6",
+    "apps/server/tests/test_m3_execution_migration.py": "da829c1d5cbbbc4e552ba90f22d35538b988d833da4292f350dd595ab7af92eb",
+    "apps/server/tests/test_m3_management_discovery_migration.py": "defed4c1adc55f1a36fd1bd81e501343fbed4a309f36e74bf84afe4702862c89",
+    "apps/server/tests/test_m3_management_dispatch_migration.py": "1d1023eff0ee027eba2bae8afcd1c9c2b17927f3a959febedb66ffa4b4514c6c",
+    "apps/server/tests/test_m3_runtime_operation_migration.py": "066a928503d0cf1d881376ef52cd0e7f5d74896acc5db6b76e413a0e142eb6aa",
+    "apps/server/tests/test_m3_session_purpose_migration.py": "b55f294eeb1874898713f82ce846d121348e49fdd33ad77e3793910bf93d1e13",
+    "apps/server/tests/test_m3_telemetry.py": "870ef3f47886e78e6964cdb4fba6ef76e15a56bb16b20d4e299fd90df39ebf91"
+  },
+  "raw_evidence": [
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-fault-red-1.log",
+      "sha256": "9f9f9f4c90e6238e5bb902e8e8e6dda379921bab9c9781b9f92ff10233206ea0"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-fault-red-2.log",
+      "sha256": "22ccbe4524a484730ba91d22da9d88b8b15bf979949167f059d53cf4962c94b9"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-final-focused.log",
+      "sha256": "4e67fd2c86b5f309a83b448e1a2674d6d89cf719935e2c5261a4c9291d5da6ca"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-final-static.log",
+      "sha256": "2a51fff9cad4e4b0d6677955b5cb1c265722b52ac8c592ec02dfbd00eb2d0dbc"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-focused-2.log",
+      "sha256": "f439a9a801f365a9a3884fe1a3e3285ef073c567ff3457f23e71e35d66b34288"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-focused-3.log",
+      "sha256": "eca82efe537b2ecd14f5d9a1394b844fbb70d564ff4c7f26a76f90abf577b0a7"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-focused-4.log",
+      "sha256": "e76f68412753c70b8f20831ec5cf10f153010262fd32fc1238b071f4f52b8e50"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-guards-red-1.log",
+      "sha256": "d19ce518f2b70aa0a286860dfb22e84fc49e146ae1ebf2f4b24991161d54037e"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-guards-red-2.log",
+      "sha256": "2bb1d71d4a013fde6f0798baeaa3a30e686fef5325555db9d36ca90a1e7033a7"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-parent-lint.log",
+      "sha256": "79a32f3a9cd15778594e4b420f311a1478b2f670ebd01f5a7d0966ddaf448952"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-parent-server.log",
+      "sha256": "a86dbba47f7e5d10ed7920609d6b461ec8b5b7003280a70626b09718055f9a2e"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-regression-1.log",
+      "sha256": "1abb38fece0792741d432564f94469a731757dcaf149fe710b72d9642b194be6"
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u9-u13-xkqm_pmc/u13-static-1.log",
+      "sha256": "d0e7b87e44b2ac4e93229b2a9d108a73164caead051afb9b7ae8e9ec2d753102"
+    }
+  ],
+  "contract": {
+    "models": "RuntimeAttempt/runtime_attempts; RuntimeTelemetry/runtime_telemetry",
+    "writer": "app.work.telemetry.prepare_attempt and AttemptRecorder accepted/terminal/finish_host/observe methods",
+    "readers": "list_attempts/list_telemetry/reconstruct_attempt/query_attempt",
+    "request_digest": "Canonical host input prompt + declared rendering/runtime context + stable session/request/runtime identity; not a byte-for-byte transport framing or transient-timeout claim.",
+    "legacy": "WorkSession.technical_retry_count is NULL for historical rows and initialized to zero only in normal create_work_session; original runtime_session_ref remains the once-only local identity.",
+    "unknown": "Unknown is nonterminal; ended_at and terminal_source remain absent until explicit remote outcome. Host outcome/reason/time is independent and write-once.",
+    "migration": "56b215ea43f0 after 55a104d932ef",
+    "retention": "Durable attempt history retained; telemetry expires after seven days, bounded prune of 100 runs on writes and explicit prune supports bounded batches up to 1000."
+  },
+  "integration_inspection": [
+    "Inspected actual 19-file source/test/migration change set and verified it against the worker manifest.",
+    "Parent identified missing submitted Hermes session reference, host diagnostic failure interrupting cleanup, raw error retention, and SQL NULL acceptance/terminal bypass; worker reproduced before fixes. The worker also reproduced the partial host-outcome tuple bypass.",
+    "M2 compatibility registered before production changes; two old M3 debt assertions were explicitly registered and replaced with concrete persistence assertions after their failures.",
+    "No shared fixture changes; the full suite and existing golden paths pass. Random-seed reruns are not required for this unit."
+  ],
+  "limitations": [
+    "No paid model requests, Docker operations, or development database migration for U13.",
+    "Fresh-process saved-reference query uses a real isolated SQLite database and substituted external HTTP transport; this is not real crash takeover.",
+    "Automatic retry/confirmed remote cancellation, takeover, and usage/cost settlement remain U15–U17.",
+    "No public API or frontend read surface changed. U9 frontend 392-test/build evidence remains the latest; those gates were not repeated here.",
+    "The existing SQLite migration chain is the supported and tested database path; PostgreSQL behavior is not claimed.",
+    "The parent integration inspection is not a new independent phase-ending review receipt."
+  ],
+  "delivery": {
+    "local_commit_only": true,
+    "push_or_pr": false,
+    "user_tmp_untouched": true
+  }
+}

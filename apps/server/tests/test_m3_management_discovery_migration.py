@@ -97,7 +97,7 @@ def test_v55_up_down_up_preserves_history_and_matches_metadata(tmp_path):
                 connection.exec_driver_sql("SELECT * FROM management_dispatches").all() == history
             )
         scripts = ScriptDirectory.from_config(_alembic_config())
-        assert scripts.get_heads() == [REVISION]
+        assert scripts.get_heads() == ["56b215ea43f0"]
         assert scripts.get_revision(REVISION).down_revision == PREVIOUS
     finally:
         migrated.dispose()

@@ -159,7 +159,7 @@ def test_v52_up_down_up_check_preserves_legacy_audits_and_guards(tmp_path):
         migrate("head")
         verify()
         script = ScriptDirectory.from_config(config)
-        assert script.get_heads() == ["55a104d932ef"]
+        assert script.get_heads() == ["56b215ea43f0"]
         assert script.get_revision("52c94fd1a807").down_revision == "51b83e04a6f2"
     finally:
         engine.dispose()

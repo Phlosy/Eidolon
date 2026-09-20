@@ -927,10 +927,16 @@ def test_every_declared_gap_is_owned_by_a_real_stage():
         ("telemetry", {kind: "M3.4" for kind in P.TELEMETRY_NOT_YET_MAPPED}),
         ("person_scope", P.PERSON_SCOPED_COLUMN_OWED),
     ):
-        if label != "provenance":
+        if label not in {"provenance", "telemetry"}:
             assert registry, f"{label} 的欠账尚未偿还，不能静默清空（P34）"
         for item, owner in registry.items():
             assert owner in P.M3_STAGES, f"{label}.{item} 的 owner 非法：{owner}"
+    assert not P.TELEMETRY_NOT_YET_MAPPED
+    assert set(P.TELEMETRY_ADAPTER_EVENT) == set(P.RUNTIME_TELEMETRY_KINDS)
+    assert {"request_key", "attempt_number", "remote_run_id", "terminal_source"} <= _columns(
+        "runtime_attempts"
+    )
+    assert {"attempt_id", "kind", "details_json", "expires_at"} <= _columns("runtime_telemetry")
 
 
 def test_retry_semantics_are_separate_and_non_overlapping():
@@ -943,11 +949,13 @@ def test_retry_semantics_are_separate_and_non_overlapping():
     assert technical.counter != management.counter
     assert technical.auto is True and management.auto is False
     assert technical.fact_host != management.fact_host
-    # 管理 replan 的计数器是现有事实（tasks.rework_count）；技术重试次数**尚无**承载 ⇒ 欠账
-    assert "work_sessions" in technical.fact_host or "runtime" in technical.fact_host
-    assert technical.counter not in {
-        column.name for table in TABLES.values() for column in table.columns
-    }, "技术重试计数器还没有列承载 —— 这是登记在案的欠账（M3.4）"
+    # U13 stores distinct attempt facts; legacy retry history remains unknown.
+    assert technical.fact_host == "runtime_attempts + work_sessions.technical_retry_count"
+    assert technical.counter == "technical_retry_count"
+    column = TABLES["work_sessions"].c[technical.counter]
+    assert column.nullable and column.server_default is None
+    assert technical.counter not in _columns("tasks")
+    assert {"request_key", "attempt_number", "idempotency_key"} <= _columns("runtime_attempts")
     assert "rework_count" in _columns("tasks"), "管理 replan 的计数器必须落在 tasks.rework_count"
 
 

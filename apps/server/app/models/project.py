@@ -157,6 +157,9 @@ class WorkSession(TimestampMixin, Base):
     employee_id: Mapped[int] = mapped_column(ForeignKey("employees.id"))
     runtime_type: Mapped[str] = mapped_column(String(50))
     runtime_session_ref: Mapped[str] = mapped_column(String(200), default="")
+    # NULL means pre-v56 retry history was never collected. New sessions start at
+    # zero in the canonical creation path, never by backfilling old records.
+    technical_retry_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # P11：本次会话使用的行为策略快照（可解释"为什么这次主动请求 Peer Review"）
     behavior_snapshot_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     behavior_snapshot_hash: Mapped[str] = mapped_column(String(64), default="", server_default="")

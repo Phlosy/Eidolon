@@ -60,7 +60,7 @@ from app.services import position_compat
 from app.services import tasks as task_service
 from app.work import contracts as C
 from app.work import dispatch as dispatch_runtime
-from app.work import dispatch_notices, handoff, review_fixture, work_defaults
+from app.work import dispatch_notices, handoff, review_fixture, telemetry, work_defaults
 
 logger = get_logger(__name__)
 
@@ -236,6 +236,7 @@ class Orchestrator:
     async def _run_task(self, task_id: int) -> None:
         employee_id: int | None = None
         work_session_id: int | None = None
+        attempt = None
         started = datetime.now(UTC)
         try:
             with SessionLocal() as db:
@@ -408,6 +409,17 @@ class Orchestrator:
                     for item in task_ctx.input_artifacts
                 )
                 prompt += f"\n\n## 上游交付物（本次任务的输入）\n\n{blocks}"
+            attempt = telemetry.prepare_attempt(
+                work_session_id,
+                session,
+                prompt,
+                request_key="worker",
+                kind="worker",
+                request_context={
+                    "runtime_config": runtime_config,
+                    "behavior_policy": policy.as_dict(),
+                },
+            )
             await adapter.send_task(
                 session,
                 prompt,
@@ -419,32 +431,45 @@ class Orchestrator:
                 },
             )
 
-            success, error = True, None
+            success, error = False, "stream_ended_without_terminal"
             async for event in adapter.stream_events(session):
+                attempt.observe(event)
                 if event.kind == RuntimeEventKind.error:
-                    success, error = False, str(event.data.get("message", "runtime error"))
-                elif event.kind == RuntimeEventKind.completed:
+                    success, error = False, "runtime_error"
                     break
+                elif event.kind == RuntimeEventKind.completed:
+                    if adapter.type.value == "mock":
+                        attempt.terminal("completed", "mock.stream")
+                    success, error = True, None
+                    break
+            attempt.finish_host(
+                "completed" if success else "failed",
+                "stream_completed" if success else "stream_ended",
+            )
             produced = await adapter.get_artifacts(session) if success else []
             duration = (datetime.now(UTC) - started).total_seconds()
             self._finalize(
                 task_id, success, produced, error, duration, work_session_id=work_session_id
             )
         except asyncio.CancelledError:
+            if attempt is not None:
+                attempt.finish_host_safely("cancelled", "cancelled")
             logger.info("work session cancelled", extra={"task_id": task_id})
             if work_session_id is not None:
                 self._finalize(
                     task_id, False, [], "cancelled", 0.0, work_session_id=work_session_id
                 )
             raise
-        except Exception as exc:
-            logger.exception("work session crashed", extra={"task_id": task_id})
+        except Exception:
+            if attempt is not None:
+                attempt.finish_host_safely("failed", "host_error")
+            logger.warning("work session crashed", extra={"task_id": task_id})
             if work_session_id is not None:
                 self._finalize(
                     task_id,
                     False,
                     [],
-                    f"internal error: {exc}",
+                    "runtime_error",
                     0.0,
                     work_session_id=work_session_id,
                 )
@@ -484,7 +509,7 @@ class Orchestrator:
             ws.ended_at = datetime.now(UTC)
             ws.summary = error or f"产出 {len(produced)} 个交付物"
             ws.error = error
-            ws.cost = {**(ws.cost or {}), "duration_sec": round(duration, 3), "tokens": 0}
+            ws.cost = {**(ws.cost or {}), "duration_sec": round(duration, 3)}
             # M1.5：算力成本（Sink）—— **计量总是发生**，扣款尽力而为（余额不足记 unpaid）。
             # 放在这里的原因：会话结束才有时长这个事实；计量失败绝不能影响任务终态，
             # 所以只记录日志（unpaid/异常都会在成本报表与日志里暴露）。

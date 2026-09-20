@@ -29,6 +29,8 @@ from app.repositories import persons, providers
 from app.runtimes import probe
 from app.runtimes.base import (
     RuntimeAdapter,
+    RuntimeEvent,
+    RuntimeEventKind,
     RuntimeInstance,
     RuntimeProtocolError,
     RuntimeReply,
@@ -36,8 +38,8 @@ from app.runtimes.base import (
     controlled_request_key,
 )
 from app.work import runtime_bridge as bridge
+from app.work import telemetry, tools
 from app.work import tool_executor as executor
-from app.work import tools
 from app.work.role_context import build_role_context
 
 
@@ -87,7 +89,7 @@ def _json(value):
 
 def _local_ready(session):
     try:
-        controlled_request_key(session, "host-validation", 1)
+        controlled_request_key(session, "host-validation", 1, validate_only=True)
     except RuntimeProtocolError as exc:
         raise _Stop(str(exc)) from exc
     if session.turn_lock.locked():
@@ -311,6 +313,7 @@ async def run_conversation(
     deadline = asyncio.get_running_loop().time() + limits.total_timeout_seconds
     fingerprint = None
     owns_session = False
+    attempt = None
 
     @contextmanager
     def checked_session(*, bind=False):
@@ -405,6 +408,14 @@ async def run_conversation(
             result["turns"].append(turn)
             timeout = min(limits.turn_timeout_seconds, _remaining(deadline))
             turn_deadline = asyncio.get_running_loop().time() + timeout
+            attempt = telemetry.prepare_attempt(
+                work_session_id,
+                runtime_session,
+                prompt,
+                request_key=request_id,
+                kind="controlled",
+                session_factory=session_factory,
+            )
             try:
                 reply = await _turn(adapter, runtime_session, prompt, request_id, timeout, turn)
             except TimeoutError:
@@ -426,6 +437,23 @@ async def run_conversation(
                 raise _Stop("reply_identity_mismatch")
             turn["run_id"] = reply.run_id
             seen_runs.add(reply.run_id)
+            # Real adapters commit acceptance before waiting. Alternate controlled
+            # adapters may only supply it with their correlated reply; this fallback
+            # records that later observation honestly, without changing its time.
+            attempt.accepted(
+                reply.run_id,
+                runtime_session.remote_session_ref
+                or (
+                    f"agent:main:eidolon-{runtime_session.id}"
+                    if adapter.type == "openclaw"
+                    else runtime_session.id
+                ),
+            )
+            attempt.terminal("completed", "host.reply")
+            attempt.observe(
+                RuntimeEvent(RuntimeEventKind.message, {"complete": True, "usage": reply.usage})
+            )
+            attempt.finish_host("completed", "reply_received")
             _remaining(deadline)
             if asyncio.get_running_loop().time() >= turn_deadline:
                 raise _Stop("turn_timeout")
@@ -480,6 +508,12 @@ async def run_conversation(
         # expose exception bodies or pretend the request was rolled back.
         result.update(status="failed", reason="conversation_failed")
     finally:
+        if attempt is not None and not attempt.finish_host_safely(
+            "cancelled" if runtime_session.status == "cancelled" else "failed",
+            "cancelled" if runtime_session.status == "cancelled" else "host_error",
+        ):
+            result["telemetry_error"] = "host_outcome_not_saved"
+        runtime_session.attempt = None
         if owns_session and runtime_session.status == "running":
             runtime_session.status = "completed" if result["status"] == "finished" else "failed"
     return redact_data(result)
