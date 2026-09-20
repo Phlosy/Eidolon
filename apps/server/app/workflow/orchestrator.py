@@ -67,6 +67,7 @@ from app.work import (
     budget_monitor,
     dispatch_notices,
     handoff,
+    recovery,
     review_fixture,
     runtime_admission,
     runtime_artifacts,
@@ -103,8 +104,12 @@ class Orchestrator:
         self._runner: asyncio.Task | None = None
         self._running: dict[int, asyncio.Task] = {}  # employee_id -> session task
         self._workers: dict[int, asyncio.Task] = {}  # original WorkSession id -> owned coroutine
+        self._recovery_cursor = 0
+        self._recovery_through: int | None = None
 
     def start(self) -> None:
+        self._recovery_through = recovery.work_session_boundary() or None
+        self._recovery_cursor = 0
         self._loop = asyncio.get_running_loop()
         self._runner = asyncio.create_task(self._run(), name="eidolon-orchestrator")
 
@@ -143,6 +148,13 @@ class Orchestrator:
         if signal["type"] in ("dispatch", "sweep"):
             self._stop_requested_workers()
             await self._interrupt_budget_workers()
+            if self._recovery_through is not None:
+                recovered = recovery.reconcile_committed_workers(
+                    after_id=self._recovery_cursor, through_id=self._recovery_through
+                )
+                self._recovery_cursor = recovered.cursor
+                if recovered.complete:
+                    self._recovery_through = None
             await self._dispatch_pending()
         elif signal["type"] == "stop_work":
             identifier = signal.get("work_session_id")

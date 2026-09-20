@@ -45,6 +45,7 @@ _HOST_REASONS = {
     "runtime_error",
     "host_error",
     "cancelled",
+    "domain_result_recovered",
 }
 
 
@@ -278,6 +279,19 @@ def record_stop_intent(db, attempt_id, reason):
     return row
 
 
+def record_host_outcome(db, attempt_id, outcome, reason):
+    """Single host-outcome writer, also usable in a source-recovery transaction."""
+    if outcome not in {"completed", "failed", "cancelled"} or reason not in _HOST_REASONS:
+        raise RuntimeProtocolError("invalid_host_outcome")
+    ensure_sqlite_transaction(db)
+    row = _attempt(db, attempt_id)
+    _read_scope(db, row.work_session_id)
+    if row.host_outcome is None:
+        row.host_outcome, row.host_reason, row.host_observed_at = outcome, reason, utcnow()
+        if row.ended_at is None:
+            row.status = "unknown"
+
+
 @dataclass(frozen=True)
 class AttemptRecorder:
     attempt_id: int
@@ -414,16 +428,8 @@ class AttemptRecorder:
             db.commit()
 
     def finish_host(self, outcome, reason):
-        if outcome not in {"completed", "failed", "cancelled"} or reason not in _HOST_REASONS:
-            raise RuntimeProtocolError("invalid_host_outcome")
         with self.session_factory() as db:
-            ensure_sqlite_transaction(db)
-            row = _attempt(db, self.attempt_id)
-            if row.host_outcome is not None:
-                return
-            row.host_outcome, row.host_reason, row.host_observed_at = outcome, reason, utcnow()
-            if row.ended_at is None:
-                row.status = "unknown"
+            record_host_outcome(db, self.attempt_id, outcome, reason)
             db.commit()
 
     def finish_host_safely(self, outcome, reason):

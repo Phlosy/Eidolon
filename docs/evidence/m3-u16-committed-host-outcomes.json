@@ -1,0 +1,345 @@
+{
+  "unit": "U16",
+  "component": "Recover missing host outcome from committed Worker result",
+  "status": "local component verified; full U16 still in progress",
+  "baseline_commit": "a442af4e4d0dfdcbb275174300f43e5894fb77d7",
+  "requirements": [
+    "R4",
+    "R5"
+  ],
+  "technical_decisions": [
+    "KTD8"
+  ],
+  "delivery": "focused local commit only, no push or PR",
+  "behavior_changed": true,
+  "source_rule": {
+    "requires": [
+      "completed real Worker WorkSession with ended_at",
+      "original completed RuntimeAttempt with ended_at",
+      "immutable RuntimeArtifactCollection for that attempt",
+      "missing first host_outcome",
+      "same company scope rechecked under write transaction"
+    ],
+    "writes": "completed / domain_result_recovered via telemetry single writer",
+    "retains": "all prior host outcomes, timestamps and reasons, including failed/cancelled",
+    "does_not_consult": [
+      "current employment/runtime binding",
+      "current Task state",
+      "elapsed execution age"
+    ]
+  },
+  "bounded_scan": {
+    "default_limit": 25,
+    "max_limit": 100,
+    "window": "WorkSession primary-key after_id..through_id",
+    "startup": "capture scoped max ID once; process one page per existing dispatch/sweep cycle, including dispatch disabled",
+    "completion": "stop scanning after captured cohort exhausted",
+    "failed_page": "cursor is not advanced; replay only missing writes",
+    "read_only_page": "does not acquire writer lock",
+    "write": "fresh short source-validation transaction for each eligible item"
+  },
+  "evidence_level": {
+    "domain": "real isolated SQLite, canonical artifact and cost services",
+    "runtime_result": "scripted original attempt/artifact, no native Runtime or model calls",
+    "process_fault": "os._exit(23) after outer domain commit before callback/host outcome",
+    "recovery": "fresh process fills missing host outcome then repeats scan; original finalizer also replays without duplicating effects",
+    "paid_requests": 0,
+    "docker_actions": 0
+  },
+  "coverage": {
+    "test_m3_recovery_cases": 36,
+    "new_cases_this_component": 24,
+    "strengthened_existing_cases": 1,
+    "scenarios": [
+      "actual process death and fresh-process recovery",
+      "existing completed/failed/cancelled host record retention",
+      "running or incomplete domain/collection/end evidence skipped",
+      "bounded pagination and invalid selectors",
+      "concurrent scanners",
+      "company-scoped discovery and shared-writer denial",
+      "caller-owned commit and rollback",
+      "read-only pages do not request writer lock",
+      "source changes after read-only scan",
+      "newer work beyond startup boundary excluded",
+      "existing loop works with dispatch disabled and stops rescanning",
+      "storage failure retries original page without duplicate effects"
+    ]
+  },
+  "proof_first": {
+    "observed": "19 failures at absent recovery capability before production edits, 11 existing behaviors passed; child stderr explicitly confirmed missing module on separate process proof",
+    "scope": "no production changes before the expected red"
+  },
+  "verification_receipts": [
+    {
+      "label": "committed-host-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recovery.py",
+        "-q",
+        "--tb=short",
+        "--show-capture=no"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 4.87,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/committed-host-red.log",
+      "summary": "19 expected failures due missing recovery entry point; 11 existing cases passed",
+      "log_sha256": "3568c809a26acc49fee85951f6b60aa004e4bd1ac2a8bd10bd329117d91c8538"
+    },
+    {
+      "label": "committed-host-process-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recovery.py::test_process_exit_after_domain_commit_preserves_recoverable_notification",
+        "-q",
+        "--tb=short",
+        "--show-capture=no"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 2.88,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/committed-host-process-red.log",
+      "summary": "expected fresh-process ModuleNotFoundError after actual exit23 and committed domain result",
+      "log_sha256": "74f8d7a48eb96212f9e7b5ef78c6f427265cb354260c2f9c24b0ff6d971ea990"
+    },
+    {
+      "label": "committed-host-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recovery.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 13.58,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/committed-host-green.log",
+      "summary": "96 passed, 1 warning",
+      "log_sha256": "dcb28eb5c8519ae72a3dfc76e85af2ebf534d9a13d9dffaf73fbb7bf54e6ec5c"
+    },
+    {
+      "label": "committed-host-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 6.05,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/committed-host-boundaries.log",
+      "summary": "36 passed, 1 warning",
+      "log_sha256": "b1a0c386cdcece47f21630093bc4199c53c7d27a4fdecb84eb5ca08bba2a1621"
+    },
+    {
+      "label": "committed-host-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/work/recovery.py",
+        "apps/server/app/work/telemetry.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_recovery.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.05,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/committed-host-static.log",
+      "summary": "4 Python paths lint passed",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "committed-host-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/work/recovery.py",
+        "apps/server/app/work/telemetry.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_recovery.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.05,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/committed-host-format.log",
+      "summary": "4 Python paths already formatted",
+      "log_sha256": "177f260a5645724013185e4b140c7045cc39e56c0c97b120f5cb23599f85f0de"
+    },
+    {
+      "label": "committed-host-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 295.12,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/committed-host-full-backend.log",
+      "summary": "2956 passed, 26 deselected, 118 warnings; 292.85 seconds pytest execution",
+      "log_sha256": "d2801a0d76a1f7a5eb12c51e350bb0300e4a4af3b5408c2a7643c2d31dfdfcf2"
+    },
+    {
+      "label": "u16-project-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/u16-project-python-lint.log",
+      "summary": "project Python lint passed",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "u16-project-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/u16-project-python-format.log",
+      "summary": "542 Python files already formatted",
+      "log_sha256": "046986ae815c9ed07e5fd8f9c7461898d21438cb577d68ea048ed4a511fd066d"
+    },
+    {
+      "label": "u16-project-web-types",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 4.28,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/u16-project-web-types.log",
+      "summary": "web tsc --noEmit passed",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "u16-project-web-lint",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "eslint",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 2.59,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/u16-project-web-lint.log",
+      "summary": "web eslint . passed",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/work/recovery.py": "cc78fb9c9c88bde6cd1b2ff247d95f2fda949d352c54d7477b923c41e8b8c022",
+    "apps/server/app/work/telemetry.py": "feeaf24c0552c7892e248173f6f16e5d8b3ac65773f031be0234e9c43067deb5",
+    "apps/server/app/workflow/orchestrator.py": "2d1585bacf0551334ce1a60ffbe2a70e467ad5c902626c981ba0029d5920d0f7",
+    "apps/server/tests/test_m3_recovery.py": "ed6a30b4f11a5a9f43b2be6d97ef16b66977d00906a7e3d9612bff9337e3553a",
+    "docs/m2-freeze.md": "d0da141ae6166503de7efdf6c9e549121a0a4c69bfe292128998ab0f2f294b79",
+    "docs/m3-u16-crash-recovery.md": "a23020377cf788dfcae782f91ad9df49d3f7d12984d1cf7983f14964d104b4d4"
+  },
+  "simplification": {
+    "skill": "ce-simplify-code",
+    "scope": "U16 production additions since fd25119 through current component 2: work/recovery.py, work/telemetry.py, workflow/orchestrator.py",
+    "plan_context": "docs/m3-implementation-plan.md, preserve settled decisions and separate historical facts from business actions",
+    "route": "inline for all three exact persona prompt assets",
+    "independent_review": false,
+    "fallback": "Fresh balanced-model worker dispatch previously failed prelaunch with agent thread limit reached; no active worker can free capacity and no supported release API. No further launch or reuse claimed in this pass.",
+    "outcomes": [
+      {
+        "lens": "reuse",
+        "complete": true,
+        "applied": 0,
+        "findings": [],
+        "assessment": "Existing EventBus transaction support and telemetry single writer reused. The two source observations deliberately address different transaction snapshots."
+      },
+      {
+        "lens": "quality",
+        "complete": true,
+        "applied": 0,
+        "findings": [],
+        "assessment": "Startup cursor and upper bound represent distinct facts. Fixture event timing remains separate. RecoveryBatch/Observation are bounded immutable read results; no extra service or business command channel."
+      },
+      {
+        "lens": "efficiency",
+        "complete": true,
+        "applied": 0,
+        "findings": [],
+        "assessment": "Primary-key page bound of 100, default25. Read-only ineligible pages avoid writer locks; finite startup cohort stops on exhaustion; no recurring idle scan or remote call."
+      }
+    ],
+    "skipped": [
+      {
+        "candidate": "Generalize the local company scope helper with management_dispatch._scope_query",
+        "reason": "No shared public helper with the same shape; four-line WorkSession-specific filter is clearer than broadening a security utility."
+      },
+      {
+        "candidate": "Batch every artifact-source inspection into a larger join / preload",
+        "reason": "At most 100 source lookups in a finite startup page, indexed by work_session and receipt PK. No measured problem; keep explicit before/after-lock validation and avoid speculative query restructuring."
+      }
+    ],
+    "verification": {
+      "python_lint": "u16-project-python-lint pass",
+      "python_format": "u16-project-python-format 542 files pass",
+      "web_types": "u16-project-web-types pass",
+      "web_lint": "u16-project-web-lint pass",
+      "tests": "committed-host-boundaries: 36 passed; committed-host-full-backend: 2956 passed, 26 deselected, 118 warnings"
+    },
+    "behavior_changes_from_simplification": false
+  },
+  "unchanged": [
+    "schema at v62, no migration",
+    "domain event vocabulary",
+    "Task/review state and current administrative control",
+    "artifact contents/acceptance/cost/legacy reflection effects",
+    "management runner default setting",
+    "user tmp/ unread and untouched"
+  ],
+  "not_claimed": [
+    "full U16 running-session/action/downstream-effect recovery",
+    "remote execution status reconstructed or stopped",
+    "new real native/model/business acceptance",
+    "actual Provider usage/currency or cumulative monetary enforcement",
+    "historical missing Event backfill",
+    "independent correctness review",
+    "PostgreSQL execution",
+    "browser/frontend build or tests"
+  ],
+  "pending": "U14 paid allowance question unanswered. U14 and U15/U17 real business/currency gates remain open. Original Worker deadline is process-local and must be addressed before safe running-session recovery."
+}

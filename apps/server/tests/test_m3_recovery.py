@@ -4,6 +4,7 @@ The runtime result is scripted; provenance, accepted bytes, costs, transactions 
 management discovery use their real services against the isolated test database.
 """
 
+import asyncio
 import json
 import subprocess
 import sys
@@ -11,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import event, select, text
 from sqlalchemy.exc import IntegrityError
 from test_m3_artifact_acceptance import completed_world as _completed_world
 from test_m3_artifact_acceptance import conversation_world as _conversation_world
@@ -20,6 +21,7 @@ from test_m3_artifact_acceptance import workspace_world as _workspace_world
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.events.bus import bus
+from app.models.base import utcnow
 from app.models.drive import DriveNode, DriveRevision
 from app.models.economy import ComputeUsage
 from app.models.enums import Currency
@@ -27,7 +29,9 @@ from app.models.event import Event
 from app.models.management_dispatch import ManagementDispatch
 from app.models.project import Task, WorkSession
 from app.models.runtime_artifact import RuntimeArtifactCollection
+from app.models.runtime_execution import RuntimeAttempt
 from app.services import drive
+from app.work import runtime_artifacts, telemetry
 from app.workflow.orchestrator import Orchestrator
 
 conversation_world = _conversation_world
@@ -154,25 +158,38 @@ def test_process_exit_after_domain_commit_preserves_recoverable_notification(db,
     )
     assert all(source.company_id == w.work.company_id for source in sources)
     assert all(source.actor_person_id == w.work.person_id for source in sources)
+    assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome is None
     db.rollback()
 
     recovery = subprocess.run(
         [
             sys.executable,
             "-c",
-            "import json; from app.work.management_dispatch import discover_sources; "
-            "print(json.dumps([discover_sources(limit=100), discover_sources(limit=100)]))",
+            "import json; from dataclasses import asdict; "
+            "from app.work.management_dispatch import discover_sources; "
+            "from app.work.recovery import reconcile_committed_workers, work_session_boundary; "
+            "boundary = work_session_boundary(); "
+            "print(json.dumps({'sources': [discover_sources(), discover_sources()], "
+            "'host': [asdict(reconcile_committed_workers(through_id=boundary)), "
+            "asdict(reconcile_committed_workers(through_id=boundary))]}))",
         ],
         capture_output=True,
         text=True,
         timeout=20,
-        check=True,
     )
-    first, second = json.loads(recovery.stdout)
+    assert recovery.returncode == 0, recovery.stderr
+    recovered = json.loads(recovery.stdout)
+    first, second = recovered["sources"]
     assert review_source_id in first and second == []
+    assert [
+        next(item["outcome"] for item in batch["items"] if item["work_session_id"] == w.work.id)
+        for batch in recovered["host"]
+    ] == ["repaired", "already_recorded"]
     repeated = run_finalizer(w, "replay")
     assert repeated.returncode == 0, repeated.stderr
     db.expire_all()
+    attempt = db.get(RuntimeAttempt, w.recorder.attempt_id)
+    assert attempt.host_outcome == "completed" and attempt.host_reason == "domain_result_recovered"
     assert [source.id for source in completion_events(db, w)] == source_ids
     dispatches = list(
         db.scalars(
@@ -327,3 +344,283 @@ def test_technical_failure_keeps_administrative_state_and_committed_release(
         db.scalars(select(Event).where(Event.task_id == w.task.id, Event.type == "task.blocked"))
     )
     assert len(blocked) == int(task_status == "in_progress")
+
+
+def recover_committed(**kwargs):
+    from app.work import recovery
+
+    kwargs.setdefault("through_id", recovery.work_session_boundary())
+    return recovery.reconcile_committed_workers(**kwargs)
+
+
+@pytest.mark.parametrize("existing_outcome", ["completed", "failed", "cancelled"])
+def test_recovery_retains_original_host_outcome(db, finalizing_world, existing_outcome):
+    w = finalizing_world
+    finalize(w)
+    w.recorder.finish_host(existing_outcome, "host_error")
+    db.expire_all()
+    original = db.get(RuntimeAttempt, w.recorder.attempt_id)
+    saved = (original.host_outcome, original.host_reason, original.host_observed_at)
+    result = recover_committed()
+    assert next(item.outcome for item in result.items if item.work_session_id == w.work.id) == (
+        "already_recorded"
+    )
+    db.refresh(original)
+    assert (original.host_outcome, original.host_reason, original.host_observed_at) == saved
+
+
+@pytest.mark.parametrize("source", ["running", "partial_collection", "no_collection", "no_end"])
+def test_recovery_requires_both_completed_work_and_accepted_collection(
+    db, finalizing_world, source
+):
+    w = finalizing_world
+    if source == "partial_collection":
+        runtime_artifacts.accept_collection(
+            db,
+            work_session_id=w.work.id,
+            attempt_id=w.recorder.attempt_id,
+            session=w.runtime,
+            produced=w.items,
+        )
+    elif source in {"no_collection", "no_end"}:
+        w.work.status = "completed"
+        w.work.ended_at = utcnow() if source == "no_collection" else None
+    db.commit()
+    original = (w.work.status, w.task.status, w.actor.current_task_id)
+    result = recover_committed()
+    item = next(item for item in result.items if item.work_session_id == w.work.id)
+    assert item.outcome == ("no_collection" if source == "no_collection" else "not_completed")
+    db.expire_all()
+    assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome is None
+    assert (w.work.status, w.task.status, w.actor.current_task_id) == original
+
+
+def test_recovery_pages_are_bounded_and_concurrent_repair_is_idempotent(db, finalizing_world):
+    w = finalizing_world
+    finalize(w)
+    page = recover_committed(limit=1)
+    assert len(page.items) == 1 and not page.complete
+    assert page.cursor < w.work.id
+    barrier = Barrier(2)
+
+    def scan():
+        barrier.wait(timeout=5)
+        return recover_committed(after_id=page.cursor, limit=1)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first, second = pool.submit(scan), pool.submit(scan)
+        results = [first.result(timeout=10), second.result(timeout=10)]
+    assert sorted(item.outcome for result in results for item in result.items) == [
+        "already_recorded",
+        "repaired",
+    ]
+    assert all(result.cursor == w.work.id and result.complete for result in results)
+    empty = recover_committed(after_id=w.work.id)
+    assert empty.complete and empty.items == ()
+
+
+@pytest.mark.parametrize(
+    "bounds",
+    [
+        {"limit": 0},
+        {"limit": 101},
+        {"limit": True},
+        {"after_id": -1},
+        {"after_id": True},
+        {"through_id": -1},
+        {"through_id": True},
+        {"after_id": 2, "through_id": 1},
+    ],
+)
+def test_recovery_rejects_invalid_page_bounds(bounds):
+    with pytest.raises(ValueError, match="recovery page"):
+        recover_committed(**bounds)
+
+
+def test_recovery_scan_is_company_scoped(db, finalizing_world):
+    from app.core.request_context import (
+        RequestIdentity,
+        reset_request_identity,
+        set_request_identity,
+    )
+
+    w = finalizing_world
+    finalize(w)
+    token = set_request_identity(RequestIdentity(1, w.work.company_id + 1000, "owner", 1))
+    try:
+        assert recover_committed().items == ()
+        # Supplying a foreign upper bound does not disclose or change its work.
+        assert recover_committed(through_id=w.work.id).items == ()
+    finally:
+        reset_request_identity(token)
+    db.expire_all()
+    assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome is None
+
+
+async def test_startup_recovers_committed_history_with_dispatch_disabled(
+    db, finalizing_world, monkeypatch
+):
+    from app.work import recovery
+
+    w = finalizing_world
+    finalize(w)
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", False)
+    original = recovery.reconcile_committed_workers
+    calls = []
+
+    def observe(**kwargs):
+        result = original(**kwargs)
+        calls.append(result)
+        return result
+
+    monkeypatch.setattr(recovery, "reconcile_committed_workers", observe)
+    runner = Orchestrator()
+    runner.start()
+    runner.notify({"type": "sweep"})
+    try:
+        async with asyncio.timeout(2):
+            while not calls:
+                await asyncio.sleep(0.01)
+        await runner._handle({"type": "sweep"})
+        assert len(calls) == 1 and calls[0].complete
+        assert any(item.outcome == "repaired" for item in calls[0].items)
+    finally:
+        await runner.stop()
+    db.expire_all()
+    assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome == "completed"
+    assert w.task.status == "in_review"
+
+
+def test_ineligible_recovery_page_does_not_request_a_writer_lock(db, finalizing_world):
+    from app.work import recovery
+
+    def read_session():
+        session = SessionLocal()
+
+        @event.listens_for(session.connection(), "before_cursor_execute")
+        def reject_write(_conn, _cursor, statement, _params, _context, _many):
+            assert not statement.upper().startswith(("BEGIN IMMEDIATE", "UPDATE", "INSERT"))
+
+        return session
+
+    result = recovery.reconcile_committed_workers(
+        through_id=finalizing_world.work.id, session_factory=read_session
+    )
+    assert result.complete and all(item.outcome == "not_completed" for item in result.items)
+
+
+def test_recovery_rechecks_domain_source_after_read_only_page(db, finalizing_world, monkeypatch):
+    from app.work import recovery
+
+    w = finalizing_world
+    finalize(w)
+    original = recovery.begin_observation
+
+    def change_before_lock(session):
+        with SessionLocal() as writer:
+            writer.get(WorkSession, w.work.id).status = "failed"
+            writer.commit()
+        original(session)
+
+    monkeypatch.setattr(recovery, "begin_observation", change_before_lock)
+    result = recover_committed()
+    item = next(item for item in result.items if item.work_session_id == w.work.id)
+    assert item.outcome == "not_completed"
+    db.expire_all()
+    assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome is None
+
+
+def test_recovery_does_not_touch_work_beyond_captured_boundary(db, finalizing_world):
+    w = finalizing_world
+    finalize(w)
+    result = recover_committed(through_id=w.work.id - 1)
+    assert result.complete and all(item.work_session_id < w.work.id for item in result.items)
+    db.expire_all()
+    assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome is None
+
+
+def test_host_outcome_writer_joins_caller_transaction(db, finalizing_world):
+    w = finalizing_world
+    finalize(w)
+    with SessionLocal() as writer:
+        telemetry.record_host_outcome(
+            writer, w.recorder.attempt_id, "completed", "domain_result_recovered"
+        )
+        writer.flush()
+        with SessionLocal() as reader:
+            assert reader.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome is None
+        writer.rollback()
+    db.expire_all()
+    assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome is None
+    with SessionLocal() as writer:
+        telemetry.record_host_outcome(
+            writer, w.recorder.attempt_id, "completed", "domain_result_recovered"
+        )
+        writer.commit()
+    db.expire_all()
+    assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome == "completed"
+
+
+def test_host_outcome_writer_rejects_foreign_company(db, finalizing_world):
+    from app.core.request_context import (
+        RequestIdentity,
+        reset_request_identity,
+        set_request_identity,
+    )
+    from app.runtimes.base import RuntimeProtocolError
+
+    w = finalizing_world
+    token = set_request_identity(RequestIdentity(1, w.work.company_id + 1000, "owner", 1))
+    try:
+        with pytest.raises(RuntimeProtocolError, match="execution_scope_unavailable"):
+            w.recorder.finish_host("failed", "host_error")
+    finally:
+        reset_request_identity(token)
+    db.expire_all()
+    assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome is None
+
+
+async def test_startup_scan_retries_failed_page_without_replaying_domain_effects(
+    db, finalizing_world, monkeypatch
+):
+    w = finalizing_world
+    finalize(w)
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", False)
+    event_ids = [row.id for row in completion_events(db, w)]
+    db.execute(
+        text(
+            "CREATE TRIGGER reject_recovered_host BEFORE UPDATE ON runtime_attempts "
+            "WHEN NEW.host_reason = 'domain_result_recovered' "
+            "BEGIN SELECT RAISE(ABORT, 'recovery storage unavailable'); END"
+        )
+    )
+    db.commit()
+    runner = Orchestrator()
+    runner.start()
+    try:
+        with pytest.raises(IntegrityError, match="recovery storage unavailable"):
+            await runner._handle({"type": "sweep"})
+        db.expire_all()
+        assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome is None
+        db.rollback()
+        db.execute(text("DROP TRIGGER reject_recovered_host"))
+        db.commit()
+        await runner._handle({"type": "sweep"})
+        db.expire_all()
+        assert db.get(RuntimeAttempt, w.recorder.attempt_id).host_outcome == "completed"
+        assert [row.id for row in completion_events(db, w)] == event_ids
+        assert (
+            len(
+                list(
+                    db.scalars(
+                        select(ComputeUsage).where(ComputeUsage.work_session_id == w.work.id)
+                    )
+                )
+            )
+            == 1
+        )
+    finally:
+        await runner.stop()
+        db.rollback()
+        db.execute(text("DROP TRIGGER IF EXISTS reject_recovered_host"))
+        db.commit()
