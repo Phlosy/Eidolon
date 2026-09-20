@@ -111,6 +111,8 @@ class Orchestrator:
         self._action_recovery_through: int | None = None
         self._worker_recovery_cursor = 0
         self._worker_recovery_through: int | None = None
+        self._decision_recovery_cursor = 0
+        self._decision_recovery_through: int | None = None
 
     def start(self) -> None:
         self._recovery_through = recovery.work_session_boundary() or None
@@ -119,6 +121,8 @@ class Orchestrator:
         self._worker_recovery_cursor = 0
         self._action_recovery_through = recovery.confirmation_boundary() or None
         self._action_recovery_cursor = 0
+        self._decision_recovery_through = recovery.decision_boundary() or None
+        self._decision_recovery_cursor = 0
         self._loop = asyncio.get_running_loop()
         self._runner = asyncio.create_task(self._run(), name="eidolon-orchestrator")
 
@@ -172,6 +176,14 @@ class Orchestrator:
                 self._action_recovery_cursor = actions.cursor
                 if actions.complete:
                     self._action_recovery_through = None
+            if self._decision_recovery_through is not None:
+                decisions = recovery.reconcile_decision_receipts(
+                    through_id=self._decision_recovery_through,
+                    after_id=self._decision_recovery_cursor,
+                )
+                self._decision_recovery_cursor = decisions.cursor
+                if decisions.complete:
+                    self._decision_recovery_through = None
             await self._dispatch_pending()
         elif signal["type"] == "stop_work":
             identifier = signal.get("work_session_id")

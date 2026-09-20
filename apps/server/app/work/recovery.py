@@ -7,10 +7,13 @@ from sqlalchemy import func, select
 from app.core.database import SessionLocal
 from app.core.request_context import get_request_identity
 from app.models.action_confirmation import ActionConfirmation
+from app.models.decision import DecisionRecord, ToolAudit
+from app.models.enums import DecisionStatus
 from app.models.project import WorkSession
 from app.models.runtime_artifact import RuntimeArtifactCollection
 from app.models.runtime_execution import RuntimeAttempt
-from app.work import action_confirmations
+from app.models.runtime_operation import RuntimeOperation
+from app.work import action_confirmations, decisions
 from app.work.dispatch_notices import begin_observation
 from app.work.telemetry import record_host_outcome
 
@@ -43,6 +46,20 @@ class ActionRecoveryBatch:
     cursor: int
     complete: bool
     items: tuple[ActionRecoveryObservation, ...]
+
+
+@dataclass(frozen=True)
+class DecisionRecoveryObservation:
+    decision_id: int
+    outcome: str
+    status: str | None
+
+
+@dataclass(frozen=True)
+class DecisionRecoveryBatch:
+    cursor: int
+    complete: bool
+    items: tuple[DecisionRecoveryObservation, ...]
 
 
 def _scoped(query, model=WorkSession):
@@ -244,5 +261,86 @@ def reconcile_approved_actions(*, through_id, after_id=0, limit=25, session_fact
             results.append(checked)
     cursor = observations[-1].confirmation_id if observations else through_id
     return ActionRecoveryBatch(
+        cursor, len(observations) < limit or cursor == through_id, tuple(results)
+    )
+
+
+def decision_boundary(*, session_factory=SessionLocal):
+    with session_factory() as db:
+        return db.scalar(_scoped(select(func.max(DecisionRecord.id)), DecisionRecord)) or 0
+
+
+def _observe_decision(db, row):
+    if (
+        row.status != DecisionStatus.executing.value
+        or row.resolved_at is not None
+        or row.superseded_by_id is not None
+    ):
+        return DecisionRecoveryObservation(row.id, "already_resolved", row.status)
+    operation = db.execute(
+        select(RuntimeOperation.id, RuntimeOperation.requested_action_count).where(
+            RuntimeOperation.decision_id == row.id
+        )
+    ).first()
+    if operation is None:
+        return DecisionRecoveryObservation(row.id, "no_runtime_operation", row.status)
+    received = db.scalar(
+        select(func.count())
+        .select_from(ToolAudit)
+        .where(ToolAudit.runtime_operation_id == operation.id)
+    )
+    if received != operation.requested_action_count:
+        return DecisionRecoveryObservation(row.id, "actions_incomplete", row.status)
+    if any(
+        audit.outcome == "confirmation_pending"
+        for audit in decisions.effective_action_audits(db, row.id)
+    ):
+        return DecisionRecoveryObservation(row.id, "awaiting_confirmation", row.status)
+    return DecisionRecoveryObservation(row.id, "needs_repair", row.status)
+
+
+def reconcile_decision_receipts(*, through_id, after_id=0, limit=25, session_factory=SessionLocal):
+    """Aggregate only a complete original set of effects; never replay an action."""
+    _validate_page(through_id, after_id, limit)
+    with session_factory() as db:
+        rows = db.execute(
+            _scoped(
+                select(
+                    DecisionRecord.id,
+                    DecisionRecord.status,
+                    DecisionRecord.resolved_at,
+                    DecisionRecord.superseded_by_id,
+                )
+                .where(DecisionRecord.id > after_id, DecisionRecord.id <= through_id)
+                .order_by(DecisionRecord.id)
+                .limit(limit),
+                DecisionRecord,
+            )
+        )
+        observations = [_observe_decision(db, row) for row in rows]
+    results = []
+    for observed in observations:
+        if observed.outcome != "needs_repair":
+            results.append(observed)
+            continue
+        with session_factory() as db:
+            begin_observation(db)
+            row = db.scalar(
+                _scoped(
+                    select(DecisionRecord).where(DecisionRecord.id == observed.decision_id),
+                    DecisionRecord,
+                )
+            )
+            if row is None:
+                checked = DecisionRecoveryObservation(observed.decision_id, "source_changed", None)
+            else:
+                checked = _observe_decision(db, row)
+                if checked.outcome == "needs_repair":
+                    decisions.refresh_from_receipts(db, row.id)
+                    checked = DecisionRecoveryObservation(row.id, "repaired", row.status)
+            db.commit()
+            results.append(checked)
+    cursor = observations[-1].decision_id if observations else through_id
+    return DecisionRecoveryBatch(
         cursor, len(observations) < limit or cursor == through_id, tuple(results)
     )

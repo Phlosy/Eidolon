@@ -1,0 +1,266 @@
+{
+  "unit": "U16 component6",
+  "status": "locally_verified_component_only",
+  "base_commit": "d986d6a815f1bfa4125bbb45c186332804242db6",
+  "plan": "docs/m3-implementation-plan.md",
+  "requirements": [
+    "R4",
+    "R5"
+  ],
+  "key_technical_decisions": [
+    "KTD8"
+  ],
+  "migration": null,
+  "behavior": "Bounded company-scoped startup aggregation of EXECUTING decisions only when original RuntimeOperation receipts are complete and no logical action awaits confirmation. Existing aggregation service; no action replay, new approval, model/runtime call or invented request body.",
+  "process_proof": {
+    "test": "apps/server/tests/test_m3_decision_recovery.py",
+    "crash": "os._exit(23) after all original action transactions commit, before decision aggregation",
+    "cases": [
+      "all applied -> APPLIED",
+      "mixed effect receipts -> PARTIALLY_APPLIED",
+      "all failed -> FAILED"
+    ],
+    "replay": "Fresh interpreter reads only database sources, scans twice; original Task/Operation/ToolAudit/Event IDs and resolution time remain stable on subsequent scans.",
+    "real_services": [
+      "Runtime bridge and action transactions",
+      "Decision and immutable action receipts",
+      "SQLite, actual child exit and fresh interpreter restart"
+    ],
+    "limits": "No native containers or paid models; validated structured inputs are controlled isolated test fixtures."
+  },
+  "checks": [
+    {
+      "label": "decision-receipts-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_decision_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 7.72,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/decision-receipts-red.log",
+      "outcome": "expected_failure",
+      "summary": "8 expected failures before production changes; real os._exit(23) had occurred for APPLIED/PARTIALLY_APPLIED/FAILED receipt sets; old code left decisions EXECUTING.",
+      "log_sha256": "f3bbb6eb89ab2f1e649360ceeb677f9998da628dd95f408d87730d653fa5c2a0"
+    },
+    {
+      "label": "decision-receipts-first-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_decision_recovery.py",
+        "apps/server/tests/test_m3_runtime_bridge.py",
+        "apps/server/tests/test_m3_action_confirmations.py",
+        "apps/server/tests/test_m2_decisions.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 17.97,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/decision-receipts-first-green.log",
+      "outcome": "passed",
+      "summary": "184 passed; initial new process tests plus runtime bridge, action confirmation and M2 decision regressions",
+      "log_sha256": "7e6ca86bf2f7bc448f641335484178e7f97be3e775b7ff7db532e9c6c4c6e80c"
+    },
+    {
+      "label": "decision-receipts-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_decision_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 7.44,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/decision-receipts-boundaries.log",
+      "outcome": "passed",
+      "summary": "16 passed; full new decision recovery boundaries",
+      "log_sha256": "9ecf6e36ac93e0b943a40b9401e924b0c7f7af27962bbdfd2106db969a0e2cf5"
+    },
+    {
+      "label": "decision-receipts-final-focused",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_decision_recovery.py",
+        "apps/server/tests/test_m3_runtime_bridge.py",
+        "apps/server/tests/test_m3_action_confirmations.py",
+        "apps/server/tests/test_m2_decisions.py",
+        "apps/server/tests/test_m3_worker_resume.py",
+        "apps/server/tests/test_m3_recovery.py",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "apps/server/tests/test_m3_confirmation_recovery.py",
+        "apps/server/tests/test_review_event_shutdown.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 68.28,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/decision-receipts-final-focused.log",
+      "outcome": "passed",
+      "summary": "333 passed,1 existing warning; final components5/6 and bridge/confirmation/M2 decision/U16/lifespan regression after behavior-preserving simplification",
+      "log_sha256": "2f7a49fb8089e71cd37f8af96c482f4ab4da3f59522a1c3c8e0682419dd28521"
+    },
+    {
+      "label": "decision-receipts-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/decision-receipts-python-lint.log",
+      "outcome": "passed",
+      "summary": "Project-wide server Python lint passed",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "decision-receipts-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/decision-receipts-python-format.log",
+      "outcome": "passed",
+      "summary": "548 Python files already formatted",
+      "log_sha256": "352bf205139e3a687f2746937fd253c8cdcd7b94859826f839c964130da8f7bf"
+    },
+    {
+      "label": "decision-receipts-web-types",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 3.52,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/decision-receipts-web-types.log",
+      "outcome": "passed",
+      "summary": "Project-wide web TypeScript noEmit passed",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "decision-receipts-web-lint",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "eslint",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 1.8,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/decision-receipts-web-lint.log",
+      "outcome": "passed",
+      "summary": "Project-wide web ESLint passed",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/work/recovery.py": "b2ce3d1186812c7db24411e19f0b51ca1b5263ad1995307bb6df2ad6c4174702",
+    "apps/server/app/workflow/orchestrator.py": "b8317740a0c07fbd9809d158f14ed0b0b568a2175fbf048b81991fa20bbdfadb",
+    "apps/server/tests/test_m3_decision_recovery.py": "181e9c0b6860e617b0c2892d944919686a343e12a075e7d0f4cbc276fe589066",
+    "docs/m2-freeze.md": "b532f06f5951443de1de3b97519706755e5bde6fa9bb5242a9934c5c6b75f3ee",
+    "docs/m3-u16-crash-recovery.md": "3fad10102eedb6c2fd910547f0828776b875960759ec3fa9f40214dcde55ef41"
+  },
+  "simplification": {
+    "skill": "ce-simplify-code",
+    "scope": "Production U16 components5/6 since 7ec633c; mutations confined to component6 recovery.py and its imports",
+    "plan_structure_pins": "M3 plan provides context; session-settled KTDs preserved",
+    "route": "All three exact persona assets previously read in full and applied inline; complete outcomes before mutation",
+    "fallback": "Recorded unrecoverable fresh-worker prelaunch thread limit; no new dispatch, no completed-agent reuse, no independent review claimed",
+    "reviews": [
+      {
+        "persona": "code-reuse-reviewer",
+        "status": "complete",
+        "applied": 0,
+        "skipped": [
+          {
+            "candidate": "Generic recovery scanner and observation types",
+            "reason": "Distinct source identities, authorization and source recheck contracts; short explicit scanners preserve those differences. Existing page validation and receipt aggregation already reused."
+          }
+        ]
+      },
+      {
+        "persona": "code-quality-reviewer",
+        "status": "complete",
+        "applied": 1,
+        "finding": "Use existing DecisionStatus.executing.value instead of duplicated literal EXECUTING; preserve exact comparison."
+      },
+      {
+        "persona": "efficiency-reviewer",
+        "status": "complete",
+        "applied": 1,
+        "finding": "Select only RuntimeOperation.id and requested_action_count for decision observation; no other operation fields are consumed.",
+        "skipped": [
+          {
+            "candidate": "Replace effective_action_audits with specialized pending-confirmation SQL",
+            "reason": "Would duplicate existing proposal/final receipt substitution semantics; no measured need. Retain the existing single business-rule implementation."
+          }
+        ]
+      }
+    ],
+    "verification": {
+      "decision-receipts-final-focused": "333 passed,1 existing warning; final components5/6 and bridge/confirmation/M2 decision/U16/lifespan regression after behavior-preserving simplification",
+      "decision-receipts-python-lint": "Project-wide server Python lint passed",
+      "decision-receipts-python-format": "548 Python files already formatted",
+      "decision-receipts-web-types": "Project-wide web TypeScript noEmit passed",
+      "decision-receipts-web-lint": "Project-wide web ESLint passed"
+    },
+    "behavior_changes": false
+  },
+  "independent_review_completed": false,
+  "paid_calls": 0,
+  "docker_operations": 0,
+  "baseline_full_backend": {
+    "commit": "d986d6a815f1bfa4125bbb45c186332804242db6",
+    "evidence": "docs/evidence/m3-u16-running-workers.json",
+    "result": "3030 passed,26 deselected,118 existing warnings",
+    "current_component_rerun": false
+  },
+  "not_run": [
+    "Full backend not repeated after just-passed component5 baseline; current component verified with 333 scoped cross-layer cases and project-wide static checks",
+    "Opt-in native integration, browser and production build; no frontend changes or paid allowance"
+  ],
+  "open_gates": [
+    "U16 controlled-session ownership and incomplete structured actions",
+    "U16 downstream effects and legacy missing notifications",
+    "Independent review unavailable under previously documented persistent worker capacity limit",
+    "U14 additional paid allowance unanswered",
+    "U15-U17 joint real business/monetary evidence"
+  ],
+  "notes": [
+    "Read-only skip pages; candidate rechecked under BEGIN IMMEDIATE; storage errors keep original cursor",
+    "Existing proposal/final receipt substitution counts each logical action once",
+    "Original user tmp/ excluded unread; no dev DB/shared fixture writes",
+    "No whole-U16 or M3 completion claim"
+  ]
+}
