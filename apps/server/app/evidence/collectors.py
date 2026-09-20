@@ -11,13 +11,15 @@ from abc import ABC, abstractmethod
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.evidence import normalize
+from app.evidence import normalize, task_facts
 from app.evidence.candidate import EvidenceCandidate
 from app.evidence.expectations import (
     expectations_for_scope,
+    original_position_expectations,
     position_expectations,
 )
 from app.evidence.policy import EVENT_DISPATCH, POLICY, TASK_KIND_HINTS
+from app.models.enums import RuntimeType
 from app.models.knowledge import LearningRecord, Skill, SkillUsage
 from app.models.project import Project, Task, WorkSession
 from app.models.project_delivery import ReviewMeeting
@@ -33,8 +35,13 @@ class EvidenceCollector(ABC):
         raise NotImplementedError
 
 
-def _session_runtime_types(db: Session, task_id: int) -> list[str]:
-    return list(db.scalars(select(WorkSession.runtime_type).where(WorkSession.task_id == task_id)))
+def _task_environment(db: Session, task_id: int) -> str:
+    mock_type = db.scalar(
+        select(WorkSession.runtime_type)
+        .where(WorkSession.task_id == task_id, WorkSession.runtime_type == RuntimeType.mock.value)
+        .limit(1)
+    )
+    return normalize.environment_for_runtime([mock_type] if mock_type is not None else [])
 
 
 def _hints_to_expectations(db: Session, task_kind: str, employee_id: int) -> list[tuple[int, str]]:
@@ -59,45 +66,74 @@ class WorkItemCollector(EvidenceCollector):
     source_type = "task"
 
     def _collect_one(self, db: Session, task: Task) -> list[EvidenceCandidate]:
-        if task.assignee_id is None or task.status not in {"done", "failed"}:
+        if task.status not in {"done", "failed"}:
             return []
+        try:
+            original = task_facts.historical_worker(db, task)
+        except ValueError:
+            return []
+        snapshot = original.provenance_snapshot_json if original else None
+        employee_id = original.employee_id if original else task.assignee_id
+        if employee_id is None:
+            return []
+        task_kind = snapshot["task"].get("kind") if snapshot else task.kind
+        title = snapshot["task"].get("title") if snapshot else task.title
         outcome = "done" if task.status == "done" else "failed"
-        source_type = "test" if task.kind == "testing" else "task"
+        source_type = "test" if task_kind == "testing" else "task"
         signal = POLICY.signal_default(source_type, outcome)
         if signal is None:
             return []
         project = db.get(Project, task.project_id)
-        environment = normalize.environment_for_runtime(_session_runtime_types(db, task.id))
+        environment = _task_environment(db, task.id)
         reliability = POLICY.reliability(source_type, environment)
 
         expectations = expectations_for_scope(db, "task", task.id)
         reason = "task_expectation"
         if not expectations:
-            expectations = position_expectations(db, task.assignee_id)
-            reason = "position_expectation"
+            expectations = (
+                original_position_expectations(db, snapshot)
+                if snapshot
+                else position_expectations(db, employee_id)
+            )
+            reason = "original_position_expectation" if snapshot else "position_expectation"
         role_map: list[tuple[int, str]] = []
         if expectations:
             role_map = [(int(row.competency_definition_id), row.role) for row in expectations]
-            reason = "task_expectation" if reason == "task_expectation" else "position_expectation"
         else:
-            role_map = _hints_to_expectations(db, task.kind, task.assignee_id)
+            role_map = _hints_to_expectations(db, task_kind, employee_id)
             reason = "task_kind_hint"
             if not role_map:
                 return []
 
-        occurred_at = task.actual_end_at or task.updated_at
+        occurred_at = task.actual_end_at or (original.ended_at if original else task.updated_at)
         candidates: list[EvidenceCandidate] = []
-        project_name = project.name if project is not None else ""
+        if snapshot:
+            project_name = snapshot["project"].get("name")
+        else:
+            project_name = project.name if project is not None else ""
+        source_metadata = (
+            {
+                "work_session_id": original.id,
+                "person_id": original.person_id,
+                "company_id": original.company_id,
+                "person_name": snapshot["person"].get("name"),
+                "project_name": project_name,
+                "provenance_state": "captured",
+            }
+            if original
+            else {"provenance_state": "unknown"}
+        )
         for competency_id, role in role_map:
             strength = POLICY.strength_for_role(role)
             candidates.append(
                 EvidenceCandidate(
-                    employee_id=int(task.assignee_id),
+                    employee_id=int(employee_id),
+                    person_id=original.person_id if original else None,
                     source_type=source_type,
                     source_id=task.id,
-                    source_ref=f"task:{task.id} ({task.title})",
+                    source_ref=f"task:{task.id} ({title})",
                     observation=(
-                        f"任务{'完成' if outcome == 'done' else '失败'}：{task.title}"
+                        f"任务{'完成' if outcome == 'done' else '失败'}：{title}"
                         f"{'【' + project_name + '】' if project_name else ''}"
                     ),
                     competency_definition_id=competency_id,
@@ -107,8 +143,10 @@ class WorkItemCollector(EvidenceCollector):
                     occurred_at=occurred_at,
                     environment=environment,
                     metadata={
-                        "task_kind": task.kind,
+                        **source_metadata,
+                        "task_kind": task_kind,
                         "project_id": task.project_id,
+                        "interpretation_basis": "current_policy",
                         "reason": reason,
                         "role": role,
                     },

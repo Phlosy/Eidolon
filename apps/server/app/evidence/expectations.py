@@ -103,6 +103,26 @@ def position_expectations(db: Session, employee_id: int) -> list[CompetencyExpec
     return []
 
 
+def original_position_expectations(db: Session, snapshot: dict) -> list[CompetencyExpectation]:
+    """Today's interpretation policy for the position captured during this work.
+
+    Historical expectation rows were not captured; do not infer a position from
+    the employee's current assignment when the original primary is unknown.
+    """
+    assignments = snapshot.get("assignments")
+    if not isinstance(assignments, list):
+        return []
+    primary = [a for a in assignments if isinstance(a, dict) and a.get("is_primary") is True]
+    if len(primary) != 1 or not isinstance(primary[0].get("position"), dict):
+        return []
+    position = primary[0]["position"]
+    rows = expectations_for_scope(db, "position_definition", position.get("id"))
+    if rows:
+        return rows
+    template_id = _position_template_by_code(db, position.get("code"))
+    return expectations_for_scope(db, "position_definition", template_id) if template_id else []
+
+
 def seed_position_expectations(db: Session) -> int:
     """把内置职位模板期望写成数据（幂等：uq(scope kind, scope id, competency)）。"""
     from app.models.position import PositionDefinition

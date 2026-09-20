@@ -91,6 +91,7 @@ TASK_KIND_HINTS: dict[str, list[tuple[str, str]]] = {
 
 EVENT_DISPATCH: dict[str, str] = {
     "task.completed": "task",
+    "task.review_passed": "task",
     "task.failed": "task",
     "project.completed": "project",
     "learning.completed": "learning",

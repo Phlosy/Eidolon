@@ -1,0 +1,340 @@
+{
+  "unit": "U16 component12",
+  "status": "locally_verified_component_only",
+  "base_commit": "b66349489a211a6c10ba61ce74eb5993d2f64d0e",
+  "plan": "docs/m3-implementation-plan.md",
+  "requirements": [
+    "R4",
+    "R5",
+    "R6"
+  ],
+  "key_technical_decisions": [
+    "KTD5",
+    "KTD8",
+    "KTD11"
+  ],
+  "schema_changed": false,
+  "behavior": "Task Evidence consumes the existing formal PASS event, preserves the original real worker and captured Person/task/company facts, revalidates the source before writing and serializes concurrent SQLite deduplication.",
+  "proof": {
+    "new_scenarios": 21,
+    "scope": "Real domain services, accepted artifact lineage and immutable snapshots with scripted transport/verdict input; actual two-session SQLite concurrency. No claim of paid model acceptance or process-crash recovery in this component.",
+    "frozen_policy": "Any mock WorkSession on the Task still makes Evidence environment mock and applies the existing discount. Current interpretation policy is explicitly labelled; historical competency expectation rows are not invented.",
+    "red_accounting": "Initial eight failures comprise seven behavior failures and one fixture arrangement mistake. The legacy case was rerun against a genuinely uncaptured row and failed before production edits. Five further source-switch behavior failures were observed and fixed."
+  },
+  "checks": [
+    {
+      "label": "evidence-source-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_evidence_sources.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 2.83,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-red.log",
+      "outcome": "Seven source/ownership/concurrency behavior failures plus one fixture error: a new dispatch without captured history was correctly rejected by the existing telemetry guard.",
+      "log_sha256": "b5083c8abea4313f4c512f6de08aa809a554032149db3e193aa1a12ae7a94d95",
+      "summary": "8 failed, 1 passed, 1 warning in 1.50s"
+    },
+    {
+      "label": "evidence-source-legacy-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_evidence_sources.py",
+        "-q",
+        "--tb=short",
+        "-k",
+        "unknown_historical"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 2.17,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-legacy-red.log",
+      "outcome": "Corrected fixture creates an actual historical row with NULL snapshot; collection incorrectly accepted unknown real history before the production fix.",
+      "log_sha256": "93c27386f3e64cc1b48a1cd8b5325cb35e66944497b423d12ffaf4545540902c",
+      "summary": "1 failed, 8 deselected, 1 warning in 0.79s"
+    },
+    {
+      "label": "evidence-source-first-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_evidence_sources.py",
+        "apps/server/tests/test_evidence_pipeline.py",
+        "apps/server/tests/test_persons.py",
+        "apps/server/tests/test_evidence_invariants.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 8.47,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-first-green.log",
+      "outcome": "passed",
+      "log_sha256": "d7b1e4e727e1683d69966faca550d541b1b0dab758077f177847c0f1add7c8fd",
+      "summary": "59 passed, 1 warning in 6.98s"
+    },
+    {
+      "label": "evidence-source-boundaries-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_evidence_sources.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.76,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-boundaries-red.log",
+      "outcome": "Five source/person/project/type changes were accepted before write-time source validation was tightened.",
+      "log_sha256": "cf5df30ea06d34bc14edf05f0b6d5cf3338d04692fc3a05f898350d2264e46db",
+      "summary": "5 failed, 16 passed, 1 warning in 2.37s"
+    },
+    {
+      "label": "evidence-source-boundaries-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_evidence_sources.py",
+        "apps/server/tests/test_evidence_pipeline.py",
+        "apps/server/tests/test_evidence_invariants.py",
+        "apps/server/tests/test_persons.py",
+        "apps/server/tests/test_cultivation.py",
+        "apps/server/tests/test_cultivation_engine.py",
+        "apps/server/tests/test_competency_assessment.py",
+        "apps/server/tests/test_assessment_api.py",
+        "apps/server/tests/test_assessment_engine.py",
+        "apps/server/tests/test_assessment_profiles.py",
+        "apps/server/tests/test_m3_provenance.py",
+        "apps/server/tests/test_m3_pinned_handoff.py",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m2_review.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 23.12,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-boundaries-green.log",
+      "outcome": "passed",
+      "log_sha256": "e5eb910c97f079636b372283833c31982ca1639033cb9f7049abf4e57005a65f",
+      "summary": "278 passed, 1 warning in 21.62s"
+    },
+    {
+      "label": "evidence-source-simplified",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_evidence_sources.py",
+        "apps/server/tests/test_evidence_pipeline.py",
+        "apps/server/tests/test_m3_contract.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 6.97,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-simplified.log",
+      "outcome": "passed",
+      "log_sha256": "ac963ea4c615bd4eb15b7bc922ba5b31ee45ee0b991244dd76227b5d7343ebc1",
+      "summary": "86 passed, 1 warning in 5.62s"
+    },
+    {
+      "label": "evidence-source-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-python-lint.log",
+      "outcome": "passed",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "summary": "All checks passed!"
+    },
+    {
+      "label": "evidence-source-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-python-format.log",
+      "outcome": "passed",
+      "log_sha256": "711201cb14df9149eb89e9eff9a6008e1eb026700961044dc34b6112d08b800a",
+      "summary": "557 files already formatted"
+    },
+    {
+      "label": "evidence-source-web-types",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 3.75,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-web-types.log",
+      "outcome": "passed",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "summary": "Exit0"
+    },
+    {
+      "label": "evidence-source-web-lint",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "eslint",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 2.01,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-web-lint.log",
+      "outcome": "passed",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "summary": "Exit0"
+    },
+    {
+      "label": "evidence-source-web-format",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "prettier",
+        "--check",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 2.16,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-web-format.log",
+      "outcome": "passed",
+      "log_sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+      "summary": "All matched files use Prettier code style!"
+    },
+    {
+      "label": "evidence-source-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 380.78,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/evidence-source-full-backend.log",
+      "outcome": "passed",
+      "log_sha256": "66e42ef6a061674fcb45ac4f1934fda5078fcaf3b3813d6963e7292836972e51",
+      "summary": "3208 passed, 26 deselected, 118 warnings in 378.43s (0:06:18)"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/evidence/collectors.py": "543bd35494dc994f768eb7697c43a21292df5bbb789d3dc4b6380287c4c3de60",
+    "apps/server/app/evidence/expectations.py": "66efdfccd9b2dffd0da54222f7fff7be0cd725ca43cc37fc5269c3474d23b098",
+    "apps/server/app/evidence/normalize.py": "80f1262cdc19daa5a34a7fb917299ddbf9c0c0afedf49eccb9271d02b04204f0",
+    "apps/server/app/evidence/pipeline.py": "fe43600e01097be1d5d71e5e2cddc0e6a0a1c1d812e4b0547409680d96fea1f2",
+    "apps/server/app/evidence/policy.py": "5eda8e9a34108381130362eb414ccf4c98ae4e678f4da0cb27c6b60e8be98a9f",
+    "apps/server/app/evidence/task_facts.py": "87df609740329a25245993e81327dd4385866fadd7c04688ec1098ed8eafd874",
+    "apps/server/tests/test_m3_evidence_sources.py": "2582a5c937589e9b2ce78cdd63c746713509ba6dfb8d80e718a307e4ab01a10c",
+    "docs/m2-freeze.md": "01e683763a8359cacef6bc954f8a7a78566d0b81993ce271634548529aadb2aa",
+    "docs/m3-u16-crash-recovery.md": "2f5b01bc282f19c8e808663e2d8dfe83c3df5f59efc53ed520d0cff114b4cd4d"
+  },
+  "simplification": {
+    "skill": "ce-simplify-code",
+    "scope": "U16 component12 production files in app/evidence, current delta from b663494; plan KTD5/KTD8/KTD11 and frozen any-mock discount preserved",
+    "requested_route": {
+      "target": "native",
+      "model": "gpt-5.6-terra",
+      "harness": "Codex subagent"
+    },
+    "actual_route": {
+      "target": "native-inline",
+      "model": "unverified",
+      "harness": "Codex caller"
+    },
+    "fallback": "Previously observed fresh-worker prelaunch thread limit cannot recover from active work or a supported release operation; no new dispatch or completed-agent reuse. Three exact persona files read and all outcomes finished inline before edits.",
+    "reviews": [
+      {
+        "persona": "code-reuse-reviewer",
+        "status": "complete",
+        "applied": 0,
+        "outcome": "Reuses existing accepted collection/formal review guard, provenance snapshot, expectation policy, original normalizer and SQLite transaction helper.",
+        "skipped": [
+          {
+            "candidate": "Extract common position-template lookup from current and original-position functions",
+            "reason": "The two short policy lookups deliberately start from different identity facts; an extra helper adds little value for this scope."
+          }
+        ]
+      },
+      {
+        "persona": "code-quality-reviewer",
+        "status": "complete",
+        "applied": 1,
+        "outcome": "Flatten nested project-name selection into explicit original/legacy branches. All original source and ownership checks retained."
+      },
+      {
+        "persona": "efficiency-reviewer",
+        "status": "complete",
+        "applied": 1,
+        "outcome": "Environment policy only asks whether any task session is mock. Replace collection of every runtime type with a bounded one-row mock query, then use the unchanged normalizer. Structural search found only one private caller.",
+        "skipped": [
+          {
+            "candidate": "Remove repeated real-source validation in collector and normalizer",
+            "reason": "The write-time check is required when source or company scope changes after collection; it also protects independent normalizer callers."
+          }
+        ]
+      }
+    ],
+    "behavior_changes": false,
+    "verification": {
+      "state": "passed_after_two_behavior_preserving_edits",
+      "prior_scoped": "278 passed",
+      "after_edits": "86 passed; full backend 3208 passed, 26 deselected, 118 existing warnings, 378.43s",
+      "static": "Python lint and format 557 files; web TypeScript, ESLint and Prettier passed"
+    }
+  },
+  "independent_review_completed": false,
+  "paid_calls": 0,
+  "docker_operations": 0,
+  "open_gates": [
+    "Bounded startup recovery of Task Evidence and remaining U16 source consumers",
+    "Independent review capacity unavailable",
+    "U14 paid allowance unanswered; U15-U17 joint real business and monetary evidence"
+  ],
+  "notes": [
+    "No shared fixture definitions, development DB or original untracked tmp modified.",
+    "Existing Person-only education writes and the caller commit/rollback boundary remain in place.",
+    "No new Evidence table, scoring model, Assessment trigger or reflection replay."
+  ]
+}

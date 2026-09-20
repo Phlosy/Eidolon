@@ -46,7 +46,7 @@ def handle_event(db: Session, message: dict) -> dict:
     collector = REGISTRY.event_collector(event_type)
     if collector is None:
         return {"collected": 0, "created": 0, "updated": 0, "assessments": 0}
-    task_event = event_type in {"task.completed", "task.failed"}
+    task_event = event_type in {"task.completed", "task.review_passed", "task.failed"}
     payload = {"task_id": _payload_id(data)} if task_event else {}
     source_id = _payload_id(data)
     if source_id is not None:

@@ -5,7 +5,8 @@
 2. 校验 competency 有效（必须在员工可见目录里）；
 3. 幂等：同一业务事件重复消费绝不产生两份 Evidence。
 
-稳定身份（dedup key）= (employee_id, source_kind, source_id, competency_definition_id)。
+稳定身份（dedup key）= (person_id, source_kind, source_id, competency_definition_id)；
+无 Person 映射的旧员工证据沿用 employee_id 回落，真实执行以原 WorkSession.person_id 为准。
 同一 (source, competency) 只允许一条证据行：复审改判（如 review decision 变化）是
 **更新同一行**（保留 created_at），历史保留在 AssessmentRun/AssessmentResult 里。
 """
@@ -15,6 +16,8 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.transaction_effects import ensure_sqlite_transaction
+from app.evidence import task_facts
 from app.evidence.candidate import EvidenceCandidate
 from app.models.competency import CompetencyDefinition, CompetencyDomain, CompetencyEvidence
 from app.models.enums import EvidenceSourceKind
@@ -66,6 +69,34 @@ def upsert_evidence(db: Session, candidate: EvidenceCandidate) -> tuple[Competen
     （candidate.person_id，培养期教育证据——没有员工/公司上下文可校验，
     目录公司隔离规则不适用于全局内置目录）。
     """
+    # Live event delivery and recovery may race. Take the short SQLite writer
+    # before reading the owner or dedup key, retaining the caller's transaction.
+    ensure_sqlite_transaction(db)
+    original = None
+    if candidate.source_type in {"task", "test"} and candidate.source_id is not None:
+        task = db.get(Task, candidate.source_id, populate_existing=True)
+        if task is None or task.status not in {"done", "failed"}:
+            raise ValueError("task evidence source has no terminal domain outcome")
+        original = task_facts.historical_worker(db, task)
+        owner_id = original.employee_id if original else task.assignee_id
+        if candidate.employee_id != owner_id:
+            raise ValueError("task evidence performer does not match its source")
+        if original is None and candidate.metadata.get("work_session_id") is not None:
+            raise ValueError("task evidence original source changed")
+        if original and (
+            candidate.person_id != original.person_id
+            or candidate.metadata.get("person_id") != original.person_id
+            or candidate.metadata.get("work_session_id") != original.id
+            or candidate.metadata.get("company_id") != original.company_id
+            or candidate.metadata.get("project_id") != task.project_id
+            or candidate.source_type
+            != (
+                "test"
+                if original.provenance_snapshot_json["task"].get("kind") == "testing"
+                else "task"
+            )
+        ):
+            raise ValueError("task evidence original source changed")
     person_only = candidate.employee_id is None
     if person_only:
         if candidate.person_id is None:
@@ -75,7 +106,11 @@ def upsert_evidence(db: Session, candidate: EvidenceCandidate) -> tuple[Competen
         employee = db.get(Employee, candidate.employee_id)
         if employee is None:
             raise ValueError(f"employee {candidate.employee_id} not found")
-        person_id = person_repo.write_person_id(db, candidate.employee_id)
+        person_id = (
+            original.person_id
+            if original
+            else person_repo.write_person_id(db, candidate.employee_id)
+        )
     definition = db.get(CompetencyDefinition, candidate.competency_definition_id)
     if definition is None:
         raise ValueError(f"competency_definition {candidate.competency_definition_id} not found")
@@ -83,7 +118,7 @@ def upsert_evidence(db: Session, candidate: EvidenceCandidate) -> tuple[Competen
     if domain is None or (
         domain.company_id is not None
         and not person_only
-        and domain.company_id != employee.company_id
+        and domain.company_id != (original.company_id if original else employee.company_id)
     ):
         raise ValueError(f"competency {definition.code} 不在员工可见目录（公司隔离被绕开）")
     if not _source_exists(db, candidate):
@@ -99,7 +134,7 @@ def upsert_evidence(db: Session, candidate: EvidenceCandidate) -> tuple[Competen
     # R1.3：幂等判定按 person 口径（稳定身份的属主语义跟人走）；镜像列双写维持。
     owner = (
         CompetencyEvidence.person_id == person_id
-        if person_only
+        if person_only or original
         else person_repo.read_criterion(
             db, key[0], CompetencyEvidence.person_id, CompetencyEvidence.employee_id
         )
