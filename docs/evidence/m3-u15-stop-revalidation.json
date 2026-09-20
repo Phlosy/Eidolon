@@ -1,0 +1,115 @@
+{
+  "unit": "U15",
+  "component": "stop_query_terminal_identity_revalidation",
+  "status": "component_verified_unit_in_progress",
+  "base_commit": "93c112c",
+  "behavior_changed": true,
+  "existing_tests_inspected": [
+    "test_m3_stop_intent.py",
+    "test_m3_runtime_admission.py",
+    "test_m3_worker_recovery.py"
+  ],
+  "changes": [
+    "Stop-result terminal persistence passes the frozen original session through the existing identity validator, matching admission and accepted-Worker read-recovery queries.",
+    "Connection, credential, version or ownership changes during a stop query preserve the original stop intent but cannot be reported as confirmed remote termination."
+  ],
+  "observed_red_before_implementation": "Eight expected failures across both real adapters and four binding changes; two existing handle-replacement characterizations passed.",
+  "verification": [
+    {
+      "label": "stop-revalidation-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_stop_intent.py",
+        "-k",
+        "rechecks_identity_after_remote_wait or handle_replaced_while_waiting",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 2.58,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/stop-revalidation-red.log",
+      "log_sha256": "26480db2e7d3283179e683bd5ae35de903bba1c94f2f1fd2ac6b063c29b601d3",
+      "output_tail": "version] _____\napps/server/tests/test_m3_stop_intent.py:222: in test_stop_query_rechecks_identity_after_remote_wait\n    assert row.status == \"accepted\" and row.ended_at is None\nE   AssertionError: assert ('failed' == 'accepted'\nE     \nE     - accepted\nE     + failed)\n_____ test_stop_query_rechecks_identity_after_remote_wait[openclaw-owner] ______\napps/server/tests/test_m3_stop_intent.py:222: in test_stop_query_rechecks_identity_after_remote_wait\n    assert row.status == \"accepted\" and row.ended_at is None\nE   AssertionError: assert ('failed' == 'accepted'\nE     \nE     - accepted\nE     + failed)\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_stop_intent.py::test_stop_query_rechecks_identity_after_remote_wait[hermes-connection]\nFAILED apps/server/tests/test_m3_stop_intent.py::test_stop_query_rechecks_identity_after_remote_wait[hermes-credential]\nFAILED apps/server/tests/test_m3_stop_intent.py::test_stop_query_rechecks_identity_after_remote_wait[hermes-version]\nFAILED apps/server/tests/test_m3_stop_intent.py::test_stop_query_rechecks_identity_after_remote_wait[hermes-owner]\nFAILED apps/server/tests/test_m3_stop_intent.py::test_stop_query_rechecks_identity_after_remote_wait[openclaw-connection]\nFAILED apps/server/tests/test_m3_stop_intent.py::test_stop_query_rechecks_identity_after_remote_wait[openclaw-credential]\nFAILED apps/server/tests/test_m3_stop_intent.py::test_stop_query_rechecks_identity_after_remote_wait[openclaw-version]\nFAILED apps/server/tests/test_m3_stop_intent.py::test_stop_query_rechecks_identity_after_remote_wait[openclaw-owner]\n8 failed, 2 passed, 36 deselected, 1 warning in 1.20s\n"
+    },
+    {
+      "label": "stop-revalidation-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_stop_intent.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "apps/server/tests/test_m3_request_budget.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 48.11,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/stop-revalidation-final.log",
+      "log_sha256": "ec4ee5e0a111661a6f87be8735682d06f760339fe79aea74e4c618e1934c1a6f",
+      "output_tail": "........................................................................ [ 22%]\n........................................................................ [ 44%]\n........................................................................ [ 66%]\n........................................................................ [ 89%]\n...................................                                      [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n323 passed, 1 warning in 46.46s\n"
+    },
+    {
+      "label": "stop-revalidation-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/runtimes/cancellation.py",
+        "apps/server/tests/test_m3_stop_intent.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/stop-revalidation-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "stop-revalidation-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/runtimes/cancellation.py",
+        "apps/server/tests/test_m3_stop_intent.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/stop-revalidation-format.log",
+      "log_sha256": "3bc53bf3e981a98a34a852e175bf9b77af841edea74fca595d9aedcbaf9a4938",
+      "output_tail": "2 files already formatted\n"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/runtimes/cancellation.py": "e9dbba8d963c986106c46f4fdc182a8e83010e25a53d5df43e4fafd2a0f370db",
+    "apps/server/tests/test_m3_stop_intent.py": "c1d27ea76404378a987d695f12543ec5df74f95c5d4a63e512a540dadcbd012a",
+    "docs/m2-freeze.md": "66ccbf24fb94a1d4f30f38162786ba488a1937783cbe5e36027bd8a82895fc21",
+    "docs/m3-u15-retry-and-cancel.md": "1a9c839d3d5b62d9b5562944a610bec0e6f9ef4dbcfc787befcc908c224a2574"
+  },
+  "exceptions": [
+    "Only remote transport is scripted; actual adapters, stop observer, isolated SQLite, immutable attempts and history are exercised.",
+    "No paid request, Docker, schema, development database, shared fixture or user tmp operations. Full backend not rerun."
+  ],
+  "remaining": [
+    "Cumulative monetary-budget admission and in-flight spending withdrawal",
+    "Actual remote stop/unconfirmed acceptance",
+    "U14 additional paid allowance question remains pending"
+  ],
+  "paid_model_requests": 0,
+  "standalone_shipping_skipped": true
+}

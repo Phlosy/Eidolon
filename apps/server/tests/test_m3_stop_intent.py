@@ -191,6 +191,41 @@ async def test_lost_stop_response_can_be_confirmed_by_original_run_query(db, ori
     assert "private-stop-response-lost" not in caplog.text
 
 
+@pytest.mark.parametrize("change", ["connection", "credential", "version", "owner"])
+async def test_stop_query_rechecks_identity_after_remote_wait(db, original_run, change):
+    from app.models.runtime import RuntimeInstance
+    from app.providers.secrets.store import get_secret_store
+
+    w = original_run
+
+    def change_binding():
+        with SessionLocal() as independent:
+            row = independent.get(RuntimeInstance, w.row.id)
+            if change == "connection":
+                row.internal_host = "replacement.invalid"
+            elif change == "credential":
+                row.metadata_json = {
+                    **row.metadata_json,
+                    "api_key_ref": get_secret_store().store(independent, "replacement-token"),
+                }
+            elif change == "version":
+                row.runtime_version = "replacement-version"
+            else:
+                row.person_id = 99999
+            independent.commit()
+
+    w.remote_state, w.on_stop = "aborted", change_binding
+    await w.adapter.cancel_task(w.runtime)
+    db.expire_all()
+    row = db.get(RuntimeAttempt, w.recorder.attempt_id)
+    assert row.stop_requested_at is not None and row.stop_reason == "cancelled"
+    assert row.status == "accepted" and row.ended_at is None
+    assert row.stop_state == "unconfirmed" and w.runtime.cancel_confirmed is False
+    assert [call[0] for call in w.calls] == ["stop", "query"]
+    assert "replacement.invalid" not in str(w.connection_targets)
+    assert w.task.status == "in_progress" and w.work.status == "running"
+
+
 async def test_handle_replaced_while_waiting_cannot_redirect_terminal_observation(db, original_run):
     w = original_run
     original = w.recorder

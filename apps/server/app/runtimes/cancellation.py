@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import replace
 
 from app.core.logging import get_logger
-from app.runtimes.base import RuntimeRunReference, observe_remote_terminal
+from app.runtimes.base import RuntimeRunReference
 
 logger = get_logger(__name__)
 STOP_TIMEOUT_SECONDS = 5
@@ -64,7 +64,7 @@ async def cancel_run(adapter, session, send_stop):
                 async with asyncio.timeout(STOP_TIMEOUT_SECONDS):
                     observed = await adapter.query_run(original.instance, reference)
                 if observed.status in {"completed", "failed"}:
-                    observe_remote_terminal(original, observed.status, observed.source)
+                    original.attempt.terminal(observed.status, observed.source, session=original)
                     confirm_original()
             except Exception:
                 logger.warning(
