@@ -57,7 +57,7 @@ from app.repositories import organization as org_repo
 from app.repositories import project as project_repo
 from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
-from app.runtimes.base import RuntimeEventKind, RuntimeSession, TaskContext
+from app.runtimes.base import RuntimeEventKind, RuntimeProtocolError, RuntimeSession, TaskContext
 from app.runtimes.gateway import gateway
 from app.runtimes.worker_recovery import worker_timeout
 from app.services import artifacts as artifact_service
@@ -73,6 +73,7 @@ from app.work import (
     runtime_artifacts,
     telemetry,
     work_defaults,
+    worker_resume,
 )
 from app.work import contracts as C
 from app.work import dispatch as dispatch_runtime
@@ -108,10 +109,14 @@ class Orchestrator:
         self._recovery_through: int | None = None
         self._action_recovery_cursor = 0
         self._action_recovery_through: int | None = None
+        self._worker_recovery_cursor = 0
+        self._worker_recovery_through: int | None = None
 
     def start(self) -> None:
         self._recovery_through = recovery.work_session_boundary() or None
         self._recovery_cursor = 0
+        self._worker_recovery_through = self._recovery_through
+        self._worker_recovery_cursor = 0
         self._action_recovery_through = recovery.confirmation_boundary() or None
         self._action_recovery_cursor = 0
         self._loop = asyncio.get_running_loop()
@@ -152,6 +157,7 @@ class Orchestrator:
         if signal["type"] in ("dispatch", "sweep"):
             self._stop_requested_workers()
             await self._interrupt_budget_workers()
+            self._start_worker_recovery()
             if self._recovery_through is not None:
                 recovered = recovery.reconcile_committed_workers(
                     after_id=self._recovery_cursor, through_id=self._recovery_through
@@ -242,6 +248,43 @@ class Orchestrator:
     def _release_running(self, employee_id, completed):
         if self._running.get(employee_id) is completed:
             self._running.pop(employee_id)
+
+    def _start_worker_recovery(self):
+        if self._worker_recovery_through is None or len(self._workers) >= 4:
+            return
+        page = recovery.running_workers(
+            through_id=self._worker_recovery_through,
+            after_id=self._worker_recovery_cursor,
+            limit=4 - len(self._workers),
+        )
+        for item in page.items:
+            work_id = item.work_session_id
+            if work_id not in self._workers:
+                owned = asyncio.create_task(
+                    self._resume_worker(work_id), name=f"worker-recovery-{work_id}"
+                )
+                self._workers[work_id] = owned
+                owned.add_done_callback(
+                    lambda done, identifier=work_id: self._release_recovered(identifier, done)
+                )
+        self._worker_recovery_cursor = page.cursor
+        if page.complete and not self._workers:
+            self._worker_recovery_through = None
+
+    def _release_recovered(self, work_id, completed):
+        if self._workers.get(work_id) is completed:
+            self._workers.pop(work_id)
+        if completed.cancelled() or completed.exception() is not None:
+            # A storage error or cancellation before coroutine entry leaves the
+            # original source eligible. A completed domain result is skipped.
+            self._worker_recovery_cursor = min(self._worker_recovery_cursor, work_id - 1)
+            if not completed.cancelled():
+                logger.warning("worker recovery will retry", extra={"work_session_id": work_id})
+
+    async def _resume_worker(self, work_id):
+        await worker_resume.resume_worker(
+            work_id, adapter_for=gateway.adapter_for, finalize=self._finalize
+        )
 
     # ---- dispatcher ----
 
@@ -692,14 +735,18 @@ class Orchestrator:
         success: bool,
         produced: list,
         error: str | None,
-        duration: float,
+        duration: float | None,
         *,
         work_session_id: int | None = None,
         runtime_session: RuntimeSession | None = None,
+        recovery_attempt_id: int | None = None,
     ) -> None:
         reviewed_inline = False
         with SessionLocal() as db:
-            ensure_sqlite_transaction(db)
+            if recovery_attempt_id is not None:
+                dispatch_notices.begin_observation(db)
+            else:
+                ensure_sqlite_transaction(db)
             task = project_repo.get_task(db, task_id)
             if task is None:
                 return
@@ -712,6 +759,15 @@ class Orchestrator:
             # nor finalize a later session belonging to the task's new assignee.
             if ws is None or ws.task_id != task_id or ws.status != WorkSessionStatus.running.value:
                 return
+            if recovery_attempt_id is not None:
+                latest = db.scalar(
+                    select(RuntimeAttempt.id)
+                    .where(RuntimeAttempt.work_session_id == ws.id, RuntimeAttempt.kind == "worker")
+                    .order_by(RuntimeAttempt.id.desc())
+                    .limit(1)
+                )
+                if latest != recovery_attempt_id:
+                    raise RuntimeProtocolError("execution_recovery_source_changed")
             project = project_repo.get_project(db, task.project_id)
             employee = org_repo.get_employee(db, ws.employee_id)
             company_id = project.company_id if project else None
@@ -734,7 +790,21 @@ class Orchestrator:
             ws.ended_at = datetime.now(UTC)
             ws.summary = error or f"产出 {len(produced)} 个交付物"
             ws.error = error
-            ws.cost = {**(ws.cost or {}), "duration_sec": round(duration, 3)}
+            ws.cost = {
+                **(ws.cost or {}),
+                "duration_sec": round(duration, 3) if duration is not None else None,
+            }
+            if recovery_attempt_id is not None:
+                if success:
+                    outcome, reason = "completed", "domain_result_recovered"
+                elif error == "cancelled":
+                    outcome, reason = "cancelled", "cancelled"
+                else:
+                    outcome, reason = "failed", "host_error"
+                telemetry.record_host_outcome(db, recovery_attempt_id, outcome, reason)
+                # A cost service may catch its own integrity errors. Flush the
+                # required domain/host facts before entering that optional path.
+                db.flush()
             # M1.5：算力成本（Sink）—— **计量总是发生**，扣款尽力而为（余额不足记 unpaid）。
             # 放在这里的原因：会话结束才有时长这个事实；计量失败绝不能影响任务终态，
             # 所以只记录日志（unpaid/异常都会在成本报表与日志里暴露）。
@@ -749,7 +819,8 @@ class Orchestrator:
                 logger.exception("compute cost recording failed for work_session=%s", ws.id)
             # §10.2：success 是客观事实，与"人是否评价过"无关，都必须落库
             for usage in knowledge_repo.list_skill_usages_for_task(db, task_id):
-                usage.success = success
+                if usage.work_session_id == ws.id:
+                    usage.success = success
 
             # v0.3: artifacts are drive documents in the project folder
             for item in produced if project is not None and ws.runtime_type == "mock" else []:
@@ -898,7 +969,7 @@ class Orchestrator:
 
         if fixture_review_enabled:
             publish_completion_events()
-        if employee_id is not None:
+        if employee_id is not None and duration is not None:
             reflection.reflect(task_id, employee_id, success, duration, error)
         if advance_task and success:
             self._advance(task_id, True)

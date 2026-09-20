@@ -1,0 +1,221 @@
+{
+  "unit": "U16 component5",
+  "status": "locally_verified_component_only",
+  "base_commit": "7ec633c012c9bf2e899767ddca221a7c5d5df97b",
+  "plan": "docs/m3-implementation-plan.md",
+  "requirements": [
+    "R4",
+    "R5"
+  ],
+  "key_technical_decisions": [
+    "KTD6",
+    "KTD8"
+  ],
+  "migration": null,
+  "behavior": "Bounded original Worker recovery in supported single-server deployment. Saved run/identity/artifact context/deadline only; no new session, attempt or model request. Existing canonical finalization commits host receipt with effects; unknown duration stays null and is excluded from legacy duration-based reflection.",
+  "process_proof": {
+    "test": "apps/server/tests/test_m3_worker_resume.py",
+    "crashes": [
+      "os._exit(23) after original intent before send",
+      "os._exit(23) after original acceptance reference persisted",
+      "os._exit(23) after original manifest and native terminal persisted",
+      "os._exit(24) after recovered domain outer commit before callbacks"
+    ],
+    "replay": "Fresh interpreters start actual orchestrator scan; repeated startup retains same attempt, artifact collection, canonical Drive bytes, cost and Event IDs. Unaccepted intent closes lost host with unknown remote result and no artifact acceptance.",
+    "real_services": [
+      "SQLite and process termination",
+      "Original execution/artifact identity",
+      "Native adapter query/stop/manifest code with scripted transport",
+      "Task and WorkSession finalization",
+      "M1 internal CREDIT compute minimum",
+      "Domain events and immutable host receipt"
+    ],
+    "limits": "No native container or paid model. Native response/acceptance and generated workspace bytes are controlled by isolated test fixtures; not a real model-output claim."
+  },
+  "checks": [
+    {
+      "label": "running-workers-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_worker_resume.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 40.66,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/running-workers-red.log",
+      "outcome": "expected_failure",
+      "summary": "7 failed before production changes: startup did not adopt original workers; missing resume/page API. Child os._exit(23) confirmed before send/after acceptance/after manifest; post-recovery os._exit(24) not yet reached.",
+      "log_sha256": "c5cf870b5bfd6d8aabda0c89628ce013ace0cc8a218c12eb8dc84f61608d06a6"
+    },
+    {
+      "label": "running-workers-first-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_worker_resume.py",
+        "apps/server/tests/test_m3_recovery.py",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "apps/server/tests/test_review_event_shutdown.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 42.05,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/running-workers-first-green.log",
+      "outcome": "passed",
+      "summary": "99 passed; initial process recovery and existing Worker/U16/lifespan behavior",
+      "log_sha256": "c6c0a9b34f7f4316a3dce0b14ff5b6e93143d6abb0845be99ed46737fbcf7e9b"
+    },
+    {
+      "label": "running-workers-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_worker_resume.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 16.65,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/running-workers-boundaries.log",
+      "outcome": "implementation_failure",
+      "summary": "29 passed,1 failed: real host-receipt UPDATE rejection was caught by cost path. Fixed by flushing required domain/host facts before entering optional cost service.",
+      "log_sha256": "91d1f356fd91c018416ed999088c75341634c0b0450c2a54ffae9909733c052c"
+    },
+    {
+      "label": "running-workers-boundaries-fixed",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_worker_resume.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_budget_monitor.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 24.86,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/running-workers-boundaries-fixed.log",
+      "outcome": "passed",
+      "summary": "121 passed;33 new recovery scenarios plus administrative stop/controlled stop/budget monitor regressions",
+      "log_sha256": "a925097c6ddb2aee0969533f51c0d7bf609406df726ecb1940692fa4f129ed76"
+    },
+    {
+      "label": "running-workers-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/running-workers-python-lint.log",
+      "outcome": "passed",
+      "summary": "All project server Python lint checks passed",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "running-workers-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/running-workers-python-format.log",
+      "outcome": "passed",
+      "summary": "547 Python files already formatted",
+      "log_sha256": "9a8d8bab3a809a1fde09415c8b6b39f368faae5baf2bcca18c803f145ffa8148"
+    },
+    {
+      "label": "running-workers-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 295.56,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/running-workers-full-backend.log",
+      "outcome": "passed",
+      "summary": "3030 passed,26 deselected,118 existing warnings; pytest293.61 seconds",
+      "log_sha256": "0c57c534d4ee350d408c4eb16bcc8eb1a9b62069a1f99754a3632655d16eb07a"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/work/recovery.py": "46eaab41faa3588688e55dbf54bbd56546c5a7c64262cfd7fa86a48ca117eaaa",
+    "apps/server/app/work/worker_resume.py": "731a724df5b9f41b17eb82426dfab9b23fb95a8c54c41b7604e878775aba5abf",
+    "apps/server/app/workflow/orchestrator.py": "a55e660cfff7566b573334f164ae60c2aaa34ed381c7df1b722369d224aafc38",
+    "apps/server/tests/test_m3_worker_resume.py": "964cc1220447378a1e9bc6136adfb3e7cceccc48ecb2b20dc15bf49505419d02",
+    "docs/m2-freeze.md": "5cbd7cf6256697e738628191216bd017769f6c057ce77bf2877c9d38e32b3f99",
+    "docs/m3-u16-crash-recovery.md": "c706d991a833143944b82e0dd98df39f5f93810d4fdf4000e4612f58eb962704"
+  },
+  "review": {
+    "status": "failed",
+    "reason": "Full review required (305 executable non-test changed lines). Required fresh reviewer/merge/report workers unavailable under previously observed persistent prelaunch agent thread limit; no release primitive. No new dispatch attempted, retired handles not reused. Independent review not completed.",
+    "scope": {
+      "base": "7ec633c012c9bf2e899767ddca221a7c5d5df97b",
+      "branch": "dev",
+      "head_sha": "7ec633c012c9bf2e899767ddca221a7c5d5df97b",
+      "files_changed": 5
+    },
+    "coverage": {
+      "depth": "full",
+      "completed": false,
+      "reviewers_launched": 0,
+      "peer_launched": false,
+      "criteria": "no governing AGENTS.md/CLAUDE.md/CODING_STANDARDS.md found; rg exit1 means no matches",
+      "exclusions": [
+        "original user tmp/ unread"
+      ]
+    },
+    "artifact_path": "/tmp/compound-engineering-501/ce-code-review/20260920-194018-bebf5045",
+    "run_id": "20260920-194018-bebf5045"
+  },
+  "independent_review_completed": false,
+  "paid_calls": 0,
+  "docker_operations": 0,
+  "not_run": [
+    "26 opt-in native integration cases",
+    "Frontend/browser/build: no frontend changes; types/lint passed in base component4, not rerun for this backend-only component"
+  ],
+  "open_gates": [
+    "Full U16 controlled-session ownership and incomplete structured action recovery",
+    "U16 downstream Evidence/reflection/project-advance and legacy missing-notification recovery",
+    "Full independent review unavailable under previously documented worker capacity limit",
+    "U14 additional paid allowance unanswered",
+    "U15-U17 joint real business/monetary evidence"
+  ],
+  "notes": [
+    "No new API/schema/model request; startup ID cohort and max4 live recovery owners",
+    "Active/unknown remote runs wait within original deadline; 404/timeout/stop acknowledgement never invent native terminal",
+    "Cancellation/identity rechecked after I/O; original first stop intent retained",
+    "Unknown duration is not zero and not downtime; internal credit minimum is not Provider USD billing",
+    "SkillUsage changes apply only to original WorkSession",
+    "Source and storage checks inspect actual code and real SQL trigger failures; no independent review claimed",
+    "Original user tmp/ excluded and unread; no dev DB/shared fixture writes"
+  ]
+}

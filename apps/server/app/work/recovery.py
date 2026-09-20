@@ -67,6 +67,35 @@ def work_session_boundary(*, session_factory=SessionLocal):
         return db.scalar(_scoped(select(func.max(WorkSession.id)))) or 0
 
 
+def running_workers(*, through_id, after_id=0, limit=25, session_factory=SessionLocal):
+    """Read a bounded startup cohort; the orchestrator retains live ownership."""
+    _validate_page(through_id, after_id, limit)
+    with session_factory() as db:
+        ids = list(
+            db.scalars(
+                _scoped(
+                    select(WorkSession.id)
+                    .where(
+                        WorkSession.id > after_id,
+                        WorkSession.id <= through_id,
+                        WorkSession.purpose == "worker",
+                        WorkSession.runtime_type.in_(("hermes", "openclaw")),
+                        WorkSession.status == "running",
+                        WorkSession.ended_at.is_(None),
+                    )
+                    .order_by(WorkSession.id)
+                    .limit(limit)
+                )
+            )
+        )
+    cursor = ids[-1] if ids else through_id
+    return RecoveryBatch(
+        cursor,
+        len(ids) < limit or cursor == through_id,
+        tuple(RecoveryObservation(identifier, None, "needs_recovery") for identifier in ids),
+    )
+
+
 def _observe(db, work):
     if work.purpose != "worker" or work.runtime_type not in {"hermes", "openclaw"}:
         return RecoveryObservation(work.id, None, "not_real_worker")
