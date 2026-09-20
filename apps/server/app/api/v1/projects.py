@@ -1,6 +1,6 @@
 """/projects"""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -125,7 +125,16 @@ def get_project_artifacts(project_id: int, db: Session = Depends(get_db)) -> lis
 
 
 @router.get("/{project_id}/spec", response_model=ProjectSpecOut)
-def get_project_spec(project_id: int, db: Session = Depends(get_db)) -> ProjectSpecOut:
+def get_project_spec(
+    project_id: int,
+    db: Session = Depends(get_db),
+    dispatch_limit: int = Query(
+        project_service.MANAGEMENT_DISPATCH_PAGE_LIMIT,
+        ge=1,
+        le=project_service.MANAGEMENT_DISPATCH_PAGE_LIMIT,
+    ),
+    dispatch_before_id: int | None = Query(None, ge=1, le=2**63 - 1),
+) -> ProjectSpecOut:
     """Canonical Executable Project 读面（M2.1，设计 §11.5）。
 
     回答 8 个问题：Canonical Spec / work_mode / Work Intake 责任 / 承担它的任职 /
@@ -136,4 +145,8 @@ def get_project_spec(project_id: int, db: Session = Depends(get_db)) -> ProjectS
     project = project_repo.get_project(db, project_id)
     if project is None:
         raise HTTPException(status_code=404, detail="project not found")
-    return ProjectSpecOut.model_validate(project_service.get_project_spec(db, project))
+    return ProjectSpecOut.model_validate(
+        project_service.get_project_spec(
+            db, project, dispatch_limit=dispatch_limit, dispatch_before_id=dispatch_before_id
+        )
+    )

@@ -105,7 +105,17 @@ def _list_company_projects(db: Session, ctx: tools.ToolCallContext, args: dict) 
 def _inspect_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
     project = _project_or_none(db, ctx, int(args["project_id"]))
     detail = project_service.get_project_detail(db, project)
-    spec = project_service.get_project_spec(db, project)
+    try:
+        spec = project_service.get_project_spec(
+            db,
+            project,
+            dispatch_limit=args.get(
+                "dispatch_limit", project_service.MANAGEMENT_DISPATCH_PAGE_LIMIT
+            ),
+            dispatch_before_id=args.get("dispatch_before_id"),
+        )
+    except ValueError as exc:
+        raise tools.ToolError(str(exc)) from exc
     return {
         "project": {
             "project_id": int(project.id),
@@ -123,6 +133,7 @@ def _inspect_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> dic
         "completeness": spec["completeness"],
         "execution": spec["execution"],
         "work_intake": spec["work_intake"],
+        "management": spec["management"],
         "tasks": [
             {
                 "task_id": int(task.id),
@@ -664,9 +675,20 @@ def build_read_tools() -> tuple[tools.ToolSpec, ...]:
         ),
         tools.ToolSpec(
             name="inspect_project",
-            description="读一个项目的完整事实：Canonical Spec、任务图、Artifact、执行状态",
+            description="读项目事实、任务、产物及管理/评审等待与会话引用；管理记录支持游标分页",
             side_effect=C.ToolSideEffect.read,
-            input_schema=tools.object_schema({"project_id": _INT}, ("project_id",)),
+            input_schema=tools.object_schema(
+                {
+                    "project_id": _INT,
+                    "dispatch_limit": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": project_service.MANAGEMENT_DISPATCH_PAGE_LIMIT,
+                    },
+                    "dispatch_before_id": {"type": "integer", "minimum": 1},
+                },
+                ("project_id",),
+            ),
             output_schema=tools.object_schema({"project": {"type": "object"}}),
             handler=_inspect_project,
         ),

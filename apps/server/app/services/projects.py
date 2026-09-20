@@ -48,11 +48,12 @@ from app.services import artifacts as artifact_service
 from app.services import drive as drive_service
 from app.services import position_compat
 from app.services import tasks as task_service
-from app.work import contracts, planning_fixture, work_defaults, work_intake
+from app.work import contracts, management_dispatch, planning_fixture, work_defaults, work_intake
 
 #: 未指定 deadline 时的默认计划窗口（天）。M2.1 起 guided / managed 共用它，
 #: 保证"只传 name/description"的老客户端在 schedule 字段上逐字段兼容（B4）。
 DEFAULT_PLANNING_WINDOW_DAYS = 18
+MANAGEMENT_DISPATCH_PAGE_LIMIT = 50
 
 
 def create_project(db: Session, payload: ProjectCreate) -> Project:
@@ -501,7 +502,13 @@ def _project_brief(db: Session, project: Project) -> str:
     return "\n".join(lines)
 
 
-def get_project_spec(db: Session, project: Project) -> dict:
+def get_project_spec(
+    db: Session,
+    project: Project,
+    *,
+    dispatch_limit: int = MANAGEMENT_DISPATCH_PAGE_LIMIT,
+    dispatch_before_id: int | None = None,
+) -> dict:
     """`GET /projects/{id}/spec` —— Canonical Spec 与那 8 个问题的**唯一**答复处。
 
     设计 §11.5：Project 必须能回答
@@ -511,6 +518,23 @@ def get_project_spec(db: Session, project: Project) -> dict:
     这是一份**纯读模型**：不落库、不写入、不改项目状态。它把事实摊开，不做建议 ——
     "这份 spec 该不该接""该不该拆"仍然由 Manager Agent 回答（W1/W2）。
     """
+    if type(dispatch_limit) is not int or not 1 <= dispatch_limit <= MANAGEMENT_DISPATCH_PAGE_LIMIT:
+        raise ValueError(f"dispatch_limit must be between 1 and {MANAGEMENT_DISPATCH_PAGE_LIMIT}")
+    if dispatch_before_id is not None and (
+        type(dispatch_before_id) is not int or not 0 < dispatch_before_id < 2**63
+    ):
+        raise ValueError("dispatch_before_id must be a positive 64-bit integer")
+    # One extra bounded row proves whether the next cursor has any results.
+    dispatches = management_dispatch.list_dispatches(
+        db,
+        company_id=project.company_id,
+        project_id=project.id,
+        limit=dispatch_limit + 1,
+        before_id=dispatch_before_id,
+    )
+    next_dispatch = (
+        dispatches[dispatch_limit - 1]["id"] if len(dispatches) > dispatch_limit else None
+    )
     company = org_repo.get_company(db, int(project.company_id))
     requirements = delivery_repo.list_requirements(db, project.id)
     tasks = project_repo.list_tasks(db, project.id)
@@ -615,6 +639,8 @@ def get_project_spec(db: Session, project: Project) -> dict:
             # 快照与当前责任持有者不一致 = 只是"项目行还没被重新路由"，不是错误。
             # 历史归属由 DecisionRecord 承担（M2.4），这里只如实报告漂移。
             "stale": bool(management_stale),
+            "dispatches": dispatches[:dispatch_limit],
+            "dispatches_next_before_id": next_dispatch,
         },
         "execution": {
             "entered": bool(tasks or phases),

@@ -42,8 +42,16 @@ export function getProjectLifecycle(id: number): Promise<ProjectLifecycle> {
  * （spec / work_mode / Work Intake 责任 / 承担它的任职 / 管理 actor /
  *  requirements+deliverables+acceptance / spec 版本 / 是否已进入执行）。
  */
-export function getProjectSpec(id: number): Promise<ProjectSpec> {
-  return get<ProjectSpec>(`/projects/${id}/spec`);
+export function getProjectSpec(
+  id: number,
+  options: { dispatchBeforeId?: number; dispatchLimit?: number } = {},
+): Promise<ProjectSpec> {
+  const params = new URLSearchParams();
+  if (options.dispatchBeforeId != null)
+    params.set("dispatch_before_id", String(options.dispatchBeforeId));
+  if (options.dispatchLimit != null) params.set("dispatch_limit", String(options.dispatchLimit));
+  const query = params.size ? `?${params}` : "";
+  return get<ProjectSpec>(`/projects/${id}/spec${query}`);
 }
 
 export function completeProjectPhase(

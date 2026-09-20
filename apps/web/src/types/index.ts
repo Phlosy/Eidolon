@@ -2048,6 +2048,32 @@ export interface ProjectSpecWorkIntake {
   reason: string;
 }
 
+export interface ManagementDispatch {
+  id: number;
+  source_event_id: number;
+  source_type: string;
+  purpose: "management" | "review";
+  company_id: number | null;
+  project_id: number | null;
+  task_id: number | null;
+  review_request_id: number | null;
+  recipient_employee_id: number | null;
+  work_session_id: number | null;
+  duplicate_of_id: number | null;
+  checked_at: string | null;
+  waiting_reason: string | null;
+  details: Record<string, unknown>;
+  resolution: "invalid" | "obsolete" | "duplicate" | null;
+  resolution_reason: string | null;
+  work_session: {
+    id: number;
+    status: string;
+    started_at: string | null;
+    ended_at: string | null;
+    error: string | null;
+  } | null;
+}
+
 export interface ProjectSpecManagement {
   employee_id: number | null;
   person_id: number | null;
@@ -2056,6 +2082,8 @@ export interface ProjectSpecManagement {
   position_definition_id: number | null;
   current_responsible_employee_id: number | null;
   stale: boolean;
+  dispatches: ManagementDispatch[];
+  dispatches_next_before_id: number | null;
 }
 
 export interface ProjectSpecExecution {

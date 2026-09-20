@@ -338,6 +338,34 @@ class WorkIntakeOut(BaseModel):
     reason: str = ""
 
 
+class ManagementDispatchSessionOut(BaseModel):
+    id: int
+    status: str
+    started_at: datetime | None
+    ended_at: datetime | None
+    error: str | None
+
+
+class ManagementDispatchOut(BaseModel):
+    id: int
+    source_event_id: int
+    source_type: str
+    purpose: Literal["management", "review"]
+    company_id: int | None
+    project_id: int | None
+    task_id: int | None
+    review_request_id: int | None
+    recipient_employee_id: int | None
+    work_session_id: int | None
+    duplicate_of_id: int | None
+    checked_at: datetime | None
+    waiting_reason: str | None
+    details: dict = Field(default_factory=dict)
+    resolution: Literal["invalid", "obsolete", "duplicate"] | None
+    resolution_reason: str | None
+    work_session: ManagementDispatchSessionOut | None
+
+
 class ProjectManagementOut(BaseModel):
     """当前管理 actor 的快照指针。
 
@@ -352,6 +380,8 @@ class ProjectManagementOut(BaseModel):
     position_definition_id: int | None = None
     current_responsible_employee_id: int | None = None
     stale: bool = False
+    dispatches: list[ManagementDispatchOut] = Field(default_factory=list)
+    dispatches_next_before_id: int | None = None
 
 
 class ProjectExecutionOut(BaseModel):
