@@ -17,7 +17,7 @@ completed_world = _completed_world
 conversation_world = _conversation_world
 workspace_world = _workspace_world
 PREVIOUS = "59e548bd7603"
-REVISION = "62b87bef0916"
+REVISION = "63c98cff1a27"
 
 
 def contract(connection):
@@ -66,6 +66,7 @@ def test_v60_up_down_up_preserves_old_attempts_without_inventing_collections(tmp
                 )
                 assert after.pop("stop_requested_at") is None
                 assert after.pop("stop_reason") is None
+                assert after.pop("deadline_at") is None
                 assert after == before
                 assert (
                     connection.exec_driver_sql(

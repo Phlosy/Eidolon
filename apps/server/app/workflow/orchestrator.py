@@ -29,7 +29,7 @@ Worker executes.   ← WorkSession → Runtime
 """
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
@@ -571,14 +571,18 @@ class Orchestrator:
                     for item in task_ctx.input_artifacts
                 )
                 prompt += f"\n\n## 上游交付物（本次任务的输入）\n\n{blocks}"
-            if adapter.type.value in {"hermes", "openclaw"}:
-                worker_timeout(runtime_config)
+            deadline_at = (
+                datetime.now(UTC) + timedelta(seconds=worker_timeout(runtime_config))
+                if adapter.type.value in {"hermes", "openclaw"}
+                else None
+            )
             attempt = telemetry.prepare_attempt(
                 work_session_id,
                 session,
                 prompt,
                 request_key="worker",
                 kind="worker",
+                deadline_at=deadline_at,
                 request_context={
                     "runtime_config": runtime_config,
                     "behavior_policy": policy.as_dict(),

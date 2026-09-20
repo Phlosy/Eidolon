@@ -7,6 +7,7 @@ never persisted here. Unknown remote outcomes remain open for reconciliation.
 
 import hashlib
 import json
+import math
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -122,6 +123,7 @@ def prepare_attempt(
     kind,
     retry_of=None,
     request_context=None,
+    deadline_at=None,
     session_factory=SessionLocal,
 ):
     """Commit intent before send; retry is explicit, same-request and never dialogue.
@@ -129,6 +131,7 @@ def prepare_attempt(
     request_digest covers canonical host inputs (prompt, declared rendering
     context, stable session and runtime identity), not transport framing or a
     transient timeout. Only the digest is saved, never these input contents.
+    The original absolute deadline is separate and cannot change on replay/retry.
     """
     if (
         kind not in {"worker", "controlled"}
@@ -138,6 +141,10 @@ def prepare_attempt(
         raise RuntimeProtocolError("invalid_execution_request")
     if not isinstance(prompt, str) or len(prompt.encode("utf-8")) > 1024 * 1024:
         raise RuntimeProtocolError("invalid_execution_request")
+    if deadline_at is not None:
+        if not isinstance(deadline_at, datetime) or deadline_at.utcoffset() is None:
+            raise RuntimeProtocolError("invalid_execution_deadline")
+        deadline_at = as_utc(deadline_at)
     with session_factory() as db:
         ensure_sqlite_transaction(db)
         work = db.get(WorkSession, work_session_id)
@@ -249,6 +256,7 @@ def prepare_attempt(
             status="prepared",
             last_progress_at=now,
             artifact_context_json=artifact_context,
+            deadline_at=previous.deadline_at if previous is not None else deadline_at,
         )
         db.add(attempt)
         db.flush()
@@ -298,6 +306,30 @@ class AttemptRecorder:
     request_key: str
     idempotency_key: str
     session_factory: object = SessionLocal
+
+    def remaining_timeout(self, maximum):
+        """Cap a new wait by its saved deadline, without granting fresh time.
+
+        Call once before I/O, then use a monotonic timeout for that active wait.
+        Missing historical limits cannot authorize another wait after restart.
+        """
+        if (
+            type(maximum) not in (int, float)
+            or not math.isfinite(maximum)
+            or not 0 < maximum <= 900
+        ):
+            raise RuntimeProtocolError("invalid_run_timeout")
+        with self.session_factory() as db:
+            row = _attempt(db, self.attempt_id)
+            _read_scope(db, row.work_session_id)
+            if row.request_key != self.request_key or row.idempotency_key != self.idempotency_key:
+                raise RuntimeProtocolError("execution_identity_mismatch")
+            if row.deadline_at is None:
+                raise RuntimeProtocolError("execution_deadline_unknown")
+            remaining = (as_utc(row.deadline_at) - utcnow()).total_seconds()
+        if remaining <= 0:
+            raise TimeoutError("execution_deadline_expired")
+        return min(maximum, remaining)
 
     def request_stop(self, reason, *, session=None):
         """Persist first intent even if the original transport is no longer usable.

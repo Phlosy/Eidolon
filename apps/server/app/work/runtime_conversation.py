@@ -14,6 +14,7 @@ import re
 from collections.abc import Awaitable, Callable
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
+from datetime import timedelta
 from uuid import uuid4
 
 from sqlalchemy.exc import SQLAlchemyError
@@ -21,6 +22,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.core.database import SessionLocal
 from app.core.redaction import redact_data
 from app.core.transaction_effects import ensure_sqlite_transaction
+from app.models.base import utcnow
 from app.models.organization import Employee
 from app.models.project import WorkSession
 from app.models.runtime import RuntimeInstance as RuntimeRow
@@ -415,6 +417,7 @@ async def run_conversation(
                     prompt,
                     request_key=request_id,
                     kind="controlled",
+                    deadline_at=utcnow() + timedelta(seconds=timeout),
                     session_factory=session_factory,
                 )
             except RuntimeProtocolError as exc:
@@ -426,6 +429,8 @@ async def run_conversation(
                     ) from None
                 raise
             try:
+                timeout = attempt.remaining_timeout(timeout)
+                turn_deadline = min(turn_deadline, asyncio.get_running_loop().time() + timeout)
                 reply = await _turn(adapter, runtime_session, prompt, request_id, timeout, turn)
             except TimeoutError:
                 raise _Stop(

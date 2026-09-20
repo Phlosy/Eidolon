@@ -360,6 +360,8 @@ class OpenClawAdapter(RuntimeAdapter):
         waiter = None
         accepted = False
         try:
+            if session.attempt is not None:
+                timeout = session.attempt.remaining_timeout(timeout)
             deadline = worker_deadline(timeout)
             async with asyncio.timeout_at(deadline), self._connect(instance) as client:
                 result = await client.call(

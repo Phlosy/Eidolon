@@ -17,7 +17,7 @@ from test_m3_runtime_conversation import world as _worker_world
 from test_m3_runtime_turns import hermes_transport, session
 
 from app.core.database import SessionLocal
-from app.models.base import utcnow
+from app.models.base import as_utc, utcnow
 from app.models.decision import DecisionRecord, ToolAudit
 from app.models.project import WorkSession
 from app.models.runtime_execution import RuntimeAttempt
@@ -93,6 +93,7 @@ async def test_management_turn_intent_and_acceptance_are_committed_before_wait(
             row = attempts[-1]
             if request.method == "POST":
                 assert row.status == "prepared" and row.remote_run_id is None
+                assert 0 < (as_utc(row.deadline_at) - utcnow()).total_seconds() <= 60
                 assert row.idempotency_key == request.headers["Idempotency-Key"]
                 submitted.append(row.id)
                 return httpx.Response(202, json={"run_id": f"saved-run-{len(submitted)}"})
@@ -483,6 +484,8 @@ def test_historical_company_scopes_observation_and_attempt_readers(db, bound):
                 reader(db, bound.work.id)
         with pytest.raises(RuntimeProtocolError, match="owner_changed"):
             telemetry.reconstruct_attempt(recorder.attempt_id)
+        with pytest.raises(RuntimeProtocolError, match="scope_unavailable"):
+            recorder.remaining_timeout(60)
     finally:
         reset_request_identity(token)
 

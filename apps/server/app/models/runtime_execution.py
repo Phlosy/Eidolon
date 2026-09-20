@@ -94,6 +94,8 @@ class RuntimeAttempt(TimestampMixin, Base):
     host_observed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     stop_requested_at: Mapped[datetime | None] = mapped_column(nullable=True)
     stop_reason: Mapped[str | None] = mapped_column(String(48), nullable=True)
+    # Original request allowance; NULL means the historical limit was not captured.
+    deadline_at: Mapped[datetime | None] = mapped_column(nullable=True)
     # Captured before worker dispatch; legacy, mock and controlled turns stay NULL.
     artifact_context_json: Mapped[dict | None] = mapped_column(
         JSON(none_as_null=True), nullable=True
@@ -187,6 +189,20 @@ STOP_GUARDS = (
         "a.idempotency_key=NEW.idempotency_key)",
     ),
 )
+DEADLINE_GUARDS = (
+    (
+        "runtime_attempt_deadline_insert",
+        "INSERT",
+        "(NEW.deadline_at IS NOT NULL AND julianday(NEW.deadline_at) IS NULL) OR "
+        "EXISTS (SELECT 1 FROM runtime_attempts a WHERE a.work_session_id=NEW.work_session_id "
+        "AND a.request_key=NEW.request_key AND a.deadline_at IS NOT NEW.deadline_at)",
+    ),
+    (
+        "runtime_attempt_deadline_immutable",
+        "UPDATE",
+        "NEW.deadline_at IS NOT OLD.deadline_at",
+    ),
+)
 GUARDS = (
     (
         WorkSession.__table__,
@@ -202,7 +218,7 @@ GUARDS = (
     ),
     *(
         (RuntimeAttempt.__table__, name, operation, condition)
-        for name, operation, condition in STOP_GUARDS
+        for name, operation, condition in (*STOP_GUARDS, *DEADLINE_GUARDS)
     ),
     (RuntimeAttempt.__table__, "runtime_attempt_insert_valid", "INSERT", _ATTEMPT_INSERT),
     (

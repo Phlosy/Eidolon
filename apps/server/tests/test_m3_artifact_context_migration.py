@@ -87,6 +87,7 @@ def test_v58_up_down_up_preserves_old_attempt_and_matches_metadata(tmp_path):
                 assert after.pop("artifact_context_json") is None
                 assert after.pop("stop_requested_at") is None
                 assert after.pop("stop_reason") is None
+                assert after.pop("deadline_at") is None
                 assert after == before
                 with pytest.raises(IntegrityError):
                     connection.exec_driver_sql(
@@ -125,5 +126,5 @@ def test_v58_refuses_to_erase_workspace_snapshot_before_any_ddl(db, workspace_wo
         assert connection.exec_driver_sql("SELECT * FROM runtime_attempts").all() == rows
         assert (
             connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-            == "62b87bef0916"
+            == "63c98cff1a27"
         )

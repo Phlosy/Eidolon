@@ -1,0 +1,239 @@
+{
+  "unit": "U16 component3",
+  "status": "locally_verified_component_only",
+  "base_commit": "5d64b142cc00f95bf6e1fa3b89ed1b6fe8195c75",
+  "plan": "docs/m3-implementation-plan.md",
+  "requirements": [
+    "R4",
+    "R5"
+  ],
+  "key_technical_decision": "KTD8",
+  "migration": {
+    "revision": "63c98cff1a27",
+    "previous": "62b87bef0916",
+    "history": "NULL retained; original deadline immutable across replay and explicit retries; refuses lossy downgrade before DDL"
+  },
+  "behavior": "Store original request UTC deadline before Worker/controlled I/O; cap active monotonic wait by saved remaining allowance; unknown/expired original deadline authorizes no send",
+  "process_proof": {
+    "test": "apps/server/tests/test_m3_execution_deadlines.py::test_process_death_after_prepare_never_resets_the_original_deadline",
+    "termination": "os._exit(23) after real prepare_attempt commit before any remote request",
+    "recovery": "Two fresh interpreters replay same original intent proposing a longer deadline; original deadline unchanged, one attempt; controlled clock positions yield 5 seconds or expired",
+    "limits": "Clock positions are test inputs; no external runtime or model is involved"
+  },
+  "checks": [
+    {
+      "label": "deadline-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_execution_deadlines.py",
+        "apps/server/tests/test_m3_deadline_migration.py",
+        "apps/server/tests/test_m3_telemetry.py::test_management_turn_intent_and_acceptance_are_committed_before_wait",
+        "apps/server/tests/test_m3_worker_recovery.py::test_recovery_never_resets_the_original_worker_deadline",
+        "apps/server/tests/test_m3_worker_recovery.py::test_expired_original_deadline_prevents_worker_send",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 4.44,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/deadline-red.log",
+      "outcome": "expected_failure",
+      "summary": "25 failures before implementation: deadline API/schema absent; cross-layer assertions cascade from absent preparation/deadline; no preimplementation crash completion claimed",
+      "log_sha256": "c239bbc7e48000b1ae376b8d1b6193d43ff4d98fa6b97152bb236292d293fa5d"
+    },
+    {
+      "label": "deadline-first-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_execution_deadlines.py",
+        "apps/server/tests/test_m3_deadline_migration.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 27.85,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/deadline-first-green.log",
+      "outcome": "implementation_failure",
+      "summary": "36 failed, 143 passed: Worker deadline capture initially referenced an unimported clock function; corrected to existing datetime.now(UTC) before final checks",
+      "log_sha256": "7e103dc752ee9d39619a20235eee2ae3561d8a64eb6a53a2cbe066f9a50e0a6a"
+    },
+    {
+      "label": "deadline-focused",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_execution_deadlines.py",
+        "apps/server/tests/test_m3_artifact_collection_migration.py",
+        "apps/server/tests/test_m3_artifact_context_migration.py",
+        "apps/server/tests/test_m3_confirmation_migration.py",
+        "apps/server/tests/test_m3_deadline_migration.py",
+        "apps/server/tests/test_m3_dispatch_notice_migration.py",
+        "apps/server/tests/test_m3_drive_revision_migration.py",
+        "apps/server/tests/test_m3_execution_migration.py",
+        "apps/server/tests/test_m3_management_discovery_migration.py",
+        "apps/server/tests/test_m3_management_dispatch_migration.py",
+        "apps/server/tests/test_m3_pinned_handoff_migration.py",
+        "apps/server/tests/test_m3_probe_migration.py",
+        "apps/server/tests/test_m3_provenance_migration.py",
+        "apps/server/tests/test_m3_provisioning_migration.py",
+        "apps/server/tests/test_m3_runtime_operation_migration.py",
+        "apps/server/tests/test_m3_session_purpose_migration.py",
+        "apps/server/tests/test_m3_stop_migration.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 61.76,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/deadline-focused.log",
+      "outcome": "passed",
+      "summary": "219 passed, 1 warning; execution deadlines, M3 migration history/parity, telemetry, Worker recovery and controlled conversations",
+      "log_sha256": "42afed25cbfb6da1c5d5d3ba73add17ffdb8fc8296928d318707fc6f767a234e"
+    },
+    {
+      "label": "deadline-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 279.56,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/deadline-full-backend.log",
+      "outcome": "passed",
+      "summary": "2981 passed, 26 deselected, 118 existing warnings; pytest 277.58 seconds",
+      "log_sha256": "75cee0357c9420f29eaa02c78f2e8700b40eb7ad9a124f79e9d652a2cb93d1cf"
+    },
+    {
+      "label": "deadline-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/deadline-python-lint.log",
+      "outcome": "passed",
+      "summary": "All server Python lint checks passed",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "deadline-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/deadline-python-format.log",
+      "outcome": "passed",
+      "summary": "544 files already formatted; repository config excludes migrations",
+      "log_sha256": "f3f0637915e4009f0ce459b6f6b3a3ff0999b0f98d3a4381ec4ff8e000eef729"
+    },
+    {
+      "label": "deadline-migration-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/migrations/versions/63c98cff1a27_v63_original_execution_deadline.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/deadline-migration-lint.log",
+      "outcome": "passed",
+      "summary": "New v63 migration explicitly linted and passed",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "deadline-migration-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/migrations/versions/63c98cff1a27_v63_original_execution_deadline.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/deadline-migration-format.log",
+      "outcome": "passed",
+      "summary": "New v63 migration explicitly checked and already formatted",
+      "log_sha256": "fd2299c9f1c6dc869070883e281051bfe93aacf66c1a3b0069f45b4aa410ca50"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/models/runtime_execution.py": "42b754523392080f65d602a6d1895b2b096a8db7276f4c6e9e4460d8ae60817e",
+    "apps/server/app/runtimes/base.py": "b687c97748849041e1dcbea91acb4262293dd858586a91eca59a882a40c55d6c",
+    "apps/server/app/runtimes/hermes/adapter.py": "db71568f90826d994ce7124a629a2051472a1e83656f5eccdcffaaed21e16e35",
+    "apps/server/app/runtimes/openclaw/adapter.py": "d67d429bc9c033d88e18aa138388d2b955372fce6de71726498e02ace8e94c12",
+    "apps/server/app/work/runtime_conversation.py": "7c04f9269cbca2bc777b14dae549a4ab52da56eb4e4be0e1002baa583ae60539",
+    "apps/server/app/work/telemetry.py": "6dc4ef234e3813f3aed44a159a37ed26d373515e748070a0459128f7b7f07309",
+    "apps/server/app/workflow/orchestrator.py": "abd205eb1db3711cdce8eadbce35ce27a672cd2e51018e6210eb43654e6b147e",
+    "apps/server/migrations/versions/63c98cff1a27_v63_original_execution_deadline.py": "a96f6eec5cc77739dfb1744b0677ca5ea351d5b99c156b45b7958a4fd1ebdbcd",
+    "apps/server/tests/test_m3_artifact_collection_migration.py": "676244391f7bf03b40ae317614b3fa6574142080d3fb9f3f9dc10c1fd0607c38",
+    "apps/server/tests/test_m3_artifact_context_migration.py": "66d0a7d8ef90eaa3fc44960217d4dd1f1df52b909efc097f8665ce8ab4bbd9d6",
+    "apps/server/tests/test_m3_confirmation_migration.py": "6f35acb3a67be9b955d8c2767a315f3836a98d6e93bb2e3b442ea90374d5ecf0",
+    "apps/server/tests/test_m3_deadline_migration.py": "7eed0640ce3153fcd7a228e2417cfc39558b19e69c877600f3de60e2a6c817ee",
+    "apps/server/tests/test_m3_drive_revision_migration.py": "734111735eb7546702107b1dc981a2e8b71f45dd7de713a88780691a7326954c",
+    "apps/server/tests/test_m3_execution_deadlines.py": "e6de12bf544a8cce18144e70232591badbb9fffee9b67545d6873fd88162c101",
+    "apps/server/tests/test_m3_execution_migration.py": "17504ad644950cfc0f2d77573f0bc2437cee41f89984179a98f829163334b1b4",
+    "apps/server/tests/test_m3_management_discovery_migration.py": "ca6f0973bf1e109c57f941a1e82a4f40119442da0a1584942e0e6ac33e1d5989",
+    "apps/server/tests/test_m3_management_dispatch_migration.py": "316882b2804c0b3db91c16999c904972a3094b86575b7f81caccfca24365c1d3",
+    "apps/server/tests/test_m3_pinned_handoff_migration.py": "207b4f87191a0d78df928691aa7a74957c4e1f0b0328a43ea3a8f6849b208a8e",
+    "apps/server/tests/test_m3_runtime_conversation.py": "3ccf86f14a82c32eacf62030f8f5872d16397fff7007c997319dc58f44b03b7a",
+    "apps/server/tests/test_m3_runtime_operation_migration.py": "eb36617174f98caa2021fe50e0879ad9153089f8eb68c0a981c940e9e1cfce14",
+    "apps/server/tests/test_m3_session_purpose_migration.py": "ab4eea1bc58428871845a369fbdbec97691b49687710d205d725517c98d9ea3b",
+    "apps/server/tests/test_m3_stop_migration.py": "7887027052b309fdd726e106a1e6a566e9da402fd95ed777ba1f92beb45fde99",
+    "apps/server/tests/test_m3_telemetry.py": "c52987167574178d0d2805194c3b0ebfed7f575239a74506c937f704ef4d8213",
+    "apps/server/tests/test_m3_worker_recovery.py": "7e0a4d6697343c7f4461deece35ca0a6de35d6d370a104e3d4116003d076daad",
+    "docs/m2-freeze.md": "9424b215ad32bb8dc3c670e3f65c9ffb241ce3715bbfbcfed88512df494b5b4e",
+    "docs/m3-u16-crash-recovery.md": "969aa510004099942326564f8b69b6ead3f56d676b6f537a1b304ade7fd6890d"
+  },
+  "paid_calls": 0,
+  "docker_operations": 0,
+  "independent_review_completed": false,
+  "not_run": [
+    "26 opt-in native integration cases",
+    "Frontend/browser checks: no frontend changes in this component"
+  ],
+  "open_gates": [
+    "Full U16 running-session, action and downstream-effect recovery",
+    "U14 paid full chain requires pending additional allowance answer",
+    "U15-U17 joint real business and monetary evidence"
+  ],
+  "notes": [
+    "Original user tmp/ excluded and unread; no development DB or shared fixture changes",
+    "This component is not a completed U16 or completed M3",
+    "Public evidence from components1/2 retained unchanged as their commit snapshots"
+  ]
+}

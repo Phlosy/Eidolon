@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 from types import SimpleNamespace
 
 import httpx
@@ -15,6 +16,7 @@ from test_m3_telemetry import configure_worker
 from test_m3_telemetry import worker_world as _worker_world
 
 from app.core.database import SessionLocal
+from app.models.base import as_utc, utcnow
 from app.models.drive import DriveNode
 from app.models.project import WorkSession
 from app.models.runtime_artifact import RuntimeArtifactCollection
@@ -68,6 +70,9 @@ def recovering(db, bound, monkeypatch, tmp_path, request):
     send = adapter.send_task
 
     async def capture(session, *args, **kwargs):
+        with SessionLocal() as independent:
+            row = independent.get(RuntimeAttempt, session.attempt.attempt_id)
+            assert row.deadline_at is not None, "send preceded durable deadline"
         env.sessions.append(session)
         return await send(session, *args, **kwargs)
 
@@ -319,6 +324,25 @@ async def test_recovery_never_resets_the_original_worker_deadline(db, bound, rec
     assert work.technical_retry_count == 1
     assert attempt.ended_at is None and attempt.stop_state == "unconfirmed"
     assert len(recovering.sends) == len(recovering.stops) == 1
+    assert 0 < (as_utc(attempt.deadline_at) - as_utc(attempt.created_at)).total_seconds() <= 1.3
+
+
+@pytest.mark.parametrize("unknown", [False, True])
+async def test_expired_original_deadline_prevents_worker_send(
+    db, bound, recovering, monkeypatch, unknown
+):
+    original = telemetry.prepare_attempt
+
+    def expired(*args, **kwargs):
+        kwargs["deadline_at"] = None if unknown else utcnow() - timedelta(seconds=1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(telemetry, "prepare_attempt", expired)
+    await recovering.runner._run_task(bound.task.id)
+    attempt, work = facts(db)
+    assert recovering.sends == recovering.queries == []
+    assert attempt.remote_run_id is None and attempt.ended_at is None
+    assert work.status == "failed" and bound.task.status == "blocked"
 
 
 async def test_each_recovery_query_is_bounded(db, bound, recovering, monkeypatch):

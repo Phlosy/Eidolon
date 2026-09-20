@@ -4,6 +4,7 @@ import asyncio
 import json
 import time
 from dataclasses import replace
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -707,6 +708,24 @@ async def test_late_reply_cannot_evade_the_host_turn_deadline(world):
     assert result["reason"] == "turn_timeout"
     assert counts(world) == before
     assert len(adapter.prompts) == 1
+
+
+async def test_expired_saved_deadline_prevents_controlled_send(world, monkeypatch):
+    from app.work import telemetry
+
+    original = telemetry.prepare_attempt
+
+    def expired(*args, **kwargs):
+        kwargs["deadline_at"] = utcnow() - timedelta(seconds=1)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(telemetry, "prepare_attempt", expired)
+    adapter = ScriptedAdapter(decision(world))
+    before = counts(world)
+    result = await run(world, adapter)
+    assert result["reason"] == "turn_timeout"
+    assert adapter.prompts == adapter.cancelled == []
+    assert counts(world) == before
 
 
 async def test_already_stopped_adapter_failure_is_not_cancelled_twice(world):

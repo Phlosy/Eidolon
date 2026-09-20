@@ -304,6 +304,8 @@ class HermesAdapter(RuntimeAdapter):
         instance = session.instance
         accepted = False
         try:
+            if session.attempt is not None:
+                timeout = session.attempt.remaining_timeout(timeout)
             deadline = worker_deadline(timeout)
             async with asyncio.timeout_at(deadline):
                 key = session.attempt.idempotency_key if session.attempt is not None else session.id
