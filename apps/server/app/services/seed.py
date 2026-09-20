@@ -3,6 +3,7 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -11,9 +12,11 @@ from app.models.enums import (
     DeploymentMode,
     EmployeeStatus,
     HealthStatus,
+    ProvisioningJobOwner,
     RuntimeInstanceStatus,
     RuntimeType,
 )
+from app.models.lifecycle import ProvisioningJob
 from app.models.organization import Company, Department, Employee
 from app.repositories import organization as org_repo
 from app.repositories import persons as person_repo
@@ -55,7 +58,7 @@ BRAIN_DEFAULTS: dict[str, dict] = {
 
 def ensure_employee_runtime_state(db: Session) -> None:
     """Idempotently create employee_brains + mock runtime_instances rows for
-    every employee (v0.2). Runs on every boot, including for pre-v0.2 seeds."""
+    legacy employees without a runtime-owned intent. Runs on every boot."""
     changed = False
     for employee in org_repo.list_employees(db):
         brain = runtime_repo.get_brain(db, employee.id)
@@ -65,6 +68,19 @@ def ensure_employee_runtime_state(db: Session) -> None:
             )
             changed = True
         if runtime_repo.get_instance_for_employee(db, employee.id) is None:
+            runtime_intent = db.scalar(
+                select(ProvisioningJob.id)
+                .where(
+                    ProvisioningJob.employee_id == employee.id,
+                    ProvisioningJob.owner == ProvisioningJobOwner.runtime.value,
+                )
+                .limit(1)
+            )
+            if runtime_intent is not None:
+                # Its owner recovers the original resource and step receipts.
+                # A mock row here would bypass the lease and conflict with a
+                # real runtime policy, including an intent awaiting repair.
+                continue
             base = Path(settings.data_root) / "employees" / str(employee.id)
             for sub in ("workspace", "brain", "runtime"):
                 (base / sub).mkdir(parents=True, exist_ok=True)

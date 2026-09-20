@@ -1,0 +1,1470 @@
+{
+  "unit": "U16 component11",
+  "status": "locally_verified_component_only",
+  "base_commit": "749d3aa7110f0ac71ba6b2dfb55646e5ad3507c4",
+  "plan": "docs/m3-implementation-plan.md",
+  "requirements": [
+    "R4",
+    "R5"
+  ],
+  "key_technical_decisions": [
+    "KTD2",
+    "KTD8",
+    "KTD11"
+  ],
+  "schema_changed": false,
+  "behavior": "Legacy startup seed leaves RuntimeInstance creation to any original runtime-owned provisioning intent, preserving original claim/resource/step ownership; unrelated legacy seeding is unchanged.",
+  "proof": {
+    "new_scenarios": 11,
+    "actual_process_records": [
+      {
+        "case": "test_process_crashes_reuse_original_provisioning_facts[intent]",
+        "facts": {
+          "window": "intent",
+          "exit_codes": [
+            23,
+            24
+          ],
+          "before": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "pending",
+              "claim_token": null,
+              "claimed_at": null,
+              "completed_at": null,
+              "done_steps": 0,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              }
+            ],
+            "runtimes": [],
+            "bindings": []
+          },
+          "recovered": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "a9fe2e68-9911-4891-9a28-8f5e81f93f79",
+              "claimed_at": "2026-09-20 22:36:45.673056",
+              "completed_at": null,
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori0/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:45.673056",
+                "completed_at": "2026-09-20 22:36:45.673056"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:45.673056",
+                "completed_at": "2026-09-20 22:36:45.673056"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:45.673056",
+                "completed_at": "2026-09-20 22:36:45.673056"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "868de0f9-69db-4e89-a017-64ee552f919c",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori0/owned-workspace",
+                "started_at": "2026-09-20 21:36:45.782042",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          },
+          "final": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "done",
+              "claim_token": null,
+              "claimed_at": null,
+              "completed_at": "2026-09-20 23:36:46.509290",
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori0/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:45.673056",
+                "completed_at": "2026-09-20 22:36:45.673056"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:45.673056",
+                "completed_at": "2026-09-20 22:36:45.673056"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:45.673056",
+                "completed_at": "2026-09-20 22:36:45.673056"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "868de0f9-69db-4e89-a017-64ee552f919c",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori0/owned-workspace",
+                "started_at": "2026-09-20 21:36:45.782042",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          }
+        }
+      },
+      {
+        "case": "test_process_crashes_reuse_original_provisioning_facts[claim]",
+        "facts": {
+          "window": "claim",
+          "exit_codes": [
+            23,
+            24
+          ],
+          "before": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "cc309956-7425-408f-8d28-b9046bb95df0",
+              "claimed_at": "2026-09-20 21:36:49.450725",
+              "completed_at": null,
+              "done_steps": 0,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              }
+            ],
+            "runtimes": [],
+            "bindings": []
+          },
+          "recovered": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "e4892ae2-56d8-4c04-83ac-b9270c364ee1",
+              "claimed_at": "2026-09-20 22:36:51.142600",
+              "completed_at": null,
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori1/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:51.142600",
+                "completed_at": "2026-09-20 22:36:51.142600"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:51.142600",
+                "completed_at": "2026-09-20 22:36:51.142600"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:51.142600",
+                "completed_at": "2026-09-20 22:36:51.142600"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "3ff21e2e-60fb-4709-8d79-4b1afb7f6dcb",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori1/owned-workspace",
+                "started_at": "2026-09-20 21:36:51.248032",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          },
+          "final": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "done",
+              "claim_token": null,
+              "claimed_at": null,
+              "completed_at": "2026-09-20 23:36:51.965973",
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori1/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:51.142600",
+                "completed_at": "2026-09-20 22:36:51.142600"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:51.142600",
+                "completed_at": "2026-09-20 22:36:51.142600"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:51.142600",
+                "completed_at": "2026-09-20 22:36:51.142600"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "3ff21e2e-60fb-4709-8d79-4b1afb7f6dcb",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori1/owned-workspace",
+                "started_at": "2026-09-20 21:36:51.248032",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          }
+        }
+      },
+      {
+        "case": "test_process_crashes_reuse_original_provisioning_facts[workspace]",
+        "facts": {
+          "window": "workspace",
+          "exit_codes": [
+            23,
+            24
+          ],
+          "before": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "04de690f-6cce-47c9-b740-320ba2dbf3c1",
+              "claimed_at": "2026-09-20 21:36:54.906665",
+              "completed_at": null,
+              "done_steps": 0,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "running",
+                "attempts": 1,
+                "result": {},
+                "started_at": "2026-09-20 21:36:54.906661",
+                "completed_at": null
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              }
+            ],
+            "runtimes": [],
+            "bindings": []
+          },
+          "recovered": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "8d6ea254-c899-481d-8369-29682a0097b6",
+              "claimed_at": "2026-09-20 22:36:56.563516",
+              "completed_at": null,
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 2,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori2/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:56.563516",
+                "completed_at": "2026-09-20 22:36:56.563516"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:56.563516",
+                "completed_at": "2026-09-20 22:36:56.563516"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:56.563516",
+                "completed_at": "2026-09-20 22:36:56.563516"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "db031dfd-c411-44c8-b54a-ce608648aeb4",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori2/owned-workspace",
+                "started_at": "2026-09-20 21:36:56.670279",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          },
+          "final": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "done",
+              "claim_token": null,
+              "claimed_at": null,
+              "completed_at": "2026-09-20 23:36:57.398494",
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 2,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori2/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:56.563516",
+                "completed_at": "2026-09-20 22:36:56.563516"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:56.563516",
+                "completed_at": "2026-09-20 22:36:56.563516"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:36:56.563516",
+                "completed_at": "2026-09-20 22:36:56.563516"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "db031dfd-c411-44c8-b54a-ce608648aeb4",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori2/owned-workspace",
+                "started_at": "2026-09-20 21:36:56.670279",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          }
+        }
+      },
+      {
+        "case": "test_process_crashes_reuse_original_provisioning_facts[runtime]",
+        "facts": {
+          "window": "runtime",
+          "exit_codes": [
+            23,
+            24
+          ],
+          "before": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "ea9ac943-5005-46e5-bf83-5b0d5bce99e1",
+              "claimed_at": "2026-09-20 21:37:00.345804",
+              "completed_at": null,
+              "done_steps": 1,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori3/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:00.342874",
+                "completed_at": "2026-09-20 21:37:00.344372"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "running",
+                "attempts": 1,
+                "result": {},
+                "started_at": "2026-09-20 21:37:00.345801",
+                "completed_at": null
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "87edd179-f439-4660-b7a6-938fc9e49849",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori3/owned-workspace",
+                "started_at": "2026-09-20 21:37:00.349617",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          },
+          "recovered": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "bf597580-d0be-43a7-881d-9bd7ef31e5c9",
+              "claimed_at": "2026-09-20 22:37:02.010948",
+              "completed_at": null,
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori3/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:00.342874",
+                "completed_at": "2026-09-20 21:37:00.344372"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 2,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:37:02.010948",
+                "completed_at": "2026-09-20 22:37:02.010948"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:37:02.010948",
+                "completed_at": "2026-09-20 22:37:02.010948"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "87edd179-f439-4660-b7a6-938fc9e49849",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori3/owned-workspace",
+                "started_at": "2026-09-20 21:37:00.349617",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          },
+          "final": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "done",
+              "claim_token": null,
+              "claimed_at": null,
+              "completed_at": "2026-09-20 23:37:02.832957",
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori3/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:00.342874",
+                "completed_at": "2026-09-20 21:37:00.344372"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 2,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:37:02.010948",
+                "completed_at": "2026-09-20 22:37:02.010948"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 22:37:02.010948",
+                "completed_at": "2026-09-20 22:37:02.010948"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "87edd179-f439-4660-b7a6-938fc9e49849",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori3/owned-workspace",
+                "started_at": "2026-09-20 21:37:00.349617",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          }
+        }
+      },
+      {
+        "case": "test_process_crashes_reuse_original_provisioning_facts[receipts]",
+        "facts": {
+          "window": "receipts",
+          "exit_codes": [
+            23,
+            24
+          ],
+          "before": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "72ca4ad2-8d39-45e5-ab67-4c3718eb20a3",
+              "claimed_at": "2026-09-20 21:37:05.847870",
+              "completed_at": null,
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori4/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:05.836999",
+                "completed_at": "2026-09-20 21:37:05.838452"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:05.839860",
+                "completed_at": "2026-09-20 21:37:05.845772"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:05.846625",
+                "completed_at": "2026-09-20 21:37:05.848275"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "134e3176-7acd-4540-83d9-75bd0f0835f2",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori4/owned-workspace",
+                "started_at": "2026-09-20 21:37:05.843406",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          },
+          "recovered": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "dfa7e305-ed6d-4229-9675-ceee41c28032",
+              "claimed_at": "2026-09-20 22:37:07.510396",
+              "completed_at": null,
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori4/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:05.836999",
+                "completed_at": "2026-09-20 21:37:05.838452"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:05.839860",
+                "completed_at": "2026-09-20 21:37:05.845772"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:05.846625",
+                "completed_at": "2026-09-20 21:37:05.848275"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "134e3176-7acd-4540-83d9-75bd0f0835f2",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori4/owned-workspace",
+                "started_at": "2026-09-20 21:37:05.843406",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          },
+          "final": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "done",
+              "claim_token": null,
+              "claimed_at": null,
+              "completed_at": "2026-09-20 23:37:08.322815",
+              "done_steps": 3,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "mock",
+                  "deployment_mode": "mock",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori4/owned-workspace",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:05.836999",
+                "completed_at": "2026-09-20 21:37:05.838452"
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "runtime environment ensured",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:05.839860",
+                "completed_at": "2026-09-20 21:37:05.845772"
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "done",
+                "attempts": 1,
+                "result": {
+                  "ok": true,
+                  "detail": "mock runtime needs no provider binding",
+                  "reason_code": null
+                },
+                "started_at": "2026-09-20 21:37:05.846625",
+                "completed_at": "2026-09-20 21:37:05.848275"
+              }
+            ],
+            "runtimes": [
+              {
+                "id": 6,
+                "resource_key": "134e3176-7acd-4540-83d9-75bd0f0835f2",
+                "workspace": "/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1102/test_process_crashes_reuse_ori4/owned-workspace",
+                "started_at": "2026-09-20 21:37:05.843406",
+                "type": "mock",
+                "deployment": "mock",
+                "status": "running",
+                "provisioning_token": null
+              }
+            ],
+            "bindings": []
+          }
+        }
+      },
+      {
+        "case": "test_restart_does_not_seed_mock_over_a_claimed_real_intent[hermes]",
+        "facts": {
+          "exit_code": 23,
+          "before_and_after": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "bf2797f0-74c1-492c-94b8-948c6727e997",
+              "claimed_at": "2026-09-20 21:37:11.291404",
+              "completed_at": null,
+              "done_steps": 0,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "hermes",
+                  "deployment_mode": "docker",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              }
+            ],
+            "runtimes": [],
+            "bindings": []
+          }
+        }
+      },
+      {
+        "case": "test_restart_does_not_seed_mock_over_a_claimed_real_intent[openclaw]",
+        "facts": {
+          "exit_code": 23,
+          "before_and_after": {
+            "job": {
+              "id": 1,
+              "owner": "runtime",
+              "status": "running",
+              "claim_token": "11cbf0e7-fa55-4fb3-9d64-849250d4933c",
+              "claimed_at": "2026-09-20 21:37:13.056225",
+              "completed_at": null,
+              "done_steps": 0,
+              "metadata": {
+                "source": "app.work.readiness",
+                "requested_by": "app.work.readiness",
+                "company_id": 1,
+                "policy": {
+                  "runtime_type": "openclaw",
+                  "deployment_mode": "docker",
+                  "provider_id": null,
+                  "model": "",
+                  "runtime_config": {},
+                  "source": "contracts.DEFAULT_RUNTIME_TYPE"
+                }
+              }
+            },
+            "steps": [
+              {
+                "id": 1,
+                "resource": "workspace",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              },
+              {
+                "id": 2,
+                "resource": "runtime",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              },
+              {
+                "id": 3,
+                "resource": "provider",
+                "status": "pending",
+                "attempts": 0,
+                "result": {},
+                "started_at": null,
+                "completed_at": null
+              }
+            ],
+            "runtimes": [],
+            "bindings": []
+          }
+        }
+      }
+    ],
+    "raw_junit": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/provisioning-crash-facts.xml",
+    "raw_junit_sha256": "ef9228b701ac45d4cbe74b2dabdbce401a4adb2b21c10c547912c2f79ce232a2",
+    "limits": "Real process os._exit23/24, real app lifespan, isolated SQLite and filesystem, explicit mock environment for executed provisioning. Lease clock is injected in each recovery process without rewriting persisted timestamps. Hermes/OpenClaw tests retain live claims and perform zero Docker or model operations."
+  },
+  "checks": [
+    {
+      "label": "provisioning-crash-characterization",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_provisioning_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 20.93,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/provisioning-crash-characterization.log",
+      "outcome": "startup seed materialized mock while runtime claim live",
+      "log_sha256": "70f37743f7e0854b69d976932efbe6b180249de9a984a414056e72fdcb132084",
+      "summary": "2 failed, 3 passed, 1 warning in 19.65s"
+    },
+    {
+      "label": "provisioning-crash-real-intent-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_provisioning_recovery.py",
+        "-q",
+        "--tb=short",
+        "-k",
+        "claimed_real_intent"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 5.41,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/provisioning-crash-real-intent-red.log",
+      "outcome": "same bootstrap collision for Hermes and OpenClaw intents",
+      "log_sha256": "ad0d90b34f4961ac310533b637a14a993cc69acd36fab36edafb72dbd93dc5e7",
+      "summary": "2 failed, 5 deselected, 1 warning in 4.15s"
+    },
+    {
+      "label": "provisioning-crash-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_provisioning_recovery.py",
+        "apps/server/tests/test_m3_provisioning.py",
+        "apps/server/tests/test_provisioning_resilience.py",
+        "apps/server/tests/test_provisioning_sweep.py",
+        "apps/server/tests/test_m3_readiness.py",
+        "apps/server/tests/test_m3_recruitment_flow.py",
+        "apps/server/tests/test_runtime_lifecycle.py",
+        "apps/server/tests/test_position_service.py",
+        "apps/server/tests/test_project_delivery_lifecycle.py",
+        "-q",
+        "--tb=short",
+        "-o",
+        "junit_family=xunit1",
+        "--junitxml=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/provisioning-crash-facts.xml"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 48.19,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/provisioning-crash-green.log",
+      "outcome": "passed",
+      "log_sha256": "4993da45a0c1d7730ad2f9e4e36b4f6cccd1e9638474468d7e6ca0706afbae18",
+      "summary": "134 passed, 1 warning in 46.63s"
+    },
+    {
+      "label": "provisioning-crash-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/provisioning-crash-python-lint.log",
+      "outcome": "imported pytest fixture shadowing; corrected with existing fixture alias convention",
+      "log_sha256": "50354b1ecc31b6bc854830c6536ca055c06c0d2c2d7755fa30583857b97856fb",
+      "summary": "Found 4 errors."
+    },
+    {
+      "label": "provisioning-crash-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/provisioning-crash-python-format.log",
+      "outcome": "passed",
+      "log_sha256": "7cf5f66c26f6519b5c852cba8cea7cbbaffab5aa119720a0ef62a6dcf3c78dab",
+      "summary": "555 files already formatted"
+    },
+    {
+      "label": "provisioning-crash-python-lint-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/provisioning-crash-python-lint-final.log",
+      "outcome": "passed",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "summary": "All checks passed!"
+    },
+    {
+      "label": "provisioning-crash-python-format-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/provisioning-crash-python-format-final.log",
+      "outcome": "passed",
+      "log_sha256": "7cf5f66c26f6519b5c852cba8cea7cbbaffab5aa119720a0ef62a6dcf3c78dab",
+      "summary": "555 files already formatted"
+    },
+    {
+      "label": "provisioning-crash-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 377.07,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/provisioning-crash-full-backend.log",
+      "outcome": "passed",
+      "log_sha256": "c29a1bba5d3e0ec363ac2f9663684766c82fc2a59bc847286d4276a5f191617f",
+      "summary": "3187 passed, 26 deselected, 118 warnings in 375.01s (0:06:15)"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/services/seed.py": "00afe44a57f3a5a77baa9d6e390b8db208304dbfbdbafb447392f2565535d95f",
+    "apps/server/tests/test_m3_provisioning_recovery.py": "59d3beda07fda02b26c768ac96744f82d4634fb580a927173543f55348900f84",
+    "docs/m2-freeze.md": "cf65f312fdacc49f6b282e7ee57df66fe2f0b83ff9df85d51f7d47f9dd134c0d",
+    "docs/m3-u16-crash-recovery.md": "24570c4b34bf347db031e63de5ccdd91d7c07275883f7ba5ee032dd15d818262"
+  },
+  "simplification": {
+    "status": "small_delta_inspected_inline",
+    "reason": "Production change is below30 substantive lines after the already completed component10 simplification boundary; no new abstraction or rewrite selected."
+  },
+  "independent_review_completed": false,
+  "paid_calls": 0,
+  "docker_operations": 0,
+  "open_gates": [
+    "Remaining U16 durable source consumers",
+    "Independent review capacity unavailable",
+    "U14 paid allowance unanswered; U15-U17 joint real business and monetary evidence"
+  ],
+  "notes": [
+    "Initial test-only scope expanded only after real characterization failures; M2 prereg and private packet updated before production fix. Original before/after assertions kept.",
+    "No shared fixture definitions, development DB or original untracked tmp modified.",
+    "Frontend unchanged; component10 TypeScript/ESLint/Prettier passing checks remain applicable."
+  ]
+}
