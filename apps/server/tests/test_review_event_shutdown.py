@@ -285,12 +285,15 @@ async def test_cancelling_stop_cleans_up_inflight_handlers():
         await engine.stop()
 
 
-@pytest.mark.parametrize("management_enabled", [False, True])
+@pytest.mark.parametrize(
+    ("management_enabled", "stop_error"), [(False, False), (True, False), (True, True)]
+)
 @pytest.mark.parametrize("lifespan_error", [False, True])
 async def test_lifespan_stops_event_producers_before_draining_engine(
-    monkeypatch, management_enabled, lifespan_error
+    monkeypatch, management_enabled, lifespan_error, stop_error
 ):
     from app import main
+    from app.work.management_runner import ManagementFinalizationError
 
     event_bus = EventBus()
     event_bus.attach_loop()
@@ -325,6 +328,11 @@ async def test_lifespan_stops_event_producers_before_draining_engine(
     monkeypatch.setattr(main, "bus", event_bus)
     monkeypatch.setattr(engine_module, "engine", engine)
     monkeypatch.setattr(
+        main,
+        "runtime_provisioner",
+        SimpleNamespace(start=lambda: None, stop=producer("provisioner")),
+    )
+    monkeypatch.setattr(
         main, "orchestrator", SimpleNamespace(start=lambda: None, stop=producer("orchestrator"))
     )
     monkeypatch.setattr(
@@ -345,28 +353,45 @@ async def test_lifespan_stops_event_producers_before_draining_engine(
     assert "management_runner_enabled" in type(settings).model_fields
     monkeypatch.setattr(settings, "management_runner_enabled", management_enabled)
     lifecycle = []
+
+    async def stop_management():
+        await producer("management")()
+        if stop_error:
+            raise ManagementFinalizationError([73])
+
     monkeypatch.setattr(
         main,
         "management_runner",
         SimpleNamespace(
             register=lambda engine: lifecycle.append("registered"),
             start=lambda: lifecycle.append("started"),
-            stop=producer("management"),
+            stop=stop_management,
         ),
     )
 
-    with (
-        pytest.raises(RuntimeError, match="lifespan interruption")
-        if lifespan_error
-        else nullcontext()
-    ):
-        async with main.lifespan(main.app):
+    try:
+        with (
+            pytest.raises(ManagementFinalizationError, match="finalization exhausted")
+            if stop_error
+            else pytest.raises(RuntimeError, match="lifespan interruption")
+            if lifespan_error
+            else nullcontext()
+        ) as caught:
+            async with main.lifespan(main.app):
+                if lifespan_error:
+                    raise RuntimeError("lifespan interruption")
+        assert lifecycle == (["registered", "started"] if management_enabled else [])
+        assert engine._task is None, "Management cleanup failure must not skip engine drain"
+        assert seen == (["management"] if management_enabled else []) + [
+            "provisioner",
+            "orchestrator",
+            "healthcheck",
+            "updates",
+            "gateway",
+        ]
+        if stop_error:
+            assert caught.value.work_session_ids == (73,)
             if lifespan_error:
-                raise RuntimeError("lifespan interruption")
-    assert lifecycle == (["registered", "started"] if management_enabled else [])
-    assert seen == (["management"] if management_enabled else []) + [
-        "orchestrator",
-        "healthcheck",
-        "updates",
-        "gateway",
-    ]
+                assert str(caught.value.__context__) == "lifespan interruption"
+    finally:
+        await engine.stop()

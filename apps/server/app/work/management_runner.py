@@ -32,6 +32,15 @@ from app.work.runtime_conversation import ConversationLimits, run_conversation
 
 logger = get_logger(__name__)
 _DEFAULT_LIMITS = ConversationLimits()
+_FINALIZATION_DELAYS = (0, 0.1, 0.5)
+
+
+class ManagementFinalizationError(RuntimeError):
+    """Owned terminal writes exhausted their live-process retry allowance."""
+
+    def __init__(self, work_session_ids):
+        self.work_session_ids = tuple(sorted(work_session_ids))
+        super().__init__(f"Management session finalization exhausted: {self.work_session_ids}")
 
 
 class ManagementRunner:
@@ -77,8 +86,14 @@ class ManagementRunner:
         self._scanner: asyncio.Task | None = None
         self._stop_task: asyncio.Task | None = None
         self._jobs: dict[int, asyncio.Task] = {}
+        self._finalization_failures: dict[int, dict] = {}
         self._wake: asyncio.Event | None = None
         self._engines = WeakSet()
+
+    @property
+    def finalization_failures(self) -> dict[int, dict]:
+        """Sanitized intended terminal facts retained after exhausted local cleanup."""
+        return {key: dict(value) for key, value in self._finalization_failures.items()}
 
     def register(self, engine) -> None:
         """Idempotently attach to the existing consumer; never subscribe separately."""
@@ -95,6 +110,8 @@ class ManagementRunner:
         """Schedule startup discovery. Calls during a draining stop are no-ops."""
         if self._running or (self._stop_task is not None and not self._stop_task.done()):
             return
+        if self._finalization_failures:
+            raise ManagementFinalizationError(self._finalization_failures)
         self._running = True
         self._stop_task = None
         self._wake = asyncio.Event()
@@ -108,28 +125,50 @@ class ManagementRunner:
             self._running = False
             self._stop_task = asyncio.create_task(self._shutdown(), name="management-runner-stop")
         cleanup = self._stop_task
-        cancelled = False
-        while not cleanup.done():
-            try:
-                await asyncio.shield(cleanup)
-            except asyncio.CancelledError:
-                # Repeated cancellation of a lifespan waiter still must not
-                # abandon cleanup or cancel the independent draining task.
-                cancelled = True
+        cancelled = await self._drain(cleanup)
         cleanup.result()
         if cancelled:
             raise asyncio.CancelledError
 
     async def _shutdown(self) -> None:
+        # Admission is already fenced. Cancel every owner before draining a
+        # potentially slow scan, so a late model reply cannot write meanwhile.
+        tasks = list(self._jobs.values())
         if self._scanner is not None:
-            self._scanner.cancel()
-            await asyncio.gather(self._scanner, return_exceptions=True)
-            self._scanner = None
-        jobs = list(self._jobs.values())
-        for task in jobs:
+            tasks.append(self._scanner)
+        for task in tasks:
             task.cancel()
-        await asyncio.gather(*jobs, return_exceptions=True)
+        await asyncio.gather(*tasks, return_exceptions=True)
+        self._scanner = None
         self._jobs.clear()
+        if self._finalization_failures:
+            raise ManagementFinalizationError(self._finalization_failures)
+
+    @staticmethod
+    async def _drain(task: asyncio.Task) -> bool:
+        """Drain through repeated cancellation; the owner must read the result."""
+        cancelled = False
+        while not task.done():
+            try:
+                await asyncio.shield(task)
+            except asyncio.CancelledError:
+                cancelled = True
+            except Exception:
+                # Let the owner apply cancellation policy before propagating a
+                # transaction error, or retain an exhausted cleanup failure.
+                break
+        return cancelled
+
+    async def _database(self, operation, *args, **kwargs):
+        # to_thread preserves request company scope. Each operation creates and
+        # closes its own session in that thread; no Session crosses an await.
+        task = asyncio.create_task(asyncio.to_thread(operation, *args, **kwargs))
+        cancelled = await self._drain(task)
+        if cancelled:
+            if not task.cancelled():
+                task.exception()
+            raise asyncio.CancelledError
+        return task.result()
 
     def _check_running(self) -> None:
         if not self._running or asyncio.current_task().cancelling():
@@ -139,21 +178,28 @@ class ManagementRunner:
         while self._running:
             self._wake.clear()
             try:
-                dispatch.discover_sources(
-                    limit=self._batch_size, session_factory=self._session_factory
+                await self._database(
+                    dispatch.discover_sources,
+                    limit=self._batch_size,
+                    session_factory=self._session_factory,
                 )
-                sources = dispatch.pending_source_ids(
-                    limit=self._batch_size, session_factory=self._session_factory
+                self._check_running()
+                sources = await self._database(
+                    dispatch.pending_source_ids,
+                    limit=self._batch_size,
+                    session_factory=self._session_factory,
                 )
                 for source_id in sources:
                     self._check_running()
                     if source_id not in self._jobs:
                         try:
-                            view = dispatch.inspect_source(
+                            view = await self._database(
+                                dispatch.inspect_source,
                                 source_id,
                                 enabled=self._enabled,
                                 session_factory=self._session_factory,
                             )
+                            self._check_running()
                             if (
                                 view is not None
                                 and view.waiting_reason == "budget_unavailable"
@@ -190,16 +236,23 @@ class ManagementRunner:
             except Exception:
                 pass
             self._check_running()
-            # Re-read all source/actor/target facts after admission's await. There
-            # is no await between an atomic claim and entry into its cleanup scope.
-            claim = dispatch.claim_source(
-                source_id,
-                enabled=self._enabled,
-                budget_available=allowed is True,
-                session_factory=self._session_factory,
+            # Re-read all facts after budget admission. Cancellation must drain
+            # the atomic claim and deliver any committed session to owned cleanup.
+            claiming = asyncio.create_task(
+                asyncio.to_thread(
+                    dispatch.claim_source,
+                    source_id,
+                    enabled=self._enabled,
+                    budget_available=allowed is True,
+                    session_factory=self._session_factory,
+                )
             )
+            cancelled = await self._drain(claiming)
+            claim = claiming.result()
             if claim.created:
                 await self._run_owned(claim.dispatch)
+            if cancelled:
+                raise asyncio.CancelledError
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -229,6 +282,12 @@ class ManagementRunner:
                 raise tool_executor.ToolExecutionError("runtime_binding_mismatch", "setup changed")
             return work.runtime_type
 
+    async def _checked_runtime_type(self, view: dispatch.DispatchView) -> str:
+        self._check_running()
+        runtime_type = await self._database(self._runtime_type, view)
+        self._check_running()
+        return runtime_type
+
     @staticmethod
     def _goal(view: dispatch.DispatchView) -> str:
         fact = (
@@ -250,14 +309,18 @@ class ManagementRunner:
         runtime_session = None
         try:
             self._check_running()
-            runtime_type = self._runtime_type(view)
+            runtime_type = await self._checked_runtime_type(view)
             adapter = gateway.adapter_for(runtime_type)
             if adapter.type != runtime_type or not adapter.supports_controlled_turn:
                 outcome["reason"] = "controlled_turn_unsupported"
                 return
-            instance = resolve_container_instance(
-                view.recipient_employee_id, runtime_type, session_factory=self._session_factory
+            instance = await self._database(
+                resolve_container_instance,
+                view.recipient_employee_id,
+                runtime_type,
+                session_factory=self._session_factory,
             )
+            await self._checked_runtime_type(view)
             goal = self._goal(view)
             context = TaskContext(
                 task_id=None,
@@ -272,15 +335,15 @@ class ManagementRunner:
             if startup.expired():
                 outcome["reason"] = "runtime_setup_timeout"
                 return
-            self._runtime_type(view)
+            await self._checked_runtime_type(view)
 
             async def budget_check(work_session_id: int, request_id: str) -> bool:
                 self._check_running()
-                self._runtime_type(view)
+                await self._checked_runtime_type(view)
                 async with asyncio.timeout(self._admission_timeout) as admission:
                     allowed = await self._budget_check(work_session_id, request_id)
                 self._check_running()
-                self._runtime_type(view)
+                await self._checked_runtime_type(view)
                 if admission.expired():
                     raise TimeoutError
                 return allowed is True
@@ -306,9 +369,45 @@ class ManagementRunner:
             # Never persist provider/connection/exception bodies.
             pass
         finally:
-            self._finalize(view, outcome, runtime_session)
+            # The terminal outcome is fixed before this await. Shutdown must not
+            # replace a completed result or abandon a retry already in progress.
+            cleanup = asyncio.create_task(
+                self._retry_finalization(view, outcome, runtime_session),
+                name=f"management-finalize-{view.work_session_id}",
+            )
+            cancelled = await self._drain(cleanup)
+            cleanup.result()
+            if cancelled:
+                raise asyncio.CancelledError
 
-    def _finalize(self, view: dispatch.DispatchView, outcome: dict, runtime_session) -> None:
+    async def _retry_finalization(self, view, outcome, runtime_session) -> None:
+        for attempt, delay in enumerate(_FINALIZATION_DELAYS, start=1):
+            if delay:
+                await asyncio.sleep(delay)
+            try:
+                await self._database(self._finalize, view, outcome, runtime_session)
+                return
+            except Exception:
+                # No provider, connection, or exception body enters these facts.
+                logger.warning(
+                    "management finalization failed: source=%s session=%s attempt=%s",
+                    view.source_event_id,
+                    view.work_session_id,
+                    attempt,
+                )
+        self._finalization_failures[view.work_session_id] = {
+            "source_event_id": view.source_event_id,
+            **self._terminal_values(outcome, runtime_session),
+        }
+        logger.error(
+            "management finalization exhausted: source=%s session=%s",
+            view.source_event_id,
+            view.work_session_id,
+        )
+        raise ManagementFinalizationError([view.work_session_id])
+
+    @staticmethod
+    def _terminal_values(outcome: dict, runtime_session) -> dict:
         finished = outcome.get("status") == "finished" and outcome.get("reason") == "finish"
         error = None if finished else str(outcome.get("reason") or "conversation_failed")
         if isinstance(runtime_session, RuntimeSession):
@@ -324,6 +423,20 @@ class ManagementRunner:
                     else "remote_stop_unknown"
                 )
                 error = f"{error or 'conversation_failed'}; {reason}"
+        return {
+            "status": (
+                "completed"
+                if finished
+                else "cancelled"
+                if outcome.get("status") == "cancelled"
+                else "failed"
+            ),
+            "summary": redact(str(outcome.get("summary") or ""))[:2000],
+            "error": redact(error)[:512] if error else None,
+            "ended_at": utcnow(),
+        }
+
+    def _finalize(self, view: dispatch.DispatchView, outcome: dict, runtime_session) -> None:
         with self._session_factory() as db:
             begin_observation(db)
             db.execute(
@@ -337,18 +450,7 @@ class ManagementRunner:
                     WorkSession.status == "running",
                     WorkSession.ended_at.is_(None),
                 )
-                .values(
-                    status=(
-                        "completed"
-                        if finished
-                        else "cancelled"
-                        if outcome.get("status") == "cancelled"
-                        else "failed"
-                    ),
-                    summary=redact(str(outcome.get("summary") or ""))[:2000],
-                    error=redact(error)[:512] if error else None,
-                    ended_at=utcnow(),
-                )
+                .values(**self._terminal_values(outcome, runtime_session))
             )
             db.commit()
 

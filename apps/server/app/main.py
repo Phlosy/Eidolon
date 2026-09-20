@@ -95,14 +95,18 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         # Stop producers first so their final events enter the engine's graceful drain.
-        if management_started:
-            await management_runner.stop()
-        await runtime_provisioner.stop()
-        await orchestrator.stop()
-        await manager.stop_healthcheck_loop()
-        await update_service.stop_update_loop()
-        await gateway.stop_all()
-        await engine_module.engine.stop()
+        try:
+            if management_started:
+                await management_runner.stop()
+        finally:
+            # Exhausted management cleanup remains visible after other producers
+            # and the event engine finish their normal shutdown.
+            await runtime_provisioner.stop()
+            await orchestrator.stop()
+            await manager.stop_healthcheck_loop()
+            await update_service.stop_update_loop()
+            await gateway.stop_all()
+            await engine_module.engine.stop()
 
 
 app = FastAPI(title="Eidolon Server", version=application_version(), lifespan=lifespan)
