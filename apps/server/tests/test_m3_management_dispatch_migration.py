@@ -97,7 +97,7 @@ def test_v54_up_down_up_check_and_metadata_parity(tmp_path):
                         + "'"
                     )
         scripts = ScriptDirectory.from_config(_alembic_config())
-        assert scripts.get_heads() == [REVISION]
+        assert scripts.get_heads() == ["55a104d932ef"]
         assert scripts.get_revision(REVISION).down_revision == PREVIOUS
     finally:
         migrated.dispose()
@@ -107,7 +107,7 @@ def test_v54_up_down_up_check_and_metadata_parity(tmp_path):
 def test_v54_nonempty_downgrade_refuses_before_any_ddl(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'refused.db'}")
     try:
-        migrate(engine, "head")
+        migrate(engine, REVISION)
         with engine.begin() as connection:
             invalid_observation(connection)
             before = connection.exec_driver_sql(

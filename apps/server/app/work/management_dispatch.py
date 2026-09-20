@@ -18,6 +18,7 @@ from app.core.request_context import get_request_identity
 from app.models.base import as_utc, utcnow
 from app.models.dispatch import DispatchNotice
 from app.models.event import Event
+from app.models.management_discovery import ManagementDiscoveryCursor
 from app.models.management_dispatch import ManagementDispatch
 from app.models.organization import Company, Employee
 from app.models.project import Project, Task, WorkSession
@@ -148,25 +149,50 @@ def _observe(db: Session, source: Event) -> ManagementDispatch:
 
 
 def discover_sources(*, limit: int = 100, session_factory=SessionLocal) -> list[int]:
-    """Persist missed Event IDs in bounded batches, including invalid observations."""
+    """Inspect at most limit source IDs and atomically persist progress/observations.
+
+    Backfill also advances through sources already observed by direct admission.
+    Each type uses an ordered index seek; no idle anti-join scans retained history.
+    """
     _bound(limit)
     with session_factory() as db:
         begin_observation(db)
+        identity = get_request_identity()
+        scope = identity.company_id if identity else 0
+        cursor = db.get(ManagementDiscoveryCursor, scope)
+        if cursor is None:
+            cursor = ManagementDiscoveryCursor(scope_company_id=scope, last_event_id=0)
+            db.add(cursor)
+        candidates = []
+        # IN(types) + ORDER BY id would sort every matching future source before
+        # LIMIT. Separate seeks bound both index work and the merge to 8 * limit.
+        for source_type in sorted(SOURCE_EVENTS):
+            query = (
+                select(Event.id)
+                .where(Event.type == source_type, Event.id > cursor.last_event_id)
+                .order_by(Event.id)
+                .limit(limit)
+            )
+            candidates.extend(db.scalars(_scope_query(query, Event)))
+        identifiers = sorted(candidates)[:limit]
+        if not identifiers:
+            db.commit()
+            return []
         query = (
             select(Event)
             .where(
-                Event.type.in_(SOURCE_EVENTS),
+                Event.id.in_(identifiers),
                 ~select(ManagementDispatch.id)
                 .where(ManagementDispatch.source_event_id == Event.id)
                 .exists(),
             )
             .order_by(Event.id)
-            .limit(limit)
         )
-        sources = list(db.scalars(_scope_query(query, Event)))
+        sources = list(db.scalars(query))
         for source in sources:
             _observe(db, source)
         result = [source.id for source in sources]
+        cursor.last_event_id = identifiers[-1]
         db.commit()
         return result
 

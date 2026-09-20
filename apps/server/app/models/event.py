@@ -1,6 +1,6 @@
 """Event log (activity feed source). See docs/architecture.md §3.2/§7."""
 
-from sqlalchemy import JSON, ForeignKey, Integer, String
+from sqlalchemy import JSON, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -8,6 +8,7 @@ from app.models.base import Base, TimestampMixin
 
 class Event(TimestampMixin, Base):
     __tablename__ = "events"
+    __table_args__ = (Index("ix_events_management_discovery", "company_id", "type", "id"),)
 
     type: Mapped[str] = mapped_column(String(100), index=True)
     company_id: Mapped[int | None] = mapped_column(ForeignKey("companies.id"), nullable=True)

@@ -73,6 +73,7 @@ from app.models.lifecycle import (
     ResourceAsset,
     ResourceProvider,
 )
+from app.models.management_discovery import ManagementDiscoveryCursor
 from app.models.management_dispatch import ManagementDispatch
 from app.models.market import MarketListing, MarketParticipant
 from app.models.organization import Company, Department, Employee
@@ -110,6 +111,7 @@ from app.models.runtime import EmployeeBrain, RuntimeImage, RuntimeInstance
 from app.models.runtime_operation import RuntimeOperation
 
 __all__ = [
+    "ManagementDiscoveryCursor",
     "ManagementDispatch",
     "DispatchNotice",
     "AccessPackage",
