@@ -286,7 +286,8 @@ async def test_cancelling_stop_cleans_up_inflight_handlers():
 
 
 @pytest.mark.parametrize(
-    ("management_enabled", "stop_error"), [(False, False), (True, False), (True, True)]
+    ("management_enabled", "stop_error"),
+    [(False, False), (True, False), (True, True), (False, True)],
 )
 @pytest.mark.parametrize("lifespan_error", [False, True])
 async def test_lifespan_stops_event_producers_before_draining_engine(
@@ -372,7 +373,9 @@ async def test_lifespan_stops_event_producers_before_draining_engine(
         "management_runner",
         SimpleNamespace(
             register=lambda engine: lifecycle.append("registered"),
-            start=lambda: lifecycle.append("started"),
+            start=lambda *, recover_only: lifecycle.append(
+                "recovery" if recover_only else "started"
+            ),
             stop=stop_management,
         ),
     )
@@ -388,9 +391,10 @@ async def test_lifespan_stops_event_producers_before_draining_engine(
             async with main.lifespan(main.app):
                 if lifespan_error:
                     raise RuntimeError("lifespan interruption")
-        assert lifecycle == (["registered", "started"] if management_enabled else [])
+        assert lifecycle == (["registered", "started"] if management_enabled else ["recovery"])
         assert engine._task is None, "Management cleanup failure must not skip engine drain"
-        assert seen == (["management"] if management_enabled else []) + [
+        assert seen == [
+            "management",
             "provisioner",
             "orchestrator",
             "healthcheck",

@@ -92,14 +92,12 @@ async def lifespan(app: FastAPI):
         # Startup recovery may commit approved actions and emit domain events.
         # Register/start their consumers before allowing the orchestrator to run.
         orchestrator.start()
-        if management_started:
-            management_runner.start()
+        management_runner.start(recover_only=not management_started)
         yield
     finally:
         # Stop producers first so their final events enter the engine's graceful drain.
         try:
-            if management_started:
-                await management_runner.stop()
+            await management_runner.stop()
         finally:
             # Exhausted management cleanup remains visible after other producers
             # and the event engine finish their normal shutdown.

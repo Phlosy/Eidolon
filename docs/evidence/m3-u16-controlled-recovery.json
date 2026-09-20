@@ -1,0 +1,531 @@
+{
+  "unit": "U16 component10",
+  "status": "locally_verified_component_only",
+  "base_commit": "ffd6a559907b9712d85c8f7c7eea733aba9caf54",
+  "plan": "docs/m3-implementation-plan.md",
+  "requirements": [
+    "R4",
+    "R5"
+  ],
+  "key_technical_decisions": [
+    "KTD3",
+    "KTD4",
+    "KTD8"
+  ],
+  "schema_changed": false,
+  "behavior": "Bounded startup ownership of original management/review WorkSessions. Reuse accepted request/receipts and original runtime identity/deadline without another native session or model turn. Recheck original scope and stop before every missing action. Preserve unknown native facts and administrative terminal states. Recovery-only lifecycle remains active with new admission disabled.",
+  "process_proof": {
+    "test": "apps/server/tests/test_m3_controlled_resume.py",
+    "crash_23": [
+      "after original source claim before send",
+      "after accepted intent before first action",
+      "after first action commit",
+      "after accepted finish before host close"
+    ],
+    "crash_24": "New process starts actual ManagementRunner recovery from original DB source and exits after second recovered action commits",
+    "repetition": "Two more fresh processes preserve original WorkSession, operation, ToolAudit, Event and Task IDs and actual DecisionRecord results",
+    "limits": "Isolated SQLite and real host/domain transactions. Scripted model input and HTTP/RPC transport responses. No paid model or native container evidence is claimed."
+  },
+  "scenarios": {
+    "new_tests": 48,
+    "existing_contract_updates": [
+      "U8 missing-attempt orphan now gets an explicit technical terminal, still no restart",
+      "lifespan starts/stops recovery even when new management admission is disabled; cleanup ordering retained including failures"
+    ],
+    "coverage": [
+      "finish does not fabricate Task or Review completion",
+      "original accepted formal verdict executes once",
+      "saved read gets one receipt",
+      "expired complete receipts may aggregate; expired missing actions may not run",
+      "active original waiting and both actual adapters' query/stop methods",
+      "404/unknown/deadline/reference unknown preserve native unknown and admission fence",
+      "persisted withdrawal and repeated shutdown cancellation",
+      "late response identity/authority/stop rechecks",
+      "missing or corrupt accepted source",
+      "two recovery owners",
+      "actual SQLite action-receipt and final-host rejection with rollback and retry",
+      "per-action withdrawal",
+      "company isolation",
+      "latest-source conditional finalization including originally absent attempt",
+      "captured finite cohort, page/concurrency limits, cursor retry and in-flight rewind race"
+    ]
+  },
+  "checks": [
+    {
+      "label": "controlled-recovery-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 8.36,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-red.log",
+      "outcome": "expected_missing_recovery_entrypoint",
+      "summary": "5 failed, 1 warning in 7.07s",
+      "log_sha256": "5759573ff8853eb4ad6ab9123038defca4134f51a1d3260d3ea39cd65c14bce4"
+    },
+    {
+      "label": "controlled-recovery-first-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_review_event_shutdown.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 15.78,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-first-green.log",
+      "outcome": "native_turn_terminal_mistaken_for_host_terminal",
+      "summary": "2 failed, 74 passed, 1 warning in 14.31s",
+      "log_sha256": "30898873f45372f7647b30b821dbcb89603fa554be5fe8e79967626c6b72c6e5"
+    },
+    {
+      "label": "controlled-recovery-debug",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "-k",
+        "partial",
+        "-q",
+        "-x"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.26,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-debug.log",
+      "outcome": "confirmed_host_session_state_guard",
+      "summary": "1 failed, 3 deselected, 1 warning in 1.93s",
+      "log_sha256": "e574f9b9eb875178b93752ebedb84adb664bb8172381650cac246a113bd6bec5"
+    },
+    {
+      "label": "controlled-recovery-native-host-state",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 10.6,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-native-host-state.log",
+      "outcome": "passed",
+      "summary": "5 passed, 1 warning in 9.26s",
+      "log_sha256": "92a2c10deca4f074bb44c9b337dda8d9519f0eaa9752e8828313047d28e34297"
+    },
+    {
+      "label": "controlled-recovery-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 13.27,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-boundaries.log",
+      "outcome": "fault_fixture_targeted_insert_before_action_correlation",
+      "summary": "1 failed, 27 passed, 1 warning in 11.99s",
+      "log_sha256": "bbc8c7597428c95b38ee2a4458c990e6d020ad0a69e69ea59e01c4f681872bb8"
+    },
+    {
+      "label": "controlled-recovery-boundaries-extended",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_review_event_shutdown.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 26.72,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-boundaries-extended.log",
+      "outcome": "corrupt_history_fixture_correctly_rejected_by_immutable_update_guard",
+      "summary": "1 failed, 111 passed, 1 warning in 25.28s",
+      "log_sha256": "e2d5ebc05abce09e58702ed27c94948de18c3509e5f83877f249816fceb11977"
+    },
+    {
+      "label": "controlled-recovery-boundaries-fixed",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_review_event_shutdown.py",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 26.3,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-boundaries-fixed.log",
+      "outcome": "passed",
+      "summary": "112 passed, 1 warning in 24.84s",
+      "log_sha256": "d35c745566d7215078f826af02f72990abdc01f406c07eb765008c398ce6ea63"
+    },
+    {
+      "label": "controlled-recovery-withdrawals",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "-q",
+        "-k",
+        "original_read or recheck_withdrawal"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 4.86,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-withdrawals.log",
+      "outcome": "passed",
+      "summary": "3 passed, 41 deselected, 1 warning in 3.53s",
+      "log_sha256": "bb0d886ae7b0da4ef371bc09327af9ef355b1d834ad355a9ec62b21a1a238938"
+    },
+    {
+      "label": "controlled-recovery-cursor-race",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "-q",
+        "-k",
+        "inflight"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 2.09,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-cursor-race.log",
+      "outcome": "passed",
+      "summary": "1 passed, 44 deselected, 1 warning in 0.74s",
+      "log_sha256": "46ff535bdefb17c6e86b8341e302e25a2b9d8b564e226fe20597c927b5a55031"
+    },
+    {
+      "label": "controlled-recovery-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app",
+        "apps/server/tests"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-python-lint.log",
+      "outcome": "passed",
+      "summary": "All checks passed!",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "controlled-recovery-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app",
+        "apps/server/tests"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-python-format.log",
+      "outcome": "passed",
+      "summary": "553 files already formatted",
+      "log_sha256": "098c861bc7482fd579e6f21a15ece22756f1f3bbbd9317b9b7316a0390185429"
+    },
+    {
+      "label": "controlled-recovery-web-types",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 3.75,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-web-types.log",
+      "outcome": "passed",
+      "summary": "Exit 0; no diagnostic output",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "controlled-recovery-web-lint",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "eslint",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 2.01,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-web-lint.log",
+      "outcome": "passed",
+      "summary": "Exit 0; no diagnostic output",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "controlled-recovery-web-format",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "prettier",
+        "--check",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 2.14,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-web-format.log",
+      "outcome": "passed",
+      "summary": "All matched files use Prettier code style!",
+      "log_sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+    },
+    {
+      "label": "controlled-recovery-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 352.77,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-full-backend.log",
+      "outcome": "four_existing_direct_owner_shutdown_regressions",
+      "summary": "4 failed, 3169 passed, 26 deselected, 118 warnings in 350.42s (0:05:50)",
+      "log_sha256": "08dff7b5d66373cb147e15f440843e990ebbc771fe83d42020b6a9e456aa6a6e"
+    },
+    {
+      "label": "controlled-recovery-owner-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "-q",
+        "-k",
+        "direct_owner or stale_owner"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 2.12,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-owner-red.log",
+      "outcome": "direct_owner_capacity_and_latest_source_observation_guards_missing",
+      "summary": "2 failed, 45 deselected, 1 warning in 0.82s",
+      "log_sha256": "df01ed01073b810b83139d949b992db651aada83c5abeb18a7dd9660be31b45e"
+    },
+    {
+      "label": "controlled-recovery-owner-fixes",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_budget_monitor.py",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "apps/server/tests/test_review_event_shutdown.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 40.86,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-owner-fixes.log",
+      "outcome": "passed",
+      "summary": "242 passed, 1 warning in 39.45s",
+      "log_sha256": "b4e1841515a3bdc576f7a7230af2c8cdfece8e962017a0584d03d0014417efad"
+    },
+    {
+      "label": "controlled-recovery-late-budget",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_controlled_resume.py",
+        "-q",
+        "-k",
+        "late_budget"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 2.4,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-late-budget.log",
+      "outcome": "passed",
+      "summary": "1 passed, 47 deselected, 1 warning in 0.97s",
+      "log_sha256": "26ffa0db6bbcba721f65e4b5fad0926d9ea70de24642c3a36b92fbb3db9ee894"
+    },
+    {
+      "label": "controlled-recovery-python-lint-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app",
+        "apps/server/tests"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-python-lint-final.log",
+      "outcome": "passed",
+      "summary": "All checks passed!",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "controlled-recovery-python-format-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app",
+        "apps/server/tests"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-python-format-final.log",
+      "outcome": "passed",
+      "summary": "553 files already formatted",
+      "log_sha256": "098c861bc7482fd579e6f21a15ece22756f1f3bbbd9317b9b7316a0390185429"
+    },
+    {
+      "label": "controlled-recovery-full-backend-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 342.81,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/controlled-recovery-full-backend-final.log",
+      "outcome": "passed",
+      "summary": "3176 passed, 26 deselected, 118 warnings in 340.82s (0:05:40)",
+      "log_sha256": "b0d403393e6610b868c63bf905b7fed1fdbf45b62f5c6a5a3f23e426d74acde8"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/work/controlled_resume.py": "7b72be54dfaf96968c90b7b10c29887d7441ddaf45b46c508cff1146c64b210d",
+    "apps/server/app/work/recovery.py": "d39b69b758f5e0c8aaff66d241fa243b0e1efdab1dfe94373940791a7270e504",
+    "apps/server/app/work/management_runner.py": "984b3ce1b33444c9193ba53a098f4be06431c9fabe1959f934594ae8f0dbf665",
+    "apps/server/app/main.py": "135b1ae046894fd1fdeea3d4f897e83bf6a969ce9d90b0ddf32819f7effbe8ff",
+    "apps/server/tests/test_m3_controlled_resume.py": "b2d4517b78fc88c5b40d7420da85a49a2e27f7ee78c3b529066945e918796acc",
+    "apps/server/tests/test_m3_management_runner.py": "5ba03e5a0f7bf57e861aad1e036603d22b5c73d60c97a82b907a0733ef9a4441",
+    "apps/server/tests/test_review_event_shutdown.py": "9f78f54ba1bf09275113a51d0ba3c980cde55fbf29647747fb580cb40222463b",
+    "docs/m2-freeze.md": "555f2e1d288e8c36c8bf38d69d29948235123c6b661242ddc68aec46582c41b5",
+    "docs/m3-u16-crash-recovery.md": "cd4ea87583ab6388ce21889a53e4ecd15ef4b1b35fbf3c8f5ab9d186f9da2a39"
+  },
+  "simplification": {
+    "skill": "ce-simplify-code",
+    "scope": "U16 component10 production delta from ffd6a55: controlled_resume, recovery, management_runner and main; plan KTD3/KTD8 structure pins retained",
+    "requested_route": {
+      "target": "native",
+      "model": "gpt-5.6-terra",
+      "harness": "Codex subagent"
+    },
+    "actual_route": {
+      "target": "native-inline",
+      "model": "unverified",
+      "harness": "Codex caller"
+    },
+    "fallback": "Previous fresh launch failed before dispatch with agent thread limit reached. Fresh inventory remains root plus the same three completed contexts; no active work or supported release primitive can recover capacity. No completed agent reused. All three exact persona assets read, then all outcomes completed inline before changes.",
+    "reviews": [
+      {
+        "persona": "code-reuse-reviewer",
+        "status": "complete",
+        "applied": 0,
+        "outcome": "Recovery reuses the original bridge, immutable request reader, telemetry reconstruction, runtime binding, attempt deadline, native cancellation and runner finalization retry helpers.",
+        "skipped": [
+          {
+            "candidate": "Replace original-source cleanup with runtime_stop.stop_attempt",
+            "reason": "That helper returns only a stop-state string and does not enforce the captured latest WorkSession source; the original handle is needed for host finalization disclosure."
+          }
+        ]
+      },
+      {
+        "persona": "code-quality-reviewer",
+        "status": "complete",
+        "applied": 1,
+        "outcome": "Flatten the nested stop-reason conditional into explicit branches. No source/body/runtime/authority/stop checks removed. Startup cohort and runtime attempt remain distinct durable identities."
+      },
+      {
+        "persona": "efficiency-reviewer",
+        "status": "complete",
+        "applied": 0,
+        "outcome": "The startup page and shared live/recovery concurrency are bounded. Original deadline bounds native queries; no new provider call is submitted. Shutdown owns and drains recovery tasks and failure rewinds survive in-flight scans.",
+        "skipped": [
+          {
+            "candidate": "Drop repeated source reads before action execution and final cleanup",
+            "reason": "Would remove required transaction-local identity and cancellation checks across awaits and committed action boundaries."
+          }
+        ]
+      }
+    ],
+    "behavior_changes": false,
+    "followup_review": "After full regression found direct-owner takeover, all three exact rubrics were reapplied inline to the ownership corrections before final verification. Shared task enumeration is reused by capacity and shutdown; fresh local/source guards are retained across awaits; no further behavior-preserving edits selected. Correctness fixes and their red evidence are separate from simplification.",
+    "verification": {
+      "state": "passed",
+      "focused": "242 regression scenarios passed; 1 later budget-response case passed",
+      "full_backend": "3176 passed, 26 deselected, 118 warnings in 340.82s (0:05:40)",
+      "static": "Python project lint/format553, frontend TypeScript/ESLint/Prettier passed"
+    }
+  },
+  "independent_review_completed": false,
+  "paid_calls": 0,
+  "docker_operations": 0,
+  "not_run": [
+    "26 opt-in native integration cases remain deselected by existing suite configuration"
+  ],
+  "open_gates": [
+    "U16 other durable notifications and Evidence/reflection/Assessment consumption",
+    "Independent review capacity unavailable; three simplification passes ran inline",
+    "U14 extra paid allowance unanswered; U15-U17 joint real business/monetary evidence"
+  ],
+  "notes": [
+    "Initial 5 expected failures witnessed actual child exit23 before production implementation",
+    "First implementation exposed a real distinction between terminal native turn and still-running host session; preserved by regression",
+    "Two later boundary failures were fault-arrangement errors: ToolAudit correlation is UPDATE, and operation digest is immutable after INSERT. Revised test setup retained both guards.",
+    "First full run exposed 4 unchanged direct-owner shutdown regressions. Recovery now preserves existing local owners and shared capacity. Two fresh red cases also caught ownership capacity and stale-source stop observation; late budget withdrawal is separately covered. Existing shutdown assertions were retained.",
+    "No shared fixture definitions, development DB, Docker resources or original untracked tmp were modified"
+  ]
+}

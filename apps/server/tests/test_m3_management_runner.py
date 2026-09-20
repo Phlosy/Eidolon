@@ -579,7 +579,7 @@ async def test_stop_fences_late_results_and_drains_only_owned_sessions(
     assert len(adapter.prompts) == int(stage == "turn")
 
 
-async def test_existing_running_session_is_not_restarted_or_closed(world, monkeypatch):
+async def test_existing_session_without_attempt_is_closed_without_restart(world, monkeypatch):
     from app.work.management_dispatch import claim_source
 
     event_id = source(world)
@@ -588,11 +588,12 @@ async def test_existing_running_session_is_not_restarted_or_closed(world, monkey
     adapter = ScriptedAdapter(finish())
     runner = runner_for(monkeypatch, adapter)
     runner.start()
-    await asyncio.sleep(0.05)
+    await ended(event_id)
     await runner.stop()
     with SessionLocal() as db:
         work = db.get(WorkSession, claim.dispatch.work_session_id)
-        assert work.status == "running" and work.ended_at is None
+        assert work.status == "failed" and work.ended_at is not None
+        assert work.error == "execution_attempt_unknown"
     assert not adapter.contexts
 
 

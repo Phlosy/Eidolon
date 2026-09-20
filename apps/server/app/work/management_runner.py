@@ -1,8 +1,8 @@
 """Bounded wakeups for persisted management/review facts and owned conversations.
 
 The event handler only nudges a scanner. Startup and periodic scans recover
-missed broadcasts from durable source facts; they never replay the event bus or
-restart an earlier running session. Budget hooks are mandatory admission seams,
+missed broadcasts from durable source facts and take over original saved runs.
+They never replay the event bus. Budget hooks are mandatory admission seams,
 not accounting: their provider/relay must independently enforce its spending cap.
 """
 
@@ -24,14 +24,14 @@ from app.models.base import utcnow
 from app.models.organization import Employee
 from app.models.project import Project, WorkSession
 from app.models.runtime_execution import STOP_REASONS, RuntimeAttempt
-from app.runtimes.base import RuntimeSession, TaskContext
+from app.runtimes.base import RuntimeProtocolError, RuntimeSession, TaskContext
 from app.runtimes.container_common import resolve_container_instance
 from app.runtimes.gateway import gateway
-from app.work import budget_monitor, runtime_admission, tool_executor
+from app.work import budget_monitor, controlled_resume, recovery, runtime_admission, tool_executor
 from app.work import management_dispatch as dispatch
 from app.work.dispatch_notices import begin_observation
 from app.work.runtime_conversation import ConversationLimits, run_conversation
-from app.work.telemetry import record_stop_intent
+from app.work.telemetry import record_host_outcome, record_stop_intent
 
 logger = get_logger(__name__)
 _DEFAULT_LIMITS = ConversationLimits()
@@ -40,7 +40,7 @@ _FINALIZATION_DELAYS = (0, 0.1, 0.5)
 
 @dataclass
 class _OwnedConversation:
-    view: dispatch.DispatchView
+    view: dispatch.DispatchView | controlled_resume.OriginalConversation
     task: asyncio.Task
     finalizing: bool = False
 
@@ -100,6 +100,9 @@ class ManagementRunner:
         self._scanner: asyncio.Task | None = None
         self._stop_task: asyncio.Task | None = None
         self._jobs: dict[int, asyncio.Task] = {}
+        self._recovery_jobs: dict[int, asyncio.Task] = {}
+        self._recovery_cursor = self._recovery_through = 0
+        self._recover_only = False
         self._owned: dict[int, _OwnedConversation] = {}
         self._finalization_failures: dict[int, dict] = {}
         self._wake: asyncio.Event | None = None
@@ -121,12 +124,17 @@ class ManagementRunner:
         if self._running and self._wake is not None:
             self._wake.set()
 
-    def start(self) -> None:
+    def start(self, *, recover_only=False) -> None:
         """Schedule startup discovery. Calls during a draining stop are no-ops."""
         if self._running or (self._stop_task is not None and not self._stop_task.done()):
             return
         if self._finalization_failures:
             raise ManagementFinalizationError(self._finalization_failures)
+        self._recovery_through = recovery.work_session_boundary(
+            session_factory=self._session_factory
+        )
+        self._recovery_cursor = 0
+        self._recover_only = recover_only
         self._running = True
         self._stop_task = None
         self._wake = asyncio.Event()
@@ -148,7 +156,7 @@ class ManagementRunner:
     async def _shutdown(self) -> None:
         # Admission is already fenced. Cancel every owner before draining a
         # potentially slow scan, so a late model reply cannot write meanwhile.
-        tasks = set(self._jobs.values()) | {owned.task for owned in self._owned.values()}
+        tasks = self._conversation_tasks()
         if self._scanner is not None:
             tasks.add(self._scanner)
         for task in tasks:
@@ -157,6 +165,7 @@ class ManagementRunner:
         await asyncio.gather(*tasks, return_exceptions=True)
         self._scanner = None
         self._jobs.clear()
+        self._recovery_jobs.clear()
         if self._finalization_failures:
             raise ManagementFinalizationError(self._finalization_failures)
 
@@ -190,12 +199,90 @@ class ManagementRunner:
         if not self._running or asyncio.current_task().cancelling():
             raise asyncio.CancelledError
 
+    def _conversation_tasks(self):
+        return (
+            set(self._jobs.values())
+            | set(self._recovery_jobs.values())
+            | {owned.task for owned in self._owned.values()}
+        )
+
+    def _available_capacity(self):
+        return self._max_concurrency - len(self._conversation_tasks())
+
+    async def _start_recovery(self):
+        capacity = self._available_capacity()
+        if capacity <= 0 or self._recovery_cursor >= self._recovery_through:
+            return
+        after_id = self._recovery_cursor
+        batch = await self._database(
+            recovery.running_controlled,
+            through_id=self._recovery_through,
+            after_id=after_id,
+            limit=min(capacity, self._batch_size),
+            session_factory=self._session_factory,
+        )
+        self._check_running()
+        # An owner may fail while this read runs in a thread. Preserve its
+        # rewind instead of replacing it with a newer successful page cursor.
+        if self._recovery_cursor == after_id:
+            self._recovery_cursor = batch.cursor
+        for item in batch.items:
+            work_id = item.work_session_id
+            if work_id not in self._recovery_jobs and work_id not in self._owned:
+                task = asyncio.create_task(
+                    self._resume_owned(work_id), name=f"management-recover-{work_id}"
+                )
+                self._recovery_jobs[work_id] = task
+                task.add_done_callback(
+                    lambda task, work_id=work_id: self._recovery_done(work_id, task)
+                )
+
+    def _recovery_done(self, work_id, task):
+        if self._recovery_jobs.get(work_id) is task:
+            self._recovery_jobs.pop(work_id)
+        failed = task.cancelled() or task.exception() is not None
+        if failed:
+            self._recovery_cursor = min(self._recovery_cursor, work_id - 1)
+            if not task.cancelled():
+                logger.warning("management recovery failed: session=%s", work_id)
+
+    async def _resume_owned(self, work_id):
+        if work_id in self._owned:
+            return
+        view = await self._database(
+            controlled_resume.source_for_work, work_id, session_factory=self._session_factory
+        )
+        if view is None or work_id in self._owned:
+            return
+        owned = _OwnedConversation(view, asyncio.current_task())
+        self._owned[work_id] = owned
+
+        async def finalize(source, outcome, runtime_session):
+            owned.finalizing = True
+            await self._retry_finalization(source, outcome, runtime_session)
+
+        try:
+            await controlled_resume.resume_conversation(
+                view,
+                adapter_for=gateway.adapter_for,
+                finalize=finalize,
+                session_factory=self._session_factory,
+            )
+        finally:
+            if self._owned.get(work_id) is owned:
+                self._owned.pop(work_id)
+
     async def _scan_loop(self) -> None:
         while self._running:
             self._wake.clear()
             try:
                 await self._interrupt_invalid_owned()
                 self._check_running()
+                await self._start_recovery()
+                self._check_running()
+                if self._recover_only:
+                    await asyncio.wait_for(self._wake.wait(), timeout=self._poll_interval)
+                    continue
                 await self._database(
                     dispatch.discover_sources,
                     limit=self._batch_size,
@@ -226,7 +313,7 @@ class ManagementRunner:
                                 )
                                 and callable(self._budget_available)
                                 and callable(self._budget_check)
-                                and len(self._jobs) < self._max_concurrency
+                                and self._available_capacity() > 0
                             ):
                                 self._jobs[source_id] = asyncio.create_task(
                                     self._admit_and_run(source_id),
@@ -239,6 +326,8 @@ class ManagementRunner:
                     # Fairness is persisted by inspect_source's checked_at; a waiting
                     # source cannot monopolize this bounded batch or the event loop.
                     await asyncio.sleep(0)
+            except TimeoutError:
+                continue
             except Exception:
                 logger.warning("management source scan failed")
             try:
@@ -307,8 +396,10 @@ class ManagementRunner:
         actor = db.get(Employee, ctx.employee_id)
         project = db.get(Project, ctx.project_id)
         if (
-            not self._enabled
-            or settings.runtime_mode != "auto"
+            (
+                not isinstance(view, controlled_resume.OriginalConversation)
+                and (not self._enabled or settings.runtime_mode != "auto")
+            )
             or project.planning_fixture not in (None, "", "none")
             or work.runtime_type not in {"hermes", "openclaw"}
             or actor.runtime_type != work.runtime_type
@@ -324,6 +415,11 @@ class ManagementRunner:
         """Observe committed withdrawal and save intent before cancelling an owner."""
         with self._session_factory() as db:
             begin_observation(db)
+            if (
+                isinstance(view, controlled_resume.OriginalConversation)
+                and controlled_resume.matching_work(db, view) is None
+            ):
+                raise RuntimeProtocolError("execution_source_changed")
             attempts = list(
                 db.scalars(
                     select(RuntimeAttempt)
@@ -354,12 +450,16 @@ class ManagementRunner:
             owner = owned.task
 
             def current(work_id=work_id, owned=owned, owner=owner):
-                return (
+                live = (
                     self._owned.get(work_id) is owned
                     and not owned.finalizing
                     and not owner.done()
                     and not owner.cancelling()
                 )
+                if live and isinstance(owned.view, controlled_resume.OriginalConversation):
+                    with self._session_factory() as db:
+                        return controlled_resume.matching_work(db, owned.view) is not None
+                return live
 
             if not current():
                 continue
@@ -402,6 +502,8 @@ class ManagementRunner:
         )
 
     async def _run_owned(self, view: dispatch.DispatchView) -> None:
+        if view.work_session_id in self._owned:
+            return
         outcome = {"status": "failed", "reason": "runtime_setup_failed"}
         runtime_session = None
         owned = _OwnedConversation(view, asyncio.current_task())
@@ -491,6 +593,7 @@ class ManagementRunner:
                 await asyncio.sleep(delay)
             try:
                 await self._database(self._finalize, view, outcome, runtime_session)
+                self._finalization_failures.pop(view.work_session_id, None)
                 return
             except Exception:
                 # No provider, connection, or exception body enters these facts.
@@ -544,22 +647,41 @@ class ManagementRunner:
     def _finalize(self, view: dispatch.DispatchView, outcome: dict, runtime_session) -> None:
         with self._session_factory() as db:
             begin_observation(db)
-            db.execute(
+            original = isinstance(view, controlled_resume.OriginalConversation)
+            if original and controlled_resume.matching_work(db, view) is None:
+                return
+            if original:
+                stopped = controlled_resume.stop_reason(db, view)
+                if stopped and stopped != outcome.get("stop_reason"):
+                    outcome = controlled_resume.stopped_outcome(stopped)
+            values = self._terminal_values(outcome, runtime_session)
+            result = db.execute(
                 update(WorkSession)
                 .where(
                     WorkSession.id == view.work_session_id,
+                    WorkSession.company_id == view.company_id,
                     WorkSession.purpose == view.purpose,
                     WorkSession.task_id.is_(None),
                     WorkSession.project_id == view.project_id,
                     WorkSession.employee_id == view.recipient_employee_id,
+                    WorkSession.review_request_id == view.review_request_id,
                     WorkSession.status == "running",
                     WorkSession.ended_at.is_(None),
                 )
-                .values(**self._terminal_values(outcome, runtime_session))
+                .values(**values)
             )
+            if original and result.rowcount and view.attempt_id is not None:
+                attempt = db.get(RuntimeAttempt, view.attempt_id)
+                if attempt.kind == "controlled":
+                    record_host_outcome(
+                        db,
+                        attempt.id,
+                        values["status"],
+                        "cancelled" if values["status"] == "cancelled" else "host_error",
+                    )
             db.commit()
 
 
-# Lifespan separately gates registration/start. Without supplied budget hooks,
+# Lifespan gates new admission separately from recovery. Without supplied budget hooks,
 # explicit enablement records budget_unavailable and performs no runtime I/O.
 management_runner = ManagementRunner(enabled=True)
