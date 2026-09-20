@@ -1,0 +1,230 @@
+{
+  "unit": "U16",
+  "component": "Worker completion notification durability",
+  "status": "local component verified; U16 remains in progress",
+  "baseline_commit": "fd2511958199e04c6744d5d912ec8cdbb4407087",
+  "requirements": [
+    "R4",
+    "R5"
+  ],
+  "technical_decisions": [
+    "KTD8"
+  ],
+  "authority": {
+    "plan": "docs/m3-implementation-plan.md",
+    "mode": "ce-work return-to-caller",
+    "delivery": "focused local commit only, no push or PR",
+    "upstream_gates": "U14 additional paid attempt awaits an answer; U14/U15/U17 real business and currency gates remain open"
+  },
+  "execution": {
+    "engine": "native inline",
+    "fallback_reason": "fresh worker prelaunch thread limit previously recorded; no active reusable worker or release API",
+    "independent_correctness_review": false
+  },
+  "behavior_changed": true,
+  "change": "Non-fixture completion Event rows commit atomically with Worker result; existing after-commit broadcast and bounded management source discovery are reused. Event insertion failure aborts that outer transaction.",
+  "evidence_level": {
+    "domain": "real implementation and isolated SQLite database/filesystem",
+    "runtime_result": "scripted original Hermes attempt and fixed artifact bytes; no native runtime/model call in this component",
+    "forced_exit": "subprocess os._exit(23) in outer domain after_commit, before in-memory callbacks; not Ctrl-C",
+    "recovery": "fresh process performs two management source scans, followed by another process replaying the original finalizer",
+    "paid_requests": 0,
+    "docker_actions": 0
+  },
+  "process_assertions": {
+    "exit_code": 23,
+    "work_session": "completed",
+    "task": "in_review",
+    "employee": "idle and original occupancy cleared",
+    "accepted_artifact_bytes": "exact original revision body",
+    "durable_completion_event_types": 5,
+    "compute_usage_records": 1,
+    "management_dispatches_per_review_source": 1,
+    "second_discovery": [],
+    "replayed_finalization": "original event IDs, artifact count and ComputeUsage ID unchanged"
+  },
+  "test_coverage": {
+    "new_cases": 12,
+    "storage_rejection_and_retry": 5,
+    "actual_process_exit_and_fresh_process_recovery": 1,
+    "concurrent_finalizers_and_committed_broadcast_visibility": 1,
+    "gated_fixture_verdict_or_waiting": 2,
+    "technical_failure_with_in_progress_blocked_or_cancelled_task": 3
+  },
+  "proof_first": {
+    "before_production_change": "Five Event INSERT rejection cases failed; corrected Currency assertion then process proof failed because all five Event rows were missing. No production edit until expected red was observed.",
+    "test_only_correction": "Use Currency.credit.value (CREDIT), not lowercase credit."
+  },
+  "verification_receipts": [
+    {
+      "label": "completion-events-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.54,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/completion-events-red.log",
+      "log_sha256": "19a374de9ed426dc0bfa4f2fc0c00d9087504f4db3c91d828e9d366739f6dfb7",
+      "summary": "5 expected storage-rejection failures; 1 test currency-enum case error, corrected before production changes"
+    },
+    {
+      "label": "completion-process-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recovery.py::test_process_exit_after_domain_commit_preserves_recoverable_notification",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 2.67,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/completion-process-red.log",
+      "log_sha256": "bf5f695dca0b13da2456eead91fe65c0878ff5c6a2efa38ac37893dbcc87c3f4",
+      "summary": "1 expected failure: all 5 completion Event sources absent after actual process exit 23, while domain result committed"
+    },
+    {
+      "label": "completion-events-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recovery.py",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_m2_review.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 10.68,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/completion-events-green.log",
+      "log_sha256": "989ab52a6a63868e0e19517e1b850c11d4549188be52341c266290168c60b629",
+      "summary": "98 passed, 1 warning"
+    },
+    {
+      "label": "completion-events-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 4.26,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/completion-events-boundaries.log",
+      "log_sha256": "02faf9cccb24f24ba3fc0281985f1c93cc43b9b73fe2ab9fb65221db9767c515",
+      "summary": "12 passed, 1 warning"
+    },
+    {
+      "label": "completion-events-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_recovery.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/completion-events-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "summary": "All checks passed, 2 Python paths"
+    },
+    {
+      "label": "completion-events-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_recovery.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/completion-events-format.log",
+      "log_sha256": "3bc53bf3e981a98a34a852e175bf9b77af841edea74fca595d9aedcbaf9a4938",
+      "summary": "2 files already formatted"
+    },
+    {
+      "label": "completion-events-regression",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_recovery.py",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_management_dispatch.py",
+        "apps/server/tests/test_m3_tool_transactions.py",
+        "apps/server/tests/test_event_engine.py",
+        "apps/server/tests/test_evidence_pipeline.py",
+        "apps/server/tests/test_evidence_invariants.py",
+        "apps/server/tests/test_economy_costs.py",
+        "apps/server/tests/test_m1_hardening.py",
+        "apps/server/tests/test_m1_invariants.py",
+        "apps/server/tests/test_m1_economy_contract.py",
+        "apps/server/tests/test_m1_golden_path.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_m2_handoff.py",
+        "apps/server/tests/test_m2_review.py",
+        "apps/server/tests/test_m2_contract.py",
+        "apps/server/tests/test_m2_golden_path.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_project_workflow.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 60.32,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/completion-events-regression.log",
+      "log_sha256": "2ad2b2ef4e81825a28a4319af1c7c18b2f46d7e0c6982af4a36b791152dca7df",
+      "summary": "474 passed, 1 warning; relevant M1/M2 anchors, existing cross-layer and new recovery tests"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/workflow/orchestrator.py": "9d0caed0950db681d97bbc1bfd69269a5240fb0c040682d93af61b719347d543",
+    "apps/server/tests/test_m3_recovery.py": "d2ea3f6f07fa7bbd7fa77672c123361eae200a9f6b0e8484c569505b496c0034",
+    "docs/m2-freeze.md": "a77b321b16264a796f699bc7dfdafe82dc8e3dbf1871fa77d31acb31185f3392",
+    "docs/m3-u16-crash-recovery.md": "e2b2a105551db8d7020a7fe8aa04c74af06d71d1980e4b1e85c577ebaaa55fbf"
+  },
+  "unchanged_boundaries": [
+    "M2 event vocabulary and Task review rules",
+    "original session executor ownership and administrative task states",
+    "explicit fixture review transaction ordering and payload",
+    "M1 internal credit pricing/idempotency",
+    "schema at v62; no migration",
+    "management runner default remains disabled",
+    "user tmp/ remains unread and untouched"
+  ],
+  "not_claimed": [
+    "full U16 completion",
+    "automatic replay by the in-memory event engine",
+    "backfill for historical missing events",
+    "runtime ownership/session recovery or confirmed remote shutdown",
+    "Evidence/reflection/project-follow-up compensation",
+    "real native/model/business acceptance",
+    "Provider usage or monetary budget enforcement",
+    "filesystem orphan-byte garbage collection",
+    "full backend, random-order suite, frontend, PostgreSQL or Docker rerun in this component"
+  ]
+}

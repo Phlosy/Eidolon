@@ -670,6 +670,7 @@ class Orchestrator:
         work_session_id: int | None = None,
         runtime_session: RuntimeSession | None = None,
     ) -> None:
+        reviewed_inline = False
         with SessionLocal() as db:
             ensure_sqlite_transaction(db)
             task = project_repo.get_task(db, task_id)
@@ -783,9 +784,80 @@ class Orchestrator:
             task_title, task_kind = task.title, task.kind
             task_status_after = str(task.status)
             task_project_id = int(task.project_id)
+
+            def publish_completion_events(*, db=None):
+                for artifact_id, artifact_type, artifact_title in artifact_ids:
+                    bus.publish(
+                        "artifact.created",
+                        {"id": artifact_id, "type": artifact_type, "title": artifact_title},
+                        company_id=company_id,
+                        actor_employee_id=employee_id,
+                        project_id=task_project_id,
+                        task_id=task_id,
+                        db=db,
+                    )
+                if advance_task and success:
+                    # M2.7：工作干完了，进入"等评审"（事实）
+                    bus.publish(
+                        "task.in_review",
+                        {
+                            "id": task_id,
+                            "title": task_title,
+                            "kind": task_kind,
+                            "status": task_status_after,
+                            "fixture_review": reviewed_inline,
+                        },
+                        company_id=company_id,
+                        actor_employee_id=employee_id,
+                        project_id=task_project_id,
+                        task_id=task_id,
+                        db=db,
+                    )
+                    if not reviewed_inline:
+                        # 还没有结论、也还没有指定评审人 ⇒ 需要管理层（把 reviewer 指定出来）。
+                        # 系统**不**替它选人（W1/R2），所以这条必须叫醒别人。
+                        bus.publish(
+                            "task.review_required",
+                            {
+                                "id": task_id,
+                                "task_id": task_id,
+                                "title": task_title,
+                                "kind": task_kind,
+                                "needs_reviewer": True,
+                            },
+                            company_id=company_id,
+                            actor_employee_id=employee_id,
+                            project_id=task_project_id,
+                            task_id=task_id,
+                            db=db,
+                        )
+                if advance_task and success:
+                    bus.publish(
+                        "task.completed",
+                        {"id": task_id, "title": task_title, "kind": task_kind, "error": error},
+                        company_id=company_id,
+                        actor_employee_id=employee_id,
+                        project_id=task_project_id,
+                        task_id=task_id,
+                        db=db,
+                    )
+                if released_employee:
+                    bus.publish(
+                        "employee.status_changed",
+                        {"id": employee_id, "to": EmployeeStatus.idle.value},
+                        company_id=company_id,
+                        actor_employee_id=employee_id,
+                        project_id=task_project_id,
+                        task_id=task_id,
+                        db=db,
+                    )
+
+            # Persist notification sources with the result, before any broadcast.
+            # The gated fixture still needs its later, independently committed verdict.
+            if not fixture_review_enabled:
+                publish_completion_events(db=db)
             db.commit()
 
-        reviewed_inline = False
         if success and fixture_review_enabled:
             # 替身评审自带短事务（见 `review_fixture` 的说明）。它返回 None 表示
             # "没评成" —— 任务留在 in_review 等管理层，**不**因此自动通过。
@@ -797,66 +869,8 @@ class Orchestrator:
                     C.REVIEW_VERDICT_TARGETS.get(request.verdict) or task_status_after
                 )
 
-        for artifact_id, artifact_type, artifact_title in artifact_ids:
-            bus.publish(
-                "artifact.created",
-                {"id": artifact_id, "type": artifact_type, "title": artifact_title},
-                company_id=company_id,
-                actor_employee_id=employee_id,
-                project_id=task_project_id,
-                task_id=task_id,
-            )
-        if advance_task and success:
-            # M2.7：工作干完了，进入"等评审"（事实）
-            bus.publish(
-                "task.in_review",
-                {
-                    "id": task_id,
-                    "title": task_title,
-                    "kind": task_kind,
-                    "status": task_status_after,
-                    "fixture_review": reviewed_inline,
-                },
-                company_id=company_id,
-                actor_employee_id=employee_id,
-                project_id=task_project_id,
-                task_id=task_id,
-            )
-            if not reviewed_inline:
-                # 还没有结论、也还没有指定评审人 ⇒ 需要管理层（把 reviewer 指定出来）。
-                # 系统**不**替它选人（W1/R2），所以这条必须叫醒别人。
-                bus.publish(
-                    "task.review_required",
-                    {
-                        "id": task_id,
-                        "task_id": task_id,
-                        "title": task_title,
-                        "kind": task_kind,
-                        "needs_reviewer": True,
-                    },
-                    company_id=company_id,
-                    actor_employee_id=employee_id,
-                    project_id=task_project_id,
-                    task_id=task_id,
-                )
-        if advance_task and success:
-            bus.publish(
-                "task.completed",
-                {"id": task_id, "title": task_title, "kind": task_kind, "error": error},
-                company_id=company_id,
-                actor_employee_id=employee_id,
-                project_id=task_project_id,
-                task_id=task_id,
-            )
-        if released_employee:
-            bus.publish(
-                "employee.status_changed",
-                {"id": employee_id, "to": EmployeeStatus.idle.value},
-                company_id=company_id,
-                actor_employee_id=employee_id,
-                project_id=task_project_id,
-                task_id=task_id,
-            )
+        if fixture_review_enabled:
+            publish_completion_events()
         if employee_id is not None:
             reflection.reflect(task_id, employee_id, success, duration, error)
         if advance_task and success:
