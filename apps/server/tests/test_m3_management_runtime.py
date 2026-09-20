@@ -276,6 +276,12 @@ async def run(work, adapter, **kwargs):
 
 
 async def test_review_conversation_delivers_own_verdict_before_finish(db, world):
+    # PASS may asynchronously complete a project whose tasks are all done. Keep
+    # unrelated work pending so this test checks only the bound review's effect.
+    project_repo.create_task(
+        db, project_id=world.project.id, title="Separate pending work", status="backlog"
+    )
+    db.commit()
     work = session_for(db, world, "review", bound=True)
     adapter = ScriptedAdapter(decision(world), finish())
     result = await run(work, adapter)
