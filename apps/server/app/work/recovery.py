@@ -9,11 +9,11 @@ from app.core.request_context import get_request_identity
 from app.models.action_confirmation import ActionConfirmation
 from app.models.decision import DecisionRecord, ToolAudit
 from app.models.enums import DecisionStatus
-from app.models.project import WorkSession
+from app.models.project import Project, WorkSession
 from app.models.runtime_artifact import RuntimeArtifactCollection
 from app.models.runtime_execution import RuntimeAttempt
 from app.models.runtime_operation import RuntimeOperation
-from app.work import action_confirmations, decisions
+from app.work import action_confirmations, decisions, project_completion
 from app.work.dispatch_notices import begin_observation
 from app.work.telemetry import record_host_outcome
 
@@ -60,6 +60,13 @@ class DecisionRecoveryBatch:
     cursor: int
     complete: bool
     items: tuple[DecisionRecoveryObservation, ...]
+
+
+@dataclass(frozen=True)
+class ProjectRecoveryBatch:
+    cursor: int
+    complete: bool
+    items: tuple[project_completion.CompletionObservation, ...]
 
 
 def _scoped(query, model=WorkSession):
@@ -342,5 +349,48 @@ def reconcile_decision_receipts(*, through_id, after_id=0, limit=25, session_fac
             results.append(checked)
     cursor = observations[-1].decision_id if observations else through_id
     return DecisionRecoveryBatch(
+        cursor, len(observations) < limit or cursor == through_id, tuple(results)
+    )
+
+
+def project_boundary(*, session_factory=SessionLocal):
+    with session_factory() as db:
+        return db.scalar(_scoped(select(func.max(Project.id)), Project)) or 0
+
+
+def reconcile_projects(*, through_id, after_id=0, limit=25, session_factory=SessionLocal):
+    _validate_page(through_id, after_id, limit)
+    with session_factory() as db:
+        rows = db.execute(
+            _scoped(
+                select(Project.id, Project.company_id, Project.status)
+                .where(Project.id > after_id, Project.id <= through_id)
+                .order_by(Project.id)
+                .limit(limit),
+                Project,
+            )
+        )
+        observations = [project_completion.observe(db, row) for row in rows]
+    results = []
+    for observed in observations:
+        if observed.outcome not in project_completion.REPAIRABLE:
+            results.append(observed)
+            continue
+        with session_factory() as db:
+            begin_observation(db)
+            project = db.scalar(
+                _scoped(select(Project).where(Project.id == observed.project_id), Project)
+            )
+            checked = (
+                project_completion.CompletionObservation(
+                    observed.project_id, "source_changed", None
+                )
+                if project is None
+                else project_completion.reconcile(db, project)
+            )
+            db.commit()
+            results.append(checked)
+    cursor = observations[-1].project_id if observations else through_id
+    return ProjectRecoveryBatch(
         cursor, len(observations) < limit or cursor == through_id, tuple(results)
     )

@@ -67,12 +67,12 @@ from app.work import (
     budget_monitor,
     dispatch_notices,
     handoff,
+    project_completion,
     recovery,
     review_fixture,
     runtime_admission,
     runtime_artifacts,
     telemetry,
-    work_defaults,
     worker_resume,
 )
 from app.work import contracts as C
@@ -113,6 +113,8 @@ class Orchestrator:
         self._worker_recovery_through: int | None = None
         self._decision_recovery_cursor = 0
         self._decision_recovery_through: int | None = None
+        self._project_recovery_cursor = 0
+        self._project_recovery_through: int | None = None
 
     def start(self) -> None:
         self._recovery_through = recovery.work_session_boundary() or None
@@ -123,6 +125,8 @@ class Orchestrator:
         self._action_recovery_cursor = 0
         self._decision_recovery_through = recovery.decision_boundary() or None
         self._decision_recovery_cursor = 0
+        self._project_recovery_through = recovery.project_boundary() or None
+        self._project_recovery_cursor = 0
         self._loop = asyncio.get_running_loop()
         self._runner = asyncio.create_task(self._run(), name="eidolon-orchestrator")
 
@@ -184,6 +188,14 @@ class Orchestrator:
                 self._decision_recovery_cursor = decisions.cursor
                 if decisions.complete:
                     self._decision_recovery_through = None
+            if self._project_recovery_through is not None:
+                projects = recovery.reconcile_projects(
+                    through_id=self._project_recovery_through,
+                    after_id=self._project_recovery_cursor,
+                )
+                self._project_recovery_cursor = projects.cursor
+                if projects.complete:
+                    self._project_recovery_through = None
             await self._dispatch_pending()
         elif signal["type"] == "stop_work":
             identifier = signal.get("work_session_id")
@@ -1052,18 +1064,8 @@ class Orchestrator:
                 # 要不要继续由 Manager Agent 决定（W34）。
                 project.status = ProjectStatus.planning.value
                 events.append(("project.awaiting_management_action", _awaiting_payload(project)))
-            if state.all_tasks_done and project.status in (
-                ProjectStatus.in_progress.value,
-                ProjectStatus.in_review.value,
-            ):
-                project.status = ProjectStatus.completed.value
-                for milestone in project_repo.list_milestones(db, project_id):
-                    milestone.status = MilestoneStatus.completed.value
-                events.append(("project.delivery_ready", {"id": project_id, "name": project.name}))
-                events.append(("project.completed", {"id": project_id, "name": project.name}))
-                # D2/B7：首次真实项目走完 ⇒ 公司默认工作模式从 guided 推进到 managed。
-                # 只改**默认值**，不改任何项目的 work_mode 快照（W35）。
-                work_defaults.promote_after_project_completion(db, company_id, commit=False)
+            if state.all_tasks_done and project.status in project_completion.ACTIVE_STATUSES:
+                project_completion.reconcile(db, project, state=state)
             self._publish_advance_events(events, company_id, project_id, db=db)
             db.commit()
         self.notify({"type": "dispatch"})

@@ -1,0 +1,269 @@
+{
+  "unit": "U16 component8",
+  "status": "locally_verified_component_only",
+  "base_commit": "ddb8d79cea424c95a6f2d7badf6feda6961297cf",
+  "plan": "docs/m3-implementation-plan.md",
+  "requirements": [
+    "R4",
+    "R5"
+  ],
+  "key_technical_decisions": [
+    "KTD8"
+  ],
+  "migration": null,
+  "behavior": "Bounded startup project recovery shares completion rules with live advancement. Only nonempty valid graphs with every existing Task done can complete active projects; completed projects receive missing completion notifications only. Existing event IDs, task end times, project mode snapshots and historical company preferences are preserved.",
+  "process_proof": {
+    "test": "apps/server/tests/test_m3_project_advance_recovery.py",
+    "crashes": [
+      "os._exit(23) after original Task transition in_review to done commits, before project advancement",
+      "os._exit(24) after recovered project transaction commits, before callbacks"
+    ],
+    "cases": [
+      "project in_progress",
+      "project in_review"
+    ],
+    "replay": "Two fresh interpreters rescan using only SQLite source facts and retain original task completion time and Event IDs.",
+    "real_services": [
+      "SQLite and real process termination",
+      "Original Task transition service",
+      "Project/milestone/company-default service",
+      "EventBus transaction-bound persistence"
+    ],
+    "limits": "Task done is an isolated domain test input; no claim of real model delivery or formal review. No paid calls or native/container operations."
+  },
+  "checks": [
+    {
+      "label": "project-completion-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_project_advance_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 10.58,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-completion-red.log",
+      "outcome": "expected_failure",
+      "summary": "9 failed, 12 passed, 1 warning in 9.24s",
+      "log_sha256": "56403ec2b5f0f62ca13701c1f521825b486e65b60ce7be6e92fa365c6fe46d6f"
+    },
+    {
+      "label": "project-completion-first-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_project_advance_recovery.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_m2_project_spec.py",
+        "apps/server/tests/test_project_delivery_lifecycle.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 14.66,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-completion-first-green.log",
+      "outcome": "passed",
+      "summary": "65 passed, 1 warning in 13.17s",
+      "log_sha256": "72f6ede8936e2e02f1aecac76055b1a5b62238b8e08404eb8ef5308bc6608eab"
+    },
+    {
+      "label": "project-completion-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_project_advance_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 12.05,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-completion-boundaries.log",
+      "outcome": "passed",
+      "summary": "43 passed, 1 warning in 10.69s",
+      "log_sha256": "66657769a9bdf8451db8d9a63a8ff932ba42424e48c1321b4f9690529e1dce97"
+    },
+    {
+      "label": "project-completion-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-completion-python-lint.log",
+      "outcome": "passed",
+      "summary": "All checks passed!",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "project-completion-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-completion-python-format.log",
+      "outcome": "passed",
+      "summary": "550 files already formatted",
+      "log_sha256": "808ea1e3dd9018d92bad38ab6abeb5825d158203499a1987a77a9ef2d5c35258"
+    },
+    {
+      "label": "project-completion-web-types",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 3.58,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-completion-web-types.log",
+      "outcome": "passed",
+      "summary": "Command completed with exit code 0 and no output",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "project-completion-web-lint",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "eslint",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 1.86,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-completion-web-lint.log",
+      "outcome": "passed",
+      "summary": "Command completed with exit code 0 and no output",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "project-completion-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 315.82,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-completion-full-backend.log",
+      "outcome": "passed",
+      "summary": "3089 passed, 26 deselected, 118 warnings in 313.62s (0:05:13)",
+      "log_sha256": "22366ba20765774ff28c545dbed7c554f3308c07530106caa4724e3f1fcd1f11"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/work/project_completion.py": "40bd398d727fd3e3a14ca3c0925254f39338cfbd8ec5513cfce6a8d7de02f307",
+    "apps/server/app/work/recovery.py": "e709e42fc991c4373636fedcf2f5241b74b731f59a8193225f5099b717ac0ce8",
+    "apps/server/app/workflow/orchestrator.py": "aa111ddb1d52736f7a39d0885b344299705c91a2e7c37f3e9f1598688ddebdfd",
+    "apps/server/tests/test_m3_project_advance_recovery.py": "5885d6c385b86e041bf1445145778cb950e25423adc85440e85aed0ed6593df7",
+    "docs/m2-freeze.md": "6c061e6aea8649d54f738a454347c202ccee24283392332bef6806e726585016",
+    "docs/m3-u16-crash-recovery.md": "ec6c818dd1ad78115596ea6e72ce1b1b8173319a1eec38dd385b72ae01d44683"
+  },
+  "simplification": {
+    "skill": "ce-simplify-code",
+    "scope": "Production components7/8 since ac8755a; mutation restricted to current component8 project_completion.py/orchestrator.py",
+    "plan_structure_pins": "M3 plan context only; source/graph/authority checks and settled decisions preserved",
+    "route": "All three exact persona assets read in full; complete outcomes produced inline before mutation",
+    "fallback": "Previously observed unrecoverable fresh-worker prelaunch thread limit; no dispatch/reuse, no independent review claimed",
+    "reviews": [
+      {
+        "persona": "code-reuse-reviewer",
+        "status": "complete",
+        "applied": 1,
+        "finding": "Orchestrator live completion gate can use the existing project_completion.ACTIVE_STATUSES constant; same two string values and preserved gate ordering.",
+        "skipped": [
+          {
+            "candidate": "Generic scanner framework for all four source types",
+            "reason": "Different source identities, observed reasons and write contracts are still useful; keep explicit bounded loops and shared page validation."
+          }
+        ]
+      },
+      {
+        "persona": "code-quality-reviewer",
+        "status": "complete",
+        "applied": 1,
+        "finding": "Use explicit state is None before deriving canonical state; current scoped callers pass only None or the truthy ProjectRuntimeState dataclass, preserving exact behavior."
+      },
+      {
+        "persona": "efficiency-reviewer",
+        "status": "complete",
+        "applied": 0,
+        "skipped": [
+          {
+            "candidate": "Skip canonical task/graph validation for completed projects with saved notifications",
+            "reason": "Would change invalid/incomplete source explanations and remove a required source check."
+          },
+          {
+            "candidate": "Add missing-event payload to the observation type to avoid a two-event query",
+            "reason": "Small query saving does not justify widening the observation contract or confusing pre-lock and post-lock facts; retain source recheck."
+          }
+        ]
+      }
+    ],
+    "verification": {
+      "state": "passed",
+      "scoped": "43 passed,1 warning; actual cross-process project recovery and boundary cases",
+      "full_backend": "3089 passed, 26 deselected, 118 warnings in 313.62s (0:05:13)",
+      "static": "Python lint and format550; frontend tsc and eslint all passed",
+      "receipt_labels": [
+        "project-completion-first-green",
+        "project-completion-boundaries",
+        "project-completion-python-lint",
+        "project-completion-python-format",
+        "project-completion-web-types",
+        "project-completion-web-lint",
+        "project-completion-full-backend"
+      ]
+    },
+    "behavior_changes": false
+  },
+  "independent_review_completed": false,
+  "paid_calls": 0,
+  "docker_operations": 0,
+  "not_run": [
+    "26 opt-in native integration cases deselected by existing suite configuration"
+  ],
+  "open_gates": [
+    "U16 original controlled conversation and partial structured action recovery",
+    "U16 other missing source notifications and Evidence/reflection/assessment consumer recovery",
+    "Independent review remains incomplete under the recorded fresh-worker capacity limit",
+    "U14 extra paid allowance unanswered; U15-U17 joint real business/monetary evidence"
+  ],
+  "notes": [
+    "31 scenarios added to existing test file,43 total; first green included65 cases with unchanged M2/domain anchors",
+    "Initial9 expected failures include missing recovery API/startup recovery and the existing live path completing an invalid cyclic graph",
+    "Shared service now explicitly requires canonical graph validity; this correction was preregistered in M2 freeze",
+    "Legacy completed sources only fill missing notifications with current observation time/name; do not replay milestone/default promotion or fabricate original timestamps",
+    "Startup cohort default25,max100; read-only skips, scoped writer source recheck, failed storage retains cursor, dispatch-disabled scans supported",
+    "All three simplification persona outcomes were completed inline before applying two findings; not an independent review",
+    "No production/assertion changes after full regression began; original tmp excluded unread; no dev DB/shared fixture writes; full U16 remains open"
+  ]
+}

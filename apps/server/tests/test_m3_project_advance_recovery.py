@@ -1,5 +1,6 @@
 """Actual process death must not split project advancement from its source events."""
 
+import asyncio
 import json
 import subprocess
 import sys
@@ -8,16 +9,17 @@ from threading import Barrier
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import select, text
+from sqlalchemy import event, select, text
 from sqlalchemy.exc import IntegrityError
 
+from app.core.config import settings
 from app.core.database import SessionLocal
 from app.events.bus import bus
 from app.models.event import Event
 from app.models.organization import Company
 from app.models.project import Milestone, Project, Task, TaskDependency
 from app.work import contracts as C
-from app.work import work_defaults
+from app.work import recovery, work_defaults
 from app.workflow.orchestrator import Orchestrator
 
 EVENTS = (
@@ -303,3 +305,361 @@ def test_two_projects_share_one_default_promotion_without_mixing_events(db, worl
         assert [(row.type, row.payload) for row in saved if row.project_id == project.id] == [
             (kind, {"id": project.id, "name": project.name}) for kind in EVENTS[1:]
         ]
+
+
+PROJECT_RECOVERY_PROCESS = """
+import json, os, sys
+from dataclasses import asdict
+from sqlalchemy import event
+from app.core.database import SessionLocal
+from app.work import recovery
+
+def factory():
+    db = SessionLocal()
+    if sys.argv[1] == "crash":
+        def die(session):
+            if not session.in_nested_transaction():
+                os._exit(24)
+        event.listen(db, "after_commit", die)
+    return db
+page = recovery.reconcile_projects(
+    through_id=recovery.project_boundary(), session_factory=factory,
+)
+print(json.dumps(asdict(page)))
+"""
+
+
+@pytest.mark.parametrize("project_status", ["in_progress", "in_review"])
+def test_task_commit_process_death_recovers_project_without_replaying_tasks(
+    db, world, project_status
+):
+    w = world
+    w.project.status, w.task.status = project_status, "in_review"
+    db.commit()
+    crashed = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            """
+import os, sys
+from app.core.database import SessionLocal
+from app.models.project import Task
+from app.services.tasks import transition_task
+with SessionLocal() as db:
+    transition_task(db, db.get(Task, int(sys.argv[1])), "done")
+    db.commit()
+os._exit(23)
+""",
+            str(w.task.id),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    assert crashed.returncode == 23, crashed.stderr
+    db.expire_all()
+    assert w.task.status == "done" and w.project.status == project_status
+    ended_at = w.task.actual_end_at
+    assert ended_at is not None and events(db, w) == []
+    db.rollback()
+    restarted = subprocess.run(
+        [sys.executable, "-c", PROJECT_RECOVERY_PROCESS, "crash"],
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    assert restarted.returncode == 24, restarted.stderr
+    db.expire_all()
+    assert w.project.status == w.milestone.status == "completed"
+    assert w.project.work_mode == "guided"
+    assert w.task.status == "done" and w.task.actual_end_at == ended_at
+    saved = events(db, w)
+    assert [row.type for row in saved] == list(EVENTS)
+    original = [(row.id, row.type, row.created_at) for row in saved]
+    db.rollback()
+    for _ in range(2):
+        repeated = subprocess.run(
+            [sys.executable, "-c", PROJECT_RECOVERY_PROCESS, "observe"],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        assert repeated.returncode == 0, repeated.stderr
+        assert json.loads(repeated.stdout)["items"][0]["outcome"] == "already_recorded"
+    db.expire_all()
+    assert [(row.id, row.type, row.created_at) for row in events(db, w)] == original
+    assert w.task.actual_end_at == ended_at
+
+
+@pytest.mark.parametrize("present", [(), (EVENTS[1],), (EVENTS[2],), EVENTS[1:]])
+def test_legacy_completed_project_only_fills_missing_notifications(db, world, present):
+    w = world
+    w.project.status = "completed"
+    for kind in present:
+        bus.publish(
+            kind,
+            {"id": w.project.id, "name": w.project.name},
+            company_id=w.company.id,
+            project_id=w.project.id,
+            db=db,
+        )
+    db.commit()
+    existing = {row.type: row.id for row in events(db, w)}
+    page = recovery.reconcile_projects(through_id=recovery.project_boundary())
+    assert page.items[0].outcome == ("already_recorded" if len(present) == 2 else "notified")
+    db.expire_all()
+    saved = events(db, w)
+    assert sorted(row.type for row in saved) == sorted(EVENTS[1:])
+    assert all(row.id == existing[row.type] for row in saved if row.type in existing)
+    assert w.company.settings == {} and w.milestone.status == "in_progress"
+    assert w.project.work_mode == "guided"
+    assert (
+        recovery.reconcile_projects(through_id=w.project.id).items[0].outcome == "already_recorded"
+    )
+
+
+@pytest.mark.parametrize("entry", ["live", "recovery"])
+def test_invalid_completed_task_graph_cannot_complete_project(db, world, entry):
+    other = Task(project_id=world.project.id, title="循环依赖", status="done")
+    db.add(other)
+    db.flush()
+    db.add_all(
+        [
+            TaskDependency(task_id=world.task.id, depends_on_id=other.id),
+            TaskDependency(task_id=other.id, depends_on_id=world.task.id),
+        ]
+    )
+    db.commit()
+    if entry == "live":
+        Orchestrator()._advance(world.task.id, True)
+    else:
+        page = recovery.reconcile_projects(through_id=world.project.id)
+        assert page.items[0].outcome == "invalid_graph"
+    db.expire_all()
+    assert world.project.status == world.milestone.status == "in_progress"
+    assert events(db, world) == [] and world.company.settings == {}
+    assert world.task.status == other.status == "done"
+
+
+async def test_actual_startup_recovers_project_even_with_dispatch_disabled(db, world, monkeypatch):
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", False)
+    owner = Orchestrator()
+    owner.start()
+    try:
+        async with asyncio.timeout(3):
+            while True:
+                db.expire_all()
+                if world.project.status == "completed":
+                    break
+                await asyncio.sleep(0.02)
+        saved = [row.id for row in events(db, world)]
+        assert len(saved) == 3 and owner._project_recovery_through is None
+        await owner._handle({"type": "sweep"})
+        assert [row.id for row in events(db, world)] == saved
+    finally:
+        await owner.stop()
+
+
+@pytest.mark.parametrize(
+    "task_status", ["in_progress", "in_review", "blocked", "cancelled", "failed", "todo"]
+)
+def test_project_recovery_never_turns_an_unfinished_task_into_completion(db, world, task_status):
+    world.task.status = task_status
+    db.commit()
+    page = recovery.reconcile_projects(through_id=world.project.id)
+    assert page.items[0].outcome == "tasks_incomplete"
+    db.expire_all()
+    assert world.task.status == task_status and world.project.status == "in_progress"
+    assert world.milestone.status == "in_progress" and world.company.settings == {}
+    assert events(db, world) == []
+
+
+@pytest.mark.parametrize(
+    "status", ["requested", "planning", "waiting_for_management", "cancelled", "rejected"]
+)
+def test_project_recovery_keeps_management_and_terminal_project_states(db, world, status):
+    world.project.status = status
+    db.commit()
+    page = recovery.reconcile_projects(through_id=world.project.id)
+    assert page.items[0].outcome == "ineligible_project_status"
+    db.expire_all()
+    assert world.project.status == status and world.task.status == "done"
+    assert events(db, world) == [] and world.company.settings == {}
+
+
+def test_empty_project_and_inconsistent_historical_completion_are_not_invented(db, world):
+    empty = Project(company_id=world.company.id, name="空项目", status="in_progress")
+    db.add(empty)
+    world.project.status, world.task.status = "completed", "in_review"
+    db.commit()
+    page = recovery.reconcile_projects(through_id=empty.id)
+    assert [row.outcome for row in page.items] == ["tasks_incomplete", "tasks_incomplete"]
+    db.expire_all()
+    assert empty.status == "in_progress" and world.project.status == "completed"
+    assert world.task.status == "in_review" and events(db, world) == []
+
+
+def add_completed_project(db, company_id):
+    project = Project(company_id=company_id, name="后续项目", status="in_progress")
+    db.add(project)
+    db.flush()
+    db.add(Task(project_id=project.id, title="已有完成事实", status="done"))
+    db.commit()
+    return project
+
+
+def test_project_recovery_pages_respect_startup_cohort_and_company_scope(db, world):
+    from app.core.request_context import (
+        RequestIdentity,
+        reset_request_identity,
+        set_request_identity,
+    )
+
+    second = add_completed_project(db, world.company.id)
+    through = recovery.project_boundary()
+    later = add_completed_project(db, world.company.id)
+    first = recovery.reconcile_projects(through_id=through, limit=1)
+    assert not first.complete and first.cursor == world.project.id
+    second_page = recovery.reconcile_projects(through_id=through, after_id=first.cursor, limit=1)
+    assert second_page.complete and [item.project_id for item in second_page.items] == [second.id]
+    db.expire_all()
+    assert world.project.status == second.status == "completed" and later.status == "in_progress"
+    token = set_request_identity(RequestIdentity(1, 99999, "owner", 1))
+    try:
+        assert recovery.project_boundary() == 0
+        assert recovery.reconcile_projects(through_id=later.id).items == ()
+    finally:
+        reset_request_identity(token)
+
+
+def test_project_recovery_readonly_pages_never_take_a_writer_lock(db, world):
+    Orchestrator()._advance(world.task.id, True)
+    with SessionLocal() as setup:
+        setup.add(Project(company_id=world.company.id, name="待管理", status="requested"))
+        setup.commit()
+
+    def factory():
+        session = SessionLocal()
+
+        def read_only(conn, cursor, statement, parameters, context, executemany):
+            assert (
+                not statement.strip()
+                .upper()
+                .startswith(("BEGIN IMMEDIATE", "INSERT", "UPDATE", "DELETE"))
+            )
+
+        event.listen(session.connection(), "before_cursor_execute", read_only)
+        return session
+
+    page = recovery.reconcile_projects(
+        through_id=recovery.project_boundary(), session_factory=factory
+    )
+    assert [item.outcome for item in page.items] == [
+        "already_recorded",
+        "ineligible_project_status",
+    ]
+
+
+@pytest.mark.parametrize("change", ["cancel", "new_task"])
+def test_project_recovery_rechecks_sources_after_readonly_observation(db, world, change):
+    project_id = world.project.id
+    calls = 0
+
+    def factory():
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            with SessionLocal() as writer:
+                if change == "cancel":
+                    writer.get(Project, project_id).status = "cancelled"
+                else:
+                    writer.add(Task(project_id=project_id, title="新增未完成任务", status="todo"))
+                writer.commit()
+        return SessionLocal()
+
+    page = recovery.reconcile_projects(through_id=project_id, session_factory=factory)
+    assert page.items[0].outcome == (
+        "ineligible_project_status" if change == "cancel" else "tasks_incomplete"
+    )
+    db.expire_all()
+    assert world.project.status == ("cancelled" if change == "cancel" else "in_progress")
+    assert world.company.settings == {} and events(db, world) == []
+
+
+def test_concurrent_project_scans_and_live_advance_share_original_effects(db, world):
+    project_id, task_id = world.project.id, world.task.id
+    barrier = Barrier(3)
+
+    def run(source):
+        barrier.wait(timeout=5)
+        if source == "live":
+            Orchestrator()._advance(task_id, True)
+        else:
+            return recovery.reconcile_projects(through_id=project_id).items[0].outcome
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = [pool.submit(run, source) for source in ("live", "scan", "scan")]
+        outcomes = [future.result(timeout=10) for future in futures]
+    assert all(value in {"completed", "already_recorded"} for value in outcomes[1:])
+    db.expire_all()
+    assert [row.type for row in events(db, world)] == list(EVENTS)
+    assert world.project.status == world.milestone.status == "completed"
+
+
+def test_project_recovery_storage_failure_rolls_back_and_retries_original_page(db, world):
+    db.execute(
+        text(
+            "CREATE TRIGGER reject_recovery_completion BEFORE INSERT ON events "
+            "WHEN NEW.type = 'project.completed' BEGIN SELECT RAISE(ABORT, 'rejected'); END"
+        )
+    )
+    db.commit()
+    with pytest.raises(IntegrityError):
+        recovery.reconcile_projects(through_id=world.project.id)
+    db.expire_all()
+    assert world.project.status == world.milestone.status == "in_progress"
+    assert world.company.settings == {} and events(db, world) == []
+    db.execute(text("DROP TRIGGER reject_recovery_completion"))
+    db.commit()
+    assert recovery.reconcile_projects(through_id=world.project.id).items[0].outcome == "completed"
+    assert (
+        recovery.reconcile_projects(through_id=world.project.id).items[0].outcome
+        == "already_recorded"
+    )
+
+
+@pytest.mark.parametrize("bounds", [dict(limit=True), dict(limit=101), dict(after_id=2)])
+def test_invalid_project_pages_fail_before_reading(bounds):
+    def forbidden():
+        pytest.fail("invalid bounds reached storage")
+
+    with pytest.raises(ValueError, match="invalid recovery page"):
+        recovery.reconcile_projects(through_id=1, session_factory=forbidden, **bounds)
+
+
+async def test_startup_project_recovery_keeps_cursor_after_storage_failure(db, world, monkeypatch):
+    calls = []
+    actual = recovery.reconcile_projects
+
+    def fail_once(**kwargs):
+        calls.append(kwargs["after_id"])
+        if len(calls) == 1:
+            raise IntegrityError("private", {}, Exception("storage unavailable"))
+        return actual(**kwargs)
+
+    monkeypatch.setattr(recovery, "reconcile_projects", fail_once)
+    monkeypatch.setattr(settings, "orchestrator_dispatch_enabled", False)
+    owner = Orchestrator()
+    owner.start()
+    try:
+        async with asyncio.timeout(3):
+            while True:
+                db.expire_all()
+                if world.project.status == "completed":
+                    break
+                await asyncio.sleep(0.02)
+        assert calls == [0, 0]
+        await owner._handle({"type": "sweep"})
+        assert calls == [0, 0]
+    finally:
+        await owner.stop()
