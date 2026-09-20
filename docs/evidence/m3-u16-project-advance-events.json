@@ -1,0 +1,228 @@
+{
+  "unit": "U16 component7",
+  "status": "locally_verified_component_only",
+  "base_commit": "ac8755af0d43432262e81426771476d9a9606710",
+  "plan": "docs/m3-implementation-plan.md",
+  "requirements": [
+    "R4",
+    "R5"
+  ],
+  "key_technical_decisions": [
+    "KTD8"
+  ],
+  "migration": null,
+  "behavior": "Existing project advancement facts and source events commit atomically, including company default promotion without nested commit. All existing event names, payloads, ordering and domain conditions preserved; explicit company preferences/project mode snapshots preserved.",
+  "process_proof": {
+    "test": "apps/server/tests/test_m3_project_advance_recovery.py",
+    "crash": "os._exit(23) after first outer commit before transaction callbacks",
+    "cases": [
+      "implicit founding default needs promotion",
+      "explicit guided preference remains unchanged"
+    ],
+    "replay": "Two fresh interpreters repeat existing _advance; original Event IDs, project/milestone status and company/project preference snapshots remain stable.",
+    "real_services": [
+      "SQLite and real process termination",
+      "Project, milestone and company defaults",
+      "EventBus transaction-bound persistence and callbacks"
+    ],
+    "limits": "No native runtime/container or paid model. Tasks are isolated fixed domain test inputs, not evidence of real model delivery."
+  },
+  "checks": [
+    {
+      "label": "project-advance-events-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_project_advance_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.14,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-advance-events-red.log",
+      "outcome": "expected_failure",
+      "summary": "6 failed,1 passed before production changes; both actual os._exit(23) paths left no completion notifications; three real event INSERT failures were swallowed; broadcast observed incomplete event set.",
+      "log_sha256": "0653cfec83908bef2fa5fc5c95d29144601589812754c286531faed006fac6ba"
+    },
+    {
+      "label": "project-advance-events-first-green",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_project_advance_recovery.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_m2_project_spec.py",
+        "apps/server/tests/test_project_delivery_lifecycle.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 9.85,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-advance-events-first-green.log",
+      "outcome": "passed",
+      "summary": "51 passed; initial seven new cases plus M2 DAG/project-spec and guided project-delivery anchors",
+      "log_sha256": "a7b5d09c47e0b7f0330de9407982e46069ef95bacc390c10c8d1a9bd6bbc9cf9"
+    },
+    {
+      "label": "project-advance-events-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_project_advance_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 5.6,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-advance-events-boundaries.log",
+      "outcome": "test_failure",
+      "summary": "11 passed,1 failed: caller rollback test assumed company had no events, but fixture includes an existing source event; scope corrected to the three relevant notification types, production unchanged.",
+      "log_sha256": "1f28cb81fb54739f73b80e7aa5d31eb2d879dddd8b59fc0bcfd21f4de6455418"
+    },
+    {
+      "label": "project-advance-events-boundaries-fixed",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_project_advance_recovery.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_m2_project_spec.py",
+        "apps/server/tests/test_project_delivery_lifecycle.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 10.35,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-advance-events-boundaries-fixed.log",
+      "outcome": "passed",
+      "summary": "56 passed; all12 new scenarios plus existing M2/domain anchors",
+      "log_sha256": "0c90cbba83108b5b6e1ee52028c0821d5d4eca29b2e15de3cf40e2ad0fc16bf7"
+    },
+    {
+      "label": "project-advance-events-python-lint",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-advance-events-python-lint.log",
+      "outcome": "format_failure",
+      "summary": "One import-block formatting finding in new test; fixed with Ruff on the owned test only.",
+      "log_sha256": "7ee1e26e8c0877b6a63ab102da055dcbd8c1cea64a39526b97f350609fbdc3a1"
+    },
+    {
+      "label": "project-advance-events-python-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-advance-events-python-format.log",
+      "outcome": "passed",
+      "summary": "549 Python files already formatted",
+      "log_sha256": "6312fde1f7ca6f0d787399a0244f4e8699d4a2bd4248ab719f9ba9eea63dc7e3"
+    },
+    {
+      "label": "project-advance-events-python-lint-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-advance-events-python-lint-final.log",
+      "outcome": "passed",
+      "summary": "All server project Python lint checks passed after import grouping fix",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "label": "project-advance-events-python-format-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-advance-events-python-format-final.log",
+      "outcome": "passed",
+      "summary": "549 Python files already formatted after final import grouping fix",
+      "log_sha256": "6312fde1f7ca6f0d787399a0244f4e8699d4a2bd4248ab719f9ba9eea63dc7e3"
+    },
+    {
+      "label": "project-advance-events-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 308.22,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u16-mx43f5_j/project-advance-events-full-backend.log",
+      "outcome": "passed",
+      "summary": "3058 passed, 26 deselected, 118 warnings in 306.20s (0:05:06)",
+      "log_sha256": "5480699d8c3d23155c5543b27fcebdcb1527f3e61cc72ab346b6ecadf661d883"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/work/work_defaults.py": "b518cd216b71f5c0deb5a6126365965427722f0ca6f4140c7d64c2c1c50e6a9c",
+    "apps/server/app/workflow/orchestrator.py": "f2370e3dcbdfd10445c468616925635e413f140e8d785a493324097d02e581ff",
+    "apps/server/tests/test_m3_project_advance_recovery.py": "a474e6cdd44b64d92e8a08342fedb3a4514ad315758132d477f49899b9f4f39d",
+    "docs/m2-freeze.md": "022185782172d1712e2e435a2877e3439bb907fd36f6c0e6319915dc7877274b",
+    "docs/m3-u16-crash-recovery.md": "feeb454f3d8dc8e2ad17b06226e51dbdd839c235d621c311f0d3fe0e615c512a"
+  },
+  "independent_review_completed": false,
+  "paid_calls": 0,
+  "docker_operations": 0,
+  "not_run": [
+    "26 opt-in native integration cases deselected by existing suite configuration",
+    "Web types/lint last passed at base ac8755a; no frontend changes or new frontend checks in this component"
+  ],
+  "open_gates": [
+    "U16 original controlled conversation and partial structured action recovery",
+    "U16 finalize-before-advance and legacy missing notifications",
+    "U16 Evidence/reflection/assessment consumer recovery",
+    "Independent review still unavailable under previously documented persistent worker capacity limit",
+    "U14 extra paid allowance unanswered; U15-U17 joint real business/monetary evidence"
+  ],
+  "notes": [
+    "Short BEGIN IMMEDIATE rechecks original domain conditions before effects",
+    "The two work-default promotion helpers retain default commit=True for all other existing callers; _advance opts into commit=False",
+    "No new event/schema/API/automatic replan or changed completion condition",
+    "Initial boundary failure and lint failure retained alongside corrected results",
+    "Only import-block whitespace changed after full-suite dispatch; no production or assertion changes during that run",
+    "Next simplification cluster is components7/8; components5/6 already completed all three inline personas",
+    "Original tmp excluded unread; no dev DB/shared fixture writes; no whole-U16 completion claim"
+  ]
+}

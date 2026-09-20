@@ -1010,6 +1010,7 @@ class Orchestrator:
           "把上游任务打回 todo" 是管理决策（`request_rework` 工具，R10/R12）。
         """
         with SessionLocal() as db:
+            dispatch_notices.begin_observation(db)
             task = project_repo.get_task(db, task_id)
             if task is None:
                 return
@@ -1022,8 +1023,8 @@ class Orchestrator:
 
             if not success:
                 events.append(("project.replan_required", _replan_payload(project, task)))
+                self._publish_advance_events(events, company_id, project_id, db=db)
                 db.commit()
-                self._publish_advance_events(events, company_id, project_id)
                 return
 
             # 完成一个任务可能让后续任务就绪 —— 用**契约口径**算，不猜
@@ -1062,13 +1063,13 @@ class Orchestrator:
                 events.append(("project.completed", {"id": project_id, "name": project.name}))
                 # D2/B7：首次真实项目走完 ⇒ 公司默认工作模式从 guided 推进到 managed。
                 # 只改**默认值**，不改任何项目的 work_mode 快照（W35）。
-                work_defaults.promote_after_project_completion(db, company_id)
+                work_defaults.promote_after_project_completion(db, company_id, commit=False)
+            self._publish_advance_events(events, company_id, project_id, db=db)
             db.commit()
-        self._publish_advance_events(events, company_id, project_id)
         self.notify({"type": "dispatch"})
 
     def _publish_advance_events(
-        self, events: list[tuple[str, dict]], company_id: int, project_id: int
+        self, events: list[tuple[str, dict]], company_id: int, project_id: int, *, db
     ) -> None:
         for event_type, data in events:
             # 事件集是**封闭**的（R11）：要么是事实通告，要么是要管理层介入。
@@ -1083,6 +1084,7 @@ class Orchestrator:
                 project_id=project_id,
                 task_id=data.get("id") if event_type.startswith("task.") else None,
                 actor_employee_id=data.get("assignee_id"),
+                db=db,
             )
 
 

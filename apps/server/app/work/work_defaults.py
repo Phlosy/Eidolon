@@ -66,7 +66,7 @@ def set_company_work_mode_default(
 ) -> ProjectWorkMode:
     """显式设定公司默认工作模式（Settings 页面 / Owner 操作）。
 
-    只改**默认**，不改任何既有项目（W35）。
+    只改**默认**，不改任何既有项目（W35）。commit=False 时通知与默认值由调用方共同提交。
     """
     settings_data = dict(company.settings or {})
     block = dict(settings_data.get(C.WORK_MODE_SETTINGS_KEY) or {})
@@ -78,11 +78,12 @@ def set_company_work_mode_default(
     company.settings = settings_data
     if commit:
         db.commit()
-        bus.publish(
-            "company.work_default_changed",
-            {"from": before.value, "to": mode.value, "reason": reason},
-            company_id=int(company.id),
-        )
+    bus.publish(
+        "company.work_default_changed",
+        {"from": before.value, "to": mode.value, "reason": reason},
+        company_id=int(company.id),
+        db=None if commit else db,
+    )
     return mode
 
 
@@ -114,7 +115,7 @@ def set_company_work_intake_code(
     return resolved
 
 
-def promote_after_project_completion(db: Session, company_id: int) -> bool:
+def promote_after_project_completion(db: Session, company_id: int, *, commit: bool = True) -> bool:
     """项目完成时的便捷入口（只取 company_id，供 orchestrator / 交付域调用）。
 
     两个完成点（`orchestrator._advance` 的 final_review、`project_delivery.complete_phase`
@@ -123,13 +124,15 @@ def promote_after_project_completion(db: Session, company_id: int) -> bool:
     company = org_repo.get_company(db, int(company_id))
     if company is None:  # pragma: no cover - 防御
         return False
-    promoted = promote_work_mode_after_onboarding(db, company)
+    promoted = promote_work_mode_after_onboarding(db, company, commit=commit)
     if promoted:
         logger.info("公司默认工作模式推进为 managed（guided onboarding 完成）")
     return promoted
 
 
-def promote_work_mode_after_onboarding(db: Session, company: Company) -> bool:
+def promote_work_mode_after_onboarding(
+    db: Session, company: Company, *, commit: bool = True
+) -> bool:
     """冷启动学习期结束：把公司默认从 `guided` 推进到 `managed`（D2/B7）。
 
     调用点是"首次真实项目走完"（`project.completed`）。它是**产品默认值**的推进，
@@ -147,6 +150,7 @@ def promote_work_mode_after_onboarding(db: Session, company: Company) -> bool:
         company,
         C.WORK_MODE_AFTER_ONBOARDING,
         reason="guided_onboarding_completed",
+        commit=commit,
     )
     return True
 
