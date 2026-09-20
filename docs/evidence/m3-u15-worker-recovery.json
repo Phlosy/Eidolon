@@ -1,0 +1,214 @@
+{
+  "unit": "U15",
+  "component": "bounded_accepted_worker_wait_recovery",
+  "status": "component_verified_unit_in_progress",
+  "base_commit": "327f4821e70d42c75d5bb312c7449d7111a99b0a",
+  "raw_directory": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p",
+  "behavior_changed": true,
+  "existing_tests_inspected": [
+    "test_m3_telemetry.py",
+    "test_m3_retry_cancel.py",
+    "test_m3_runtime_turns.py",
+    "test_runtimes_behavior.py",
+    "test_m3_runtime_artifacts.py",
+    "test_m3_artifact_acceptance.py",
+    "test_m3_stop_intent.py"
+  ],
+  "changes": [
+    "Both real Worker adapters recover classified transient read failures only after durable remote acceptance. The original request, RuntimeAttempt, remote run and logical WorkSession remain the same; no repeated model submission.",
+    "The host atomically reserves at most two read recoveries per WorkSession, records technical_retry_count and runtime.warning, and checks original identity, Task state and stop intent before each query. Rework count is unchanged.",
+    "Backoffs are 0.1/0.5 seconds; queries have a five-second timeout and normal polls a 0.5-second interval. All recovery shares the original finite Worker deadline, with timeout constrained to 0..900 seconds exclusive of zero.",
+    "Invalid timeout configuration is rejected before preparing a durable request, avoiding a phantom unresolved attempt. Raw adapter entry points retain the same validation.",
+    "Original connection/observer references are frozen before waiting and terminal writes revalidate identity. Successful recovery proceeds through actual artifact acceptance and review waiting; exhaustion uses existing stop/drain/blocked finalization."
+  ],
+  "observed_red_before_implementation": [
+    "Main sixteen scenarios: ten expected failures, six nonretryable/unaccepted path characterizations passed before production edits.",
+    "First implementation: 120 related checks passed.",
+    "Invalid timeout preparation: four expected failures and four preexisting nonfinite-value characterizations passed before moving host validation earlier.",
+    "Twelve additional boundary scenarios were added after the main implementation; no red claim. All 36 focused scenarios passed.",
+    "Final related regression: 758 passed. Seven changed Python files passed static and formatting checks."
+  ],
+  "verification": [
+    {
+      "label": "worker-recovery-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 14.76,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/worker-recovery-red.log",
+      "log_sha256": "9f02eb173f43f60198361a40b3609d6ef05d9a3fe563bd6b08efccdaa741bf50",
+      "output_tail": "0:49:28,865 WARNING [app.runtimes.openclaw.adapter] employee=- project=- task=- openclaw run failed\n------------------------------ Captured log call -------------------------------\nWARNING  app.runtimes.openclaw.adapter:adapter.py:425 openclaw run failed\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_transient_read_failure_recovers_original_output_without_resubmission[hermes-0]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_transient_read_failure_recovers_original_output_without_resubmission[hermes-1]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_transient_read_failure_recovers_original_output_without_resubmission[openclaw-0]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_transient_read_failure_recovers_original_output_without_resubmission[openclaw-1]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_exhausted_read_recovery_stops_original_and_blocks_task[hermes]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_exhausted_read_recovery_stops_original_and_blocks_task[openclaw]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_cancellation_during_wait_recovery_drains_original_before_release[hermes]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_cancellation_during_wait_recovery_drains_original_before_release[openclaw]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_retry_storage_failure_prevents_query_and_preserves_cleanup[hermes]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_retry_storage_failure_prevents_query_and_preserves_cleanup[openclaw]\n10 failed, 6 passed, 1 warning in 13.14s\n"
+    },
+    {
+      "label": "worker-recovery-green-1",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 24.11,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/worker-recovery-green-1.log",
+      "log_sha256": "103fd89fd46e1ab24129abe8400aa090d126a2b1831ef6e45ffc2c776b140a07",
+      "output_tail": "........................................................................ [ 60%]\n................................................                         [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n120 passed, 1 warning in 22.34s\n"
+    },
+    {
+      "label": "worker-recovery-config-red",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "-k",
+        "invalid_timeout",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 3.01,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/worker-recovery-config-red.log",
+      "log_sha256": "ecdc731d3ef3e20d1a1b5864a58b860459f004662f8d74aba2708dd4da84fd2c",
+      "output_tail": " test_invalid_timeout_is_rejected_before_a_durable_request_is_prepared\n    assert db.scalar(select(RuntimeAttempt)) is None, \"invalid configuration left a phantom pending run\"\nE   AssertionError: invalid configuration left a phantom pending run\nE   assert <app.models.runtime_execution.RuntimeAttempt object at 0x125389a30> is None\nE    +  where <app.models.runtime_execution.RuntimeAttempt object at 0x125389a30> = scalar(<sqlalchemy.sql.selectable.Select object at 0x124eea4e0>)\nE    +    where scalar = <sqlalchemy.orm.session.Session object at 0x124f84470>.scalar\nE    +    and   <sqlalchemy.sql.selectable.Select object at 0x124eea4e0> = select(RuntimeAttempt)\n----------------------------- Captured stderr call -----------------------------\n2026-09-21 00:53:16,242 WARNING [app.runtimes.openclaw.adapter] employee=- project=- task=- openclaw run failed\n------------------------------ Captured log call -------------------------------\nWARNING  app.runtimes.openclaw.adapter:adapter.py:435 openclaw run failed\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_invalid_timeout_is_rejected_before_a_durable_request_is_prepared[hermes-0]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_invalid_timeout_is_rejected_before_a_durable_request_is_prepared[hermes-901]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_invalid_timeout_is_rejected_before_a_durable_request_is_prepared[openclaw-0]\nFAILED apps/server/tests/test_m3_worker_recovery.py::test_invalid_timeout_is_rejected_before_a_durable_request_is_prepared[openclaw-901]\n4 failed, 4 passed, 28 deselected, 1 warning in 1.38s\n"
+    },
+    {
+      "label": "worker-recovery-boundaries",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 26.99,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/worker-recovery-boundaries.log",
+      "log_sha256": "1da0fe92aeaf726059943ac0dad8453ec611954f899ad320fdb18358b5b716ad",
+      "output_tail": "....................................                                     [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n36 passed, 1 warning in 25.07s\n"
+    },
+    {
+      "label": "worker-recovery-final",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_worker_recovery.py",
+        "apps/server/tests/test_m3_retry_cancel.py",
+        "apps/server/tests/test_m3_telemetry.py",
+        "apps/server/tests/test_m3_runtime_turns.py",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "apps/server/tests/test_m3_technical_failure.py",
+        "apps/server/tests/test_m3_stop_intent.py",
+        "apps/server/tests/test_m3_admin_stop.py",
+        "apps/server/tests/test_m3_controlled_stop.py",
+        "apps/server/tests/test_m3_management_runner.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "apps/server/tests/test_m3_artifact_acceptance.py",
+        "apps/server/tests/test_m3_pinned_handoff.py",
+        "apps/server/tests/test_m3_workspace_artifacts.py",
+        "apps/server/tests/test_m3_runtime_artifacts.py",
+        "apps/server/tests/test_runtimes_behavior.py",
+        "apps/server/tests/test_m2_dag_runtime.py",
+        "apps/server/tests/test_task_lifecycle.py",
+        "apps/server/tests/test_review_task_lifecycle.py",
+        "apps/server/tests/test_m2_golden_path.py",
+        "apps/server/tests/test_project_workflow.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 92.19,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/worker-recovery-final.log",
+      "log_sha256": "fb99a6833f6811db1df08e623c55aebc70d9173f4cbe8a8462fd13147c6fef9e",
+      "output_tail": "........................................................................ [  9%]\n........................................................................ [ 18%]\n........................................................................ [ 28%]\n........................................................................ [ 37%]\n........................................................................ [ 47%]\n........................................................................ [ 56%]\n........................................................................ [ 66%]\n........................................................................ [ 75%]\n........................................................................ [ 85%]\n........................................................................ [ 94%]\n......................................                                   [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n758 passed, 1 warning in 90.23s (0:01:30)\n"
+    },
+    {
+      "label": "worker-recovery-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/runtimes/worker_recovery.py",
+        "apps/server/app/runtimes/base.py",
+        "apps/server/app/runtimes/hermes/adapter.py",
+        "apps/server/app/runtimes/openclaw/adapter.py",
+        "apps/server/app/work/telemetry.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_worker_recovery.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/worker-recovery-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "worker-recovery-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/runtimes/worker_recovery.py",
+        "apps/server/app/runtimes/base.py",
+        "apps/server/app/runtimes/hermes/adapter.py",
+        "apps/server/app/runtimes/openclaw/adapter.py",
+        "apps/server/app/work/telemetry.py",
+        "apps/server/app/workflow/orchestrator.py",
+        "apps/server/tests/test_m3_worker_recovery.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/worker-recovery-format.log",
+      "log_sha256": "0321fffcb91606a42c0a19d8c1121d5c544379d663821fce616c71a7bb62f6b5",
+      "output_tail": "7 files already formatted\n"
+    }
+  ],
+  "source_sha256": {
+    "apps/server/app/runtimes/worker_recovery.py": "ca3873e4e404d92e3cb75632942411107930bd9a98a34aba5f4df7e30cc06e11",
+    "apps/server/app/runtimes/base.py": "fe11ad8c091189407e7c9fdf60f6bf2df88f01f53e5b8e126d866d68cc2216a2",
+    "apps/server/app/runtimes/hermes/adapter.py": "1e4c58e8e6ec7eb3ad58f4e4dc4c21cee66f47eea2947399386b462d4257cacf",
+    "apps/server/app/runtimes/openclaw/adapter.py": "a0f64fd623f9436a7d7c376c149463e0dff59dbbfa51e8a638ef103f31e27a3e",
+    "apps/server/app/work/telemetry.py": "18e213543d29c75056918ec88b7c33bb48f605ec8e6feb18fe488b00b44d6c45",
+    "apps/server/app/workflow/orchestrator.py": "336b10d61ff48df1428a8ad5e7d055d44dc4ee139380561f66504cee43415105",
+    "apps/server/tests/test_m3_worker_recovery.py": "ab9881910755bb4815813e96990d2329693e1e81e7dea694e5ff57482a2bcb4b",
+    "docs/m2-freeze.md": "defea3ca755c679d18f2fce3b6f5938f518aebfc59fc2d00400ab7db162b2024",
+    "docs/m3-u15-retry-and-cancel.md": "37208bfec0a22d7fd868de83b86e8a77a5761bb4d20f274cf191e0bc5ff19f6f"
+  },
+  "exceptions": [
+    "36 new scenarios use real Worker orchestration, telemetry, isolated SQLite, both runtime adapters, original output files and acceptance receipts. Only transport is scripted; Worker admission uses the existing configure_worker test seam and was independently verified in the preceding component.",
+    "Read recovery does not replay unacknowledged submissions, known failed remote work, protocol/authentication/database failures, or management/review turns whose complete designated reply is unavailable.",
+    "A saved budget_denied stop during backoff is honored. This is not evidence of cumulative spending accounting or a monetary cap.",
+    "No schema, shared fixture, paid model, Docker, development database or user tmp changes; full backend suite was not rerun for this component."
+  ],
+  "remaining": [
+    "Cumulative budget admission and stop across logical sessions",
+    "Cross-process startup reconciliation (U16)",
+    "Actual remote stop and unconfirmed-stop acceptance",
+    "U14 additional paid whole-chain allowance answer pending"
+  ],
+  "paid_model_requests": 0,
+  "standalone_shipping_skipped": true
+}

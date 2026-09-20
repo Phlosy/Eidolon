@@ -48,11 +48,11 @@ from app.runtimes.container_common import refresh_status, resolve_container_inst
 from app.runtimes.docker.service import get_docker_service
 from app.runtimes.openclaw import artifacts as artifact_transport
 from app.runtimes.openclaw.rpc import GatewayClient
+from app.runtimes.worker_recovery import recover_worker_wait, worker_deadline, worker_timeout
 
 logger = get_logger(__name__)
 
 _HTTP_TIMEOUT = 10.0
-_DEFAULT_RUN_TIMEOUT = 900.0
 _SESSION_KEY = "agent:main:main"
 
 
@@ -137,7 +137,7 @@ class OpenClawAdapter(RuntimeAdapter):
             )
         # 接缝 7 / §8 T1：投影拼进 chat.send 的 message（brain 目录不挂载，写文件不会生效）。
         prompt = append_behavior_block(prompt, context.get("behavior_policy"))
-        timeout = float(config.get("run_timeout_seconds", _DEFAULT_RUN_TIMEOUT))
+        timeout = worker_timeout(config)
         session.background = asyncio.create_task(
             self._pump(session, prompt, timeout), name=f"openclaw-run-{session.id}"
         )
@@ -358,8 +358,10 @@ class OpenClawAdapter(RuntimeAdapter):
     async def _pump(self, session: RuntimeSession, prompt: str, timeout: float) -> None:
         instance = session.instance
         waiter = None
+        accepted = False
         try:
-            async with asyncio.timeout(timeout), self._connect(instance) as client:
+            deadline = worker_deadline(timeout)
+            async with asyncio.timeout_at(deadline), self._connect(instance) as client:
                 result = await client.call(
                     "chat.send",
                     {
@@ -372,6 +374,7 @@ class OpenClawAdapter(RuntimeAdapter):
                 )
                 run_id = (result or {}).get("runId") or (result or {}).get("run_id")
                 accept_remote_run(session, run_id, _SESSION_KEY)
+                accepted = True
                 instance.details[f"run_id:{session.id}"] = run_id
                 await session.queue.put(
                     RuntimeEvent(
@@ -420,7 +423,13 @@ class OpenClawAdapter(RuntimeAdapter):
         except asyncio.CancelledError:
             session.status = "cancelled"
             raise
-        except Exception:
+        except Exception as exc:
+            if waiter is not None:
+                waiter.cancel()
+                await asyncio.gather(waiter, return_exceptions=True)
+                waiter = None
+            if accepted and await recover_worker_wait(self, session, exc, deadline=deadline):
+                return
             session.status = "failed"
             logger.warning("openclaw run failed", extra={"task_id": session.task_id})
             await session.queue.put(

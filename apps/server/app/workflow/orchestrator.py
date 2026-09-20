@@ -59,6 +59,7 @@ from app.repositories import providers as provider_repo
 from app.repositories import runtimes as runtime_repo
 from app.runtimes.base import RuntimeEventKind, RuntimeSession, TaskContext
 from app.runtimes.gateway import gateway
+from app.runtimes.worker_recovery import worker_timeout
 from app.services import artifacts as artifact_service
 from app.services import position_compat
 from app.services import tasks as task_service
@@ -521,6 +522,8 @@ class Orchestrator:
                     for item in task_ctx.input_artifacts
                 )
                 prompt += f"\n\n## 上游交付物（本次任务的输入）\n\n{blocks}"
+            if adapter.type.value in {"hermes", "openclaw"}:
+                worker_timeout(runtime_config)
             attempt = telemetry.prepare_attempt(
                 work_session_id,
                 session,

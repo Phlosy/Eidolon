@@ -47,12 +47,12 @@ from app.runtimes.base import (
 from app.runtimes.cancellation import cancel_run
 from app.runtimes.container_common import refresh_status, resolve_container_instance
 from app.runtimes.docker.service import get_docker_service
+from app.runtimes.worker_recovery import recover_worker_wait, worker_deadline, worker_timeout
 
 logger = get_logger(__name__)
 
 _HTTP_TIMEOUT = 15.0
 _SSE_IDLE_TIMEOUT = 120.0
-_DEFAULT_RUN_TIMEOUT = 900.0
 
 
 class HermesAdapter(RuntimeAdapter):
@@ -127,7 +127,7 @@ class HermesAdapter(RuntimeAdapter):
             )
         # 接缝 7 / §8 T1：投影在**真正发请求前**拼进 input，而不是写进未挂载的目录。
         prompt = append_behavior_block(prompt, context.get("behavior_policy"))
-        timeout = float(config.get("run_timeout_seconds", _DEFAULT_RUN_TIMEOUT))
+        timeout = worker_timeout(config)
         session.background = asyncio.create_task(
             self._pump(session, prompt, timeout), name=f"hermes-run-{session.id}"
         )
@@ -302,21 +302,29 @@ class HermesAdapter(RuntimeAdapter):
 
     async def _pump(self, session: RuntimeSession, prompt: str, timeout: float) -> None:
         instance = session.instance
+        accepted = False
         try:
-            key = session.attempt.idempotency_key if session.attempt is not None else session.id
-            run_id = await self._create_run(instance, prompt, key, session_id=session.id)
-            if not run_id:
-                raise RuntimeError("hermes /v1/runs returned no run id")
-            accept_remote_run(session, run_id, session.id)
-            instance.details[f"run_id:{session.id}"] = run_id
-            await session.queue.put(
-                RuntimeEvent(RuntimeEventKind.status, {"detail": "run created", "run_id": run_id})
-            )
-            await self._stream_run(session, run_id, timeout)
+            deadline = worker_deadline(timeout)
+            async with asyncio.timeout_at(deadline):
+                key = session.attempt.idempotency_key if session.attempt is not None else session.id
+                run_id = await self._create_run(instance, prompt, key, session_id=session.id)
+                if not run_id:
+                    raise RuntimeError("hermes /v1/runs returned no run id")
+                accept_remote_run(session, run_id, session.id)
+                accepted = True
+                instance.details[f"run_id:{session.id}"] = run_id
+                await session.queue.put(
+                    RuntimeEvent(
+                        RuntimeEventKind.status, {"detail": "run created", "run_id": run_id}
+                    )
+                )
+                await self._stream_run(session, run_id, timeout)
         except asyncio.CancelledError:
             session.status = "cancelled"
             raise
-        except Exception:
+        except Exception as exc:
+            if accepted and await recover_worker_wait(self, session, exc, deadline=deadline):
+                return
             session.status = "failed"
             logger.warning("hermes run failed", extra={"task_id": session.task_id})
             await session.queue.put(

@@ -331,6 +331,61 @@ class AttemptRecorder:
                 _record(db, row, "session.started", {}, "accepted", row.accepted_at)
             db.commit()
 
+    def check_worker_wait(self, *, session, reserve_retry=False):
+        """Persist finite read-retry admission before I/O; never resubmit a request."""
+        from app.runtimes.worker_recovery import WAIT_RETRY_DELAYS
+        from app.work.dispatch_notices import begin_observation
+
+        with self.session_factory() as db:
+            begin_observation(db)
+            row = _attempt(db, self.attempt_id)
+            self._validate_session(db, row, session, "execution_retry_identity_mismatch")
+            work = db.get(WorkSession, row.work_session_id)
+            task = db.get(Task, work.task_id) if work.task_id is not None else None
+            if (
+                work.purpose != "worker"
+                or row.kind != "worker"
+                or work.runtime_type not in {"hermes", "openclaw"}
+                or work.status != "running"
+                or work.ended_at is not None
+                or task is None
+                or task.status != "in_progress"
+                or row.remote_run_id is None
+                or row.ended_at is not None
+                or row.host_outcome is not None
+                or work.technical_retry_count is None
+            ):
+                raise RuntimeProtocolError("execution_retry_not_safe")
+            if (
+                db.scalar(
+                    select(RuntimeAttempt.id)
+                    .where(
+                        RuntimeAttempt.work_session_id == work.id,
+                        RuntimeAttempt.stop_requested_at.is_not(None),
+                    )
+                    .limit(1)
+                )
+                is not None
+            ):
+                raise RuntimeProtocolError("execution_stop_requested")
+            if reserve_retry:
+                if work.technical_retry_count >= len(WAIT_RETRY_DELAYS):
+                    raise RuntimeProtocolError("execution_retry_exhausted")
+                work.technical_retry_count += 1
+                _record(
+                    db,
+                    row,
+                    "runtime.warning",
+                    {
+                        "reason": "transport_retry",
+                        "technical_retry_count": work.technical_retry_count,
+                    },
+                    f"transport-retry:{work.technical_retry_count}",
+                    utcnow(),
+                )
+                db.commit()
+            return work.technical_retry_count
+
     def terminal(self, status, source, *, session=None):
         if status not in {"completed", "failed"} or source not in _TERMINAL_SOURCES:
             raise RuntimeProtocolError("invalid_remote_outcome")
