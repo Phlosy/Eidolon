@@ -1,0 +1,624 @@
+{
+  "unit": "U15",
+  "component": "native_cancel_protocol_and_full_local_regression",
+  "status": "native_control_verified_joint_spending_and_business_gates_open",
+  "base_commit": "9f8913a",
+  "production_behavior_changed": false,
+  "existing_tests_inspected": [
+    "integration/conftest.py",
+    "integration/test_m3_management_bridge.py",
+    "integration/test_m3_real_runtime_artifacts.py",
+    "test_m3_stop_intent.py",
+    "test_m3_retry_cancel.py",
+    "test_m3_readiness.py",
+    "test_m3_runtime_admission.py"
+  ],
+  "new_tests": "Six native Docker cases: both fixed runtimes, cancellation and denied budget permit, plus outgoing-stop transport loss with real remote queries. Offline Provider makes no upstream call and holds at most four requests for ninety seconds each.",
+  "updated_tests": "Existing Worker/management concurrency test now distinguishes unlocked preflight from locked final admission, verifies fresh rejection after management wins, and retains the exclusion assertion in the actual claim transaction.",
+  "characterization_corrections": [
+    "Initial native matrix failed Hermes and passed OpenClaw because immediate terminal was incorrectly expected. Native Hermes status was stopping; no production code was changed. After offline response release the original run became cancelled and the existing durable stop coordinator confirmed it.",
+    "Initial full backend had 2918 passed and one old concurrency choreography failure. Hook paused the new read-only preflight, so management legitimately won. Corrected the test boundary and added that scenario; 86 targeted checks and then 2920 full checks passed. No production lock or assertion was weakened."
+  ],
+  "actual_native_runs": [
+    {
+      "after": "failed",
+      "attempt_id": 1,
+      "before": "running",
+      "cancel_confirmed": false,
+      "container_id": "9dbc1b2f00cd760ac9648cdad424a7d4aec1131290224e86099d27556dcae56d",
+      "fault_calls": [],
+      "image_id": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+      "immediate_cancel_confirmed": false,
+      "immediate_query_status": "unknown",
+      "immediate_stop_state": "unconfirmed",
+      "native_status": "cancelled",
+      "paid_model_requests": 0,
+      "producer_drained": true,
+      "provider": {
+        "kind": "offline-held-provider",
+        "paid_requests": 0,
+        "requests": [
+          {
+            "state": "disconnected",
+            "stream": true
+          }
+        ]
+      },
+      "query_source": "hermes.status",
+      "reason": "cancelled",
+      "recheck": "terminal_observed",
+      "remote_run_id": "run_38b5dcf10f7544f9b20402a7d3038725",
+      "remote_session_ref": "hermes-84cfa3bf8a01",
+      "runtime": "hermes",
+      "saved_stop_reason": "cancelled",
+      "stop_fault_injected": false,
+      "stop_state": "terminal_observed",
+      "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b"
+    },
+    {
+      "after": "failed",
+      "attempt_id": 1,
+      "before": "unknown",
+      "cancel_confirmed": true,
+      "container_id": "be09bd72aefa4699edf86ac7d7a4d8a90296b687b4ea056c912cdae58ce07473",
+      "fault_calls": [],
+      "image_id": "sha256:e7849cb6c1ef1ead39ab4be7d85edb2df89611f486e283284c7cf35ce39a20d4",
+      "paid_model_requests": 0,
+      "producer_drained": true,
+      "provider": {
+        "kind": "offline-held-provider",
+        "paid_requests": 0,
+        "requests": [
+          {
+            "state": "held",
+            "stream": true
+          }
+        ]
+      },
+      "query_source": "openclaw.wait",
+      "reason": "cancelled",
+      "remote_run_id": "openclaw-59bd72944d23",
+      "remote_session_ref": "agent:main:main",
+      "runtime": "openclaw",
+      "saved_stop_reason": "cancelled",
+      "stop_fault_injected": false,
+      "stop_state": "terminal_observed",
+      "version": "OpenClaw 2026.8.1 (ea80657)"
+    },
+    {
+      "after": "failed",
+      "attempt_id": 1,
+      "before": "running",
+      "cancel_confirmed": false,
+      "container_id": "65ef8af5f85e82c413e85ed248e63a9dc003d884144fc2270589ec3e31585d75",
+      "fault_calls": [],
+      "image_id": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+      "immediate_cancel_confirmed": false,
+      "immediate_query_status": "unknown",
+      "immediate_stop_state": "unconfirmed",
+      "native_status": "cancelled",
+      "paid_model_requests": 0,
+      "producer_drained": true,
+      "provider": {
+        "kind": "offline-held-provider",
+        "paid_requests": 0,
+        "requests": [
+          {
+            "state": "disconnected",
+            "stream": true
+          }
+        ]
+      },
+      "query_source": "hermes.status",
+      "reason": "budget_denied",
+      "recheck": "terminal_observed",
+      "remote_run_id": "run_d072788480464a7fad1ad4f22a9568f6",
+      "remote_session_ref": "hermes-e20941603378",
+      "runtime": "hermes",
+      "saved_stop_reason": "budget_denied",
+      "stop_fault_injected": false,
+      "stop_state": "terminal_observed",
+      "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b"
+    },
+    {
+      "after": "failed",
+      "attempt_id": 1,
+      "before": "unknown",
+      "cancel_confirmed": true,
+      "container_id": "51bd59abc4195690b2b2eabf6e2f581f4eb1d8ffb51df62023121bce64c46517",
+      "fault_calls": [],
+      "image_id": "sha256:e7849cb6c1ef1ead39ab4be7d85edb2df89611f486e283284c7cf35ce39a20d4",
+      "paid_model_requests": 0,
+      "producer_drained": true,
+      "provider": {
+        "kind": "offline-held-provider",
+        "paid_requests": 0,
+        "requests": [
+          {
+            "state": "held",
+            "stream": true
+          }
+        ]
+      },
+      "query_source": "openclaw.wait",
+      "reason": "budget_denied",
+      "remote_run_id": "openclaw-6bb859e87ef1",
+      "remote_session_ref": "agent:main:main",
+      "runtime": "openclaw",
+      "saved_stop_reason": "budget_denied",
+      "stop_fault_injected": false,
+      "stop_state": "terminal_observed",
+      "version": "OpenClaw 2026.8.1 (ea80657)"
+    },
+    {
+      "after": "running",
+      "attempt_id": 1,
+      "before": "running",
+      "cancel_confirmed": false,
+      "container_id": "8df302eb1404b932d7630643db698ece823807f61c0a498086bf2ad68ac08767",
+      "fault_calls": [
+        "hermes.stop"
+      ],
+      "image_id": "sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5",
+      "native_status": "running",
+      "paid_model_requests": 0,
+      "producer_drained": true,
+      "provider": {
+        "kind": "offline-held-provider",
+        "paid_requests": 0,
+        "requests": [
+          {
+            "state": "held",
+            "stream": true
+          }
+        ]
+      },
+      "query_source": "hermes.status",
+      "reason": "cancelled",
+      "remote_run_id": "run_0e9b8afe4b6f4a458252b929bdd8eeef",
+      "remote_session_ref": "hermes-b0fdb78df514",
+      "runtime": "hermes",
+      "saved_stop_reason": "cancelled",
+      "stop_fault_injected": true,
+      "stop_state": "unconfirmed",
+      "version": "Hermes Agent v0.21.0 (2026.8.31) · upstream c0495c6b"
+    },
+    {
+      "after": "unknown",
+      "attempt_id": 1,
+      "before": "unknown",
+      "cancel_confirmed": false,
+      "container_id": "7c299cf69af42bc09c473978796d68003159259420d18435f325724eb1dd6264",
+      "fault_calls": [
+        "openclaw.abort"
+      ],
+      "image_id": "sha256:e7849cb6c1ef1ead39ab4be7d85edb2df89611f486e283284c7cf35ce39a20d4",
+      "paid_model_requests": 0,
+      "producer_drained": true,
+      "provider": {
+        "kind": "offline-held-provider",
+        "paid_requests": 0,
+        "requests": [
+          {
+            "state": "held",
+            "stream": true
+          }
+        ]
+      },
+      "query_source": "openclaw.wait",
+      "reason": "cancelled",
+      "remote_run_id": "openclaw-e1f838c78813",
+      "remote_session_ref": "agent:main:main",
+      "runtime": "openclaw",
+      "saved_stop_reason": "cancelled",
+      "stop_fault_injected": true,
+      "stop_state": "unconfirmed",
+      "version": "OpenClaw 2026.8.1 (ea80657)"
+    }
+  ],
+  "verification": [
+    {
+      "label": "native-stop-characterization",
+      "argv": [
+        "env",
+        "-u",
+        "EIDOLON_TEST_PROVIDER_KEY",
+        "-u",
+        "EIDOLON_REAL_MODEL_TESTS",
+        "EIDOLON_REMOTE_CANCEL_TESTS=1",
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/integration/test_m3_real_runtime_cancel.py",
+        "-m",
+        "integration",
+        "-k",
+        "cancelled-False",
+        "-q",
+        "-s",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 17.11,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/native-stop-characterization.log",
+      "log_sha256": "10a145f67d397bb165ff182bfe6f0f63007025eba2274cf8c8bc26f2fe1a2f50",
+      "output_tail": "6b\"}\nFOFFLINE_PROVIDER_RECEIPT={\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"stream\": true, \"state\": \"held\"}]}\nREAL_NATIVE_CANCEL={\"after\": \"failed\", \"attempt_id\": 1, \"before\": \"unknown\", \"cancel_confirmed\": true, \"container_id\": \"59e933da96256ef75f5129f8fe97cf4f03a7ba56c8d83936674052a5035d0f57\", \"fault_calls\": [], \"image_id\": \"sha256:e7849cb6c1ef1ead39ab4be7d85edb2df89611f486e283284c7cf35ce39a20d4\", \"paid_model_requests\": 0, \"producer_drained\": true, \"provider\": {\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"state\": \"held\", \"stream\": true}]}, \"query_source\": \"openclaw.wait\", \"reason\": \"cancelled\", \"remote_run_id\": \"openclaw-7b76f3ca9c97\", \"remote_session_ref\": \"agent:main:main\", \"runtime\": \"openclaw\", \"saved_stop_reason\": \"cancelled\", \"stop_fault_injected\": false, \"stop_state\": \"terminal_observed\", \"version\": \"OpenClaw 2026.8.1 (ea80657)\"}\n.OFFLINE_PROVIDER_RECEIPT={\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"stream\": true, \"state\": \"held\"}]}\n\n=================================== FAILURES ===================================\n____ test_native_stop_and_unconfirmed_original_run[cancelled-False-hermes] _____\napps/server/tests/integration/test_m3_real_runtime_cancel.py:239: in test_native_stop_and_unconfirmed_original_run\n    assert observed.status in {\"completed\", \"failed\"}\nE   AssertionError: assert 'unknown' in {'completed', 'failed'}\nE    +  where 'unknown' = RuntimeRunStatus(status='unknown', source='hermes.status').status\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/integration/test_m3_real_runtime_cancel.py::test_native_stop_and_unconfirmed_original_run[cancelled-False-hermes]\n1 failed, 1 passed, 4 deselected, 1 warning in 15.80s\n"
+    },
+    {
+      "label": "native-stop-hermes-status",
+      "argv": [
+        "env",
+        "-u",
+        "EIDOLON_TEST_PROVIDER_KEY",
+        "-u",
+        "EIDOLON_REAL_MODEL_TESTS",
+        "EIDOLON_REMOTE_CANCEL_TESTS=1",
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/integration/test_m3_real_runtime_cancel.py",
+        "-m",
+        "integration",
+        "-k",
+        "cancelled-False-hermes",
+        "-q",
+        "-s",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 7.91,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/native-stop-hermes-status.log",
+      "log_sha256": "ddb36c31e0abf927056a0c2bfc5c69a6c0a7964631cda20a54ffe9acce6f4361",
+      "output_tail": "行\n[v14] 重叠主职清洗：employee 轴 0 条、slot 轴 0 条（均在 metadata_json.normalized 留痕）\nREAL_NATIVE_CANCEL={\"after\": \"unknown\", \"attempt_id\": 1, \"before\": \"running\", \"cancel_confirmed\": false, \"container_id\": \"4cc91b1e984385c9d9579c535600a9bde64298b3c61351fb8a5ab134de97f81e\", \"fault_calls\": [], \"image_id\": \"sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5\", \"native_status\": \"stopping\", \"paid_model_requests\": 0, \"producer_drained\": true, \"provider\": {\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"state\": \"held\", \"stream\": true}]}, \"query_source\": \"hermes.status\", \"reason\": \"cancelled\", \"remote_run_id\": \"run_db2e519fdf53406396752aeb938a04bd\", \"remote_session_ref\": \"hermes-3819e445b28b\", \"runtime\": \"hermes\", \"saved_stop_reason\": \"cancelled\", \"stop_fault_injected\": false, \"stop_state\": \"unconfirmed\", \"version\": \"Hermes Agent v0.21.0 (2026.8.31) \\u00b7 upstream c0495c6b\"}\nFOFFLINE_PROVIDER_RECEIPT={\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"stream\": true, \"state\": \"held\"}]}\n\n=================================== FAILURES ===================================\n____ test_native_stop_and_unconfirmed_original_run[cancelled-False-hermes] _____\napps/server/tests/integration/test_m3_real_runtime_cancel.py:251: in test_native_stop_and_unconfirmed_original_run\n    assert observed.status in {\"completed\", \"failed\"}\nE   AssertionError: assert 'unknown' in {'completed', 'failed'}\nE    +  where 'unknown' = RuntimeRunStatus(status='unknown', source='hermes.status').status\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/integration/test_m3_real_runtime_cancel.py::test_native_stop_and_unconfirmed_original_run[cancelled-False-hermes]\n1 failed, 5 deselected, 1 warning in 6.47s\n"
+    },
+    {
+      "label": "native-stop-hermes-deferred",
+      "argv": [
+        "env",
+        "-u",
+        "EIDOLON_TEST_PROVIDER_KEY",
+        "-u",
+        "EIDOLON_REAL_MODEL_TESTS",
+        "EIDOLON_REMOTE_CANCEL_TESTS=1",
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/integration/test_m3_real_runtime_cancel.py",
+        "-m",
+        "integration",
+        "-k",
+        "cancelled-False-hermes",
+        "-q",
+        "-s",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 8.3,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/native-stop-hermes-deferred.log",
+      "log_sha256": "9074e832b9120fe71d232a3b0f326edf2912cb14292bae7e8e5fe607b71bc35b",
+      "output_tail": "[v14] employments → PositionAssignment：回填 0 行\n[v14] 重叠主职清洗：employee 轴 0 条、slot 轴 0 条（均在 metadata_json.normalized 留痕）\nREAL_NATIVE_CANCEL={\"after\": \"failed\", \"attempt_id\": 1, \"before\": \"running\", \"cancel_confirmed\": false, \"container_id\": \"32a55abcf334dc06d2f569244603a8d864978221c1a20905d682874e12fcb6ef\", \"fault_calls\": [], \"image_id\": \"sha256:33a938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5\", \"immediate_cancel_confirmed\": false, \"immediate_query_status\": \"unknown\", \"immediate_stop_state\": \"unconfirmed\", \"native_status\": \"cancelled\", \"paid_model_requests\": 0, \"producer_drained\": true, \"provider\": {\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"state\": \"disconnected\", \"stream\": true}]}, \"query_source\": \"hermes.status\", \"reason\": \"cancelled\", \"recheck\": \"terminal_observed\", \"remote_run_id\": \"run_186706bec5c44d33863560a7bca0d9f6\", \"remote_session_ref\": \"hermes-3f45a574aba8\", \"runtime\": \"hermes\", \"saved_stop_reason\": \"cancelled\", \"stop_fault_injected\": false, \"stop_state\": \"terminal_observed\", \"version\": \"Hermes Agent v0.21.0 (2026.8.31) \\u00b7 upstream c0495c6b\"}\n.OFFLINE_PROVIDER_RECEIPT={\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"stream\": true, \"state\": \"disconnected\"}]}\n\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n1 passed, 5 deselected, 1 warning in 6.81s\n"
+    },
+    {
+      "label": "native-stop-all",
+      "argv": [
+        "env",
+        "-u",
+        "EIDOLON_TEST_PROVIDER_KEY",
+        "-u",
+        "EIDOLON_REAL_MODEL_TESTS",
+        "EIDOLON_REMOTE_CANCEL_TESTS=1",
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/integration/test_m3_real_runtime_cancel.py",
+        "-m",
+        "integration",
+        "-q",
+        "-s",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 47.96,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/native-stop-all.log",
+      "log_sha256": "005841d5b04585888982ec427e936b150070fe8fbfd214aea7338823f467a8ba",
+      "output_tail": "938c54ec8f58cd3128901b378c226b2846fde5f217533bdae2b1501bd26e5\", \"native_status\": \"running\", \"paid_model_requests\": 0, \"producer_drained\": true, \"provider\": {\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"state\": \"held\", \"stream\": true}]}, \"query_source\": \"hermes.status\", \"reason\": \"cancelled\", \"remote_run_id\": \"run_0e9b8afe4b6f4a458252b929bdd8eeef\", \"remote_session_ref\": \"hermes-b0fdb78df514\", \"runtime\": \"hermes\", \"saved_stop_reason\": \"cancelled\", \"stop_fault_injected\": true, \"stop_state\": \"unconfirmed\", \"version\": \"Hermes Agent v0.21.0 (2026.8.31) \\u00b7 upstream c0495c6b\"}\n.2026-09-21 02:06:09,755 WARNING [app.runtimes.cancellation] employee=- project=- task=- runtime stop response unavailable\nOFFLINE_PROVIDER_RECEIPT={\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"stream\": true, \"state\": \"held\"}]}\nREAL_NATIVE_CANCEL={\"after\": \"unknown\", \"attempt_id\": 1, \"before\": \"unknown\", \"cancel_confirmed\": false, \"container_id\": \"7c299cf69af42bc09c473978796d68003159259420d18435f325724eb1dd6264\", \"fault_calls\": [\"openclaw.abort\"], \"image_id\": \"sha256:e7849cb6c1ef1ead39ab4be7d85edb2df89611f486e283284c7cf35ce39a20d4\", \"paid_model_requests\": 0, \"producer_drained\": true, \"provider\": {\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"state\": \"held\", \"stream\": true}]}, \"query_source\": \"openclaw.wait\", \"reason\": \"cancelled\", \"remote_run_id\": \"openclaw-e1f838c78813\", \"remote_session_ref\": \"agent:main:main\", \"runtime\": \"openclaw\", \"saved_stop_reason\": \"cancelled\", \"stop_fault_injected\": true, \"stop_state\": \"unconfirmed\", \"version\": \"OpenClaw 2026.8.1 (ea80657)\"}\n.OFFLINE_PROVIDER_RECEIPT={\"kind\": \"offline-held-provider\", \"paid_requests\": 0, \"requests\": [{\"stream\": true, \"state\": \"held\"}]}\n\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n6 passed, 1 warning in 46.57s\n"
+    },
+    {
+      "label": "native-stop-explicit-gate",
+      "argv": [
+        "env",
+        "-u",
+        "EIDOLON_REMOTE_CANCEL_TESTS",
+        "-u",
+        "EIDOLON_TEST_PROVIDER_KEY",
+        "-u",
+        "EIDOLON_REAL_MODEL_TESTS",
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/integration/test_m3_real_runtime_cancel.py",
+        "-m",
+        "integration",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 3.51,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/native-stop-explicit-gate.log",
+      "log_sha256": "c3243327f2c45a2b300982d53c2107e3072068068a478aafec4992093ebb1c7f",
+      "output_tail": "ssssss                                                                   [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n6 skipped, 1 warning in 2.18s\n"
+    },
+    {
+      "label": "native-stop-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/tests/integration/held_model_server.py",
+        "apps/server/tests/integration/test_m3_real_runtime_cancel.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/native-stop-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "native-stop-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/tests/integration/held_model_server.py",
+        "apps/server/tests/integration/test_m3_real_runtime_cancel.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.02,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/native-stop-format.log",
+      "log_sha256": "3bc53bf3e981a98a34a852e175bf9b77af841edea74fca595d9aedcbaf9a4938",
+      "output_tail": "2 files already formatted\n"
+    },
+    {
+      "label": "u15-full-backend",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 1,
+      "elapsed_seconds": 281.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/u15-full-backend.log",
+      "log_sha256": "dde6f3ca68b15be1ada4303f524f2a7db1c0a4aacae22beac453052c92ec3620",
+      "output_tail": " 91%]\n........................................................................ [ 93%]\n........................................................................ [ 96%]\n........................................................................ [ 98%]\n.......................................                                  [100%]\n=================================== FAILURES ===================================\n_________ test_worker_admission_excludes_a_competing_management_claim __________\napps/server/tests/test_m3_readiness.py:383: in test_worker_admission_excludes_a_competing_management_claim\n    assert [(row.purpose, row.task_id) for row in sessions] == [(\"worker\", task_id)]\nE   AssertionError: assert [('management', None)] == [('worker', 1)]\nE     \nE     At index 0 diff: ('management', None) != ('worker', 1)\nE     Use -v to get more diff\n----------------------------- Captured stderr call -----------------------------\n2026-09-21 02:09:37,490 WARNING [app.workflow.orchestrator] employee=- project=- task=- work session crashed\n------------------------------ Captured log call -------------------------------\nWARNING  app.workflow.orchestrator:orchestrator.py:644 work session crashed\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\ntests/test_position_history.py: 117 warnings\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/sqlalchemy/engine/default.py:952: DeprecationWarning: The default datetime adapter is deprecated as of Python 3.12; see the sqlite3 documentation for suggested replacement recipes\n    cursor.execute(statement, parameters)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ============================\nFAILED apps/server/tests/test_m3_readiness.py::test_worker_admission_excludes_a_competing_management_claim\n1 failed, 2918 passed, 26 deselected, 118 warnings in 278.92s (0:04:38)\n"
+    },
+    {
+      "label": "u15-admission-choreography",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_readiness.py",
+        "apps/server/tests/test_m3_runtime_admission.py",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 7.83,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/u15-admission-choreography.log",
+      "log_sha256": "ab2be68fd51e179004df345e41224271b8e63aff9707bcfac0dd6660b060e91f",
+      "output_tail": "........................................................................ [ 83%]\n..............                                                           [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n86 passed, 1 warning in 6.43s\n"
+    },
+    {
+      "label": "u15-full-backend-corrected",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests",
+        "-q",
+        "--tb=short"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 277.45,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/u15-full-backend-corrected.log",
+      "log_sha256": "9855b66980817c82ab2cad2507b8df8a403085446d354f0ffc81e59aaca69241",
+      "output_tail": "........................ [ 59%]\n........................................................................ [ 61%]\n........................................................................ [ 64%]\n........................................................................ [ 66%]\n........................................................................ [ 69%]\n........................................................................ [ 71%]\n........................................................................ [ 73%]\n........................................................................ [ 76%]\n........................................................................ [ 78%]\n........................................................................ [ 81%]\n........................................................................ [ 83%]\n........................................................................ [ 86%]\n........................................................................ [ 88%]\n........................................................................ [ 91%]\n........................................................................ [ 93%]\n........................................................................ [ 96%]\n........................................................................ [ 98%]\n........................................                                 [100%]\n=============================== warnings summary ===============================\n../../miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.\n    from starlette.testclient import TestClient as TestClient  # noqa\n\ntests/test_position_history.py: 117 warnings\n  /Users/ponk/miniconda3/envs/eidolon/lib/python3.12/site-packages/sqlalchemy/engine/default.py:952: DeprecationWarning: The default datetime adapter is deprecated as of Python 3.12; see the sqlite3 documentation for suggested replacement recipes\n    cursor.execute(statement, parameters)\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n2920 passed, 26 deselected, 118 warnings in 275.45s (0:04:35)\n"
+    },
+    {
+      "label": "u15-full-static",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app",
+        "apps/server/tests"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/u15-full-static.log",
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+      "output_tail": "All checks passed!\n"
+    },
+    {
+      "label": "u15-full-format",
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app",
+        "apps/server/tests"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 0.03,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/u15-full-format.log",
+      "log_sha256": "19700b436e7d9994e9fc0dd396a9cc68db19d5d0fb112166028e58a09660a88a",
+      "output_tail": "539 files already formatted\n"
+    },
+    {
+      "label": "u15-web-types",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 3.39,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/u15-web-types.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "output_tail": ""
+    },
+    {
+      "label": "u15-web-eslint",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "eslint",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 1.85,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/u15-web-eslint.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "output_tail": ""
+    },
+    {
+      "label": "u15-web-prettier",
+      "argv": [
+        "pnpm",
+        "--dir",
+        "apps/web",
+        "exec",
+        "prettier",
+        "--check",
+        "."
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "exit_code": 0,
+      "elapsed_seconds": 1.54,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/u15-web-prettier.log",
+      "log_sha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20",
+      "output_tail": "Checking formatting...\nAll matched files use Prettier code style!\n"
+    }
+  ],
+  "cleanup": {
+    "original_containers_preserved": 9,
+    "original_networks_preserved": 12,
+    "test_containers_remaining": 0,
+    "test_networks_remaining": 0,
+    "inventories": {
+      "before": {
+        "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/native-stop-before.json",
+        "sha256": "37feecb7a63d13e0da759f9fcad08b1fac0349c88b20b8323493b80ef0d9bb84"
+      },
+      "after": {
+        "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u15-oc5jx56p/native-stop-after.json",
+        "sha256": "0b1fe8d442c3a668416dcdbf1d7564d48140619000809cdb7e2e03c38151c61d"
+      }
+    }
+  },
+  "simplification": {
+    "skill": "ce-simplify-code",
+    "scope": "U15 production diff ab6da07..9f8913a, apps/server/app and apps/server/migrations only",
+    "read_only": true,
+    "requested_reviewers": [
+      "code-reuse",
+      "code-quality",
+      "efficiency"
+    ],
+    "requested_model": "gpt-5.6-terra",
+    "dispatch": {
+      "task": "u15_simplify_reuse",
+      "status": "prelaunch_rejected",
+      "error": "agent thread limit reached",
+      "handle_created": false
+    },
+    "actual_route": "parent inline for all three passes using the exact on-disk rubrics",
+    "independent_reviewers": false,
+    "actual_model": "unverified",
+    "coverage": [
+      "Read the complete scoped production diff, including current-source reads for a truncated orchestrator section.",
+      "Checked cancellation/retry snapshots and producer draining, Worker and controlled ownership, project request quota, stop first-write constraints, artifact stop fence, and migration compatibility.",
+      "Searched all server Python callers for run_id cache keys; read the management drain helper and original identity/transaction utilities."
+    ],
+    "outcomes": {
+      "code_reuse": {
+        "applied": 0,
+        "findings": []
+      },
+      "code_quality": {
+        "applied": 0,
+        "findings": []
+      },
+      "efficiency": {
+        "applied": 0,
+        "findings": []
+      }
+    },
+    "skipped_candidates": [
+      {
+        "candidate": "Consolidate the similar shield/drain and original-session snapshot code",
+        "reason": "Worker, adapter and controlled-runner cancellation propagation, exception handling and ownership lifetimes differ. Removing guards or changing ordering would violate behavior preservation; a wrapper around two-line snapshots adds no useful abstraction."
+      },
+      {
+        "candidate": "Remove retained instance.details run_id writes",
+        "reason": "No current in-repo reader remains after U15, but these fields existed before the scoped baseline. External/deployed consumers are not proven absent; do not erase earlier compatibility state in a behavior-preserving pass."
+      }
+    ],
+    "verification": [
+      "u15-full-backend",
+      "u15-admission-choreography",
+      "u15-full-backend-corrected",
+      "u15-full-static",
+      "u15-full-format",
+      "u15-web-types",
+      "u15-web-eslint",
+      "u15-web-prettier"
+    ],
+    "next": "This is mid-implementation simplification only, not a completed formal correctness review or full M3 acceptance."
+  },
+  "source_sha256": {
+    "apps/server/tests/integration/held_model_server.py": "6e9285ba25a1a6a5b05413a0ff0717e28748fec2ae5e448185582db05f2f2c1a",
+    "apps/server/tests/integration/test_m3_real_runtime_cancel.py": "5717fe5579ce95d8b8371115754b8e6d683da361064e2dab6197a815dfe7f6cf",
+    "apps/server/tests/test_m3_readiness.py": "36e551d6b319a0ad6890e7271bc93bd660e4f2c49d1281b3e6cfd666982d1939",
+    "docs/m3-u15-retry-and-cancel.md": "189844d1cc8612932c4d9d0ee7430634622df90803a6298353205f07caccf975"
+  },
+  "limitations": [
+    "Actual fixed-image Runtime control with an offline held Provider, not actual LLM generation, paid spending, formal business handoff or A/B/C acceptance.",
+    "Hermes remains unconfirmed while its current Provider response is pending. After release, cancelled was observed and persisted. A terminal run does not prove an external Provider stopped billing.",
+    "Stop-loss injection prevents only outbound stop at the transport boundary. Status queries and native runs are real; no terminal response is synthesized.",
+    "U15 uses a cumulative project host-request allowance and optional spending-permit withdrawal. Actual usage, internal credits and Provider amounts remain distinct U17 work.",
+    "No schema, development database, shared fixture or user tmp modification; no image/volume deletion, no paid model request.",
+    "No frontend source changes, browser or production build in this component. All make-lint-equivalent checks passed; formal stage correctness review still remains.",
+    "U14 additional paid full-chain allowance still has no answer."
+  ],
+  "paid_model_requests": 0,
+  "standalone_shipping_skipped": true
+}

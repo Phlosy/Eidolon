@@ -316,7 +316,8 @@ def test_completed_task_closes_environment_notice_without_reopening(db, waiting)
     )
 
 
-def test_worker_admission_excludes_a_competing_management_claim(db, waiting, monkeypatch):
+@pytest.mark.parametrize("phase", ["preflight", "claim"])
+def test_worker_admission_excludes_a_competing_management_claim(db, waiting, monkeypatch, phase):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Event as ThreadEvent
 
@@ -336,6 +337,11 @@ def test_worker_admission_excludes_a_competing_management_claim(db, waiting, mon
 
     def pause_after_admission(session, task):
         result = evaluate(session, task)
+        # U15 adds a read-only preflight before the actual atomic claim. Pause
+        # at the physical SQLite transaction boundary, not a call-count guess.
+        locked = session.connection().connection.driver_connection.in_transaction
+        if locked != (phase == "claim"):
+            return result
         assert result.dispatchable
         observed.set()
         assert release.wait(timeout=5)
@@ -373,15 +379,19 @@ def test_worker_admission_excludes_a_competing_management_claim(db, waiting, mon
         management = pool.submit(claim_management)
         try:
             assert claiming.wait(timeout=5)
-            interleaved = committed.wait(timeout=0.2)
+            interleaved = committed.wait(timeout=2 if phase == "preflight" else 0.2)
         finally:
             release.set()
         worker.result(timeout=5)
         management.result(timeout=5)
     db.expire_all()
     sessions = list(db.scalars(select(WorkSession).where(WorkSession.employee_id == employee_id)))
-    assert [(row.purpose, row.task_id) for row in sessions] == [("worker", task_id)]
-    assert not interleaved, "a second claim committed between worker admission and its write"
+    if phase == "preflight":
+        assert interleaved, "read-only preflight must not hold the admission lock"
+        assert [(row.purpose, row.task_id) for row in sessions] == [("management", None)]
+    else:
+        assert [(row.purpose, row.task_id) for row in sessions] == [("worker", task_id)]
+        assert not interleaved, "a second claim committed between worker admission and its write"
 
 
 def test_two_scheduler_processes_share_one_durable_notice(db, waiting):
