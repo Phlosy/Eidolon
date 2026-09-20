@@ -56,6 +56,7 @@ from app.work import contracts as C
 from app.work import tool_reads, tool_writes
 from app.work import tools as tool_machinery
 from app.work.dispatch import EXECUTABLE_PROJECT_STATUSES
+from app.work.production import CAPABILITY_GAP_ACTION_TOOLS
 
 logger = logging.getLogger("eidolon.work.tools")
 
@@ -531,7 +532,17 @@ tool_machinery.assert_registry_is_sound(registry)
 
 def catalog() -> list[dict]:
     """给 Runtime / 调试面看的工具清单（不含 handler）。"""
-    return registry.catalog()
+    return [
+        {
+            **tool,
+            "capability_actions": [
+                action.value
+                for action, names in CAPABILITY_GAP_ACTION_TOOLS.items()
+                if tool["name"] in names
+            ],
+        }
+        for tool in registry.catalog()
+    ]
 
 
 def tools_by_side_effect(side_effect: C.ToolSideEffect) -> tuple[tool_machinery.ToolSpec, ...]:

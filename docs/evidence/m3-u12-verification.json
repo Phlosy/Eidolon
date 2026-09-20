@@ -1,0 +1,467 @@
+{
+  "unit": "U12",
+  "status": "complete",
+  "date": "2026-09-20",
+  "base_commit": "410387a8ab5c0c62e61608fbfc9a86c7a63c1a12",
+  "test_counts": {
+    "baseline_passed": 361,
+    "initial_failed": 3,
+    "initial_passed": 2,
+    "initial_green_passed": 5,
+    "intermediate_passed": 204,
+    "intermediate_failed": 1,
+    "final_focused_passed": 599,
+    "new_behavior_cases": 30,
+    "ruff": "passed",
+    "format": "6 files passed"
+  },
+  "checks": [
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_gap_actions.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_m2_tools.py",
+        "apps/server/tests/test_m2_decisions.py",
+        "apps/server/tests/test_m3_runtime_bridge.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "-q",
+        "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/baseline-tmp"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:20:51.413795+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 32.57216904195957,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-baseline.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "1a300fb414cd25fdd25a881c174c8f2a366e9e8cdc5c5c8a39fb88b066d6bad4",
+      "log_sha256": "8da521d2a01073bae76de65fa516f5133b91a5402b6f9442e0dfa508b3959598"
+    },
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_gap_actions.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "-q",
+        "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/behavior-01-tmp"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:24:53.259525+00:00",
+      "exit_code": 1,
+      "elapsed_seconds": 20.82443124987185,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-behavior-01.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "7793303426cbc3cb2b210c5846810a48f15c3481bacf4410745920ce71927d21",
+      "log_sha256": "e1616d467f4150d43fc99cde87ceb6c1bf928bfeee29d33dec48e26d0f1206dd"
+    },
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_gap_actions.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_m2_tools.py",
+        "apps/server/tests/test_m2_decisions.py",
+        "apps/server/tests/test_m3_runtime_bridge.py",
+        "apps/server/tests/test_m3_management_runtime.py",
+        "apps/server/tests/test_m3_runtime_conversation.py",
+        "apps/server/tests/test_m2_review.py",
+        "apps/server/tests/test_m2_contract.py",
+        "apps/server/tests/test_m3_action_confirmations.py",
+        "apps/server/tests/test_m3_recruitment_flow.py",
+        "-q",
+        "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/focused-tmp"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:25:48.153306+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 60.04534920910373,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-focused.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "65f92c107442f75cc2f2c5a3af7f11b005abc2ccac30c219f66fb5854c2b6d87",
+      "log_sha256": "bf67d412206c65266de06dda0d8427a8438f70da498ca9cfa49c4b1bb9126776"
+    },
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "apps/server/app/work/production.py",
+        "apps/server/app/work/tool_executor.py",
+        "apps/server/app/work/tool_writes.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_m3_gap_actions.py",
+        "apps/server/tests/test_m3_runtime_conversation.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:25:48.173820+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.0323659589048475,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-format.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "f1f00eafaea388380f3c5e13ab836d934f1ce541cc7e87a90621c0512b1088f2",
+      "log_sha256": "d8ae13226e40bf924808267bb9be61604b2e62b7e5608db6e393fec34dc96b24"
+    },
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_contract.py::test_every_capability_gap_action_has_a_tool_or_an_owner_stage",
+        "apps/server/tests/test_m3_gap_actions.py::test_runtime_catalog_exposes_the_seven_live_capability_actions",
+        "apps/server/tests/test_m3_gap_actions.py::test_terminal_task_reassignment_preserves_history",
+        "-q",
+        "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/initial-green-tmp"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:23:07.081465+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 2.9977421660441905,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-initial-green.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "3808e9a80b88dceae1a13af342761ec6bf237099e79fb451a8066d8f1c4fe295",
+      "log_sha256": "ac702db590e983f0503598e83839a6ce99bf64f079fe306dbf0ff93dfabc9515"
+    },
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "pytest",
+        "apps/server/tests/test_m3_contract.py::test_every_capability_gap_action_has_a_tool_or_an_owner_stage",
+        "apps/server/tests/test_m3_gap_actions.py::test_runtime_catalog_exposes_the_seven_live_capability_actions",
+        "apps/server/tests/test_m3_gap_actions.py::test_terminal_task_reassignment_preserves_history",
+        "-q",
+        "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/initial-red-tmp"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:22:11.710847+00:00",
+      "exit_code": 1,
+      "elapsed_seconds": 3.179181250045076,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-initial-red.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "21276878272e2f0f18498f41fad75c28e4ce1f27d56792b465b25a2694f7da13",
+      "log_sha256": "a16d7fc40a0a60d37c33b95fcfa99b3f74bcb977843fbd64103346e19db432b5"
+    },
+    {
+      "argv": [
+        "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+        "-m",
+        "ruff",
+        "check",
+        "apps/server/app/work/production.py",
+        "apps/server/app/work/tool_executor.py",
+        "apps/server/app/work/tool_writes.py",
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_m3_gap_actions.py",
+        "apps/server/tests/test_m3_runtime_conversation.py"
+      ],
+      "cwd": "/Users/ponk/workspace/Eidolon",
+      "started_at": "2026-09-20T11:25:48.163992+00:00",
+      "exit_code": 0,
+      "elapsed_seconds": 0.034002916188910604,
+      "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-static.log",
+      "pytest_addopts": null,
+      "metadata_sha256": "8fc1bc58c36da5dbbdc9d8a49d7e027d18c19943df6865920539f7880255dcd8",
+      "log_sha256": "f95f888b7bcb2de5671cf4d980d2a9e9bb25757983b48faf428b40cb239ce5bf"
+    }
+  ],
+  "raw_logs": [
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-baseline.log",
+      "sha256": "8da521d2a01073bae76de65fa516f5133b91a5402b6f9442e0dfa508b3959598",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "361 passed, 1 warning in 30.48s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-behavior-01.log",
+      "sha256": "e1616d467f4150d43fc99cde87ceb6c1bf928bfeee29d33dec48e26d0f1206dd",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "1 failed, 204 passed, 1 warning in 18.70s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-focused.log",
+      "sha256": "bf67d412206c65266de06dda0d8427a8438f70da498ca9cfa49c4b1bb9126776",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "599 passed, 1 warning in 57.73s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-format.log",
+      "sha256": "d8ae13226e40bf924808267bb9be61604b2e62b7e5608db6e393fec34dc96b24",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "6 files already formatted"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-initial-green.log",
+      "sha256": "ac702db590e983f0503598e83839a6ce99bf64f079fe306dbf0ff93dfabc9515",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "5 passed, 1 warning in 1.13s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-initial-red.log",
+      "sha256": "a16d7fc40a0a60d37c33b95fcfa99b3f74bcb977843fbd64103346e19db432b5",
+      "exit_codes": [
+        1
+      ],
+      "observed_result_lines": [
+        "3 failed, 2 passed, 1 warning in 1.33s"
+      ]
+    },
+    {
+      "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-static.log",
+      "sha256": "f95f888b7bcb2de5671cf4d980d2a9e9bb25757983b48faf428b40cb239ce5bf",
+      "exit_codes": [
+        0
+      ],
+      "observed_result_lines": [
+        "All checks passed!"
+      ]
+    }
+  ],
+  "source_sha256": {
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/production.py": "1cc518cd31dc4cd3b5cb36b8121cd7b3613450c789e8ed3ba1faa0f66567ee61",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/tool_executor.py": "5990ddb6b258934188cc9509f68c0255143e7c111be09eec85cb4979ba1720ad",
+    "/Users/ponk/workspace/Eidolon/apps/server/app/work/tool_writes.py": "0827a50ea44664b1e9deabb907b6469714a64c3830ea742f0d448b87c0dfbaf3",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_contract.py": "02f863b19711c06380173f7260832304646c94fdc8560dba162a616e73ec5810",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_gap_actions.py": "67674482e617d19fd0da1e1c97e4d4e4857bc79473965046cc2a7d16ef10130e",
+    "/Users/ponk/workspace/Eidolon/apps/server/tests/test_m3_runtime_conversation.py": "7f98bed4fb2e2641ce9a179ad7f19c593fd3ecd70209bd696db5219e0fb37b49"
+  },
+  "verification_evidence": [
+    {
+      "unit": "U12",
+      "behavior_changed": true,
+      "existing_tests_inspected": [
+        "test_m3_gap_actions.py",
+        "test_m3_contract.py",
+        "test_m2_tools.py",
+        "test_m2_decisions.py",
+        "test_m3_runtime_bridge.py",
+        "test_m3_management_runtime.py",
+        "test_m3_runtime_conversation.py",
+        "test_m2_review.py",
+        "test_m2_contract.py",
+        "test_m3_action_confirmations.py",
+        "test_m3_recruitment_flow.py"
+      ],
+      "tests_added_or_changed": [
+        "apps/server/tests/test_m3_contract.py",
+        "apps/server/tests/test_m3_gap_actions.py",
+        "apps/server/tests/test_m3_runtime_conversation.py"
+      ],
+      "tests_used_unchanged": [
+        "test_m2_tools.py",
+        "test_m2_decisions.py",
+        "test_m3_runtime_bridge.py",
+        "test_m3_management_runtime.py",
+        "test_m2_review.py",
+        "test_m2_contract.py",
+        "test_m3_action_confirmations.py",
+        "test_m3_recruitment_flow.py"
+      ],
+      "red_before_implementation": "361 passed baseline; 3 failed/2 passed for missing learn mapping, missing runtime capability catalog, and failed terminal task reassignment. Production writes followed recorded reds.",
+      "characterization": "30 additional cases: explicit internal choice/reassignment, 9 tools malformed or unauthorized, no automatic gap effects, explicit multi-round node/edge composition, partial cycle failure and actual os._exit(23)/second-process recovery, revision/delegation attribution. Existing decision/receipt implementation needed no changes.",
+      "verification_commands_results": [
+        {
+          "argv": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+            "-m",
+            "pytest",
+            "apps/server/tests/test_m3_gap_actions.py",
+            "apps/server/tests/test_m3_contract.py",
+            "apps/server/tests/test_m2_tools.py",
+            "apps/server/tests/test_m2_decisions.py",
+            "apps/server/tests/test_m3_runtime_bridge.py",
+            "apps/server/tests/test_m3_management_runtime.py",
+            "-q",
+            "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/baseline-tmp"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:20:51.413795+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 32.57216904195957,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-baseline.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "1a300fb414cd25fdd25a881c174c8f2a366e9e8cdc5c5c8a39fb88b066d6bad4",
+          "log_sha256": "8da521d2a01073bae76de65fa516f5133b91a5402b6f9442e0dfa508b3959598"
+        },
+        {
+          "argv": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+            "-m",
+            "pytest",
+            "apps/server/tests/test_m3_gap_actions.py",
+            "apps/server/tests/test_m3_contract.py",
+            "apps/server/tests/test_m3_runtime_conversation.py",
+            "-q",
+            "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/behavior-01-tmp"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:24:53.259525+00:00",
+          "exit_code": 1,
+          "elapsed_seconds": 20.82443124987185,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-behavior-01.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "7793303426cbc3cb2b210c5846810a48f15c3481bacf4410745920ce71927d21",
+          "log_sha256": "e1616d467f4150d43fc99cde87ceb6c1bf928bfeee29d33dec48e26d0f1206dd"
+        },
+        {
+          "argv": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+            "-m",
+            "pytest",
+            "apps/server/tests/test_m3_gap_actions.py",
+            "apps/server/tests/test_m3_contract.py",
+            "apps/server/tests/test_m2_tools.py",
+            "apps/server/tests/test_m2_decisions.py",
+            "apps/server/tests/test_m3_runtime_bridge.py",
+            "apps/server/tests/test_m3_management_runtime.py",
+            "apps/server/tests/test_m3_runtime_conversation.py",
+            "apps/server/tests/test_m2_review.py",
+            "apps/server/tests/test_m2_contract.py",
+            "apps/server/tests/test_m3_action_confirmations.py",
+            "apps/server/tests/test_m3_recruitment_flow.py",
+            "-q",
+            "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/focused-tmp"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:25:48.153306+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 60.04534920910373,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-focused.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "65f92c107442f75cc2f2c5a3af7f11b005abc2ccac30c219f66fb5854c2b6d87",
+          "log_sha256": "bf67d412206c65266de06dda0d8427a8438f70da498ca9cfa49c4b1bb9126776"
+        },
+        {
+          "argv": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+            "-m",
+            "ruff",
+            "format",
+            "--check",
+            "apps/server/app/work/production.py",
+            "apps/server/app/work/tool_executor.py",
+            "apps/server/app/work/tool_writes.py",
+            "apps/server/tests/test_m3_contract.py",
+            "apps/server/tests/test_m3_gap_actions.py",
+            "apps/server/tests/test_m3_runtime_conversation.py"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:25:48.173820+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 0.0323659589048475,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-format.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "f1f00eafaea388380f3c5e13ab836d934f1ce541cc7e87a90621c0512b1088f2",
+          "log_sha256": "d8ae13226e40bf924808267bb9be61604b2e62b7e5608db6e393fec34dc96b24"
+        },
+        {
+          "argv": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+            "-m",
+            "pytest",
+            "apps/server/tests/test_m3_contract.py::test_every_capability_gap_action_has_a_tool_or_an_owner_stage",
+            "apps/server/tests/test_m3_gap_actions.py::test_runtime_catalog_exposes_the_seven_live_capability_actions",
+            "apps/server/tests/test_m3_gap_actions.py::test_terminal_task_reassignment_preserves_history",
+            "-q",
+            "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/initial-green-tmp"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:23:07.081465+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 2.9977421660441905,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-initial-green.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "3808e9a80b88dceae1a13af342761ec6bf237099e79fb451a8066d8f1c4fe295",
+          "log_sha256": "ac702db590e983f0503598e83839a6ce99bf64f079fe306dbf0ff93dfabc9515"
+        },
+        {
+          "argv": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+            "-m",
+            "pytest",
+            "apps/server/tests/test_m3_contract.py::test_every_capability_gap_action_has_a_tool_or_an_owner_stage",
+            "apps/server/tests/test_m3_gap_actions.py::test_runtime_catalog_exposes_the_seven_live_capability_actions",
+            "apps/server/tests/test_m3_gap_actions.py::test_terminal_task_reassignment_preserves_history",
+            "-q",
+            "--basetemp=/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/initial-red-tmp"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:22:11.710847+00:00",
+          "exit_code": 1,
+          "elapsed_seconds": 3.179181250045076,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-initial-red.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "21276878272e2f0f18498f41fad75c28e4ce1f27d56792b465b25a2694f7da13",
+          "log_sha256": "a16d7fc40a0a60d37c33b95fcfa99b3f74bcb977843fbd64103346e19db432b5"
+        },
+        {
+          "argv": [
+            "/Users/ponk/miniconda3/envs/eidolon/bin/python",
+            "-m",
+            "ruff",
+            "check",
+            "apps/server/app/work/production.py",
+            "apps/server/app/work/tool_executor.py",
+            "apps/server/app/work/tool_writes.py",
+            "apps/server/tests/test_m3_contract.py",
+            "apps/server/tests/test_m3_gap_actions.py",
+            "apps/server/tests/test_m3_runtime_conversation.py"
+          ],
+          "cwd": "/Users/ponk/workspace/Eidolon",
+          "started_at": "2026-09-20T11:25:48.163992+00:00",
+          "exit_code": 0,
+          "elapsed_seconds": 0.034002916188910604,
+          "log": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-static.log",
+          "pytest_addopts": null,
+          "metadata_sha256": "8fc1bc58c36da5dbbdc9d8a49d7e027d18c19943df6865920539f7880255dcd8",
+          "log_sha256": "f95f888b7bcb2de5671cf4d980d2a9e9bb25757983b48faf428b40cb239ce5bf"
+        }
+      ],
+      "exception_reason": null
+    }
+  ],
+  "verification_boundaries": [
+    "Host dispatcher and SQL/domain services are actual. Controlled conversation test uses scripted adapter; no new paid model call or real remote delivery claimed. U11 real Manager recruitment evidence remains separate.",
+    "Actual child Python process exits immediately after first action commit; another process resumes only missing graph operation, returning PARTIALLY_APPLIED with immutable original receipt. This does not claim U16 remote takeover.",
+    "No shared fixture changes, migration, frontend component changes, Docker operations or development database writes.",
+    "Full phase gates, simplification and formal review remain M3.3 closure work; unit focused verification is complete.",
+    "Native inline due previously observed capacity rejection; no worker reused. Only local named-path commit; tmp/ unread and unchanged."
+  ],
+  "intermediate_failures": [
+    "After all behavior tests passed, P34 still required capability-action debt to remain nonempty; updated only this repaid category, retaining strong seven-live-actions guard and all other outstanding debt checks.",
+    "Initial scoped Ruff check reported import ordering and long lines; format and final static checks passed. Intermediate formatter output was tool-visible; final static/format raw logs are retained."
+  ],
+  "implementation_receipt": {
+    "path": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/eidolon-m3-u12-59ls0av3/u12-return.json",
+    "sha256": "9055f1693aacdf8d7af91ee3a7c0e5b1b5e1b9cd538b5a6f7ed3cd469e7be443"
+  },
+  "standalone_shipping_skipped": true
+}

@@ -820,13 +820,13 @@ def test_work_layer_does_not_import_recruitment_or_market_services():
 
 
 def test_every_capability_gap_action_has_a_tool_or_an_owner_stage():
-    """P33：不允许幽灵词条；而且声明的工具必须**真实存在**于工具注册表。"""
+    """P33 / U12：七类动作全部落地，不再接受 M3.3 的阶段占位。"""
     specs = _tool_specs()
     for action in P.CAPABILITY_GAP_ACTIONS:
         tools = P.CAPABILITY_GAP_ACTION_TOOLS[action]
         owner = P.CAPABILITY_GAP_ACTION_OWNER[action]
-        assert bool(tools) or owner in P.M3_STAGES, f"{action.value} 两头都空（P33）"
-        assert not (tools and owner), f"{action.value} 同时声明工具与 owner（P33）"
+        assert tools, f"{action.value} 必须已有真实工具（U12 / P33）"
+        assert not owner, f"{action.value} 仍声明 owner_stage（U12 / P33）"
         missing = [name for name in tools if name not in specs]
         assert not missing, f"{action.value} 声明了不存在的工具：{missing}（P33）"
 
@@ -936,7 +936,7 @@ def test_every_declared_gap_is_owned_by_a_real_stage():
         ("telemetry", {kind: "M3.4" for kind in P.TELEMETRY_NOT_YET_MAPPED}),
         ("person_scope", P.PERSON_SCOPED_COLUMN_OWED),
     ):
-        if label not in {"provenance", "telemetry"}:
+        if label not in {"provenance", "telemetry", "capability_gap_action"}:
             assert registry, f"{label} 的欠账尚未偿还，不能静默清空（P34）"
         for item, owner in registry.items():
             assert owner in P.M3_STAGES, f"{label}.{item} 的 owner 非法：{owner}"

@@ -454,6 +454,21 @@ price/currency/sale_mode 白名单投影，API 与工具共用，无新增商业
 目录守卫由“尚无 high_impact 工具”改为“仅有具备确认策略的真实招聘工具”；无确认策略的
 动作仍拒绝。P12/P13、资金原子性、并发抢人、重放、撤权、条款变化和开通失败都有行为检查。
 
+### U12：七类动作与终态指派守卫（实施登记，2026-09-20）
+
+实施前相关工具、决策、管理和真实请求桥锚点 361 passed。先观察到三项失败：学习动作仍为
+阶段占位、Runtime 目录缺少能力动作映射、failed 任务仍能被改派。done / cancelled 拒绝保持通过。
+
+七类动作全部映射实际工具，Runtime 目录从同一契约派生 capability_actions；它只说明可用
+入口，不替 Manager 选人、选动作或拆图。replan_project 仍属于 revise_task。P33 守卫收紧为
+全部具有真实工具，不再接受 M3.3 owner_stage；保留原测试锚点名称供冻结表引用。
+原欠账总表的非空断言相应允许 capability_gap_action 清空，其余未完成欠账仍强制非空。
+
+assign_task 对 failed 补齐既有终态拒绝，保留原负责人和来源事件；done / cancelled 边界不变。
+已有任务终态不通过 force 重开，后续技术恢复继续遵守 KTD6。组合动作仍逐项保存真实效果和
+ToolAudit，部分失败保持 PARTIALLY_APPLIED；U7 回执用于重放及恢复，不新造事务或任务图。
+已结束评审、返工次数、Authority、公司隔离及 P9–P13 锚点继续适用。
+
 **M3 开工前的三条纪律（沿用 M2）**：
 
 ```text

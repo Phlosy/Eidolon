@@ -359,7 +359,7 @@ def _assign_task(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
     """
     task, _ = _task_in_company(db, ctx, int(args["task_id"]))
     employee = _active_employee(db, ctx, int(args["employee_id"]))
-    if task.status in (TaskStatus.done.value, TaskStatus.cancelled.value):
+    if task.status in (TaskStatus.done.value, TaskStatus.failed.value, TaskStatus.cancelled.value):
         raise tools.ToolError(f"cannot assign a task in terminal state: {task.status}")
     if TaskStatus(task.status) is TaskStatus.backlog:
         # 指派即开工：backlog → todo（状态机唯一合法路径）
@@ -846,7 +846,7 @@ def build_write_tools() -> tuple[tools.ToolSpec, ...]:
             name="assign_task",
             # 决策语义 REQUIRED：这是真正的管理动作，必须隶属于一条决策（DR7）
             decision_semantics=DecisionSemantics.required,
-            description="把任务派给某位 active 员工（是否最合适由 Agent 自己判断）",
+            description="初次指派或改派非终态任务给指定 active 员工（选谁由 Agent 决定）",
             side_effect=C.ToolSideEffect.write,
             required_authority=C.AuthorityKind.assign_task,
             authority_target=_target_task_assignee,

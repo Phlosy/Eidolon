@@ -1,6 +1,8 @@
-"""U9 facts and planned learning through the real database/runtime bridge."""
+"""U9/U12 capability facts and explicit actions through the actual DB/runtime bridge."""
 
 import json
+import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from threading import Barrier
@@ -12,14 +14,17 @@ from test_m3_management_runtime import session_for
 from test_m3_management_runtime import world as world
 from test_market_core import _forbidden_keys, _ready_character
 
+from app.models.action_confirmation import ActionConfirmation
 from app.models.base import utcnow
 from app.models.competency import CompetencyDefinition, CompetencyEvidence, EmployeeCompetency
 from app.models.decision import DecisionRecord, ToolAudit
 from app.models.enums import AuthorityScopeKind
+from app.models.event import Event
 from app.models.knowledge import LearningPriority, Skill
 from app.models.learning import LearningSession
 from app.models.organization import Company, Employee
 from app.models.position import PositionAuthorityGrant, PositionDefinition
+from app.models.project import Project, Task
 from app.models.runtime_operation import RuntimeOperation
 from app.repositories import knowledge as knowledge_repo
 from app.repositories import project as project_repo
@@ -27,10 +32,398 @@ from app.schemas.learning import LearningSessionOut
 from app.schemas.market import MarketCandidateOut, MarketListingPageOut
 from app.work import authority, decisions, readiness
 from app.work import contracts as C
+from app.work import production as P
 from app.work import tool_executor as executor
 from app.work.runtime_bridge import BridgeError, handle_reply
 
 LEARNING_TOOLS = ("create_learning_priority", "request_training")
+
+
+def capability_request(world, kind, *actions, key="capability-action"):
+    return {
+        "version": 1,
+        "kind": "decision",
+        "operation_key": key,
+        "decision": {
+            "decision_type": kind,
+            "reason": "Apply the explicitly selected capability response",
+            "scope": f"project:{world.project.id}",
+            "actions": list(actions),
+        },
+    }
+
+
+def test_runtime_catalog_exposes_the_seven_live_capability_actions():
+    catalog = executor.catalog()
+    actions = {action for tool in catalog for action in tool.get("capability_actions", [])}
+    assert actions == {action.value for action in P.CapabilityGapAction}
+    for tool in catalog:
+        expected = [
+            action.value
+            for action, names in P.CAPABILITY_GAP_ACTION_TOOLS.items()
+            if tool["name"] in names
+        ]
+        assert tool["capability_actions"] == expected
+        assert tool["input_schema"] and tool["output_schema"]
+    replan = next(tool for tool in catalog if tool["name"] == "replan_project")
+    assert replan["capability_actions"] == ["revise_task"]
+
+
+@pytest.mark.parametrize("status", ["done", "failed", "cancelled"])
+def test_terminal_task_reassignment_preserves_history(db, world, status):
+    task = project_repo.create_task(
+        db,
+        project_id=world.project.id,
+        title="Closed work keeps its original assignee",
+        status=status,
+        assignee_id=world.worker.id,
+    )
+    work = session_for(db, world, "management")
+    result = send(
+        work,
+        capability_request(
+            world,
+            "reassign_task",
+            {"tool": "assign_task", "args": {"task_id": task.id, "employee_id": world.reviewer.id}},
+        ),
+    )
+    assert result["decision_status"] == "FAILED", result
+    assert result["results"][0]["reason"] == "domain_rejected"
+    assert "terminal state" in result["results"][0]["error"]
+    db.refresh(task)
+    assert task.status == status and task.assignee_id == world.worker.id
+    assert not db.scalar(
+        select(Event).where(Event.type == "task.assigned", Event.task_id == task.id)
+    )
+
+
+@pytest.mark.parametrize(
+    "status,previous", [("backlog", None), ("todo", "worker"), ("blocked", "worker")]
+)
+def test_internal_choice_and_reassignment_apply_only_the_selected_person(
+    db, world, status, previous
+):
+    previous_id = getattr(world, previous).id if previous else None
+    task = project_repo.create_task(
+        db,
+        project_id=world.project.id,
+        title="Explicit selection",
+        status=status,
+        assignee_id=previous_id,
+    )
+    work = session_for(db, world, "management")
+    payload = capability_request(
+        world,
+        "reassign_task" if previous else "assign_task",
+        {"tool": "assign_task", "args": {"task_id": task.id, "employee_id": world.reviewer.id}},
+    )
+    result = send(work, payload)
+    assert result["decision_status"] == "APPLIED", result
+    fact = result["results"][0]
+    assert fact["data"]["previous_assignee_id"] == previous_id
+    assert fact["data"]["assignee"]["person_id"] == world.reviewer.person_id
+    db.refresh(task)
+    assert task.assignee_id == world.reviewer.id
+    assert task.status == ("todo" if status == "backlog" else status)
+    decision = db.get(DecisionRecord, result["decision_id"])
+    assert decision.actor_person_id == world.manager.person_id
+    event = db.scalar(select(Event).where(Event.type == "task.assigned", Event.task_id == task.id))
+    assert event.payload["previous_assignee_id"] == previous_id
+    assert send(work, payload) == result
+    assert (
+        db.scalar(
+            select(func.count())
+            .select_from(Event)
+            .where(Event.type == "task.assigned", Event.task_id == task.id)
+        )
+        == 1
+    )
+
+
+def _domain_snapshot(db):
+    db.expire_all()
+    return (
+        list(
+            db.execute(select(Task.id, Task.assignee_id, Task.status, Task.title).order_by(Task.id))
+        ),
+        list(
+            db.execute(
+                select(Project.id, Project.status, Project.management_employee_id).order_by(
+                    Project.id
+                )
+            )
+        ),
+        *(
+            db.scalar(select(func.count()).select_from(model))
+            for model in (Employee, LearningPriority, LearningSession, ActionConfirmation, Event)
+        ),
+    )
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "create_learning_priority",
+        "request_training",
+        "recruit_from_market",
+        "assign_task",
+        "update_task",
+        "replan_project",
+        "create_task",
+        "create_dependency",
+        "delegate_project",
+    ],
+)
+@pytest.mark.parametrize("violation", ["missing_arguments", "revoked_authority"])
+def test_each_capability_tool_rejects_invalid_input_and_missing_authority(
+    db, world, name, violation
+):
+    cases = {
+        "create_learning_priority": (
+            "enroll_learning",
+            dict(
+                project_id=world.project.id,
+                employee_id=world.worker.id,
+                topic="Practice",
+                reason="Explicit choice",
+                score=80,
+            ),
+        ),
+        "request_training": (
+            "enroll_learning",
+            dict(
+                project_id=world.project.id,
+                employee_id=world.worker.id,
+                topic="Practice",
+                reason="Explicit choice",
+            ),
+        ),
+        "recruit_from_market": (
+            "recruit",
+            dict(project_id=world.project.id, listing_id=999, amount=1200),
+        ),
+        "assign_task": ("assign_task", dict(task_id=world.task.id, employee_id=world.worker.id)),
+        "update_task": ("replan", dict(task_id=world.task.id, title="Revised")),
+        "replan_project": ("replan", dict(project_id=world.project.id, reason="Revised scope")),
+        "create_task": ("decompose_project", dict(project_id=world.project.id, title="New task")),
+        "create_dependency": (
+            "create_dependency",
+            dict(task_id=world.task.id, depends_on_id=world.task.id),
+        ),
+        "delegate_project": (
+            "delegate_management",
+            dict(project_id=world.project.id, to_employee_id=world.reviewer.id),
+        ),
+    }
+    kind, args = cases[name]
+    if violation == "revoked_authority":
+        actor = authority.resolve_actor_authority(db, world.manager.id)
+        for grant in db.scalars(
+            select(PositionAuthorityGrant).where(
+                PositionAuthorityGrant.position_definition_id == actor.position_definition_id,
+                PositionAuthorityGrant.authority_kind
+                == executor.registry.get(name).required_authority.value,
+                PositionAuthorityGrant.effective_to.is_(None),
+            )
+        ):
+            grant.effective_to = utcnow()
+        db.commit()
+    else:
+        args = {}
+    work = session_for(db, world, "management")
+    before = _domain_snapshot(db)
+    payload = capability_request(world, kind, dict(tool=name, args=args))
+    if violation == "missing_arguments":
+        with pytest.raises(BridgeError) as error:
+            send(work, payload)
+        assert error.value.reason == "invalid_request"
+        assert db.scalar(select(func.count()).select_from(DecisionRecord)) == 0
+        assert db.scalar(select(func.count()).select_from(ToolAudit)) == 0
+    else:
+        result = send(work, payload)
+        assert result["decision_status"] == "FAILED", result
+        denied = result["results"][0]
+        assert denied["reason"] == "not_authorized" and not denied["ok"]
+        db.expire_all()
+        assert db.get(ToolAudit, denied["audit_id"]).decision_id == result["decision_id"]
+        assert send(work, payload) == result
+    assert _domain_snapshot(db) == before
+
+
+def test_gap_observation_never_selects_or_performs_an_action(db, world):
+    work = session_for(db, world, "management")
+    before = _domain_snapshot(db)
+    result = read(work, "inspect_gap", {"task_id": world.task.id})
+    assert result["ok"] and result["data"]["candidates"]
+    assert _domain_snapshot(db) == before
+    assert db.scalar(select(func.count()).select_from(DecisionRecord)) == 0
+
+
+def test_split_nodes_and_edges_use_actual_receipt_ids(db, world):
+    work = session_for(db, world, "management")
+    nodes = capability_request(
+        world,
+        "decompose_project",
+        *[
+            dict(tool="create_task", args=dict(project_id=world.project.id, title=title))
+            for title in ("Selected implementation", "Selected verification")
+        ],
+        key="split-nodes",
+    )
+    created = send(work, nodes)
+    assert created["decision_status"] == "APPLIED"
+    first, second = [r["data"]["task"]["task_id"] for r in created["results"]]
+    assert first != second
+    edges = capability_request(
+        world,
+        "create_dependency",
+        dict(tool="create_dependency", args=dict(task_id=second, depends_on_id=first)),
+        key="split-edge",
+    )
+    edges["decision"]["parent_decision_id"] = created["decision_id"]
+    linked = send(work, edges)
+    assert linked["decision_status"] == "APPLIED"
+    assert linked["results"][0]["data"]["dependencies"] == [first]
+    db.expire_all()
+    assert (
+        db.get(DecisionRecord, linked["decision_id"]).parent_decision_id == created["decision_id"]
+    )
+    assert send(work, nodes) == created and send(work, edges) == linked
+    assert len(project_repo.list_tasks(db, world.project.id)) == 3
+    assert len(project_repo.list_dependencies(db, world.project.id)) == 1
+
+
+@pytest.mark.parametrize("crash_after_first_commit", [False, True])
+def test_split_cycle_partial_result_replays_and_recovers_without_duplicate_nodes(
+    db, world, crash_after_first_commit
+):
+    child = project_repo.create_task(
+        db, project_id=world.project.id, title="Earlier split child", status="backlog"
+    )
+    project_repo.add_dependency(db, task_id=child.id, depends_on_id=world.task.id)
+    work = session_for(db, world, "management")
+    payload = capability_request(
+        world,
+        "decompose_project",
+        dict(
+            tool="create_task",
+            args=dict(project_id=world.project.id, title="New split child", depends_on=[child.id]),
+        ),
+        dict(tool="create_dependency", args=dict(task_id=world.task.id, depends_on_id=child.id)),
+    )
+    first_audit = None
+    if crash_after_first_commit:
+        program = """
+import os, sys
+from app.work.runtime_bridge import handle_reply
+from app.work.runtime_operations import RuntimeExecution
+original = RuntimeExecution.execute_action
+def exit_after_commit(self, index, *args, **kwargs):
+    result = original(self, index, *args, **kwargs)
+    if index == 0:
+        os._exit(23)
+    return result
+RuntimeExecution.execute_action = exit_after_commit
+handle_reply(int(sys.argv[1]), sys.argv[2])
+"""
+        crashed = subprocess.run(
+            [sys.executable, "-c", program, str(work.id), json.dumps(payload)],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        assert crashed.returncode == 23, crashed.stderr
+        db.expire_all()
+        first_audit = db.scalar(select(ToolAudit.id))
+        assert db.scalar(select(DecisionRecord.status)) == "EXECUTING"
+        assert len(project_repo.list_tasks(db, world.project.id)) == 3
+        db.commit()
+        recovery = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                "import json,sys; from app.work.runtime_bridge import handle_reply; "
+                "print(json.dumps(handle_reply(int(sys.argv[1]), sys.argv[2])))",
+                str(work.id),
+                json.dumps(payload),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=20,
+            check=True,
+        )
+        result = json.loads(recovery.stdout)
+    else:
+        result = send(work, payload)
+    assert result["decision_status"] == "PARTIALLY_APPLIED" and result["action_indices"] == [0, 1]
+    applied, denied = result["results"]
+    assert applied["ok"] and denied["reason"] == "domain_rejected"
+    assert "cycles=" in denied["error"]
+    if first_audit is not None:
+        assert applied["audit_id"] == first_audit
+    db.expire_all()
+    assert decisions.action_summary(db, result["decision_id"])["applied"] == 1
+    assert len(project_repo.list_tasks(db, world.project.id)) == 3
+    assert len(project_repo.list_dependencies(db, world.project.id)) == 2
+    before_events = list(db.scalars(select(Event.id).order_by(Event.id)))
+    assert send(work, payload) == result
+    db.expire_all()
+    assert len(project_repo.list_tasks(db, world.project.id)) == 3
+    assert db.scalar(select(func.count()).select_from(ToolAudit)) == 2
+    assert list(db.scalars(select(Event.id).order_by(Event.id))) == before_events
+
+
+def test_revision_and_delegation_preserve_original_tasks_and_decision_actor(db, world):
+    work = session_for(db, world, "management")
+    revised = send(
+        work,
+        capability_request(
+            world,
+            "replan",
+            dict(
+                tool="update_task",
+                args=dict(
+                    task_id=world.task.id,
+                    description="Explicit new approach",
+                    acceptance_criteria="Selected acceptance",
+                ),
+            ),
+            dict(
+                tool="replan_project",
+                args=dict(project_id=world.project.id, reason="Manager chose another approach"),
+            ),
+            key="revise",
+        ),
+    )
+    assert revised["decision_status"] == "APPLIED"
+    db.expire_all()
+    assert world.project.status == "planning" and world.task.description == "Explicit new approach"
+    assert world.task.rework_count == 0 and world.request.status == "open"
+    assert len(project_repo.list_tasks(db, world.project.id)) == 1
+    delegated = send(
+        work,
+        capability_request(
+            world,
+            "delegate_management",
+            dict(
+                tool="delegate_project",
+                args=dict(project_id=world.project.id, to_employee_id=world.reviewer.id),
+            ),
+            key="delegate",
+        ),
+    )
+    assert delegated["decision_status"] == "APPLIED", delegated
+    db.expire_all()
+    assert world.project.management_employee_id == world.reviewer.id
+    assert world.project.management_person_id == world.reviewer.person_id
+    assert (
+        db.get(DecisionRecord, delegated["decision_id"]).actor_person_id == world.manager.person_id
+    )
+    assert (
+        db.get(ToolAudit, delegated["results"][0]["audit_id"]).actor_employee_id == world.manager.id
+    )
+    assert world.task.assignee_id == world.worker.id and world.task.rework_count == 0
+    assert world.request.status == "open"
 
 
 def read(work, name, args, *, key="read"):

@@ -681,7 +681,7 @@ docs/m3-freeze.md（机器可检：形态 / 不变量 / 唯一写入路径 / 模
 | M3.0 | **DONE** | `6f4e97b` | 设计 + 契约 + 54 条新增守卫；零迁移。详细历史证据见 §18 |
 | M3.1 | **DONE** | `d838823`（U1）、`146dca3`（U2）、`d814476`（U3）、`bb6a3ea`（U4）、`3718881`（U5） | U1–U5 完成。阶段收尾 1532 passed / 10 deselected，v50 往返及检查、lint、前端 390 项与构建通过；U4 五组随机序和两种 Runtime 的真实调用证据保留。历史快照已有创建写者、历史读者和数据库保护。[B1–B5 与完整证据](m3-u5-execution-snapshots.md)。真实业务交付及管理工具桥仍属后续阶段 |
 | M3.2 | **DONE** | `76636c1`（U6）、`cbaa771`（U7）、`7e3f865`–`c8df9b4`（U8）及本次验收提交 | U6–U8 完成：共享就绪与等待事实、持久工具请求/回执、指定管理与评审会话、来源去重及有限收尾。最终后端 2231 passed / 16 deselected，lint、前端 392 项及构建、v51–v55 迁移检查通过；Hermes 管理和 OpenClaw 评审真实往返完成，七次尝试与失败费用全部保留。四项正式审阅问题已关闭。[U8 验收与范围限制](m3-u8-management-sessions.md)。真实 Worker 产物链与跨进程恢复继续归后续阶段 |
-| M3.3 | IN_PROGRESS | 本次 U11 提交 | U9–U11 完成：缺口与学习工具、固定动作人工确认、实际 M1/T2 招聘及开通意图。U11 新增 21 个行为场景；真实 Hermes Manager 提案、Owner 批准、成交、新员工真实开通及模型探测通过。完整后端 2372 passed / 17 deselected，lint、前端 392 项及构建通过。U12 七类组合动作和阶段审阅待完成。[U9 验收](m3-u9-gap-and-learning.md) · [U10 验收](m3-u10-action-confirmation.md) · [U11 验收](m3-u11-recruitment.md) |
+| M3.3 | IN_PROGRESS | 本次 U12 提交 | U9–U12 工作包完成：七类真实入口、学习意图、固定动作人工确认、M1/T2 招聘和开通意图、组合部分成功及进程恢复。U12 新增 30 个场景，599 项组合检查通过；U11 的真实 Hermes 招聘与开通证据保留。阶段简化、正式审阅和最终门禁待收尾。[U9 验收](m3-u9-gap-and-learning.md) · [U10 验收](m3-u10-action-confirmation.md) · [U11 验收](m3-u11-recruitment.md) · [U12 验收](m3-u12-capability-actions.md) |
 | M3.4 | IN_PROGRESS | 本次 U13 提交 | U13 完成：持久请求 / 尝试 / 远端引用，主机与远端结果分离，有限保留的结构化遥测和跨进程只读查询。v56 迁移、原归属守卫、后端 2309 passed / 16 deselected、完整 lint 通过；新增 40 个行为场景与 2 个迁移测试。U14–U17 的真实产物、重试取消、接管和费用归集待完成。[U13 验收](m3-u13-durable-execution.md) |
 | M3.5 | PLANNED | — | |
 | M3.6 | PLANNED | — | |

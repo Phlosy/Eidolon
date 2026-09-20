@@ -378,9 +378,9 @@ class CapabilityGapAction(StrEnum):
 
 CAPABILITY_GAP_ACTIONS: tuple[CapabilityGapAction, ...] = tuple(CapabilityGapAction)
 
-#: 动作 → 现有工具（M2 工具面的真实名字；空元组表示还没工具）。
+#: 动作 → 真实工具；U12 全部落地，Runtime 目录复用此映射。
 CAPABILITY_GAP_ACTION_TOOLS: dict[CapabilityGapAction, tuple[str, ...]] = {
-    CapabilityGapAction.learn: (),
+    CapabilityGapAction.learn: ("create_learning_priority", "request_training"),
     CapabilityGapAction.use_internal_employee: ("assign_task",),
     CapabilityGapAction.reassign: ("assign_task", "update_task"),
     CapabilityGapAction.recruit: ("recruit_from_market",),
@@ -391,7 +391,7 @@ CAPABILITY_GAP_ACTION_TOOLS: dict[CapabilityGapAction, tuple[str, ...]] = {
 
 #: 动作 → 没工具时的 owner 阶段（空字符串 = 已有工具）。
 CAPABILITY_GAP_ACTION_OWNER: dict[CapabilityGapAction, str] = {
-    CapabilityGapAction.learn: "M3.3",
+    CapabilityGapAction.learn: "",
     CapabilityGapAction.use_internal_employee: "",
     CapabilityGapAction.reassign: "",
     CapabilityGapAction.recruit: "",

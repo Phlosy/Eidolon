@@ -203,6 +203,9 @@ async def test_read_create_and_acknowledge_saved_results(db, world):
     assert initial["scope"]["work_session_id"] == world.work.id
     assert initial["role_context"]["person_id"] == world.actor.person_id
     assert any(tool["name"] == "create_task" for tool in initial["tools"])
+    assert next(tool for tool in initial["tools"] if tool["name"] == "create_task")[
+        "capability_actions"
+    ] == ["split_task"]
     assert initial["reply_contract"]["version"] == 1
     evidence = json.dumps([adapter.prompts, result])
     for private in (
