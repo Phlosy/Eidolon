@@ -17,7 +17,7 @@ completed_world = _completed_world
 conversation_world = _conversation_world
 workspace_world = _workspace_world
 PREVIOUS = "59e548bd7603"
-REVISION = "60f659ce8704"
+REVISION = "61a76adf9805"
 
 
 def contract(connection):

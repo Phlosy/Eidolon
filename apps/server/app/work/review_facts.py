@@ -21,12 +21,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.project import WorkSession
+from app.repositories import drive as drive_repo
+from app.work import artifact_versions, handoff, provenance
 from app.work import contracts as C
-from app.work import handoff, provenance
 
 if TYPE_CHECKING:  # pragma: no cover - 仅为类型
     from app.models.project import Task
@@ -36,12 +35,7 @@ FACT_SOURCE = "app.work.review_facts"
 
 def _session_fact(db: Session, task: Task) -> dict:
     """上次会话的结果（**runtime 的事实**，不是评审结论）。"""
-    session = db.scalar(
-        select(WorkSession)
-        .where(WorkSession.task_id == int(task.id))
-        .order_by(WorkSession.id.desc())
-        .limit(1)
-    )
+    session = artifact_versions.latest_worker(db, int(task.id))
     if session is None:
         return {"present": False}
     cost = session.cost or {}
@@ -70,6 +64,7 @@ def _artifacts_fact(db: Session, task: Task) -> dict:
                 "doc_type": item.doc_type,
                 "version": item.version,
                 "sha256": item.sha256,
+                "revision_id": item.revision_id,
             }
             for item in produced
         ],
@@ -90,6 +85,24 @@ def _produces_gap_fact(db: Session, task: Task) -> dict:
 
 
 def _inputs_fact(db: Session, task: Task) -> dict:
+    session = artifact_versions.latest_worker(db, int(task.id))
+    if session is not None:
+        items = []
+        for used in handoff.consumed_artifacts(db, int(task.id)):
+            if used.work_session_id != session.id:
+                continue
+            node = drive_repo.get_node(db, used.artifact_id)
+            items.append(
+                {
+                    "artifact_id": used.artifact_id,
+                    "source_task_id": node.task_id or 0,
+                    "doc_type": used.doc_type,
+                    "revision_id": used.revision_id,
+                    "version": used.version,
+                    "sha256": used.sha256,
+                }
+            )
+        return {"count": len(items), "items": items}
     inputs = handoff.resolve_input_artifacts(db, task)
     return {
         "count": len(inputs),
@@ -98,6 +111,9 @@ def _inputs_fact(db: Session, task: Task) -> dict:
                 "artifact_id": item.artifact_id,
                 "source_task_id": item.source_task_id,
                 "doc_type": item.doc_type,
+                "revision_id": item.revision_id,
+                "version": item.version,
+                "sha256": item.sha256,
             }
             for item in inputs
         ],

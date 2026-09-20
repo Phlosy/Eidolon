@@ -40,7 +40,6 @@ from app.repositories import position as position_repo
 from app.repositories import project as project_repo
 from app.repositories import runtimes as runtime_repo
 from app.services import competency as competency_service
-from app.services import drive as drive_service
 from app.services import projects as project_service
 from app.services import talent_roster as roster_service
 from app.work import contracts as C
@@ -375,11 +374,17 @@ def _search_company_knowledge(db: Session, ctx: tools.ToolCallContext, args: dic
 
 
 def _inspect_artifact(db: Session, ctx: tools.ToolCallContext, args: dict) -> dict:
+    from app.work import artifact_versions, handoff
+
     node_id = int(args["artifact_id"])
     node = drive_repo.get_node(db, node_id)
     if node is None or (node.company_id is not None and int(node.company_id) != ctx.company_id):
         raise tools.ToolError("artifact not found in this company")
-    revision = drive_repo.get_revision(db, node.id, node.current_version)
+    try:
+        ref = handoff.artifact_ref(db, node)
+        content = artifact_versions.read_content(db, node)
+    except artifact_versions.LineageViolation as exc:
+        raise tools.ToolError(str(exc)) from exc
     return {
         "artifact_id": int(node.id),
         "name": node.name,
@@ -388,8 +393,11 @@ def _inspect_artifact(db: Session, ctx: tools.ToolCallContext, args: dict) -> di
         "doc_type": node.doc_type,
         "project_id": node.project_id,
         "current_version": int(node.current_version),
-        "sha256": revision.sha256 if revision else None,
-        "content": (drive_service.read_content(node) or "")[:4000],
+        "version": ref.version,
+        "revision_id": ref.revision_id,
+        "sha256": ref.sha256,
+        "content": content[:4000],
+        "content_truncated": len(content) > 4000,
     }
 
 

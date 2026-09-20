@@ -86,6 +86,8 @@ def resolve_artifact_refs(db: Session, *, company_id: int, refs: list) -> list[d
     - 引用形式非法 / 产物不存在 / 不是文档 ⇒ **422**
     - 产物属于**别家公司** ⇒ **404**（隔离优先于"参数不对"，J3 同款口径）
     """
+    from app.work import artifact_versions, handoff
+
     resolved: list[dict] = []
     for ref in refs or []:
         node_id = parse_artifact_ref(ref)
@@ -95,14 +97,22 @@ def resolve_artifact_refs(db: Session, *, company_id: int, refs: list) -> list[d
         if node.company_id is not None and int(node.company_id) != int(company_id):
             # 别家公司的产物：**不存在的口径**（不泄露它存在）
             raise ArtifactRefError(f"artifact {node_id} not found", http_status=404)
-        revision = drive_repo.get_revision(db, int(node.id), int(node.current_version))
+        try:
+            # Ordinary documents keep the legacy delivery contract; real worker
+            # output requires its original collection and matching formal PASS.
+            if artifact_versions.requires_acceptance(db, node):
+                artifact_versions.require_consumable(db, node)
+            selected = handoff.artifact_ref(db, node)
+        except artifact_versions.LineageViolation as exc:
+            raise ArtifactRefError(str(exc), http_status=422) from exc
         resolved.append(
             {
                 "artifact_id": int(node.id),
                 "name": node.name,
                 "doc_type": node.doc_type or "",
-                "sha256": revision.sha256 if revision else "",
-                "version": int(node.current_version),
+                "sha256": selected.sha256,
+                "version": selected.version,
+                "revision_id": selected.revision_id,
                 "task_id": int(node.task_id) if node.task_id else None,
             }
         )

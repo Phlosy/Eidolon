@@ -28,18 +28,17 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
+from app.core.transaction_effects import ensure_sqlite_transaction
+from app.models.drive import DriveRevision
 from app.models.enums import ArtifactLinkRole, DriveNodeKind, DriveZone, TaskStatus
 from app.models.handoff import ArtifactLink, TaskInput
-from app.models.project import Task
+from app.models.project import Task, WorkSession
 from app.repositories import drive as drive_repo
 from app.repositories import handoff as handoff_repo
 from app.repositories import project as project_repo
+from app.work import artifact_versions
 from app.work import contracts as C
-
-
-class LineageViolation(C.WorkContractError):
-    """交接契约被违反（不是判断，是结构问题：声明不成立 / 引用了还没完成的产物）。"""
-
+from app.work.artifact_versions import LineageViolation
 
 # ---------------------------------------------------------------------------
 # 读模型（HTTP 读面 / Agent 读工具 / 执行面共用；G2/G5/H7）
@@ -58,6 +57,7 @@ class ArtifactRef:
     work_session_id: int | None
     version: int
     sha256: str
+    revision_id: int | None = None
 
     def as_dict(self) -> dict:
         return {
@@ -69,6 +69,7 @@ class ArtifactRef:
             "work_session_id": self.work_session_id,
             "version": self.version,
             "sha256": self.sha256,
+            "revision_id": self.revision_id,
         }
 
 
@@ -102,6 +103,9 @@ class ConsumedRef:
     actor_employee_id: int | None
     reason: str
     created_at: str
+    revision_id: int | None = None
+    version: int | None = None
+    sha256: str | None = None
 
     def as_dict(self) -> dict:
         return {
@@ -114,6 +118,9 @@ class ConsumedRef:
             "actor_employee_id": self.actor_employee_id,
             "reason": self.reason,
             "created_at": self.created_at,
+            "revision_id": self.revision_id,
+            "version": self.version,
+            "sha256": self.sha256,
         }
 
 
@@ -198,7 +205,8 @@ class TaskArtifactReport:
 
 def artifact_ref(db: Session, node) -> ArtifactRef:
     task = project_repo.get_task(db, int(node.task_id)) if node.task_id else None
-    revision = drive_repo.get_revision(db, int(node.id), int(node.current_version))
+    pinned = artifact_versions.pinned_revision(db, node)
+    revision = pinned or drive_repo.get_revision(db, int(node.id), int(node.current_version))
     return ArtifactRef(
         artifact_id=int(node.id),
         title=node.name,
@@ -206,16 +214,15 @@ def artifact_ref(db: Session, node) -> ArtifactRef:
         task_id=int(node.task_id) if node.task_id else None,
         task_title=task.title if task else None,
         work_session_id=int(node.work_session_id) if node.work_session_id else None,
-        version=int(node.current_version),
+        version=int(revision.version if pinned else node.current_version),
         sha256=(revision.sha256 if revision else ""),
+        revision_id=int(pinned.id) if pinned else None,
     )
 
 
 def produced_artifacts(db: Session, task_id: int) -> tuple[ArtifactRef, ...]:
     """这个 Task 产出了什么（产出归属 = `drive_nodes.task_id`）。"""
-    return tuple(
-        artifact_ref(db, node) for node in handoff_repo.list_artifacts_for_task(db, task_id)
-    )
+    return tuple(artifact_ref(db, node) for node in artifact_versions.current_nodes(db, task_id))
 
 
 # ---------------------------------------------------------------------------
@@ -296,7 +303,15 @@ def declared_inputs(db: Session, task_id: int) -> tuple[DeclaredInput, ...]:
                 source_task_id=source_id,
                 source_task_title=source.title if source else "(已删除)",
                 source_task_status=source.status if source else "",
-                artifact_count=len(handoff_repo.list_artifacts_for_task(db, source_id)),
+                artifact_count=(
+                    len(artifact_versions.current_nodes(db, source_id))
+                    if source
+                    and (
+                        source.status != TaskStatus.done.value
+                        or artifact_versions.formally_approved(db, source)
+                    )
+                    else 0
+                ),
             )
         )
     return tuple(out)
@@ -320,12 +335,10 @@ def missing_input_sources(db: Session, task: Task) -> tuple[int, ...]:
 
 
 def _excerpt(db: Session, node, limit: int) -> str:
-    from app.services import drive as drive_service
-
-    content = drive_service.read_content(node) or ""
+    content = artifact_versions.read_content(db, node)
     if len(content) <= limit:
         return content
-    return content[:limit] + "\n…（截断，完整内容见 Drive 文档）"
+    return content[:limit] + "\n…（截断，仅展示本次版本的部分内容）"
 
 
 def resolve_input_artifacts(
@@ -344,7 +357,8 @@ def resolve_input_artifacts(
     for item in declared_inputs(db, int(task.id)):
         if not item.ready:
             continue
-        for node in handoff_repo.list_artifacts_for_task(db, item.source_task_id):
+        for node in artifact_versions.current_nodes(db, item.source_task_id):
+            _validate_consumer(db, task, node)
             ref = artifact_ref(db, node)
             resolved[int(node.id)] = InputArtifactRef(
                 **{
@@ -362,6 +376,12 @@ def resolve_input_artifacts(
         if producer is not None and str(producer.status) != TaskStatus.done.value:
             # H8：在跑的产物永不被引用（哪怕链接已经存在）
             continue
+        if producer is not None and (
+            not artifact_versions.formally_approved(db, producer)
+            or int(node.id) not in {n.id for n in artifact_versions.current_nodes(db, producer.id)}
+        ):
+            continue
+        _validate_consumer(db, task, node)
         ref = artifact_ref(db, node)
         resolved[int(node.id)] = InputArtifactRef(
             **{
@@ -384,15 +404,65 @@ def record_consumed(
     *,
     task_id: int,
     artifact_ids: list[int],
+    artifact_refs: tuple[InputArtifactRef, ...] | list[InputArtifactRef] | None = None,
     work_session_id: int | None = None,
     actor_employee_id: int | None = None,
     reason: str = "auto: declared input",
     commit: bool = True,
 ) -> list[ArtifactLink]:
-    """记下"这些产物被这个 Task 在这次会话里用掉了"（幂等：同 (artifact, task) 只一条）。"""
+    """Append actual per-session use of the exact input refs handed to the worker."""
+    ensure_sqlite_transaction(db)
+    db.flush()
+    task = db.get(Task, int(task_id), populate_existing=True)
+    work = (
+        db.get(WorkSession, work_session_id, populate_existing=True)
+        if work_session_id is not None
+        else None
+    )
+    if task is None or (
+        work_session_id is not None
+        and (
+            work is None
+            or work.task_id != task.id
+            or work.purpose != "worker"
+            or work.status != "running"
+            or task.status != TaskStatus.in_progress.value
+            or (actor_employee_id is not None and actor_employee_id != work.employee_id)
+        )
+    ):
+        raise LineageViolation("artifact use does not match its active worker session")
+    if work is not None:
+        actor_employee_id = work.employee_id
+    ids = list(dict.fromkeys(int(i) for i in artifact_ids))
+    supplied = {ref.artifact_id: ref for ref in artifact_refs or ()}
+    if artifact_refs is not None and (
+        len(supplied) != len(artifact_refs) or set(supplied) != set(ids)
+    ):
+        raise LineageViolation("artifact input context does not match consumed references")
+    selected = {}
+    for artifact_id in ids:
+        node = drive_repo.get_node(db, artifact_id)
+        _validate_consumer(db, task, node)
+        ref = artifact_ref(db, node)
+        if artifact_refs is not None:
+            expected = InputArtifactRef(
+                **ref.__dict__,
+                source_task_id=ref.task_id or 0,
+                source_task_title=ref.task_title or "",
+                excerpt=_excerpt(db, node, C.INPUT_ARTIFACT_EXCERPT_CHARS),
+            )
+            if supplied[artifact_id] != expected:
+                raise LineageViolation("artifact input context changed before recording use")
+        selected[artifact_id] = ref.revision_id
     existing = {
-        int(link.artifact_id) for link in handoff_repo.list_artifact_links(db, task_id=int(task_id))
+        int(link.artifact_id): link
+        for link in handoff_repo.list_artifact_links(db, task_id=int(task_id))
+        if link.role == ArtifactLinkRole.consumed_by.value
+        and link.work_session_id == work_session_id
     }
+    for artifact_id, revision_id in selected.items():
+        if artifact_id in existing and existing[artifact_id].revision_id != revision_id:
+            raise LineageViolation("original artifact use has a different or unknown revision")
     rows = [
         handoff_repo.add_artifact_link(
             db,
@@ -402,13 +472,27 @@ def record_consumed(
             work_session_id=work_session_id,
             actor_employee_id=actor_employee_id,
             reason=reason,
+            revision_id=selected[artifact_id],
         )
-        for artifact_id in dict.fromkeys(int(item) for item in artifact_ids)
+        for artifact_id in ids
         if int(artifact_id) not in existing
     ]
     if commit:
         db.commit()
     return rows
+
+
+def _validate_consumer(db: Session, task: Task, node) -> None:
+    if node is None or node.kind != DriveNodeKind.document.value:
+        raise LineageViolation("artifact not found")
+    project = project_repo.get_project(db, task.project_id)
+    if (node.project_id is not None and node.project_id != task.project_id) or (
+        node.company_id is not None and (project is None or node.company_id != project.company_id)
+    ):
+        raise LineageViolation("artifact belongs to another project or company")
+    if node.task_id == task.id:
+        raise LineageViolation("a task may not consume its own artifact")
+    artifact_versions.require_consumable(db, node)
 
 
 def consume_artifact(
@@ -425,18 +509,10 @@ def consume_artifact(
     这是"跨分支交接"的入口：Manager 可以说"B 也要用 C 的测试报告"，
     但 C 必须已经跑完 —— 系统只消费**已完成**的产出。
     """
+    ensure_sqlite_transaction(db)
+    db.flush()
     node = drive_repo.get_node(db, int(artifact_id))
-    if node is None or node.kind != DriveNodeKind.document.value:
-        raise LineageViolation(f"artifact {artifact_id} not found")
-    if node.project_id is not None and int(node.project_id) != int(task.project_id):
-        raise LineageViolation("artifact belongs to another project")
-    if node.task_id is not None and int(node.task_id) == int(task.id):
-        raise LineageViolation("a task may not consume its own artifact")
-    producer = project_repo.get_task(db, int(node.task_id)) if node.task_id else None
-    if producer is not None and str(producer.status) != TaskStatus.done.value:
-        raise LineageViolation(
-            f"task {producer.id} is {producer.status}: only finished work is consumable"
-        )
+    _validate_consumer(db, task, node)
 
     existing = next(
         (
@@ -456,6 +532,7 @@ def consume_artifact(
         work_session_id=None,
         actor_employee_id=actor_employee_id,
         reason=reason,
+        revision_id=artifact_ref(db, node).revision_id,
     )
     if commit:
         db.commit()
@@ -497,7 +574,7 @@ def upstream_lineage(db: Session, *, task_id: int, max_hops: int = 6) -> tuple[L
     while frontier:
         source_id, depth = frontier.pop(0)
         source = project_repo.get_task(db, source_id)
-        for node in handoff_repo.list_artifacts_for_task(db, source_id):
+        for node in artifact_versions.current_nodes(db, source_id):
             hops.append(
                 LineageHop(
                     depth=depth,
@@ -520,11 +597,16 @@ def upstream_lineage(db: Session, *, task_id: int, max_hops: int = 6) -> tuple[L
 
 def consumed_artifacts(db: Session, task_id: int) -> tuple[ConsumedRef, ...]:
     out: list[ConsumedRef] = []
-    for link in handoff_repo.list_artifact_links(db, task_id=int(task_id)):
+    links = handoff_repo.list_artifact_links(db, task_id=int(task_id))
+    used = {link.artifact_id for link in links if link.work_session_id is not None}
+    for link in links:
+        if link.work_session_id is None and link.artifact_id in used:
+            continue
         node = drive_repo.get_node(db, int(link.artifact_id))
         if node is None:
             continue
         owner = project_repo.get_task(db, int(node.task_id)) if node.task_id else None
+        revision = db.get(DriveRevision, link.revision_id) if link.revision_id else None
         out.append(
             ConsumedRef(
                 artifact_id=int(node.id),
@@ -536,6 +618,9 @@ def consumed_artifacts(db: Session, task_id: int) -> tuple[ConsumedRef, ...]:
                 actor_employee_id=(int(link.actor_employee_id) if link.actor_employee_id else None),
                 reason=link.reason,
                 created_at=link.created_at.isoformat() if link.created_at else "",
+                revision_id=int(revision.id) if revision else None,
+                version=int(revision.version) if revision else None,
+                sha256=revision.sha256 if revision else None,
             )
         )
     return tuple(out)

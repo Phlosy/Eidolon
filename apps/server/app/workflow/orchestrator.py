@@ -386,6 +386,7 @@ class Orchestrator:
                             db,
                             task_id=task_id,
                             artifact_ids=[item.artifact_id for item in input_artifacts],
+                            artifact_refs=input_artifacts,
                             work_session_id=int(ws.id),
                             actor_employee_id=employee_id,
                             reason="auto: declared input",
@@ -427,6 +428,7 @@ class Orchestrator:
                 request_context={
                     "runtime_config": runtime_config,
                     "behavior_policy": policy.as_dict(),
+                    "input_artifacts": task_ctx.input_artifacts,
                     "artifact_protocol": {
                         "version": "eidolon.artifacts.v1",
                         "required_types": task_ctx.required_artifact_types,

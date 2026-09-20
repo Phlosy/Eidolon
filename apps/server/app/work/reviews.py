@@ -26,7 +26,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
-from app.core.transaction_effects import after_commit
+from app.core.transaction_effects import after_commit, ensure_sqlite_transaction
 from app.events.bus import bus
 from app.models.base import utcnow
 from app.models.enums import LifecycleStatus, ProjectStatus, ReviewVerdict, TaskStatus
@@ -256,6 +256,10 @@ def submit_verdict(
     "谁判断的"不是参数，而是请求里已经定下的人。
     """
     verdict_value = ReviewVerdict(verdict).value
+    ensure_sqlite_transaction(db)
+    # Preserve pending caller changes, then re-read state under the write lock.
+    db.flush()
+    db.refresh(request)
     if str(request.status) != C.REVIEW_REQUEST_OPEN:
         raise ReviewError(
             f"review request {request.id} is {request.status}: verdicts are append-only (RV4)"
@@ -268,9 +272,19 @@ def submit_verdict(
     if verdict_value in VERDICTS_REQUIRING_NOTES and not notes.strip():
         raise ReviewError(f"{verdict_value} requires notes (为什么判成这样必须可回答)")
 
-    task = project_repo.get_task(db, int(request.task_id))
+    task = db.get(Task, int(request.task_id), populate_existing=True)
     if task is None:  # pragma: no cover - 防御
         raise ReviewError(f"task {request.task_id} not found")
+
+    if verdict_value == ReviewVerdict.passed.value:
+        from app.work import artifact_versions
+
+        if task.status != TaskStatus.in_review.value:
+            raise ReviewError(f"task {task.id} is {task.status}: cannot apply PASS")
+        try:
+            artifact_versions.validate_review_artifacts(db, task, request)
+        except artifact_versions.LineageViolation as exc:
+            raise ReviewError(str(exc)) from exc
 
     request.verdict = verdict_value
     request.verdict_notes = notes

@@ -85,7 +85,7 @@ def test_v57_up_down_up_metadata_parity_and_existing_history(tmp_path):
                     assert "action_confirmations" not in inspect(connection).get_table_names()
                     assert connection.exec_driver_sql("SELECT * FROM work_sessions").all() == before
         scripts = ScriptDirectory.from_config(_alembic_config())
-        assert scripts.get_heads() == ["60f659ce8704"]
+        assert scripts.get_heads() == ["61a76adf9805"]
         assert scripts.get_revision(REVISION).down_revision == PREVIOUS
     finally:
         migrated.dispose()
@@ -105,7 +105,7 @@ def test_v57_populated_downgrade_refuses_before_ddl(db, world, monkeypatch):
         assert connection.exec_driver_sql("SELECT * FROM action_confirmations").all() == before
         assert (
             connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-            == "60f659ce8704"
+            == "61a76adf9805"
         )
     assert db.get(ActionConfirmation, row_id).status == "pending"
 
@@ -179,7 +179,7 @@ def test_lower_revision_refusal_rolls_back_v57_schema_too(tmp_path):
             assert contract(connection) == before
             assert (
                 connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-                == "60f659ce8704"
+                == "61a76adf9805"
             )
     finally:
         engine.dispose()

@@ -16,10 +16,11 @@
    产物由系统在运行期解析（`app/work/handoff.py`）。
 """
 
-from sqlalchemy import ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import DDL, ForeignKey, Index, String, UniqueConstraint, event, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
+from app.models.project import WorkSession
 
 
 class TaskInput(TimestampMixin, Base):
@@ -53,8 +54,22 @@ class ArtifactLink(TimestampMixin, Base):
     __table_args__ = (
         Index("ix_artifact_links_artifact", "artifact_id", "role"),
         Index("ix_artifact_links_task", "task_id", "role"),
-        UniqueConstraint(
-            "artifact_id", "task_id", "role", name="uq_artifact_links_artifact_task_role"
+        Index(
+            "uq_artifact_links_declaration",
+            "artifact_id",
+            "task_id",
+            "role",
+            unique=True,
+            sqlite_where=text("work_session_id IS NULL"),
+        ),
+        Index(
+            "uq_artifact_links_use",
+            "artifact_id",
+            "task_id",
+            "role",
+            "work_session_id",
+            unique=True,
+            sqlite_where=text("work_session_id IS NOT NULL"),
         ),
     )
 
@@ -68,6 +83,71 @@ class ArtifactLink(TimestampMixin, Base):
     #: 谁做的这次使用（自动交接 = 负责人；显式声明 = 发起的管理 Agent）
     actor_employee_id: Mapped[int | None] = mapped_column(ForeignKey("employees.id"), nullable=True)
     reason: Mapped[str] = mapped_column(String(200), default="")
+    #: Original accepted version. Legacy NULL means unknown, never today's head.
+    revision_id: Mapped[int | None] = mapped_column(ForeignKey("drive_revisions.id"), nullable=True)
+
+
+_VALID_REVISION = (
+    "EXISTS (SELECT 1 FROM drive_revisions r JOIN drive_nodes n ON n.id=r.node_id "
+    "JOIN work_sessions producer ON producer.id=n.work_session_id "
+    "JOIN runtime_attempts a ON a.work_session_id=producer.id "
+    "JOIN runtime_artifact_collections c ON c.attempt_id=a.id, json_each(c.entries_json) e "
+    "JOIN tasks t ON t.id=NEW.task_id JOIN projects p ON p.id=t.project_id "
+    "WHERE r.id=NEW.revision_id AND n.id=NEW.artifact_id AND r.content_path IS NOT NULL "
+    "AND json_extract(e.value, '$.revision_id')=r.id "
+    "AND n.project_id=t.project_id AND n.company_id=p.company_id AND n.task_id<>t.id "
+    "AND NEW.role='consumed_by' AND (NEW.work_session_id IS NULL OR EXISTS ("
+    "SELECT 1 FROM work_sessions w WHERE w.id=NEW.work_session_id AND w.task_id=t.id "
+    "AND w.purpose='worker' AND w.company_id=p.company_id "
+    "AND w.employee_id=NEW.actor_employee_id AND w.status='running' AND t.status='in_progress')))"
+)
+LINK_GUARDS = (
+    (
+        "artifact_links",
+        "artifact_link_valid_revision",
+        "INSERT",
+        f"NEW.revision_id IS NOT NULL AND NOT ({_VALID_REVISION})",
+    ),
+    (
+        "artifact_links",
+        "artifact_link_immutable",
+        "UPDATE",
+        "OLD.revision_id IS NOT NULL OR NEW.revision_id IS NOT NULL",
+    ),
+    ("artifact_links", "artifact_link_no_delete", "DELETE", "OLD.revision_id IS NOT NULL"),
+    (
+        "artifact_links",
+        "artifact_link_no_replace",
+        "INSERT",
+        "EXISTS (SELECT 1 FROM artifact_links l WHERE "
+        "(l.revision_id IS NOT NULL OR NEW.revision_id IS NOT NULL) AND "
+        "(l.id=NEW.id OR (l.artifact_id=NEW.artifact_id AND l.task_id=NEW.task_id "
+        "AND l.role=NEW.role AND l.work_session_id IS NEW.work_session_id)))",
+    ),
+    (
+        "work_sessions",
+        "artifact_link_worker_no_replace",
+        "INSERT",
+        "EXISTS (SELECT 1 FROM artifact_links l WHERE l.work_session_id=NEW.id "
+        "AND l.revision_id IS NOT NULL)",
+    ),
+    (
+        "work_sessions",
+        "artifact_link_worker_no_delete",
+        "DELETE",
+        "EXISTS (SELECT 1 FROM artifact_links l WHERE l.work_session_id=OLD.id "
+        "AND l.revision_id IS NOT NULL)",
+    ),
+)
+for _table, _name, _operation, _condition in LINK_GUARDS:
+    event.listen(
+        {"artifact_links": ArtifactLink, "work_sessions": WorkSession}[_table].__table__,
+        "after_create",
+        DDL(
+            f"CREATE TRIGGER {_name} BEFORE {_operation} ON {_table} WHEN {_condition} "
+            "BEGIN SELECT RAISE(ABORT, 'invalid or immutable artifact link'); END"
+        ).execute_if(dialect="sqlite"),
+    )
 
 
 __all__ = ["ArtifactLink", "TaskInput"]

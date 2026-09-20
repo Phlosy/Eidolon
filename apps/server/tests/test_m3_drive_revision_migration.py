@@ -89,5 +89,5 @@ def test_v59_refuses_to_erase_saved_revision_content_before_ddl(db):
         assert connection.exec_driver_sql("SELECT * FROM drive_revisions").all() == rows
         assert (
             connection.exec_driver_sql("SELECT version_num FROM alembic_version").scalar()
-            == "60f659ce8704"
+            == "61a76adf9805"
         )

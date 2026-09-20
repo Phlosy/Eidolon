@@ -73,6 +73,7 @@ def add_artifact_link(
     work_session_id: int | None = None,
     actor_employee_id: int | None = None,
     reason: str = "",
+    revision_id: int | None = None,
 ) -> ArtifactLink:
     row = ArtifactLink(
         artifact_id=int(artifact_id),
@@ -81,6 +82,7 @@ def add_artifact_link(
         work_session_id=work_session_id,
         actor_employee_id=actor_employee_id,
         reason=reason,
+        revision_id=revision_id,
     )
     db.add(row)
     db.flush()
