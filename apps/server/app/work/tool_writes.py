@@ -371,6 +371,23 @@ def _delegate_project(db: Session, ctx: tools.ToolCallContext, args: dict) -> di
         project_id=int(project.id),
         db=db,
     )
+    if before["management_employee_id"] != project.management_employee_id:
+        # A claimed source belongs to the previous manager forever. Give the
+        # successor a new fact in the same action transaction, even without tasks.
+        bus.publish(
+            "project.replan_required",
+            {
+                **projected,
+                "company_id": ctx.company_id,
+                "work_mode": project.work_mode,
+                "reasons": ["management_delegated"],
+                "needs_management": True,
+            },
+            company_id=ctx.company_id,
+            actor_employee_id=ctx.employee_id,
+            project_id=int(project.id),
+            db=db,
+        )
     return {"project": projected, "before": before, "applied": "delegated"}
 
 
