@@ -13,11 +13,12 @@
 ## 常用命令
 ```bash
 make pg-up            # PostgreSQL（compose）；或 scripts/devpg.sh start；或 .env 指向自己的 PG
-make test-v2          # v2 测试（期望全绿；当前 183 + 2 skipped）
+make test-v2          # v2 测试（期望全绿；当前 185 + 2 skipped）
 make lint             # ruff + tsc + eslint + prettier
 make dev              # api + worker + web（日志在 .run/）；make stop 停止
 make migrate-v2       # alembic -c alembic-v2.ini upgrade head
-make v2-api           # v2 API（uvicorn，/api/v2，默认 127.0.0.1:8010）
+make v2-api           # v2 API（uvicorn，/api/v2，默认 127.0.0.1:26881）
+scripts/backup.sh / scripts/restore-check.sh   # 备份与恢复自证（docs/deployment.md）
 ```
 
 ## 规则（详见 docs/v2-handoff.md §6）

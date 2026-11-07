@@ -64,3 +64,12 @@ class BlobStore:
 
     def exists(self, ref: str) -> bool:
         return self._path(ref).exists()
+
+    def delete(self, ref: str) -> bool:
+        """Remove a blob (retention). Content-addressed stores never overwrite, so this
+        is the only way a blob ever goes away; callers decide nothing still needs it."""
+        path = self._path(ref)
+        if not path.exists():
+            return False
+        path.unlink()
+        return True

@@ -331,6 +331,69 @@ def cmd_project_costs(args, registry, factory, out) -> int:
     return EXIT_OK
 
 
+def cmd_restore_check(args, registry, factory, out) -> int:
+    """After restoring a backup: the chain verifies, the ledger verifies, and every
+    projection rebuilt from the facts is what the dump contained (row counts)."""
+    from sqlalchemy import text
+
+    from eidolon.money import facts as MF
+    from eidolon.money import verify as ledger_verify
+
+    store = FactStore()
+    failures: list[str] = []
+    with factory() as db:
+        head = store.last_seq(db)
+        companies = store.companies(db)
+        print(f"facts: head seq {head}, {len(companies)} companies", file=out)
+        for company in companies:
+            report = store.verify_chain(db, company)
+            print(
+                f"chain {company}: {'ok' if report.ok else 'BROKEN at ' + str(report.broken_at)} "
+                f"(checked={report.checked})",
+                file=out,
+            )
+            if not report.ok:
+                failures.append(f"chain {company}: {report.reason}")
+        ledgers = sorted(
+            {f.company_id for f in store.stream(db, kinds=MF.KINDS, limit=1_000_000)}, key=str
+        )
+        for company in ledgers:
+            report = ledger_verify(db, company, store=store)
+            print(f"ledger {company}: {'ok' if report.ok else 'BROKEN'}", file=out)
+            failures.extend(f"ledger {company}: {p}" for p in report.problems)
+    for projection in registry.projections():
+        tables = getattr(type(projection), "TABLES", None) or getattr(
+            __import__(type(projection).__module__, fromlist=["TABLES"]), "TABLES", None
+        )
+        if not tables:
+            print(f"projection {projection.name}: no tables declared, skipped", file=out)
+            continue
+        tables = (tables,) if isinstance(tables, str) else tuple(tables)
+
+        def counts(tables=tables):
+            with factory() as db:
+                return {t: db.scalar(text(f"SELECT count(*) FROM {t}")) for t in tables}
+
+        before = counts()
+        handled = rebuild(factory, projection)
+        after = counts()
+        same = before == after
+        print(
+            f"projection {projection.name}: rebuilt {handled} facts; rows "
+            f"{'unchanged' if same else 'CHANGED ' + str(before) + ' -> ' + str(after)}",
+            file=out,
+        )
+        if not same:
+            failures.append(f"projection {projection.name}: {before} -> {after}")
+    if failures:
+        print(f"RESTORE CHECK FAILED: {len(failures)} problem(s)", file=out)
+        for f in failures:
+            print(f"  {f}", file=out)
+        return EXIT_FAIL
+    print("RESTORE CHECK OK", file=out)
+    return EXIT_OK
+
+
 def cmd_talent_profile(args, registry, factory, out) -> int:
     from eidolon.talent import profile, resume
 
@@ -608,6 +671,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--project", type=UUID, required=True)
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_project_costs)
+
+    sub.add_parser(
+        "restore-check",
+        help="after a restore: verify chains and ledgers, rebuild every projection, compare",
+    ).set_defaults(fn=cmd_restore_check)
 
     p = sub.add_parser("talent-profile", help="a person's employments, competencies and evidence")
     p.add_argument("person")

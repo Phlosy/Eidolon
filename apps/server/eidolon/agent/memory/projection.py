@@ -47,6 +47,9 @@ class MemoryEntryRow(Base):
     search: Mapped[str] = mapped_column(TSVECTOR, Computed(SEARCH_EXPR, persisted=True))
 
 
+TABLES = ("memory_entries",)
+
+
 class MemoryProjection:
     name = "memory_entries"
     handles = M.KINDS

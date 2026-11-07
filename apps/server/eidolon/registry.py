@@ -63,6 +63,7 @@ def default_jobs(session_factory=None) -> list:
         Planner,
         SpendApprover,
     )
+    from eidolon.agent.retention import TranscriptRetention
     from eidolon.money.guard import BudgetGuard
 
     deciders = Deciders(factory, provider, blobs)
@@ -75,6 +76,7 @@ def default_jobs(session_factory=None) -> list:
         SpendApprover(factory, deciders, roster),
         Escalator(factory),
         EscalatedDecider(factory, deciders, roster),
+        TranscriptRetention(factory, blobs),
         TaskRunExecutor(
             factory,
             provider,
