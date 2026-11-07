@@ -1,19 +1,11 @@
 {
   "events": [
     {
-      "text": "It",
+      "text": "The",
       "type": "text"
     },
     {
-      "text": "'s",
-      "type": "text"
-    },
-    {
-      "text": " currently",
-      "type": "text"
-    },
-    {
-      "text": " sunny",
+      "text": " weather",
       "type": "text"
     },
     {
@@ -22,6 +14,22 @@
     },
     {
       "text": " Beijing",
+      "type": "text"
+    },
+    {
+      "text": " right",
+      "type": "text"
+    },
+    {
+      "text": " now",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " sunny",
       "type": "text"
     },
     {
@@ -63,10 +71,10 @@
     {
       "assistant_state": null,
       "attempts": 1,
-      "latency_ms": 1015,
+      "latency_ms": 610,
       "model": "deepseek-flash",
       "provider": "openai_compatible",
-      "request_id": "15062a77-e2ad-4f30-b7cc-d4773c34608b",
+      "request_id": "787a03d0-ed04-45ca-9690-1bae9b127960",
       "stop_detail": null,
       "stop_reason": "end_turn",
       "type": "completed",
@@ -74,15 +82,15 @@
         "cache_read_tokens": 256,
         "cache_write_tokens": 0,
         "input_tokens": 462,
-        "output_tokens": 16
+        "output_tokens": 18
       }
     }
   ],
-  "fingerprint": "5ba0748ffd6056389d9e3d31a00f671fc3e7e868f3d561b2034cdeeb9369e8c6",
+  "fingerprint": "7970b12896c305af8236ba99ed8cc2ffbba89830a78206ea645700c948938dbb",
   "format": "eidolon.provider.fixture/1",
   "kind": "chat",
   "provider": "openai_compatible",
-  "recorded_at": "2026-11-07T08:13:12+00:00",
+  "recorded_at": "2026-11-07T08:45:09+00:00",
   "request": {
     "max_tokens": 256,
     "messages": [
@@ -98,7 +106,7 @@
             "arguments": {
               "city": "Beijing"
             },
-            "id": "call_00_ET_KtiqbXm9atwLWyKtkpTM2615",
+            "id": "call_00_ET_mzUFdTsde2Qw1GDcsdOK0445",
             "name": "get_weather"
           }
         ]
@@ -109,7 +117,7 @@
         "tool_result": {
           "content": "{\"temperature_c\": 22, \"sky\": \"sunny\"}",
           "is_error": false,
-          "tool_call_id": "call_00_ET_KtiqbXm9atwLWyKtkpTM2615"
+          "tool_call_id": "call_00_ET_mzUFdTsde2Qw1GDcsdOK0445"
         }
       }
     ],

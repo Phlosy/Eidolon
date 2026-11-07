@@ -10,6 +10,7 @@ function of (spec, history, tools) and nothing else — which is what makes
 record/replay and crash resume line up.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from eidolon.agent.providers.base import CallContext, ChatRequest, Message, ToolSpec
@@ -27,12 +28,16 @@ class ContextBuilder:
     output_contract: str = OUTPUT_CONTRACT
     memory_sections: list[str] = field(default_factory=list)  # filled by R2-d
 
-    def system_text(self, base: str, tools: tuple[ToolSpec, ...]) -> str:
+    def system_text(
+        self, base: str, tools: tuple[ToolSpec, ...], memory_sections: Sequence[str] = ()
+    ) -> str:
         parts = [base.strip()]
         if tools:
             listing = "\n".join(f"- {t.name}: {t.description}" for t in tools)
             parts.append(f"Available tools:\n{listing}")
-        parts.extend(section.strip() for section in self.memory_sections if section.strip())
+        for section in (*self.memory_sections, *memory_sections):
+            if section.strip():
+                parts.append(section.strip())
         parts.append(self.output_contract)
         return "\n\n".join(p for p in parts if p)
 
@@ -44,10 +49,11 @@ class ContextBuilder:
         tools: tuple[ToolSpec, ...],
         state: RunState,
         context: CallContext,
+        memory_sections: Sequence[str] = (),
     ) -> ChatRequest:
         return ChatRequest(
             model=state.model,
-            system=self.system_text(system, tools),
+            system=self.system_text(system, tools, memory_sections),
             messages=messages,
             tools=tools,
             max_tokens=state.max_tokens_per_step,

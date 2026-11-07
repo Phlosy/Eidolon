@@ -85,10 +85,29 @@ async def run_loop(kind: str, directory: Path) -> int:
     runner = AgentRunner(SessionLocal, provider, blobs, weather_tools(keys))
     spec = new_spec(uuid4())
     outcome = await runner.start(spec)
+    ok = outcome.status == "completed" and "22" in (outcome.final_text or "")
+    # Reflection on that run (R2-d): one more recorded request, the diary entry.
+    if ok:
+        from eidolon.agent import run as R
+        from eidolon.agent.memory import Reflector
+        from eidolon.kernel.store import FactStore
+
+        store = FactStore()
+        with SessionLocal() as db:
+            completed = next(
+                iter(store.by_correlation(db, spec.run_id, kinds=[R.RUN_COMPLETED]))
+            )
+            recorded = await asyncio.to_thread(
+                Reflector(provider, blobs).handle, db, completed
+            )
+            db.commit()
+        print(
+            f"ok  {kind}/reflection memory={recorded.payload['memory_id']} "
+            f"title={recorded.payload['title']!r} parsed={recorded.payload['source']['parsed']}"
+        )
     close = getattr(live, "aclose", None)
     if close:
         await close()
-    ok = outcome.status == "completed" and "22" in (outcome.final_text or "")
     print(
         f"{'ok ' if ok else 'BAD'} {kind}/loop run={spec.run_id} status={outcome.status} "
         f"steps={outcome.steps} usage={outcome.usage.as_dict()} tools={len(keys)} "

@@ -31,6 +31,8 @@ from sqlalchemy.orm import sessionmaker
 from eidolon.agent import run as R
 from eidolon.agent.blobs import BlobStore
 from eidolon.agent.context import ContextBuilder
+from eidolon.agent.memory.recall import MemoryRecall
+from eidolon.agent.memory.repository import Viewer
 from eidolon.agent.providers.base import (
     CallContext,
     Completed,
@@ -64,6 +66,7 @@ class AgentRunner:
     tools: Tools
     store: FactStore | None = None
     context_builder: ContextBuilder | None = None
+    memory: "MemoryRecall | None" = None  # R2-d: injects recalled memory into the context
 
     def __post_init__(self) -> None:
         self.store = self.store or FactStore()
@@ -178,12 +181,19 @@ class AgentRunner:
         messages = state.messages(self.blobs)
         specs = self.tools.specs()
         actor = Actor(ActorKind.agent, state.person_id)
+        memory_sections: list[str] = []
+        if self.memory is not None:
+            task = next((m.content for m in messages if m.role == "user" and m.content), "")
+            memory_sections = await asyncio.to_thread(
+                self.memory.sections, Viewer(state.company_id, state.person_id), task or ""
+            )
         request = self.context_builder.build(
             system=state.system(self.blobs),
             messages=messages,
             tools=specs,
             state=state,
             context=CallContext(state.company_id, actor, correlation_id=state.run_id),
+            memory_sections=memory_sections,
         )
         context_ref = self.blobs.put_json(request.as_dict())
         requested = await self._append(

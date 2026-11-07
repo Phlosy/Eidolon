@@ -401,3 +401,13 @@ runner 启动后再剔除名字含 KEY/SECRET/TOKEN/PASSWORD/CREDENTIAL 的变�
 幂等账本放在 runner 侧（`.eidolon/runner-ledger.jsonl`）而不是服务端：副作用发生在哪里，"是否已发生"的记录就在哪里；
 循环崩溃后把同一个键再交过来，runner 返回存储的结果并标 `replayed`，读类工具永不重放。工具失败是带 `is_error` 的结果
 （模型应当看到），JSON-RPC error 只用于请求本身畸形。超时按进程组 kill（`start_new_session`），输出按字节截断并标注。
+
+**v2-ADR-10（2026-11-07）记忆 = 事实 + 一张投影表；可见性在仓库层；反思是消费者。**
+记忆只有三种事实：`recorded`（新条目）、`promoted`（semantic 的 scope 变宽——这是管理判断，事实必须带 `decision_id`
+或由 human 写入，系统自己永远不晋升）、`forgotten`（只降检索权重，永不删除）。`memory_entries` 是唯一的新表，
+`python -m eidolon rebuild memory_entries` 从零重建（用户 2026-11-07 批准新增）。可见性不是查询参数而是仓库的硬规则：
+private 只有本人，department 同部门，company 全员；换哪个调用方都绕不过。排序 = 全文相关度 × 权重 × 重要度因子 ×
+episodic 的时间衰减（半衰期 30 天，semantic 不衰减）；检索默认"任一词命中、多命中靠前"，因为召回的输入是整段任务描述。
+反思不在循环里做：`Reflector` 消费 `agent.run.completed`，由 worker 异步跑，一次模型调用、同一事务落事实并推进游标（K6），
+请求只由 transcript 构造（不含 id/时间），所以回放的 run 得到同样的 fixture；模型不给 JSON 也落原文，消费者不会卡在一条 run 上。
+全文检索先用 PostgreSQL `english` 配置；中文分词与向量检索（pgvector）在接口上留了位置（排序再乘一个因子）。

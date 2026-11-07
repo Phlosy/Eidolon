@@ -1,0 +1,693 @@
+{
+  "events": [
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "title",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "Checked",
+      "type": "text"
+    },
+    {
+      "text": " Beijing",
+      "type": "text"
+    },
+    {
+      "text": " weather",
+      "type": "text"
+    },
+    {
+      "text": " via",
+      "type": "text"
+    },
+    {
+      "text": " get",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "weather",
+      "type": "text"
+    },
+    {
+      "text": " tool",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "summary",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "The",
+      "type": "text"
+    },
+    {
+      "text": " user",
+      "type": "text"
+    },
+    {
+      "text": " asked",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " Beijing",
+      "type": "text"
+    },
+    {
+      "text": "'s",
+      "type": "text"
+    },
+    {
+      "text": " current",
+      "type": "text"
+    },
+    {
+      "text": " weather",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " instructions",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " use",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " get",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "weather",
+      "type": "text"
+    },
+    {
+      "text": " tool",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " reply",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " one",
+      "type": "text"
+    },
+    {
+      "text": " sentence",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " I",
+      "type": "text"
+    },
+    {
+      "text": " called",
+      "type": "text"
+    },
+    {
+      "text": " get",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "weather",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " city",
+      "type": "text"
+    },
+    {
+      "text": " \\\"",
+      "type": "text"
+    },
+    {
+      "text": "Beijing",
+      "type": "text"
+    },
+    {
+      "text": "\\\",",
+      "type": "text"
+    },
+    {
+      "text": " which",
+      "type": "text"
+    },
+    {
+      "text": " returned",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "22",
+      "type": "text"
+    },
+    {
+      "text": "°",
+      "type": "text"
+    },
+    {
+      "text": "C",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " sunny",
+      "type": "text"
+    },
+    {
+      "text": " skies",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " answered",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " single",
+      "type": "text"
+    },
+    {
+      "text": " sentence",
+      "type": "text"
+    },
+    {
+      "text": " stating",
+      "type": "text"
+    },
+    {
+      "text": " sunny",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "22",
+      "type": "text"
+    },
+    {
+      "text": "°",
+      "type": "text"
+    },
+    {
+      "text": "C",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " The",
+      "type": "text"
+    },
+    {
+      "text": " task",
+      "type": "text"
+    },
+    {
+      "text": " completed",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " two",
+      "type": "text"
+    },
+    {
+      "text": " steps",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " no",
+      "type": "text"
+    },
+    {
+      "text": " errors",
+      "type": "text"
+    },
+    {
+      "text": ".\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "less",
+      "type": "text"
+    },
+    {
+      "text": "ons",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " [\"",
+      "type": "text"
+    },
+    {
+      "text": "get",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "weather",
+      "type": "text"
+    },
+    {
+      "text": " returns",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " JSON",
+      "type": "text"
+    },
+    {
+      "text": " string",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " temperature",
+      "type": "text"
+    },
+    {
+      "text": "_c",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " sky",
+      "type": "text"
+    },
+    {
+      "text": " fields",
+      "type": "text"
+    },
+    {
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " parse",
+      "type": "text"
+    },
+    {
+      "text": " these",
+      "type": "text"
+    },
+    {
+      "text": " directly",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " answer",
+      "type": "text"
+    },
+    {
+      "text": ".\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "When",
+      "type": "text"
+    },
+    {
+      "text": " asked",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " one",
+      "type": "text"
+    },
+    {
+      "text": "-s",
+      "type": "text"
+    },
+    {
+      "text": "entence",
+      "type": "text"
+    },
+    {
+      "text": " answer",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " keep",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " tool",
+      "type": "text"
+    },
+    {
+      "text": " result",
+      "type": "text"
+    },
+    {
+      "text": " summary",
+      "type": "text"
+    },
+    {
+      "text": " compact",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " skip",
+      "type": "text"
+    },
+    {
+      "text": " extra",
+      "type": "text"
+    },
+    {
+      "text": " detail",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "],",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "tags",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " [\"",
+      "type": "text"
+    },
+    {
+      "text": "weather",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "get",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "weather",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "be",
+      "type": "text"
+    },
+    {
+      "text": "ijing",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "tool",
+      "type": "text"
+    },
+    {
+      "text": "-use",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "api",
+      "type": "text"
+    },
+    {
+      "text": "\"],",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "importance",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "0",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "2",
+      "type": "text"
+    },
+    {
+      "text": "}",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "Write JSON diary entry."
+      },
+      "attempts": 1,
+      "latency_ms": 1768,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "343bed19-3d79-46ef-a850-a4ddd3ad7bcf",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "input_tokens": 210,
+        "output_tokens": 169
+      }
+    }
+  ],
+  "fingerprint": "673feedbff71c5f634ddffd41439c5325ebcd57ce180dffb67b26812b79c9eed",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T08:45:11+00:00",
+  "request": {
+    "max_tokens": 512,
+    "messages": [
+      {
+        "content": "Task:\nWhat is the weather in Beijing right now? Use the get_weather tool, then answer in one sentence.\n\nSteps taken: 2\n\nTool calls:\n- get_weather({\"city\": \"Beijing\"})\n  -> ok: '{\"temperature_c\": 22, \"sky\": \"sunny\"}'\n\nFinal answer:\nThe weather in Beijing right now is sunny with a temperature of 22°C.",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You write the private work diary of an AI employee. Given a finished task, write an entry future-you can retrieve. Reply with JSON only, no prose, exactly this shape: {\"title\": \"<= 12 words\", \"summary\": \"2-4 sentences: what was asked, what you did, the outcome\", \"lessons\": [\"short reusable lessons\"], \"tags\": [\"lowercase\", \"keywords\"], \"importance\": 0.0-1.0}",
+    "temperature": 0,
+    "tools": []
+  }
+}

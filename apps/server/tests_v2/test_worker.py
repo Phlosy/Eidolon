@@ -169,9 +169,16 @@ def test_real_process_exits_zero_on_sigterm_with_json_logs():
         text=True,
     )
     try:
-        first = json.loads(proc.stderr.readline())
+        # The default registry has real consumers now; their startup batches are logged
+        # before worker.started. Read until it appears.
+        for _ in range(20):
+            first = json.loads(proc.stderr.readline())
+            if first["msg"] == "worker.started":
+                break
+            assert first["msg"] == "worker.batch", first
         assert first["msg"] == "worker.started" and first["logger"] == "eidolon.worker"
-        assert first["consumers"] == [] and first["level"] == "INFO" and "ts" in first
+        assert first["consumers"] == ["memory_entries", "memory_reflector"]
+        assert first["level"] == "INFO" and "ts" in first
         proc.send_signal(signal.SIGTERM)
         code = proc.wait(timeout=10)
     finally:
@@ -179,5 +186,6 @@ def test_real_process_exits_zero_on_sigterm_with_json_logs():
             proc.kill()
     assert code == 0
     rest = [json.loads(line) for line in proc.stderr.read().splitlines() if line.strip()]
-    assert [r["msg"] for r in rest] == ["worker.stopping", "worker.stopped"]
-    assert rest[0]["signal"] == "SIGTERM"
+    msgs = [r["msg"] for r in rest if r["msg"] != "worker.batch"]  # in-flight cycle may log
+    assert msgs == ["worker.stopping", "worker.stopped"]
+    assert next(r for r in rest if r["msg"] == "worker.stopping")["signal"] == "SIGTERM"
