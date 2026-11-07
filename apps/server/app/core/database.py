@@ -7,7 +7,7 @@ from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
-from sqlalchemy import Engine, create_engine, inspect
+from sqlalchemy import Engine, create_engine, event, inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
@@ -32,6 +32,27 @@ engine = create_engine(
         else {}
     ),
 )
+
+
+@event.listens_for(engine, "connect")
+def _configure_sqlite(dbapi_connection, _record) -> None:
+    """Run SQLite in WAL mode so readers no longer block the background writer.
+
+    The default rollback journal lets any open read transaction (a request
+    session, a polling test) stall the orchestrator's commit until busy_timeout
+    expires. WAL keeps a single writer but lets readers proceed concurrently;
+    synchronous=NORMAL is durable across process crashes in WAL mode.
+    """
+    if not settings.database_url.startswith("sqlite"):
+        return
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=15000")
+    finally:
+        cursor.close()
+
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 

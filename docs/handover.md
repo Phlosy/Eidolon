@@ -1,6 +1,10 @@
 # Eidolon 交接文档（2026-09-09）
 
-> 最新阶段（2026-09-20）：M3.1–M3.3 已完成，U1–U13 已提交；M3.4 仅 U13 完成，下一包 U14。见 §5v 及 [M3 执行计划](m3-implementation-plan.md)。以下早期基线为历史记录。
+> **最新阶段（2026-11-06）**：M3 的 U17–U31 已被新基线取代。U14–U16 的实现已提交（U14 传输/规范版本/交接、
+> U15 停止与重试、U16 崩溃恢复十三段，末次 `16aa26f`）但**未做联合验收、未关闭**。现行执行基线是
+> [`kernel-plan.md`](kernel-plan.md)（本质与纪律）+ [`v2-architecture.md`](v2-architecture.md)（R0–R6 重构路线：
+> 自研智能体框架、Postgres、strangler 重构）。R0 起 SQLite 已开 WAL（`core/database.py`）。
+> 新会话从 `kernel-plan.md` §8 Progress 恢复上下文。以下为历史记录。
 
 > 覆盖范围：P5–P11 之后的「本地开发体验 / 入职与权限开通可靠性 / 教程交互」连续修复。
 > 状态基线：分支 `dev`，HEAD `430601e`，**工作树干净**，全量门禁绿（见 §5）。

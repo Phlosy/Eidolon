@@ -125,7 +125,7 @@ Codex / Claude Code / OpenCode / Custom 新 Runtime（保持 placeholder）
 | M3.1 | Real Runtime Provisioning | 开通归属、出处快照按需 | **DONE**（U1–U5） |
 | M3.2 | Ready-to-Work & Runtime Readiness | 通知周期、管理会话 / 调用幂等按需 | **DONE**（U6–U8） |
 | M3.3 | Capability Gap Actions | v57 动作确认记录 | **DONE**（U9–U12） |
-| M3.4 | Execution Telemetry & Recovery | 遥测 / 恢复元数据按需 | IN_PROGRESS |
+| M3.4 | Execution Telemetry & Recovery | 遥测 / 恢复元数据按需 | SUPERSEDED（U13 完成；U14–U16 已实现未关闭；U17 起由 `v2-architecture.md` R 阶段取代） |
 | M3.5 | Work Experience & Unified Resume | 视裁决 | PLANNED |
 | M3.6 | Reliability / Specialization / Collaboration | 无 | PLANNED |
 | M3.7 | Agent Asset Read Model | 无 | PLANNED |
@@ -682,7 +682,7 @@ docs/m3-freeze.md（机器可检：形态 / 不变量 / 唯一写入路径 / 模
 | M3.1 | **DONE** | `d838823`（U1）、`146dca3`（U2）、`d814476`（U3）、`bb6a3ea`（U4）、`3718881`（U5） | U1–U5 完成。阶段收尾 1532 passed / 10 deselected，v50 往返及检查、lint、前端 390 项与构建通过；U4 五组随机序和两种 Runtime 的真实调用证据保留。历史快照已有创建写者、历史读者和数据库保护。[B1–B5 与完整证据](m3-u5-execution-snapshots.md)。真实业务交付及管理工具桥仍属后续阶段 |
 | M3.2 | **DONE** | `76636c1`（U6）、`cbaa771`（U7）、`7e3f865`–`c8df9b4`（U8）及本次验收提交 | U6–U8 完成：共享就绪与等待事实、持久工具请求/回执、指定管理与评审会话、来源去重及有限收尾。最终后端 2231 passed / 16 deselected，lint、前端 392 项及构建、v51–v55 迁移检查通过；Hermes 管理和 OpenClaw 评审真实往返完成，七次尝试与失败费用全部保留。四项正式审阅问题已关闭。[U8 验收与范围限制](m3-u8-management-sessions.md)。真实 Worker 产物链与跨进程恢复继续归后续阶段 |
 | M3.3 | **DONE** | `5058da9`（U9）、`dc61291`（U10）、`410387a`（U11）、`5f8db04`（U12）、`da579c8`（审阅修复）及本次阶段记录 | 七类真实入口、Person 学习意图、固定动作确认、M1/T2 招聘与开通、组合部分成功及动作进程恢复完成。D1–D4 通过；最终后端 2404 passed / 17 deselected，lint、前端 392 项和构建、v56/v57 迁移检查通过。正式审阅 #1 已修复；独立覆盖限制和 U15 后台清理风险如实保留。[阶段证据](m3-3-capability-actions.md) |
-| M3.4 | IN_PROGRESS | `6a99c88`（U13） | U13 完成：持久请求 / 尝试 / 远端引用，主机与远端结果分离，有限保留的结构化遥测和跨进程只读查询。v56 迁移、原归属守卫、后端 2309 passed / 16 deselected、完整 lint 通过；新增 40 个行为场景与 2 个迁移测试。U14–U17 的真实产物、重试取消、接管和费用归集待完成；U15 另有遥测失败后后台生产协程未清理的已复现风险，见 M3.3 阶段记录。[U13 验收](m3-u13-durable-execution.md) |
+| M3.4 | SUPERSEDED | `6a99c88`（U13）、U14 `1c011fc`–`ab6da07`、U15 `1bc5dc0`–`fd25119`、U16 `a442af4`–`16aa26f` | U13 完成并验收。U14（传输/规范版本/交接）、U15（停止/重试/预算撤销）、U16（崩溃恢复十三段）代码与隔离测试已提交，但真实整链与联合验收未完成，**不宣称关闭**。2026-11-06 起 U17–U31 由 `v2-architecture.md` R0–R6 取代；M3.5–M3.10 行保留为历史。[U13 验收](m3-u13-durable-execution.md) · [U14](m3-u14-runtime-artifacts.md) · [U15](m3-u15-retry-and-cancel.md) · [U16](m3-u16-crash-recovery.md) |
 | M3.5 | PLANNED | — | |
 | M3.6 | PLANNED | — | |
 | M3.7 | PLANNED | — | |
