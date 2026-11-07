@@ -307,3 +307,23 @@ def test_cancel_run_is_a_human_act_with_a_grant(db):
     db.commit()
     assert post(client, f"/runs/{done}/cancel", {"reason": "x"}).status_code == 409
     client.__exit__(None, None, None)
+
+
+def test_owner_can_force_escalate_an_open_decision(db):
+    client, _ = owner_client()
+    company = UUID(post(client, "/companies", {"name": "S", "slug": "s3"}).json()["company_id"])
+    post(client, f"/companies/{company}/employees", {"person_id": "tl-1", "role": "tech_lead"})
+    process(SessionLocal, IdentityProjection())
+    r = post(
+        client,
+        f"/companies/{company}/decisions",
+        {"gate": "task.assign", "subject": {"task_id": str(uuid4()), "assignee": "eng-1"}},
+    )
+    did = r.json()["decision_id"]
+    assert r.json()["resolution"]["role"] == "tech_lead"
+    r = post(client, f"/decisions/{did}/escalate")
+    assert r.status_code == 200, r.text
+    assert r.json()["resolution"]["role"] == "ceo" and r.json()["escalations"] == 1
+    assert post(client, f"/decisions/{did}/escalate").status_code == 409  # ceo: no escalate_to
+    assert post(client, f"/decisions/{uuid4()}/escalate").status_code == 404
+    client.__exit__(None, None, None)

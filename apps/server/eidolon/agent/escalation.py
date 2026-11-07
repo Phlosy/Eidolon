@@ -1,0 +1,201 @@
+"""Timeouts and escalation (R6-b): an unanswered decision moves to the next decider.
+
+Two jobs:
+
+* ``Escalator`` — every pending decision whose gate has a ``timeout_s`` is escalated
+  once that much time has passed since it was requested (or re-escalated since the
+  last escalation): ``institution.decision.escalated`` carries the new resolution.
+  The clock is injectable so the rule can be tested without waiting hours.
+* ``EscalatedDecider`` — an escalated decision that now names an *agent* role is
+  put to a holder of that role with the gate, the subject and the work it is about;
+  the answer is signed through the same envelope as every other decision. Human
+  targets wait in the decisions inbox; the manager jobs apply whatever was decided.
+
+Neither job decides anything: one moves the question, the other asks the person
+the institution says to ask.
+"""
+
+import json
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any
+from uuid import UUID
+
+from sqlalchemy.orm import sessionmaker
+
+from eidolon.agent.managers import Deciders, RosterSource, _template
+from eidolon.institution import REQUESTED, VERDICTS, DecisionState, escalate, load
+from eidolon.kernel.store import FactStore
+from eidolon.logging import get_logger
+from eidolon.work.facts import WorkError
+from eidolon.work.service import WorkService
+
+log = get_logger("eidolon.agent.escalation")
+
+ESCALATED_SYSTEM = (
+    "You are a manager in a software studio. A decision was escalated to you because the "
+    "person who should have decided it did not answer in time. Decide it now on its merits. "
+    "Answer with JSON only: "
+    '{"verdict": "approve" | "reject" | "rework", "reason": "<one sentence>"}. '
+    "Use rework only for plans and reviews that should be redone; otherwise approve or reject."
+)
+
+
+def _pending(store: FactStore, db) -> list[tuple[UUID, UUID]]:
+    return [
+        (f.company_id, f.correlation_id) for f in store.stream(db, kinds=[REQUESTED], limit=100_000)
+    ]
+
+
+@dataclass
+class Escalator:
+    session_factory: sessionmaker
+    store: FactStore = field(default_factory=FactStore)
+    clock: Callable[[], datetime] = lambda: datetime.now(UTC)
+    name: str = "escalator"
+
+    def tick(self) -> int:
+        with self.session_factory() as db:
+            pending = _pending(self.store, db)
+        done = 0
+        for company_id, decision_id in pending:
+            if self._escalate(company_id, decision_id):
+                done += 1
+        return done
+
+    def _escalate(self, company_id: UUID, decision_id: UUID) -> bool:
+        with self.session_factory() as db:
+            state = load(db, decision_id, store=self.store)
+            if state.decided:
+                return False
+            template = _template(db, company_id)
+            if template is None:
+                return False
+            fact = escalate(template, state, now=self.clock())
+            if fact is None:
+                return False
+            self.store.append(db, fact)
+            db.commit()
+            log.info(
+                "decision.escalated",
+                extra={
+                    "decision_id": str(decision_id),
+                    "gate": state.gate,
+                    "to": fact.payload["resolution"].get("role"),
+                    "escalation_no": fact.payload["escalation_no"],
+                },
+            )
+            return True
+
+
+@dataclass
+class EscalatedDecider:
+    session_factory: sessionmaker
+    deciders: Deciders
+    rosters: RosterSource
+    svc: WorkService = field(default_factory=WorkService)
+    store: FactStore = field(default_factory=FactStore)
+    name: str = "escalated_decider"
+
+    def tick(self) -> int:
+        with self.session_factory() as db:
+            pending = _pending(self.store, db)
+        done = 0
+        for company_id, decision_id in pending:
+            if self._decide(company_id, decision_id):
+                done += 1
+        return done
+
+    def _decide(self, company_id: UUID, decision_id: UUID) -> bool:
+        with self.session_factory() as db:
+            d = load(db, decision_id, store=self.store)
+            res = d.resolution
+            if d.decided or res.branch != "escalated" or res.decider != "agent":
+                return False
+            template = _template(db, company_id)
+            if template is None:
+                return False
+            roster = self.rosters.for_company(db, company_id)
+            signed_by = {s.person_id for s in d.signatures}
+            signer = next(
+                (
+                    p
+                    for p in roster.people
+                    if p.role in res.allowed_roles
+                    and p.person_id not in signed_by
+                    and p.person_id not in (d.proposer, d.author)
+                ),
+                None,
+            )
+            if signer is None:
+                return False
+            prompt = self._prompt(db, d)
+            answer = self.deciders.ask(
+                company_id=company_id,
+                person=signer,
+                system=ESCALATED_SYSTEM,
+                prompt=prompt,
+                run_key=f"decision:{decision_id}:escalated:{d.escalations}",
+                causation_id=d.last_fact_id,
+            )
+            verdict = (answer or {}).get("verdict")
+            if verdict not in VERDICTS:
+                return False
+            if verdict == "rework" and d.gate not in ("plan.approve", "task.review"):
+                verdict = "reject"
+            d = self.deciders.sign_and_conclude(
+                db, template, d, signer, verdict, str(answer.get("reason", ""))
+            )
+            log.info(
+                "decision.escalated_decided",
+                extra={"decision_id": str(decision_id), "gate": d.gate, "status": d.status},
+            )
+            return True
+
+    def _prompt(self, db, d: DecisionState) -> str:
+        """The gate, the subject, and what we know about the work it names."""
+        lines = [
+            f"Gate: {d.gate} (escalated {d.escalations}×; originally for {d.resolution.gate})",
+            f"Subject: {json.dumps(_plain(d.subject), ensure_ascii=False)}",
+        ]
+        if d.proposer:
+            lines.append(f"Proposed by: {d.proposer}")
+        if d.amount is not None:
+            lines.append(f"Amount: {d.amount} units")
+        project_id = d.subject.get("project_id")
+        task_id = d.subject.get("task_id")
+        try:
+            if project_id is None and task_id is not None:
+                project_id = self._project_of(db, UUID(str(task_id)))
+            if project_id is not None:
+                state = self.svc.project(db, UUID(str(project_id)))
+                lines.append(
+                    f"Project: {state.title} ({state.status}), budget {state.budget} units"
+                )
+                for t in state.tasks.values():
+                    mark = " <- this one" if str(t.task_id) == str(task_id) else ""
+                    lines.append(f"- {t.title} [{t.status}] assignee={t.assignee}{mark}")
+                    if str(t.task_id) == str(task_id):
+                        lines.append(f"  {t.description}")
+                        if t.acceptance_criteria:
+                            lines.append("  criteria: " + "; ".join(t.acceptance_criteria))
+                        for r in t.reviews:
+                            lines.append(f"  review by {r.get('reviewer')}: {r.get('verdict')}")
+            mission_id = d.subject.get("mission_id")
+            if mission_id:
+                m = self.svc.mission(db, UUID(str(mission_id)))
+                lines.append(f"Mission: {m.title} — {m.goal}")
+        except (WorkError, ValueError):
+            pass
+        return "\n".join(lines)
+
+    def _project_of(self, db, task_id: UUID) -> UUID | None:
+        from eidolon.work.projection import TaskRow
+
+        row = db.get(TaskRow, task_id)
+        return row.project_id if row else None
+
+
+def _plain(subject: Any) -> Any:
+    return {k: v for k, v in dict(subject).items() if k not in ("action_hash",)}

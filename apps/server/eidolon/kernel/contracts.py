@@ -220,3 +220,22 @@ BUDGET_INVARIANTS: tuple[Invariant, ...] = (
         "test_budget::test_company_concurrency_and_daily_cap_hold_runs",
     ),
 )
+
+
+# Gate-timeout invariants (R6-b): nobody can stall the company by not answering.
+GATE_INVARIANTS: tuple[Invariant, ...] = (
+    Invariant(
+        "G1",
+        "a pending decision past its gate's timeout_s is escalated to escalate_to "
+        "(institution.decision.escalated carries the new resolution); the new decider — an "
+        "agent role via EscalatedDecider, a human via the inbox — signs through the same "
+        "envelope, and the manager jobs apply whatever was decided",
+        "test_escalation::test_timeouts_escalate_and_the_next_decider_acts",
+    ),
+    Invariant(
+        "G2",
+        "a cancelled run stops at its next checkpoint and fails its task; the task returns "
+        "to work only through a decision (W3); cancelling twice is one fact",
+        "test_escalation::test_cancelled_runs_fail_their_task_and_release_it",
+    ),
+)

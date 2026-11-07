@@ -538,3 +538,10 @@ run 级：每步按价目表估价累计，超过模板的 `run_default` 就停�
 金额分层决定谁来签：系统层机械记录，中层由 PM agent 看着项目进度签，上层由 Owner 在收件箱签；pending 就等，rejected 就停。
 守卫只提问、不决定，它用注入的方式进 agent 层（agent 不 import money），所以预算规则改在制度和 money 里，循环和执行器不动。
 公司级：并发与日限是配额不是判断，超了只是等待，不开决定。
+
+**v2-ADR-27（2026-11-07）没人能靠不回答拖住公司：超时把问题挪给下一个人，不替任何人回答。**
+升级是两件事分开做：`Escalator` 只搬问题（过了 `timeout_s` 就写一条 `escalated`，新 resolution 由模板的 `escalate_to` 决定，
+升级后的 resolution 不再有 timeout，所以每个问题最多走到模板写明的终点），`EscalatedDecider` 只把问题交给制度点名的人（agent 角色当场问、
+human 角色进收件箱），答案仍然走同一个信封校验。于是所有管理作业都得遵守一条纪律：**先看决定有没有结论，再看自己是不是该决定的人**——
+以前 MissionIntake / Planner 看到决定者不是自己就返回，升级后永远没人施行结论。评审的 reviewer of record 是签字的人，不是跑评审的 QA agent。
+取消同理：`cancel_requested` 是一条事实，循环在检查点看到就停，任务按失败处理，回来仍要一个决定；系统从不替人决定"再试一次"。

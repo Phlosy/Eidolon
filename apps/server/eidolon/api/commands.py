@@ -25,6 +25,7 @@ from eidolon.institution import (
     conclude,
     current,
     customize,
+    escalate,
     has_authority,
     load,
     request,
@@ -371,6 +372,20 @@ class Commands:
         return self.sign_decision(
             db, who, decision_id=decision_id, verdict="approve", reason=reason, action=action
         )
+
+    def escalate_decision(self, db: Session, who: Person, *, decision_id: UUID) -> DecisionState:
+        """Move an open decision to its next decider now (a human act; needs the
+        ``escalation.resolve`` grant). Nothing to escalate to is a conflict."""
+        self.require(db, who, "escalation.resolve")
+        template = self.template(db, who.company_id)
+        state = load(db, decision_id, store=self.store)
+        if state.company_id != who.company_id or template is None:
+            raise Forbidden("this decision belongs to another company")
+        fact = escalate(template, state, force=True)
+        if fact is None:
+            raise Conflict("nothing to escalate: the decision is settled or has no escalate_to")
+        self.store.append(db, fact)
+        return load(db, decision_id, store=self.store)
 
     def pending_decisions(
         self,

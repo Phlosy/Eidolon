@@ -570,14 +570,17 @@ class ReviewExecutor:
                 decision.status
             ]
             reason = decision.signatures[-1].reason if decision.signatures else None
+            # the reviewer of record is whoever signed — after an escalation that is
+            # the Tech Lead, not the QA agent this executor runs for
+            reviewer = decision.signatures[-1].person_id if decision.signatures else self.reviewer
             self.svc.review_task(
                 db,
                 project_id,
                 task_id,
-                Actor(ActorKind.agent, self.reviewer),
+                Actor(ActorKind.agent, reviewer),
                 decision_id=decision_id,
                 verdict=verdict,
-                reviewer=self.reviewer,
+                reviewer=reviewer,
                 reason=reason,
             )
             db.commit()

@@ -319,10 +319,12 @@ class MissionIntake:
             decision = _open(
                 db, template, ctx, decision_id, Actor.system(), causation_id=mission.last_fact_id
             )
-            if (
+            if decision.status == "pending" and (
                 decision.resolution.decider != "agent"
                 or ceo.role not in decision.resolution.allowed_roles
             ):
+                # escalated to someone else, or a human gate: whoever decides it, the
+                # ``decided`` branch below applies the outcome next tick
                 log.info(
                     "mission.needs_human",
                     extra={"mission_id": str(mission_id), "decider": decision.resolution.decider},
@@ -485,7 +487,7 @@ class Planner:
                 Actor(ActorKind.agent, pm.person_id),
                 causation_id=state.last_fact_id,
             )
-            if (
+            if decision.status == "pending" and (
                 decision.resolution.decider != "agent"
                 or tl.role not in decision.resolution.allowed_roles
             ):

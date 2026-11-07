@@ -120,3 +120,24 @@ def sign_decision(
     out = decision_dict(state)
     out["applied"] = applied
     return out
+
+
+@router.post("/decisions/{decision_id}/escalate")
+def escalate_decision(
+    decision_id: UUID,
+    db: Session = Depends(get_db),
+    me: CurrentUser = Depends(current_user),
+):
+    """Force an open decision to its next decider (the gate's escalate_to)."""
+    try:
+        d = load(db, decision_id)
+    except DecisionError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    employment = next((e for e in memberships(db, me) if e.company_id == d.company_id), None)
+    if employment is None:
+        raise HTTPException(403, "you are not employed by this company")
+    try:
+        state = commands.escalate_decision(db, person_in(db, employment), decision_id=decision_id)
+    except (Forbidden, Conflict, *DomainError) as exc:
+        raise guard(exc) from exc
+    return decision_dict(state)

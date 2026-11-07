@@ -1,6 +1,6 @@
 # Eidolon v2 交接文档（终端会话入口）
 
-> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1–R4 完成（R2-e GO；R4 = 身份 + 钱 + 费用溯源），R5 已拆成 R5-a..e（见 §8），R5 全部完成（旧应用已删除，cutover 到 v2），R6 已拆成 R6-a..e（见 §8），R6-a 完成，下一个包是 **R6-b 超时与升级**。
+> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1–R4 完成（R2-e GO；R4 = 身份 + 钱 + 费用溯源），R5 已拆成 R5-a..e（见 §8），R5 全部完成（旧应用已删除，cutover 到 v2），R6 已拆成 R6-a..e（见 §8），R6-a、R6-b 完成，下一个包是 **R6-c 可观测性**。
 > 这是新会话的**唯一入口**：先读本文，再按 §1 的顺序读其余文档。
 > 文档体系：本文（入口与状态）→ `kernel-plan.md`（本质、纪律、Progress）→ `v2-architecture.md`（设计、路线、ADR）。
 
@@ -12,11 +12,11 @@
 git pull                                   # 或从你本机推上去的 dev 开始
 make install                               # conda env eidolon（Python 3.12）+ pnpm
 make pg-up                                 # 或 scripts/devpg.sh start；或用你自己的 PG（.env 已配）
-make test-v2                               # v2 内核测试：期望 169 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
+make test-v2                               # v2 内核测试：期望 172 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
 make lint                                  # ruff + tsc + eslint + prettier
 ```
 
-然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R6-b**），按 §5 的流程做。
+然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R6-c**），按 §5 的流程做。
 
 ---
 
@@ -89,10 +89,11 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `36cc52d` | **R5-d**：前端按 V5 重写为 `/api/v2` 薄客户端（42k → 4.7k 行，11 个依赖删除，vitest 30）。v2-ADR-24 |
 | `fb288d3` | **R5-e**：删除 `apps/server/app/`、旧 tests、旧 Alembic 链与 12 个旧脚本；Makefile / CI / compose / Dockerfile / nginx / .env.example / README / CONTRIBUTING 切到 v2；旧文档移入 `docs/archive/`；`requirements.lock` 裁到 v2 并在干净 venv 验证；`make dev` 真实起 api + worker + web 走通注册→建司→招人。v2-ADR-25。**R5 完成** |
 | `1dd4c00` | **R6-a**：预算三级生效（run 零花钱 `max_cost`、项目 tranche 经 `spend.approve`、公司并发/日限）；`money/guard.py` 注入执行器；`SpendApprover` 作业；契约 B1–B3。v2-ADR-26 |
+| `PENDING` | **R6-b**：`agent/escalation.py`（Escalator + EscalatedDecider）、管理作业已决定优先、评审 reviewer 取签字人、`POST /decisions/{id}/escalate`、取消语义锚定；契约 G1–G2。v2-ADR-27 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
-**基线数字**：v2 169 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(30)/build 全绿；前端 4.7k 行（R5-d 后）。
+**基线数字**：v2 172 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(30)/build 全绿；前端 4.7k 行（R5-d 后）。
 
 ---
 
@@ -190,11 +191,11 @@ R3 拆包见 `kernel-plan.md` §8（R3-a..e）；R4–R6 见 `v2-architecture.md
 4. apps/server/eidolon/kernel/*.py 与 apps/server/tests_v2/*.py
 
 然后核对环境并把结果报给我：
-- make test-v2 应为 169 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
+- make test-v2 应为 172 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
 - make lint 全绿
 - 不必每次跑旧应用全量（
 工作方式：
-- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R6-b），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
+- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R6-c），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
 - 每个包完成的定义：代码 + 测试（真实 PostgreSQL）+ make test-v2 与 make lint 全绿 + kernel-plan.md §8 对应行改为 DONE 并填提交号 + 若有新裁决则在 v2-architecture.md §11 追加 ADR。
 - 遵守 docs/v2-handoff.md §6 的七条规则：v2 不 import 旧 app；持久状态只有 Fact、投影与 API 层的秘密；系统不做管理判断；mock 只在单测；密钥不进提交；不写新的阶段设计文档。
 - 包粒度：一个会话做完一个包；做不完就拆成更小的包并在 Progress 登记，不要留"第 N 段"。

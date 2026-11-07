@@ -48,9 +48,11 @@ class ScriptedLoop:
     def __init__(self, answers):
         self.answers = list(answers)
         self.calls = 0
+        self.last_request = None
 
     async def complete(self, request):
         self.calls += 1
+        self.last_request = request
         answer = self.answers.pop(0)
         for event in answer:
             yield event
