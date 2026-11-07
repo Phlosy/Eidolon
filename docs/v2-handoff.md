@@ -86,7 +86,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `da1e257` | **R4-c**：`money/trace.py`（`cost_trace` / `project_costs` / `ledger_fact_ids`）、run.started 带 causation、CLI `cost-trace` / `project-costs` / `export-bundle --with-ledger`；tests_v2 158 条。v2-ADR-19。R4 完成 |
 | `1316360` | **R5-a**：`talent/`（证据派生、能力 EWMA、投影、profile / resume）、`0006_talent`、CLI `talent-profile`；契约 T1 / T2；tests_v2 160 条。v2-ADR-20 |
 | `cda7876` | **R5-b**：`api/`（FastAPI `/api/v2`：鉴权 argon2 + cookie 会话 + CSRF，只读路由 companies / work / runs / ledger / provenance）、`0007_auth`、`make v2-api`；tests_v2 163 条。v2-ADR-22 |
-| `PENDING` | **R5-c**：`api/commands.py` + 写路由（建公司 / 制度 / 招解雇 / mission / 决策信封开与签 / 交付 / 取消 run）；tests_v2 166 条。v2-ADR-23 |
+| `56a9492` | **R5-c**：`api/commands.py` + 写路由（建公司 / 制度 / 招解雇 / mission / 决策信封开与签 / 交付 / 取消 run）；tests_v2 166 条。v2-ADR-23 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
