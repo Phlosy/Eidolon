@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     fact_payload_max_bytes: int = 64 * 1024
     # NOTIFY channel used to wake workers after a fact commits.
     fact_notify_channel: str = "eidolon_facts"
+    # Process logging (eidolon.logging): JSON lines on stderr at this level.
+    log_level: str = "INFO"
+    # Worker: fall back to polling every N seconds if no NOTIFY arrives; facts per batch.
+    worker_poll_interval: float = 5.0
+    worker_batch_limit: int = 200
 
 
 settings = Settings()

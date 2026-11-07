@@ -41,14 +41,21 @@ class Listener:
         self._conn = psycopg.connect(_dsn(url or settings.database_url), autocommit=True)
         self._conn.execute(f"LISTEN {self.channel}")
 
+    def fileno(self) -> int:
+        """The socket to ``select`` on; lets a caller wait on this and its own fds at once."""
+        return self._conn.fileno()
+
     def wait(self, timeout: float) -> int:
         """Block up to ``timeout`` seconds; return how many notifications arrived."""
-        ready, _, _ = _select.select([self._conn.fileno()], [], [], timeout)
+        ready, _, _ = _select.select([self.fileno()], [], [], timeout)
         if not ready:
             return 0
+        return self.pending()
+
+    def pending(self) -> int:
+        """Consume every notification already received, without blocking."""
         count = 0
-        gen = self._conn.notifies(timeout=0)
-        for _ in gen:
+        for _ in self._conn.notifies(timeout=0):
             count += 1
         return count
 

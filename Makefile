@@ -260,6 +260,21 @@ pg-down:
 test-v2: check-env
 	cd $(SERVER_DIR) && $(PYBIN) -m pytest tests_v2 -q
 
+## v2-worker: 运行 v2 worker 进程（LISTEN 唤醒 + 游标 drain；SIGTERM 优雅停止）
+.PHONY: v2-worker
+v2-worker: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon worker $(V2_ARGS)
+
+## v2-verify: 校验所有公司的事实哈希链（任一断链 exit 1；V2_ARGS="--company <uuid>" 单查）
+.PHONY: v2-verify
+v2-verify: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon verify-chain $(V2_ARGS)
+
+## v2-cursors: 列出 v2 消费者游标与落后量
+.PHONY: v2-cursors
+v2-cursors: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon cursors
+
 ## migrate-v2: v2 数据库升到最新（alembic-v2.ini，独立版本表）
 .PHONY: migrate-v2
 migrate-v2: check-env

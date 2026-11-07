@@ -241,6 +241,10 @@ class FactStore:
     def last_seq(self, db: Session) -> int:
         return db.scalar(select(FactRow.seq).order_by(FactRow.seq.desc()).limit(1)) or 0
 
+    def companies(self, db: Session) -> list[UUID]:
+        """Every company that has at least one fact, in creation order of its chain."""
+        return list(db.scalars(select(FactChainRow.company_id).order_by(FactChainRow.company_id)))
+
     def stream(
         self,
         db: Session,

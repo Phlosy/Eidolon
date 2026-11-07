@@ -290,7 +290,7 @@ Reviewer Agent（真实）用现有评审工具出 PASS
 | WP-01 收口 WIP | DONE | `16aa26f` | U16 第十三段（任务 Evidence 恢复）20 测试通过后提交；handover / m3 plan 漂移已修 |
 | WP-02 基线 | DONE | `9719a7b` | 见下方基线数字；R0 完成 |
 | R1-a 内核骨架 + PG 基座 | DONE | `d39e9a2` | `eidolon/kernel/{facts,hashchain,store,consumers,notify,contracts}` + `alembic-v2.ini`/`0001_kernel` + `tests_v2`（22 测试：并发不分叉、触发器不可改、篡改可检、重放/重建、NOTIFY 仅提交）+ `scripts/devpg.sh` + compose `postgres` + CI `backend-v2`。v2-ADR-1..4 |
-| R1-b worker 进程 + CLI | TODO | | `eidolon-worker`（LISTEN 唤醒 + 游标 drain + 优雅停止）；`python -m eidolon` 子命令：migrate / verify-chain / rebuild；结构化日志 |
+| R1-b worker 进程 + CLI | DONE | （本提交） | `eidolon/worker.py`（启动即从游标 drain = replay；LISTEN + self-pipe 唤醒；SIGTERM/SIGINT 完成当前批次后 exit 0；消费者失败隔离并重试）+ `python -m eidolon` migrate / verify-chain / rebuild / cursors / worker + `eidolon/logging.py` JSON 行日志（脱敏）+ `eidolon/registry.py` 唯一消费者注册表 + Makefile `v2-worker/v2-verify/v2-cursors`。tests_v2 22 → 38（含真实子进程 SIGTERM 退出码 0、CLI 篡改后 exit 1）。v2-ADR-5 |
 | R1-c 溯源原语 | TODO | | correlation/causation 回溯、provenance bundle 导出 + 离线校验脚本（K4 的 WP-40/42 提前，因为是纯内核） |
 | R2 智能体框架 MVP | TODO | | go/no-go 点 |
 | R3 制度 + 工作域 | TODO | | |

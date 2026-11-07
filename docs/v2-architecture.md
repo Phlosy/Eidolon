@@ -361,3 +361,9 @@ postgres:16）或 `scripts/devpg.sh start`（用户态集群，任何 PG ≥ 14 
 行锁串行化同公司追加（K3）。触发器挡住应用层，哈希链让拥有数据库权限的篡改可被 `verify_chain`
 发现。生产部署应撤销应用角色对 `facts` 的 UPDATE/DELETE/TRUNCATE 权限（R6 加固项）。
 
+**v2-ADR-5（2026-11-07）worker 的失败隔离与停止语义。**
+worker 启动与每次唤醒做的是同一件事：对注册表里的每个消费者从游标 drain 到底（启动时的"replay"不是另一套代码）。
+一个消费者的批次抛异常时，该批次回滚、游标不动、记一次失败并写日志，**其余消费者照常推进**；失败者在下一次唤醒重试，
+永不跳过事实、永不把游标推过失败点。理由：一条"毒事实"不应让整个进程反复崩溃并拖垮无关投影，而重试又保证修好处理器后无需人工干预即可恢复。
+停止（SIGTERM / SIGINT / `stop()`）只在批次边界生效：当前批次与其游标在同一事务提交后退出，退出码 0；等待中的 worker 由 self-pipe 立即唤醒。
+消费者注册表只有一个入口 `eidolon/registry.py:default_registry`，worker 与 CLI（`rebuild`、`cursors`）共用，`--registry module:callable` 仅用于测试与调试。

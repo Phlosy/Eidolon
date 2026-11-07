@@ -4,73 +4,17 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import text
+from support import KindCounts, counts, scratch_tables, seed, store
 
 from eidolon.db import SessionLocal
 from eidolon.kernel import consumers
 from eidolon.kernel.consumers import Registry, function_consumer, process, rebuild, replay_all
-from eidolon.kernel.facts import Actor, NewFact
-from eidolon.kernel.store import FactStore
-
-store = FactStore()
 
 
 @pytest.fixture(autouse=True)
-def scratch_tables(database):
-    """Read-model tables for this module only; dropped again so `alembic check` stays clean."""
-    with database.begin() as conn:
-        conn.execute(text("CREATE TABLE kind_counts (kind text PRIMARY KEY, n int NOT NULL)"))
-        conn.execute(text("CREATE TABLE kind_counts_seen (seq bigint PRIMARY KEY)"))
-    yield
-    with database.begin() as conn:
-        conn.execute(text("DROP TABLE kind_counts, kind_counts_seen"))
-
-
-class KindCounts:
-    """A projection: how many facts of each kind. Idempotent via a seen-set, the
-    pattern every projection with non-idempotent arithmetic must follow."""
-
-    name = "kind_counts"
-    handles = None
-
-    def __init__(self, fail_on_seq: int | None = None):
-        self.fail_on_seq = fail_on_seq
-        self.calls = 0
-
-    def handle(self, db, fact):
-        self.calls += 1
-        if fact.seq == self.fail_on_seq:
-            raise RuntimeError(f"boom at {fact.seq}")
-        inserted = db.execute(
-            text("INSERT INTO kind_counts_seen (seq) VALUES (:seq) ON CONFLICT DO NOTHING"),
-            {"seq": fact.seq},
-        ).rowcount
-        if inserted:
-            db.execute(
-                text(
-                    "INSERT INTO kind_counts (kind, n) VALUES (:kind, 1) "
-                    "ON CONFLICT (kind) DO UPDATE SET n = kind_counts.n + 1"
-                ),
-                {"kind": fact.kind},
-            )
-
-    def reset(self, db):
-        db.execute(text("TRUNCATE kind_counts, kind_counts_seen"))
-
-
-def counts(db):
-    return dict(db.execute(text("SELECT kind, n FROM kind_counts ORDER BY kind")).all())
-
-
-def seed(db, company, n, kind="work.task.created"):
-    facts = [
-        store.append(
-            db,
-            NewFact(company, Actor.system(), kind, {"i": i}, idempotency_key=f"{kind}-{i}"),
-        )
-        for i in range(n)
-    ]
-    db.commit()
-    return facts
+def _scratch(database):
+    with scratch_tables(database):
+        yield
 
 
 def test_process_handles_everything_and_advances_cursor(db):
