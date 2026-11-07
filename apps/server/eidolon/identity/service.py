@@ -8,7 +8,7 @@ institution, and a role's kind (human/agent) must match the person's kind.
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from sqlalchemy.orm import Session
 
@@ -185,12 +185,14 @@ class IdentityService:
                 owner_user_id=owner_user_id,
             ),
         )
+        # The owner's employment id is a function of the company, so a retried
+        # creation (same company_id) hits K2 instead of seating the owner twice.
         employment = self.store.append(
             db,
             F.employment_started(
                 actor,
                 company_id,
-                uuid4(),
+                uuid5(NAMESPACE_URL, f"eidolon:employment:{company_id}:owner"),
                 person_id=owner_person_id,
                 role="owner",
                 title="Owner",

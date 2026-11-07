@@ -129,16 +129,11 @@ class AgentRunner:
         """Anyone with the authority to stop a run writes this fact; the loop sees it
         at its next checkpoint. Synchronous: it is a decision, not loop work."""
         state = self.load(run_id)
-        new = NewFact(
-            company_id=state.company_id,
-            actor=actor,
-            kind=R.RUN_CANCEL_REQUESTED,
-            payload={"run_id": str(run_id), "reason": reason},
-            idempotency_key=R.run_key(run_id, "cancel_requested"),
-            causation_id=state.last_fact_id,
-            correlation_id=run_id,
+        return self._write(
+            R.cancel_request(
+                state.company_id, run_id, actor, reason=reason, causation_id=state.last_fact_id
+            )
         )
-        return self._write(new)
 
     # -- the loop ------------------------------------------------------------------
 

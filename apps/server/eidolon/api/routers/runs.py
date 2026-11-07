@@ -10,11 +10,14 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from eidolon.agent import run as R
 from eidolon.agent.providers.accounting import KIND as MODEL_CALLED
+from eidolon.api.commands import Commands, Conflict, DomainError, Forbidden, person_in
 from eidolon.api.deps import CurrentUser, current_user, get_db, member_of, memberships
+from eidolon.api.routers.manage import guard
 from eidolon.identity import EmploymentRow
 from eidolon.kernel.facts import Fact
 from eidolon.kernel.store import FactStore
@@ -122,3 +125,31 @@ def company_runs(
         if len(out) >= limit:
             break
     return out
+
+
+class CancelIn(BaseModel):
+    reason: str = Field(min_length=1, max_length=500)
+
+
+@router.post("/runs/{run_id}/cancel")
+def cancel_run(
+    run_id: UUID,
+    body: CancelIn,
+    db: Session = Depends(get_db),
+    me: CurrentUser = Depends(current_user),
+):
+    """Ask a run to stop at its next checkpoint (a human act; needs ``run.cancel``)."""
+    started = store.by_correlation(db, run_id, kinds=[R.RUN_STARTED])
+    if not started:
+        raise HTTPException(404, "no such run")
+    employment = next(
+        (e for e in memberships(db, me) if e.company_id == started[0].company_id), None
+    )
+    if employment is None:
+        raise HTTPException(403, "you are not employed by this company")
+    commands = Commands(store)
+    try:
+        fact = commands.cancel_run(db, person_in(db, employment), run_id=run_id, reason=body.reason)
+    except (Forbidden, Conflict, *DomainError) as exc:
+        raise guard(exc) from exc
+    return {"fact_id": str(fact.id), "run_id": str(run_id), "kind": fact.kind}

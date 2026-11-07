@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import sessionmaker
 
 from eidolon.api.auth import AuthService
-from eidolon.api.routers import auth, companies, ledger, provenance, runs, work
+from eidolon.api.routers import auth, companies, decisions, ledger, manage, provenance, runs, work
 from eidolon.config import Settings, settings
 
 PREFIX = "/api/v2"
@@ -62,6 +62,8 @@ def create_app(session_factory: sessionmaker | None = None, cfg: Settings = sett
         runs.router,
         ledger.router,
         provenance.router,
+        manage.router,
+        decisions.router,
     ):
         app.include_router(router, prefix=PREFIX)
 

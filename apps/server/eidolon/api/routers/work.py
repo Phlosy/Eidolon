@@ -4,17 +4,42 @@ projection, artifact content from the blob store."""
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from eidolon.agent.blobs import BlobMissing, BlobStore
+from eidolon.api.commands import (
+    Commands,
+    Conflict,
+    DomainError,
+    Forbidden,
+    decision_dict,
+    idem,
+    person_in,
+)
 from eidolon.api.deps import CurrentUser, current_user, get_db, member_of, memberships
+from eidolon.api.routers.manage import guard
 from eidolon.identity import EmploymentRow
 from eidolon.money.projection import project_spend_micro, task_spend_micro
 from eidolon.work.projection import ArtifactRow, MissionRow, ProjectRow, TaskRow
 
 router = APIRouter(tags=["work"])
+commands = Commands()
+
+
+class MissionIn(BaseModel):
+    title: str = Field(min_length=1, max_length=300)
+    goal: str = Field(min_length=1)
+    success_criteria: list[str] = Field(default_factory=list)
+    constraints: list[str] = Field(default_factory=list)
+    budget: int | None = Field(default=None, ge=0)
+    deadline: str | None = Field(default=None, max_length=64)
+
+
+class DeliverIn(BaseModel):
+    reason: str | None = Field(default=None, max_length=2000)
 
 
 def blobs(request: Request) -> BlobStore:
@@ -195,3 +220,59 @@ def artifact_content(
         media_type=media,
         headers={"Content-Disposition": f'inline; filename="{Path(row.path).name}"'},
     )
+
+
+# -- commands -------------------------------------------------------------------------
+
+
+@router.post("/companies/{company_id}/missions", status_code=201)
+def propose_mission(
+    company_id: UUID,
+    body: MissionIn,
+    db: Session = Depends(get_db),
+    me: CurrentUser = Depends(current_user),
+    employment: EmploymentRow = Depends(member_of),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+):
+    """The Owner (or whoever holds ``mission.propose``) raises a mission; the CEO
+    agent's intake decides it in the worker."""
+    try:
+        fact = commands.propose_mission(
+            db,
+            person_in(db, employment),
+            mission_id=idem(me.user.user_id, idempotency_key),
+            title=body.title,
+            goal=body.goal,
+            success_criteria=body.success_criteria,
+            constraints=body.constraints,
+            budget=body.budget,
+            deadline=body.deadline,
+        )
+    except (Forbidden, Conflict, *DomainError) as exc:
+        raise guard(exc) from exc
+    return {"mission_id": fact.payload["mission_id"], "fact_id": str(fact.id)}
+
+
+@router.post("/projects/{project_id}/deliver")
+def deliver_project(
+    project_id: UUID,
+    body: DeliverIn,
+    db: Session = Depends(get_db),
+    me: CurrentUser = Depends(current_user),
+):
+    """V6: the Owner accepts the delivery — a human decision bound to this action."""
+    row = db.get(ProjectRow, project_id)
+    if row is None:
+        raise HTTPException(404, "no such project")
+    employment = next((e for e in memberships(db, me) if e.company_id == row.company_id), None)
+    if employment is None:
+        raise HTTPException(403, "you are not employed by this company")
+    try:
+        state, applied = commands.deliver_project(
+            db, person_in(db, employment), project_id=project_id, reason=body.reason
+        )
+    except (Forbidden, Conflict, *DomainError) as exc:
+        raise guard(exc) from exc
+    out = decision_dict(state)
+    out["applied"] = applied
+    return out

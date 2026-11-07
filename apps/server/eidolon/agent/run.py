@@ -13,7 +13,7 @@ from uuid import UUID
 
 from eidolon.agent.blobs import BlobStore
 from eidolon.agent.providers.base import Message, ToolSpec, Usage
-from eidolon.kernel.facts import Fact
+from eidolon.kernel.facts import Actor, Fact, NewFact
 
 # -- fact vocabulary of a run -----------------------------------------------------
 
@@ -229,6 +229,22 @@ def tool_key(run_id: UUID, step_no: int, call_id: str) -> str:
 
 def run_key(run_id: UUID, phase: str) -> str:
     return f"run:{run_id}:{phase}"
+
+
+def cancel_request(
+    company_id: UUID, run_id: UUID, actor: Actor, *, reason: str, causation_id: UUID | None
+) -> NewFact:
+    """The fact that asks a run to stop. Written by whoever has the authority (a human
+    over the API, a manager job); the loop honours it at its next checkpoint."""
+    return NewFact(
+        company_id=company_id,
+        actor=actor,
+        kind=RUN_CANCEL_REQUESTED,
+        payload={"run_id": str(run_id), "reason": reason},
+        idempotency_key=run_key(run_id, "cancel_requested"),
+        causation_id=causation_id,
+        correlation_id=run_id,
+    )
 
 
 def tool_specs_summary(specs: Sequence[ToolSpec]) -> list[str]:
