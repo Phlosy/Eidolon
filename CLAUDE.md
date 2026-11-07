@@ -14,7 +14,7 @@
 ## 常用命令
 ```bash
 make pg-up            # PostgreSQL（compose）；或 scripts/devpg.sh start；或 .env 指向自己的 PG
-make test-v2          # v2 测试（期望全绿；当前 156 + 2 skipped）
+make test-v2          # v2 测试（期望全绿；当前 158 + 2 skipped）
 make lint             # ruff + tsc + eslint + prettier
 make test-server      # 旧应用全量 3228 条（约 4.5 分钟）；仅在触碰 apps/server/app/ 时跑
 make migrate-v2       # alembic -c alembic-v2.ini upgrade head

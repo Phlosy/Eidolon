@@ -9,7 +9,12 @@ from alembic import command
 from alembic.script import ScriptDirectory
 
 from eidolon.db import UnsupportedDatabase, build_engine, require_postgres
-from eidolon.kernel.contracts import KERNEL_INVARIANTS, MONEY_INVARIANTS, WORK_INVARIANTS
+from eidolon.kernel.contracts import (
+    KERNEL_INVARIANTS,
+    MONEY_INVARIANTS,
+    TALENT_INVARIANTS,
+    WORK_INVARIANTS,
+)
 
 KERNEL_DIR = Path(__file__).resolve().parents[1] / "eidolon" / "kernel"
 UPPER_LAYERS = {
@@ -96,13 +101,16 @@ def test_non_postgres_url_is_refused():
 
 def test_every_invariant_has_an_existing_anchor():
     missing = []
-    for invariant in (*KERNEL_INVARIANTS, *WORK_INVARIANTS, *MONEY_INVARIANTS):
+    for invariant in (*KERNEL_INVARIANTS, *WORK_INVARIANTS, *MONEY_INVARIANTS, *TALENT_INVARIANTS):
         module_name, test_name = invariant.anchor.split("::")
         module = importlib.import_module(module_name)
         if not callable(getattr(module, test_name, None)):
             missing.append(invariant.code)
     assert missing == [], f"invariants without a test: {missing}"
-    codes = [i.code for i in (*KERNEL_INVARIANTS, *WORK_INVARIANTS, *MONEY_INVARIANTS)]
+    codes = [
+        i.code
+        for i in (*KERNEL_INVARIANTS, *WORK_INVARIANTS, *MONEY_INVARIANTS, *TALENT_INVARIANTS)
+    ]
     assert len(set(codes)) == len(codes)
 
 

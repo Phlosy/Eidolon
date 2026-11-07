@@ -39,6 +39,7 @@ from eidolon.money import (
     project_spend_micro,
 )
 from eidolon.money import verify as ledger_verify
+from eidolon.talent import EvidenceRow, TalentProjection, competencies_of
 from eidolon.work import facts as F
 
 
@@ -161,10 +162,35 @@ def test_three_roles_deliver_a_project_from_replayed_fixtures(db, tmp_path):
     bundle = provenance.bundle(db, company, correlation_id=pid, fact_ids=ids)
     assert {f["kind"] for f in bundle["facts"]} >= {COST_RECORDED, "money.entry.posted"}
     assert bundle["bundle_hash"] == provenance.seal(bundle)
+    # R5-a: everyone who worked has evidence in the area they worked in; the Owner has none;
+    # competencies exist for people to read and nothing below talent imports them.
+    process(SessionLocal, TalentProjection())
+    evidence = {}
+    for r in db.query(EvidenceRow).filter_by(company_id=company):
+        evidence.setdefault(r.person_id, set()).add((r.kind, r.area))
+    assert {"qa-1", "pm-1", "tl-1", "ceo-1"} <= set(evidence) and evidence.keys() & {
+        "eng-1",
+        "eng-2",
+    }
+    assert all(area == "engineer" for p in ("eng-1", "eng-2") for _, area in evidence.get(p, ()))
+    assert ("task_passed", "engineer") in set().union(
+        *(evidence[p] for p in ("eng-1", "eng-2") if p in evidence)
+    )
+    assert ("review_given", "qa") in evidence["qa-1"] and ("decision_signed", "ceo") in evidence[
+        "ceo-1"
+    ]
+    assert not any(p.startswith("owner-") for p in evidence)
+    assert all(
+        c.positive > 0 for p in ("eng-1", "eng-2") if p in evidence for c in competencies_of(db, p)
+    )
 
     # The Owner delivers; provenance holds.
     owner_delivers(db, company, pid)
     assert svc.project(db, pid).status == "delivered"
+    process(SessionLocal, TalentProjection())
+    assert ("project_delivered", "pm") in {
+        (r.kind, r.area) for r in db.query(EvidenceRow).filter_by(person_id="pm-1")
+    }
     assert store.verify_chain(db, company).ok
     bundle = provenance.bundle(db, company, correlation_id=pid)
     assert bundle["facts"] and bundle["facts"][0]["kind"] == F.PROJECT_CREATED

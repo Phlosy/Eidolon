@@ -486,3 +486,10 @@ correlation 就是 project / mission / decision。`cost_trace` 走不通的环�
 项目费用 = 任务 run 的分录（按 journal.task_id）+ 项目事实召唤的无任务管理 run（按 run.started 的 causation 落在项目 correlation 内）；
 CEO 的 mission run 归 mission，不归项目。这些都是查询，不建新表、不在事实里存 project_id——否则换一种归属规则就得重写事实。
 bundle 不另设「账本段」：`--with-ledger` 只是把项目花费背后的 `money.*` 事实并入同一个事实选择，封印与离线校验不变。
+
+**v2-ADR-20（2026-11-07）人才层不写事实、不被引用：证据是其它层事实的读法，能力只给人看。**
+`talent/` 不新增任何事实种类——评审结论、失败、交付、产物、run 结局、签字本来就都是事实，证据只是把「这条事实说了谁的什么」读出来，
+每条证据带来源事实 id，所以「为什么这个人是这个分」永远一跳可查。能力是证据的 EWMA（粗信号 ±1/0 × 权重），是给人看的摘要，不是模型；
+契约 T1 用 AST 锚定「talent 之下没有模块 import 它」，于是选人、指派、判通过都不可能把分数当输入——它们仍只能是 gate 上的决定（W1/W7）。
+human 不积累证据：Owner 的行为是决定，不是被计量的劳动。`task.review` 门的签字不单独计证据，因为 verdict 事实已经记了同一件事。
+履历与档案是纯查询，形状可以随前端随时改。

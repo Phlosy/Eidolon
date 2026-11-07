@@ -17,6 +17,7 @@ def default_registry() -> Registry:
     from eidolon.db import SessionLocal
     from eidolon.identity import IdentityProjection
     from eidolon.money import CostMeter, LedgerProjection
+    from eidolon.talent import TalentProjection
     from eidolon.work import WorkProjection
 
     registry = Registry()
@@ -32,7 +33,8 @@ def default_registry() -> Registry:
     # money layer (R4-b): every model call is metered and booked; the ledger read model.
     registry.register(CostMeter())
     registry.register(LedgerProjection())
-    # talent registers here when it is ported (R5).
+    # talent layer (R5-a): evidence and competencies, read-only for people.
+    registry.register(TalentProjection())
     return registry
 
 

@@ -175,3 +175,21 @@ MONEY_INVARIANTS: tuple[Invariant, ...] = (
         "test_cost_trace::test_cost_trace_walks_from_entry_to_project",
     ),
 )
+
+
+# Talent invariants (R5-a): competence is read, never consulted.
+TALENT_INVARIANTS: tuple[Invariant, ...] = (
+    Invariant(
+        "T1",
+        "evidence and competencies are projections of facts other layers record; no "
+        "module below talent imports it, so no selection, assignment or verdict can "
+        "take a score as input — those remain decisions at gates",
+        "test_talent::test_competency_is_a_projection_nothing_below_reads",
+    ),
+    Invariant(
+        "T2",
+        "every piece of evidence names its source fact and the person, task, project "
+        "and run it is about; humans accrue none; rebuild reproduces it exactly",
+        "test_talent::test_evidence_is_derived_from_facts_and_rebuilds",
+    ),
+)

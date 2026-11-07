@@ -324,6 +324,46 @@ def cmd_project_costs(args, registry, factory, out) -> int:
     return EXIT_OK
 
 
+def cmd_talent_profile(args, registry, factory, out) -> int:
+    from eidolon.talent import profile, resume
+
+    with factory() as db:
+        prof = profile(db, args.person)
+        if prof is None:
+            print(f"no person {args.person}", file=sys.stderr)
+            return EXIT_USAGE
+        timeline = resume(db, args.person) if args.resume else []
+    if args.json:
+        data = prof.as_dict()
+        if args.resume:
+            data["resume"] = [
+                {
+                    "at": r.at.isoformat(),
+                    "kind": r.kind,
+                    "company_id": str(r.company_id),
+                    "area": r.area,
+                    **r.detail,
+                }
+                for r in timeline
+            ]
+        print(json.dumps(data, ensure_ascii=False, indent=2), file=out)
+        return EXIT_OK
+    print(f"{prof.person.person_id} ({prof.person.kind}) {prof.person.name}", file=out)
+    for e in prof.employments:
+        print(f"  employment {e.company_id} {e.role} [{e.status}]", file=out)
+    for c in prof.competencies:
+        rated = "" if c.positive + c.negative else " (unrated)"
+        print(
+            f"  {c.area}: {c.score}{rated}  evidence={c.evidence_count} "
+            f"+{c.positive}/-{c.negative}",
+            file=out,
+        )
+    print(f"  evidence: {len(prof.evidence)}  spend: {prof.spend_micro} micro", file=out)
+    for r in timeline:
+        print(f"  {r.at.isoformat(timespec='seconds')} {r.kind} {r.area or '-'}", file=out)
+    return EXIT_OK
+
+
 def cmd_run_task(args, registry, factory, out) -> int:
     import asyncio
     from uuid import uuid4
@@ -534,6 +574,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--project", type=UUID, required=True)
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_project_costs)
+
+    p = sub.add_parser("talent-profile", help="a person's employments, competencies and evidence")
+    p.add_argument("person")
+    p.add_argument("--resume", action="store_true", help="also print the timeline")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=cmd_talent_profile)
 
     p = sub.add_parser("run-task", help="run one agent task in a sandboxed workspace")
     p.add_argument("--workspace", required=True)
