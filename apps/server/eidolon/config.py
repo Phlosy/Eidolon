@@ -49,5 +49,13 @@ class Settings(BaseSettings):
     provider_anthropic_model: str = "claude-opus-5-5"
     provider_anthropic_fallbacks: bool = False
 
+    # API (R5-b): session cookie (HttpOnly) + eidolon_csrf (readable, double-submit).
+    session_cookie_name: str = "eidolon_session"
+    session_ttl_hours: int = 24 * 30
+    cookie_secure: bool = False
+    cors_origins: str = ""  # comma-separated; empty = same origin only
+    api_host: str = "127.0.0.1"
+    api_port: int = 8010
+
 
 settings = Settings()

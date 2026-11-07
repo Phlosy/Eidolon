@@ -364,6 +364,21 @@ def cmd_talent_profile(args, registry, factory, out) -> int:
     return EXIT_OK
 
 
+def cmd_api(args, registry, factory, out) -> int:
+    """Serve the API with uvicorn (``eidolon-api`` process: no agent loop here)."""
+    import uvicorn
+
+    from eidolon.config import settings
+
+    uvicorn.run(
+        "eidolon.api.app:app",
+        host=args.host or settings.api_host,
+        port=args.port or settings.api_port,
+        log_level=(args.log_level or settings.log_level).lower(),
+    )
+    return EXIT_OK
+
+
 def cmd_run_task(args, registry, factory, out) -> int:
     import asyncio
     from uuid import uuid4
@@ -580,6 +595,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--resume", action="store_true", help="also print the timeline")
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_talent_profile)
+
+    p = sub.add_parser("api", help="serve the HTTP API (uvicorn)")
+    p.add_argument("--host", default=None)
+    p.add_argument("--port", type=int, default=None)
+    p.set_defaults(fn=cmd_api)
 
     p = sub.add_parser("run-task", help="run one agent task in a sandboxed workspace")
     p.add_argument("--workspace", required=True)

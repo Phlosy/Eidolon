@@ -265,6 +265,11 @@ test-v2: check-env
 v2-worker: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon worker $(V2_ARGS)
 
+## v2-api: 运行 v2 API 进程（uvicorn；端口见 EIDOLON_V2_API_PORT，默认 8010）
+.PHONY: v2-api
+v2-api: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon api $(V2_ARGS)
+
 ## v2-verify: 校验所有公司的事实哈希链（任一断链 exit 1；V2_ARGS="--company <uuid>" 单查）
 .PHONY: v2-verify
 v2-verify: check-env
