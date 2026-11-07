@@ -1,6 +1,6 @@
 # Eidolon v2 交接文档（终端会话入口）
 
-> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1 与 R2 全部完成（R2-e 判定 GO），下一个阶段是 **R3**（制度 + 工作域），需先拆包。
+> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1、R2 完成（R2-e GO），R3 已拆成 R3-a..e，R3-a 完成，下一个包是 **R3-b**（gate 引擎 + 决策信封）。
 > 这是新会话的**唯一入口**：先读本文，再按 §1 的顺序读其余文档。
 > 文档体系：本文（入口与状态）→ `kernel-plan.md`（本质、纪律、Progress）→ `v2-architecture.md`（设计、路线、ADR）。
 
@@ -12,12 +12,12 @@
 git pull                                   # 或从你本机推上去的 dev 开始
 make install                               # conda env eidolon（Python 3.12）+ pnpm
 make pg-up                                 # 或 scripts/devpg.sh start；或用你自己的 PG（.env 已配）
-make test-v2                               # v2 内核测试：期望 100 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
+make test-v2                               # v2 内核测试：期望 108 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
 make test-server                           # 旧应用全量：期望 3228 passed（SQLite，约 4.5 分钟 -n 4）
 make lint                                  # ruff + tsc + eslint + prettier
 ```
 
-然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R3**，先按 §5 拆成会话大小的包并登记），按 §5 的流程做。
+然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R3-b**），按 §5 的流程做。
 
 ---
 
@@ -76,10 +76,11 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `b07d66d` | **R2-c**：`apps/runner/`（独立 runner 包，JSON-RPC/stdio，零密钥，路径限定，幂等账本）、`agent/runner/`（客户端 + RunnerTools）、`agent/tools/registry.py`；lint/CI 覆盖 apps/runner；tests_v2 91 条。v2-ADR-9 |
 | `caa1d0e` | **R2-d**：`agent/memory/`（facts / projection / repository / reflection / recall）、`0002_memory` 投影表、注册表接入 MemoryProjection + Reflector、loop 接 MemoryRecall、reflection fixture；tests_v2 98 条。v2-ADR-10 |
 | `afa427d` | **R2-e**：CLI `run-task` / `show-run`、`agent/prompts.py`、`tests_v2/r2e_task.md`、真实任务两次完成并录制、runner 输出可复现化（耗时/宿主路径）；tests_v2 102 条。v2-ADR-11，R2 GO |
+| （见 §8） | **R3-a**：`institution/`（schema、validate、三个内置模板、adoption 事实与折叠）；tests_v2 110 条。v2-ADR-12 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
-**基线数字**：旧应用 pytest 3228 passed；v2 100 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(392)/build 全绿。
+**基线数字**：旧应用 pytest 3228 passed；v2 108 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(392)/build 全绿。
 
 ---
 
@@ -142,7 +143,7 @@ R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司�
 - **R2-d memory**（DONE，见 §8）：`eidolon/agent/memory/`：episodic（run 结束 reflection → 事实）+ semantic（KnowledgeItem 三级 scope 的 v2 版）+ 检索（先 FTS，pgvector 后接）；按 person 隔离在仓库层强制。与规格的差异：反思做成 worker 消费者而非 run 内联（用户选项 1）；晋升强制 decision_id/human；procedural（技能）层未做
 - **R2-e 真实任务**（DONE，**GO**，见 §8）：一个 Engineer agent 在沙箱完成"写一个 CLI 小工具 + 测试"的真实任务（真实模型，预算上限 ≤ $2），产物落盘 + 事实链完整；**同时**用录制的 fixture 做确定性回归。实际花费两次合计约 ¥0.19。复现：`python -m eidolon run-task --mode live --workspace /tmp/ws --prompt-file tests_v2/r2e_task.md --reflect`（需 key；replay 模式不需要）
 
-R3–R6 见 `v2-architecture.md` §8。
+R3 拆包见 `kernel-plan.md` §8（R3-a..e）；R4–R6 见 `v2-architecture.md` §8。
 
 ---
 
@@ -172,12 +173,12 @@ R3–R6 见 `v2-architecture.md` §8。
 4. apps/server/eidolon/kernel/*.py 与 apps/server/tests_v2/*.py
 
 然后核对环境并把结果报给我：
-- make test-v2 应为 100 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
+- make test-v2 应为 108 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
 - make lint 全绿
 - 不必每次跑旧应用全量（make test-server，3228 条，约 4.5 分钟）；只在触碰 apps/server/app/ 时跑
 
 工作方式：
-- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R3 的第一个包，先拆包登记），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
+- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R3-b），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
 - 每个包完成的定义：代码 + 测试（真实 PostgreSQL）+ make test-v2 与 make lint 全绿 + kernel-plan.md §8 对应行改为 DONE 并填提交号 + 若有新裁决则在 v2-architecture.md §11 追加 ADR。
 - 遵守 docs/v2-handoff.md §6 的七条规则：v2 不 import 旧 app；只有 Fact 与投影两种持久状态；系统不做管理判断；mock 只在单测；密钥不进提交；不写新的阶段设计文档。
 - 包粒度：一个会话做完一个包；做不完就拆成更小的包并在 Progress 登记，不要留"第 N 段"。

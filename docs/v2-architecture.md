@@ -268,7 +268,7 @@ InstitutionTemplate
 
 ### 5.4 定制
 
-fork → 改 gate 的 decider/role/quorum/tiers/timeout 与授权默认 → 校验 → 新版本。变更是 `institution.changed` 事实；历史决策引用当时版本。
+fork → 改 gate 的 decider/role/quorum/tiers/timeout 与授权默认 → 校验 → 新版本。变更是 `institution.template.changed` 事实；历史决策引用当时版本。
 
 ---
 
@@ -418,3 +418,10 @@ R2-e 的真实任务在 DeepSeek 上两次完成（见 kernel-plan §8），自�
 真实 PostgreSQL），只有模型应答来自 fixture。回放要逐字节可复现，前提是工具输出不含任何随运行而变的东西：runner 把耗时移到
 RPC 元数据、把工作区绝对路径统一显示为 `/workspace`（顺带不向模型泄露宿主路径）、把 shell 里的 `python` 固定为 runner 自己的解释器。
 真实调用的开关：`EIDOLON_V2_LIVE_TASK=1` 跑 R2-e 真实任务，有 key 自动跑 provider 的 ping；没有 key 一律 skip 并写明原因，不计入通过。
+
+**v2-ADR-12（2026-11-07）制度模板是代码里的数据，被采用时全文进事实；改制度也要有授权。**
+内核 gate 清单固定为 13 个（§5.2），模板只决定"谁决定、怎么决定"；一个模板要被接受，必须通过 `validate`（每个 gate 有 decider、
+human decider 可达 Owner、组织图是树、升级不成环、system 不带 quorum/分离、金额分级单调且末档无界）。内置三个模板是 Python 数据
+而不是 YAML：类型检查与 IDE 可见，且不需要新的加载/迁移机制；公司采用时把模板**全文**写进 `institution.template.adopted`，
+定制写进 `institution.template.changed`（上一版本的指纹与 causation 一起带上），所以任何历史决策都能按当时的制度解释，模板代码改了也不影响已采用的公司。
+采用与定制都是管理行为：`actor` 必须是 human，或带 `decision_id`（gate `escalation.resolve` / 将来的 `institution.change`）。
