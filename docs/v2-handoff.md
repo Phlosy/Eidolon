@@ -73,7 +73,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `517f1a0` | **R1-c**：`kernel/provenance.py`（trace / bundle）、`scripts/verify_bundle.py` 独立离线校验器、CLI `export-bundle` / `trace`、K10；tests_v2 47 条。v2-ADR-6 |
 | `b783e5b` | **R2-a**：`agent/providers/`（协议、openai_compatible、anthropic、record/replay、pricing、accounting、工厂）、`scripts/record_provider_fixtures.py` + DeepSeek 录制 fixture、全层依赖守卫、`anthropic` SDK 入 lock；tests_v2 68 条。v2-ADR-7 |
 | `22a0b2d` | **R2-b**：`agent/{run,loop,context,blobs}.py`、`agent/tools/`（Tools 协议 + FunctionTools）、loop 场景 fixture、真实子进程崩溃恢复测试、`make v2-record-fixtures`；tests_v2 78 条。v2-ADR-8 |
-| （见 §8） | **R2-c**：`apps/runner/`（独立 runner 包，JSON-RPC/stdio，零密钥，路径限定，幂等账本）、`agent/runner/`（客户端 + RunnerTools）、`agent/tools/registry.py`；lint/CI 覆盖 apps/runner；tests_v2 91 条。v2-ADR-9 |
+| `b07d66d` | **R2-c**：`apps/runner/`（独立 runner 包，JSON-RPC/stdio，零密钥，路径限定，幂等账本）、`agent/runner/`（客户端 + RunnerTools）、`agent/tools/registry.py`；lint/CI 覆盖 apps/runner；tests_v2 91 条。v2-ADR-9 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
