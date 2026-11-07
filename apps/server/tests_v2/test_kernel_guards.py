@@ -49,6 +49,42 @@ def test_kernel_has_no_upward_imports():
     assert offenders == {}, f"kernel imports upward: {offenders}"
 
 
+LAYERS = [
+    "kernel",
+    "identity",
+    "institution",
+    "work",
+    "agent",
+    "money",
+    "talent",
+    "extensions",
+    "api",
+]
+EIDOLON_DIR = KERNEL_DIR.parent
+
+
+def test_layers_only_import_downward():
+    """Every ``eidolon.<layer>`` module imports only layers at or below its own
+    (v2-architecture §2.1). Root-level process modules (cli, worker, ...) are exempt."""
+    offenders = {}
+    for path in EIDOLON_DIR.rglob("*.py"):
+        rel = path.relative_to(EIDOLON_DIR).parts
+        if len(rel) < 2 or rel[0] not in LAYERS or "migrations" in rel:
+            continue
+        own = LAYERS.index(rel[0])
+        bad = set()
+        for name in _imports(path):
+            if name == "app" or name.startswith("app."):
+                bad.add(name)
+            parts = name.split(".")
+            if len(parts) >= 2 and parts[0] == "eidolon" and parts[1] in LAYERS:
+                if LAYERS.index(parts[1]) > own:
+                    bad.add(name)
+        if bad:
+            offenders[str(path.relative_to(EIDOLON_DIR))] = sorted(bad)
+    assert offenders == {}, f"upward imports: {offenders}"
+
+
 def test_non_postgres_url_is_refused():
     for url in ("sqlite:///x.db", "mysql+pymysql://u:p@h/db"):
         with pytest.raises(UnsupportedDatabase):

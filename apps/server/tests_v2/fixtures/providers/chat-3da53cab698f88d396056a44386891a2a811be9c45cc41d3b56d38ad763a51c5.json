@@ -1,0 +1,49 @@
+{
+  "events": [
+    {
+      "text": "p",
+      "type": "text"
+    },
+    {
+      "text": "ong",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "The user wants exactly one word: pong."
+      },
+      "attempts": 1,
+      "latency_ms": 514,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "cf7dc8da-c3b8-4133-ab92-26c1dd7022fc",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "input_tokens": 45,
+        "output_tokens": 13
+      }
+    }
+  ],
+  "fingerprint": "3da53cab698f88d396056a44386891a2a811be9c45cc41d3b56d38ad763a51c5",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T08:01:56+00:00",
+  "request": {
+    "max_tokens": 64,
+    "messages": [
+      {
+        "content": "Reply with exactly one word: pong",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are a terse assistant.",
+    "temperature": 0,
+    "tools": []
+  }
+}

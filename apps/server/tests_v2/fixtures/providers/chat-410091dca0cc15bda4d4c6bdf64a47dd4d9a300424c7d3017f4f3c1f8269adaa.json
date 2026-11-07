@@ -1,0 +1,142 @@
+{
+  "events": [
+    {
+      "text": "Right",
+      "type": "text"
+    },
+    {
+      "text": " now",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " Beijing",
+      "type": "text"
+    },
+    {
+      "text": " it",
+      "type": "text"
+    },
+    {
+      "text": "'s",
+      "type": "text"
+    },
+    {
+      "text": " **",
+      "type": "text"
+    },
+    {
+      "text": "22",
+      "type": "text"
+    },
+    {
+      "text": "°",
+      "type": "text"
+    },
+    {
+      "text": "C",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " sunny",
+      "type": "text"
+    },
+    {
+      "text": "**.",
+      "type": "text"
+    },
+    {
+      "text": " ☀",
+      "type": "text"
+    },
+    {
+      "text": "️",
+      "type": "text"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 638,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "7c338e77-759f-42d7-9e28-276e52c53b18",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 256,
+        "cache_write_tokens": 0,
+        "input_tokens": 395,
+        "output_tokens": 17
+      }
+    }
+  ],
+  "fingerprint": "410091dca0cc15bda4d4c6bdf64a47dd4d9a300424c7d3017f4f3c1f8269adaa",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T08:01:57+00:00",
+  "request": {
+    "max_tokens": 64,
+    "messages": [
+      {
+        "content": "What is the weather in Beijing right now? Use the get_weather tool.",
+        "role": "user"
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "The user wants Beijing's weather; call get_weather."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "city": "Beijing"
+            },
+            "id": "call_fixture_1",
+            "name": "get_weather"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "{\"temperature_c\": 22, \"sky\": \"sunny\"}",
+          "is_error": false,
+          "tool_call_id": "call_fixture_1"
+        }
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": null,
+    "temperature": 0,
+    "tools": [
+      {
+        "description": "Get the current weather for a city",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "city": {
+              "description": "City name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "city"
+          ],
+          "type": "object"
+        },
+        "name": "get_weather"
+      }
+    ]
+  }
+}

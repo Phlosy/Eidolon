@@ -27,6 +27,7 @@ dependencies = [
     "webauthn>=2.2",
     "email-validator>=2.2",
     "psycopg[binary]>=3.2",
+    "anthropic>=2.6",
 ]
 
 [project.optional-dependencies]

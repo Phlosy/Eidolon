@@ -20,5 +20,24 @@ class Settings(BaseSettings):
     worker_poll_interval: float = 5.0
     worker_batch_limit: int = 200
 
+    # -- model providers (eidolon.agent.providers) ---------------------------------
+    # kind: openai_compatible | anthropic. mode: live | record | replay (v2-arch §4.6).
+    provider_kind: str = "openai_compatible"
+    provider_mode: str = "live"
+    # Where record/replay fixtures live. Relative paths resolve against apps/server.
+    provider_fixture_dir: str = "tests_v2/fixtures/providers"
+    provider_timeout_s: float = 120.0
+    provider_max_attempts: int = 3
+    # openai_compatible: DeepSeek is the default verification target (V2).
+    provider_openai_compat_base_url: str = "https://api.deepseek.com"
+    provider_openai_compat_api_key: str | None = None
+    provider_openai_compat_model: str = "deepseek-flash"
+    # anthropic (official SDK). fallbacks=True sends `fallbacks: "default"` via the beta
+    # endpoint so a safety refusal is retried on a fallback model inside the same call.
+    provider_anthropic_api_key: str | None = None
+    provider_anthropic_base_url: str | None = None
+    provider_anthropic_model: str = "claude-opus-5-5"
+    provider_anthropic_fallbacks: bool = False
+
 
 settings = Settings()

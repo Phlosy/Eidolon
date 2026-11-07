@@ -374,3 +374,12 @@ worker 启动与每次唤醒做的是同一件事：对注册表里的每个消�
 bundle 除每条事实的 `prev_hash/hash` 与公司链头外，还带 `bundle_hash = sha256(canonical_json(其余全部))`：
 事实哈希证明"内容与账本一致"，seal 证明"文件未被改动"（含导出时间、选择条件、顺序）；重封印一个伪造 bundle 仍过不了事实哈希。
 子集导出（按 correlation / fact_ids）只校验相邻 chain_seq 之间的链接，并在子集含链尾时与链头比对；整链导出要求从 1 连续到链头。
+
+**v2-ADR-7（2026-11-07）Provider 协议与录制回放的三条约定。**
+(1) 协议是自有的 `ChatRequest → ChatEvent*`（TextDelta / ToolCallEvent / Completed），两家实现各自翻译；Anthropic 走官方 SDK，
+openai_compatible 走 httpx + SSE。模型侧必须原样回传的东西（DeepSeek thinking 模式的 `reasoning_content`、Anthropic 带签名的 thinking 块）
+由 `Completed.assistant_state` 带出、`Message.provider_state` 带回，协议层不解释其内容；循环（R2-b）把它存进步骤事实，续跑才不会被 400 拒绝。
+(2) 录制/回放按**请求指纹**（模型所见内容的 canonical JSON 的 sha256，不含 CallContext）命中 fixture；回放缺 fixture 直接失败，不允许即兴应答。
+fixture 由 `scripts/record_provider_fixtures.py` 对真实模型录制并提交，测试因此既是真实分布又确定。重试只发生在首个事件之前：半截流不静默重启。
+(3) 估价用版本化价目表，金额为**计费币种的微单位整数**（DeepSeek CNY、Anthropic USD，DeepSeek 按峰值价作上界），未知模型不估价而非乱估；
+每次调用落 `agent.model.called`，幂等键 = provider + request_id，回放的调用标 `mode: replay` 但同样入账（成本计量在 money 层区分）。

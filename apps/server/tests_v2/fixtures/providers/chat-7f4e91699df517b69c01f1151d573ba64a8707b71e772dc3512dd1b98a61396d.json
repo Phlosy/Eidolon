@@ -1,0 +1,109 @@
+{
+  "events": [
+    {
+      "text": "I",
+      "type": "text"
+    },
+    {
+      "text": "'ll",
+      "type": "text"
+    },
+    {
+      "text": " check",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " current",
+      "type": "text"
+    },
+    {
+      "text": " weather",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " Beijing",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " you",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {
+        "city": "Beijing"
+      },
+      "id": "call_00_ET_88NcrE8CWdSWcv1gaeii5328",
+      "name": "get_weather",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 907,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "3eab6115-fbd5-4f3d-89c7-af2667fffb63",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 128,
+        "cache_write_tokens": 0,
+        "input_tokens": 318,
+        "output_tokens": 49
+      }
+    }
+  ],
+  "fingerprint": "7f4e91699df517b69c01f1151d573ba64a8707b71e772dc3512dd1b98a61396d",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T08:01:57+00:00",
+  "request": {
+    "max_tokens": 128,
+    "messages": [
+      {
+        "content": "What is the weather in Beijing right now? Use the get_weather tool.",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": null,
+    "temperature": 0,
+    "tools": [
+      {
+        "description": "Get the current weather for a city",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "city": {
+              "description": "City name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "city"
+          ],
+          "type": "object"
+        },
+        "name": "get_weather"
+      }
+    ]
+  }
+}
