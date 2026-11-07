@@ -21,6 +21,7 @@ dependencies = [
     "argon2-cffi>=25.1",
     "httpx>=0.28",
     "anthropic>=2.6",
+    "prometheus_client>=0.24",
 ]
 
 [project.optional-dependencies]

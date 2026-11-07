@@ -52,8 +52,11 @@ services:
       context: .
       dockerfile: deployments/docker/Dockerfile.server
     command: ["python", "-m", "eidolon", "worker"]
+    expose:
+      - "26890"
     environment:
       EIDOLON_V2_DATABASE_URL: postgresql+psycopg://eidolon:eidolon@postgres:5432/eidolon
+      EIDOLON_V2_METRICS_PORT: "26890"
       EIDOLON_V2_TRANSCRIPT_DIR: /data/transcripts
       EIDOLON_V2_WORKSPACE_ROOT: /data/workspaces
     env_file:

@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     cors_origins: str = ""  # comma-separated; empty = same origin only
     api_host: str = "127.0.0.1"
     api_port: int = 26881
+    # Prometheus: the worker serves the registry on this port (0 = off); the API at /metrics.
+    metrics_port: int = 0
 
 
 settings = Settings()

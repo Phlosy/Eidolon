@@ -4,12 +4,14 @@ no agent loop and makes no management judgement.
 """
 
 import secrets
+import time
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy.orm import sessionmaker
 
+from eidolon import observability
 from eidolon.api.auth import AuthService
 from eidolon.api.routers import auth, companies, decisions, ledger, manage, provenance, runs, work
 from eidolon.config import Settings, settings
@@ -19,6 +21,30 @@ CSRF_COOKIE = "eidolon_csrf"
 CSRF_HEADER = "x-csrf-token"
 CSRF_EXEMPT = {f"{PREFIX}/auth/register", f"{PREFIX}/auth/login"}
 MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def route_template(app: FastAPI, request: Request) -> str | None:
+    """The matched route's path template (bounded label cardinality), found the same
+    way the router finds it; dependency failures still get their route."""
+
+    def walk(routes):
+        for route in routes:
+            candidates = getattr(route, "effective_candidates", None)
+            if callable(candidates):  # a lazily included router: look inside
+                found = walk(candidates())
+                if found:
+                    return found
+                continue
+            regex = getattr(route, "path_regex", None)
+            methods = getattr(route, "methods", None)
+            if regex is None or not regex.match(request.url.path):
+                continue
+            if methods and request.method not in methods:
+                continue
+            return getattr(route, "path", None)
+        return None
+
+    return walk(app.routes)
 
 
 def create_app(session_factory: sessionmaker | None = None, cfg: Settings = settings) -> FastAPI:
@@ -67,9 +93,42 @@ def create_app(session_factory: sessionmaker | None = None, cfg: Settings = sett
     ):
         app.include_router(router, prefix=PREFIX)
 
+    @app.middleware("http")
+    async def metrics(request: Request, call_next):
+        t0 = time.perf_counter()
+        response = await call_next(request)
+        path = route_template(app, request) or "unmatched"
+        observability.HTTP_REQUESTS.labels(request.method, path, str(response.status_code)).inc()
+        observability.HTTP_LATENCY.labels(request.method, path).observe(time.perf_counter() - t0)
+        return response
+
     @app.get(f"{PREFIX}/health")
     def health():
-        return {"status": "ok", "api": "v2"}
+        """Liveness plus the two things an operator asks first: is the database there,
+        and how far behind are the consumers."""
+        from eidolon.registry import default_registry
+
+        try:
+            with session_factory() as db:
+                report = observability.lag_report(db, list(default_registry().consumers))
+        except Exception as exc:  # noqa: BLE001 - any failure here is the answer
+            return JSONResponse(
+                status_code=503, content={"status": "degraded", "api": "v2", "db": str(exc)}
+            )
+        lags = [v for v in report["cursors"].values() if v is not None]
+        return {
+            "status": "ok",
+            "api": "v2",
+            "db": "ok",
+            "head_seq": report["head_seq"],
+            "cursors": report["cursors"],
+            "max_lag": max(lags) if lags else 0,
+        }
+
+    @app.get("/metrics")
+    def metrics_endpoint():
+        body, content_type = observability.render()
+        return Response(content=body, media_type=content_type)
 
     return app
 

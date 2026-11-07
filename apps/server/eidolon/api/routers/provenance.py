@@ -2,6 +2,7 @@
 as recorded (facts never hold chain-of-thought; see runs.sanitize for why blob
 refs are still dropped from the trace view)."""
 
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -83,13 +84,18 @@ def bundle(
     company_id: UUID,
     correlation: UUID | None = None,
     with_ledger: bool = False,
+    since: datetime | None = None,
+    until: datetime | None = None,
     db: Session = Depends(get_db),
     _: EmploymentRow = Depends(member_of),
 ):
     """A sealed provenance bundle (the same JSON ``export-bundle`` writes), verifiable
-    offline with ``scripts/verify_bundle.py``."""
+    offline with ``scripts/verify_bundle.py``. ``since`` / ``until`` narrow it to a
+    time window (ISO 8601)."""
     fact_ids = ledger_fact_ids(db, correlation) if (with_ledger and correlation) else None
     try:
-        return provenance.bundle(db, company_id, correlation_id=correlation, fact_ids=fact_ids)
+        return provenance.bundle(
+            db, company_id, correlation_id=correlation, fact_ids=fact_ids, since=since, until=until
+        )
     except ValueError as exc:
         raise HTTPException(403, str(exc)) from exc

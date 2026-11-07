@@ -17,6 +17,7 @@ def default_registry() -> Registry:
     from eidolon.db import SessionLocal
     from eidolon.identity import IdentityProjection
     from eidolon.money import CostMeter, LedgerProjection
+    from eidolon.observability import MetricsConsumer
     from eidolon.talent import TalentProjection
     from eidolon.work import WorkProjection
 
@@ -35,6 +36,8 @@ def default_registry() -> Registry:
     registry.register(LedgerProjection())
     # talent layer (R5-a): evidence and competencies, read-only for people.
     registry.register(TalentProjection())
+    # observability (R6-c): counters off the fact stream, from the head.
+    registry.register(MetricsConsumer())
     return registry
 
 

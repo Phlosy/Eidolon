@@ -86,7 +86,8 @@ def found_company(db, owner_user_id: UUID, owner_person: str) -> UUID:
 
 
 def test_accounts_sessions_and_csrf(client, db):
-    assert client.get(f"{PREFIX}/health").json() == {"status": "ok", "api": "v2"}
+    health = client.get(f"{PREFIX}/health").json()
+    assert health["status"] == "ok" and health["api"] == "v2" and health["db"] == "ok"
     assert client.get(f"{PREFIX}/auth/me").status_code == 401
 
     me = register(client, "Owner@Example.com", person_id="owner-9")

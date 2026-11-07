@@ -21,6 +21,7 @@ from typing import Protocol
 
 from sqlalchemy.orm import sessionmaker
 
+from eidolon import observability
 from eidolon.kernel.consumers import BatchResult, Consumer, Registry, process_batch
 from eidolon.kernel.notify import Listener
 from eidolon.kernel.store import FactStore
@@ -58,8 +59,10 @@ class Worker:
         batch_limit: int = 200,
         store: FactStore | None = None,
         jobs: Sequence[Job] = (),
+        metrics_port: int = 0,
     ):
         self.registry = registry
+        self.metrics_port = metrics_port
         self.jobs = list(jobs)
         self.session_factory = session_factory
         self.listener = listener
@@ -86,6 +89,7 @@ class Worker:
         that fails here is logged and retried on the next cycle, like in the loop."""
         t0 = time.monotonic()
         handled = {c.name: sum(r.handled for r in self._drain_consumer(c)) for c in self.consumers}
+        served = observability.serve(self.metrics_port)
         log.info(
             "worker.started",
             extra={
@@ -95,6 +99,7 @@ class Worker:
                 "ms": _ms(t0),
                 "poll_interval": self.poll_interval,
                 "batch_limit": self.batch_limit,
+                "metrics_port": self.metrics_port if served else None,
             },
         )
         return handled
@@ -161,6 +166,7 @@ class Worker:
             except Exception:
                 db.rollback()
                 self.stats.failures[consumer.name] = self.stats.failures.get(consumer.name, 0) + 1
+                observability.BATCH_FAILURES.labels(consumer.name).inc()
                 log.exception(
                     "worker.batch.failed",
                     extra={"consumer": consumer.name, "ms": _ms(t0)},
@@ -171,6 +177,9 @@ class Worker:
             self.stats.batches += 1
             self.stats.handled += result.handled
             results.append(result)
+            with self.session_factory() as db:
+                head = self.store.last_seq(db)
+            observability.observe_batch(consumer.name, result.handled, result.cursor, head)
             log.info(
                 "worker.batch",
                 extra={
@@ -191,12 +200,16 @@ class Worker:
             if self._stop.is_set():
                 break
             t0 = time.monotonic()
+            observability.JOB_TICKS.labels(job.name).inc()
             try:
-                did = job.tick()
+                with observability.JOB_SECONDS.labels(job.name).time():
+                    did = job.tick()
             except Exception:
                 self.stats.failures[job.name] = self.stats.failures.get(job.name, 0) + 1
+                observability.JOB_FAILURES.labels(job.name).inc()
                 log.exception("worker.job.failed", extra={"job": job.name, "ms": _ms(t0)})
                 continue
+            observability.JOB_DID.labels(job.name).inc(did or 0)
             if did:
                 self.stats.jobs += did
                 log.info("worker.job", extra={"job": job.name, "did": did, "ms": _ms(t0)})

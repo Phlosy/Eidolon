@@ -20,6 +20,7 @@ import importlib
 import json
 import sys
 from collections.abc import Sequence
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 
@@ -143,6 +144,7 @@ def cmd_worker(args, registry, factory, out) -> int:
             poll_interval=args.poll_interval,
             batch_limit=args.batch_limit,
             jobs=jobs,
+            metrics_port=args.metrics_port,
         )
         worker.install_signal_handlers()
         try:
@@ -163,7 +165,12 @@ def cmd_export_bundle(args, registry, factory, out) -> int:
 
             fact_ids += ledger_fact_ids(db, args.correlation)
         data = provenance.bundle(
-            db, args.company, fact_ids=fact_ids or None, correlation_id=args.correlation
+            db,
+            args.company,
+            fact_ids=fact_ids or None,
+            correlation_id=args.correlation,
+            since=args.since,
+            until=args.until,
         )
     text_out = json.dumps(data, ensure_ascii=False, indent=2 if args.pretty else None)
     if args.output:
@@ -548,6 +555,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--poll-interval", type=float, default=settings.worker_poll_interval)
     p.add_argument("--batch-limit", type=int, default=settings.worker_batch_limit)
     p.add_argument(
+        "--metrics-port",
+        type=int,
+        default=settings.metrics_port,
+        help="serve Prometheus metrics on this port (0 = off)",
+    )
+    p.add_argument(
         "--no-jobs", action="store_true", help="consumers only; no task/review execution"
     )
     p.set_defaults(fn=cmd_worker)
@@ -556,6 +569,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--company", type=UUID, required=True)
     p.add_argument("--correlation", type=UUID, default=None, help="facts of this correlation")
     p.add_argument("--fact", type=UUID, action="append", help="a fact id (repeatable)")
+    p.add_argument(
+        "--since", type=datetime.fromisoformat, default=None, help="facts recorded at/after (ISO)"
+    )
+    p.add_argument(
+        "--until", type=datetime.fromisoformat, default=None, help="facts recorded before (ISO)"
+    )
     p.add_argument("-o", "--output", default=None, help="write to this file instead of stdout")
     p.add_argument("--pretty", action="store_true", help="indent the JSON")
     p.add_argument(

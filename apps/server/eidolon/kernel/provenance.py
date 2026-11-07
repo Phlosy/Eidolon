@@ -141,8 +141,13 @@ def bundle(
     correlation_id: UUID | None = None,
     store: FactStore | None = None,
     now: datetime | None = None,
+    since: datetime | None = None,
+    until: datetime | None = None,
 ) -> dict[str, Any]:
     """Export facts of ``company_id`` as a JSON-able dict.
+
+    ``since`` / ``until`` narrow any selection to facts recorded in [since, until);
+    the window is part of the sealed selection.
 
     Selection: ``fact_ids`` and/or ``correlation_id`` (union); neither means the
     whole chain. Every selected fact must belong to ``company_id``. Facts are in
@@ -178,6 +183,15 @@ def bundle(
                     raise ValueError(f"fact {fid} belongs to company {row.company_id}")
                 rows[row.id] = row
 
+    if since is not None or until is not None:
+        selection["since"] = hashchain.timestamp(since.astimezone(UTC)) if since else None
+        selection["until"] = hashchain.timestamp(until.astimezone(UTC)) if until else None
+        rows = {
+            fid: row
+            for fid, row in rows.items()
+            if (since is None or row.created_at >= since)
+            and (until is None or row.created_at < until)
+        }
     head = db.get(FactChainRow, company_id)
     facts = sorted((row.to_fact() for row in rows.values()), key=lambda f: f.chain_seq)
     out: dict[str, Any] = {

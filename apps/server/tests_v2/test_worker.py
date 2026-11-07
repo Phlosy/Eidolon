@@ -186,6 +186,7 @@ def test_real_process_exits_zero_on_sigterm_with_json_logs():
             "cost_meter",
             "money_ledger",
             "talent",
+            "metrics",
         ]
         assert first["level"] == "INFO" and "ts" in first
         proc.send_signal(signal.SIGTERM)
