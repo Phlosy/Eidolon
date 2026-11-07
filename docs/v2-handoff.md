@@ -69,7 +69,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `c2b32ba` | Progress 填提交号 |
 | `3073f0e` | tests_v2 测试库名必须以 `_test` 结尾（基座会 DROP SCHEMA）；显式测试 URL 优先；`.env.example` 登记 v2 变量 |
 | `3cb50d6` | 本交接文档 + `CLAUDE.md` |
-| （见 §8） | **R1-b**：`eidolon/worker.py`（drain + LISTEN/self-pipe 唤醒 + 优雅停止 + 失败隔离）、`python -m eidolon` migrate/verify-chain/rebuild/cursors/worker、`eidolon/logging.py` JSON 日志脱敏、`eidolon/registry.py`、Makefile `v2-worker/v2-verify/v2-cursors`、tests_v2 38 条。v2-ADR-5 |
+| `06fcf8b` | **R1-b**：`eidolon/worker.py`（drain + LISTEN/self-pipe 唤醒 + 优雅停止 + 失败隔离）、`python -m eidolon` migrate/verify-chain/rebuild/cursors/worker、`eidolon/logging.py` JSON 日志脱敏、`eidolon/registry.py`、Makefile `v2-worker/v2-verify/v2-cursors`、tests_v2 38 条。v2-ADR-5 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
