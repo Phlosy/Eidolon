@@ -85,11 +85,7 @@
       "type": "text"
     },
     {
-      "text": " Beijing",
-      "type": "text"
-    },
-    {
-      "text": "'s",
+      "text": " the",
       "type": "text"
     },
     {
@@ -101,15 +97,23 @@
       "type": "text"
     },
     {
-      "text": ",",
+      "text": " in",
       "type": "text"
     },
     {
-      "text": " with",
+      "text": " Beijing",
       "type": "text"
     },
     {
-      "text": " instructions",
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " instructed",
+      "type": "text"
+    },
+    {
+      "text": " me",
       "type": "text"
     },
     {
@@ -141,11 +145,15 @@
       "type": "text"
     },
     {
-      "text": " and",
+      "text": ",",
       "type": "text"
     },
     {
-      "text": " reply",
+      "text": " then",
+      "type": "text"
+    },
+    {
+      "text": " answer",
       "type": "text"
     },
     {
@@ -193,15 +201,11 @@
       "type": "text"
     },
     {
-      "text": " \\\"",
+      "text": " Beijing",
       "type": "text"
     },
     {
-      "text": "Beijing",
-      "type": "text"
-    },
-    {
-      "text": "\\\",",
+      "text": ",",
       "type": "text"
     },
     {
@@ -241,15 +245,15 @@
       "type": "text"
     },
     {
-      "text": ",",
+      "text": ".",
       "type": "text"
     },
     {
-      "text": " and",
+      "text": " I",
       "type": "text"
     },
     {
-      "text": " answered",
+      "text": " replied",
       "type": "text"
     },
     {
@@ -269,7 +273,15 @@
       "type": "text"
     },
     {
-      "text": " stating",
+      "text": " that",
+      "type": "text"
+    },
+    {
+      "text": " Beijing",
+      "type": "text"
+    },
+    {
+      "text": " is",
       "type": "text"
     },
     {
@@ -277,7 +289,7 @@
       "type": "text"
     },
     {
-      "text": " and",
+      "text": " at",
       "type": "text"
     },
     {
@@ -294,46 +306,6 @@
     },
     {
       "text": "C",
-      "type": "text"
-    },
-    {
-      "text": ".",
-      "type": "text"
-    },
-    {
-      "text": " The",
-      "type": "text"
-    },
-    {
-      "text": " task",
-      "type": "text"
-    },
-    {
-      "text": " completed",
-      "type": "text"
-    },
-    {
-      "text": " in",
-      "type": "text"
-    },
-    {
-      "text": " two",
-      "type": "text"
-    },
-    {
-      "text": " steps",
-      "type": "text"
-    },
-    {
-      "text": " with",
-      "type": "text"
-    },
-    {
-      "text": " no",
-      "type": "text"
-    },
-    {
-      "text": " errors",
       "type": "text"
     },
     {
@@ -361,75 +333,43 @@
       "type": "text"
     },
     {
-      "text": "get",
+      "text": "Single",
       "type": "text"
     },
     {
-      "text": "_",
+      "text": "-field",
       "type": "text"
     },
     {
-      "text": "weather",
+      "text": " city",
       "type": "text"
     },
     {
-      "text": " returns",
+      "text": " look",
       "type": "text"
     },
     {
-      "text": " a",
+      "text": "ups",
       "type": "text"
     },
     {
-      "text": " JSON",
+      "text": " are",
       "type": "text"
     },
     {
-      "text": " string",
+      "text": " quick",
       "type": "text"
     },
     {
-      "text": " with",
+      "text": " wins",
       "type": "text"
     },
     {
-      "text": " temperature",
+      "text": ":",
       "type": "text"
     },
     {
-      "text": "_c",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " sky",
-      "type": "text"
-    },
-    {
-      "text": " fields",
-      "type": "text"
-    },
-    {
-      "text": ";",
-      "type": "text"
-    },
-    {
-      "text": " parse",
-      "type": "text"
-    },
-    {
-      "text": " these",
-      "type": "text"
-    },
-    {
-      "text": " directly",
-      "type": "text"
-    },
-    {
-      "text": " for",
+      "text": " call",
       "type": "text"
     },
     {
@@ -437,7 +377,63 @@
       "type": "text"
     },
     {
-      "text": " answer",
+      "text": " tool",
+      "type": "text"
+    },
+    {
+      "text": " once",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " plain",
+      "type": "text"
+    },
+    {
+      "text": " city",
+      "type": "text"
+    },
+    {
+      "text": " name",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " no",
+      "type": "text"
+    },
+    {
+      "text": " need",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " coordinates",
+      "type": "text"
+    },
+    {
+      "text": " or",
+      "type": "text"
+    },
+    {
+      "text": " extra",
+      "type": "text"
+    },
+    {
+      "text": " params",
       "type": "text"
     },
     {
@@ -453,11 +449,15 @@
       "type": "text"
     },
     {
-      "text": " asked",
+      "text": " the",
       "type": "text"
     },
     {
-      "text": " for",
+      "text": " user",
+      "type": "text"
+    },
+    {
+      "text": " requests",
       "type": "text"
     },
     {
@@ -493,19 +493,11 @@
       "type": "text"
     },
     {
-      "text": " tool",
+      "text": " reply",
       "type": "text"
     },
     {
-      "text": " result",
-      "type": "text"
-    },
-    {
-      "text": " summary",
-      "type": "text"
-    },
-    {
-      "text": " compact",
+      "text": " flat",
       "type": "text"
     },
     {
@@ -513,15 +505,35 @@
       "type": "text"
     },
     {
-      "text": " skip",
+      "text": " factual",
       "type": "text"
     },
     {
-      "text": " extra",
+      "text": " rather",
       "type": "text"
     },
     {
-      "text": " detail",
+      "text": " than",
+      "type": "text"
+    },
+    {
+      "text": " listing",
+      "type": "text"
+    },
+    {
+      "text": " each",
+      "type": "text"
+    },
+    {
+      "text": " returned",
+      "type": "text"
+    },
+    {
+      "text": " field",
+      "type": "text"
+    },
+    {
+      "text": " separately",
       "type": "text"
     },
     {
@@ -561,15 +573,35 @@
       "type": "text"
     },
     {
-      "text": "get",
+      "text": "api",
       "type": "text"
     },
     {
-      "text": "_",
+      "text": "-t",
       "type": "text"
     },
     {
-      "text": "weather",
+      "text": "ool",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "single",
+      "type": "text"
+    },
+    {
+      "text": "-c",
+      "type": "text"
+    },
+    {
+      "text": "all",
       "type": "text"
     },
     {
@@ -597,23 +629,15 @@
       "type": "text"
     },
     {
-      "text": "tool",
+      "text": "short",
       "type": "text"
     },
     {
-      "text": "-use",
+      "text": "-",
       "type": "text"
     },
     {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "api",
+      "text": "answer",
       "type": "text"
     },
     {
@@ -645,7 +669,7 @@
       "type": "text"
     },
     {
-      "text": "2",
+      "text": "15",
       "type": "text"
     },
     {
@@ -654,13 +678,13 @@
     },
     {
       "assistant_state": {
-        "reasoning_content": "Write JSON diary entry."
+        "reasoning_content": "The task is simple weather query. Write JSON diary entry."
       },
       "attempts": 1,
-      "latency_ms": 1768,
+      "latency_ms": 1704,
       "model": "deepseek-flash",
       "provider": "openai_compatible",
-      "request_id": "343bed19-3d79-46ef-a850-a4ddd3ad7bcf",
+      "request_id": "70c9da6b-8a48-434a-bb71-3542a55494e6",
       "stop_detail": null,
       "stop_reason": "end_turn",
       "type": "completed",
@@ -668,7 +692,7 @@
         "cache_read_tokens": 0,
         "cache_write_tokens": 0,
         "input_tokens": 210,
-        "output_tokens": 169
+        "output_tokens": 182
       }
     }
   ],
@@ -676,7 +700,7 @@
   "format": "eidolon.provider.fixture/1",
   "kind": "chat",
   "provider": "openai_compatible",
-  "recorded_at": "2026-11-07T08:45:11+00:00",
+  "recorded_at": "2026-11-07T08:53:29+00:00",
   "request": {
     "max_tokens": 512,
     "messages": [

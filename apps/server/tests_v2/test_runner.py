@@ -5,6 +5,7 @@ restarts, crash tolerance, and the agent loop driving it end to end."""
 import asyncio
 import os
 import signal
+import sys
 from uuid import uuid4
 
 import pytest
@@ -136,17 +137,20 @@ async def test_shell_runs_in_workspace_with_a_scrubbed_environment(workspace, mo
     tools = await RunnerTools.start(workspace)
     try:
         r = await tools.execute(ex("shell", "s1", command="pwd; env | sort"))
-        assert not r.is_error and "[exit 0 in " in r.content
+        assert not r.is_error and r.content.endswith("[exit 0]")
         lines = r.content.splitlines()
-        assert lines[0] == str(workspace.resolve())
+        assert lines[0] == "/workspace"  # host paths never reach the model
         env_text = "\n".join(lines[1:])
         assert "sk-leak" not in env_text and "hunter2" not in env_text and "sk-ant" not in env_text
         assert "DEEPSEEK_API_KEY" not in env_text and "HARMLESS_FLAG" not in env_text  # allow-list
-        assert f"EIDOLON_WORKSPACE={workspace.resolve()}" in env_text
+        assert "EIDOLON_WORKSPACE=/workspace" in env_text  # aliased in output too
+        probe = "python -c 'import sys; print(sys.version_info[:2])'"
+        r = await tools.execute(ex("shell", "py", command=probe))
+        assert r.content.startswith(str(sys.version_info[:2]))  # same interpreter as the server
         assert "PATH=" in env_text
         assert "PYTHONPATH" in env_text  # the runner's own import path, nothing secret
         r = await tools.execute(ex("shell", "s2", command="echo out; echo err 1>&2; exit 3"))
-        assert r.is_error and r.content.startswith("out\n[stderr]\nerr\n[exit 3 in ")
+        assert r.is_error and r.content == "out\n[stderr]\nerr\n[exit 3]"
     finally:
         await tools.close()
 
@@ -171,7 +175,7 @@ async def test_output_is_truncated_at_the_limit(tools):
 async def test_run_tests_executes_pytest_in_the_workspace(tools, workspace):
     (workspace / "test_x.py").write_text("def test_ok():\n    assert 1 + 1 == 2\n")
     r = await tools.execute(ex("run_tests", "rt1"))
-    assert not r.is_error and "1 passed" in r.content, r.content
+    assert not r.is_error and "1 passed in Xs" in r.content, r.content  # timing normalised
     (workspace / "test_y.py").write_text("def test_bad():\n    assert False\n")
     r = await tools.execute(ex("run_tests", "rt2", path="test_y.py"))
     assert r.is_error and "1 failed" in r.content
@@ -268,7 +272,7 @@ async def test_agent_loop_drives_the_runner_end_to_end(db, tools, workspace, tmp
     assert started.payload["tools"] == ["read_file", "write_file", "list_dir", "shell", "run_tests"]
     tool_facts = [f for f in facts if f.kind == R.TOOL_COMPLETED]
     assert [f.payload["name"] for f in tool_facts] == ["write_file", "shell"]
-    assert tool_facts[1].payload["result_preview"].startswith("hello, ledger\n[exit 0")
+    assert tool_facts[1].payload["result_preview"] == "hello, ledger\n[exit 0]"
     # The runner's ledger holds exactly the loop's two idempotency keys.
     ledger = (workspace / ".eidolon" / "runner-ledger.jsonl").read_text().splitlines()
     keys = [__import__("json").loads(line)["key"] for line in ledger]

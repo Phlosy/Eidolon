@@ -1,0 +1,216 @@
+{
+  "events": [
+    {
+      "text": "I",
+      "type": "text"
+    },
+    {
+      "text": "'ll",
+      "type": "text"
+    },
+    {
+      "text": " start",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " inspecting",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " workspace",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " then",
+      "type": "text"
+    },
+    {
+      "text": " build",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " tool",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " its",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {
+        "path": "."
+      },
+      "id": "call_00_ET_im9q94ZsTZmubLGuv9WB2881",
+      "name": "list_dir",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 970,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "e9f8c1b7-820b-4d70-84e6-183c95b5ee1d",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 896,
+        "cache_write_tokens": 0,
+        "input_tokens": 1094,
+        "output_tokens": 52
+      }
+    }
+  ],
+  "fingerprint": "fcbd0366003a1b7b3284bfd590d677a542de95ad3651eadc9ac06c2eed15ccf9",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T08:56:26+00:00",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Build a small command-line tool and its tests.\n\nRequirements:\n1. Create `wc_lite.py`: a CLI (argparse) that takes one file path and prints the number of lines, words and characters of that file, e.g. `3 12 71 notes.txt`. Flags `-l`, `-w`, `-c` restrict the output to lines, words or characters respectively (any combination; no flags means all three). A missing file must print an error to stderr and exit with status 1.\n2. Create `test_wc_lite.py` with at least three pytest tests that use `tmp_path` and run the tool through its Python API (a function such as `count(path)`) or via `subprocess` with `sys.executable`.\n3. Run the tests with run_tests. If anything fails, fix it and run again.\n4. When the tests pass, reply with a short summary: the files you created and what the tests cover.",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are a software engineer employed by a small studio. You work alone in an empty workspace directory using the tools provided: write files with write_file, inspect with read_file and list_dir, run commands with shell, and run pytest with run_tests. Work incrementally: create the code, create the tests, run the tests, fix what fails, and only finish when the tests pass. Keep files small and dependency-free (standard library only). Do not ask questions; make reasonable choices and state them.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

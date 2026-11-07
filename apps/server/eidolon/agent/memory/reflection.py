@@ -182,6 +182,10 @@ class Reflector:
 
     def handle(self, db: Session, fact: Fact) -> None:
         run_id = UUID(fact.payload["run_id"])
+        wanted = str(reflection_id(run_id))
+        for existing in self.store.by_correlation(db, run_id, kinds=[M.RECORDED]):
+            if existing.payload.get("memory_id") == wanted:
+                return  # already reflected (e.g. by an earlier process); no second model call
         facts = self.store.by_correlation(db, run_id, kinds=R.RUN_KINDS)
         state = R.RunState.from_facts(run_id, facts)
         try:

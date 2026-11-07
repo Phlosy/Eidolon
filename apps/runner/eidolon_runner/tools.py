@@ -7,6 +7,7 @@ group and are killed as a group on timeout.
 """
 
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -18,6 +19,11 @@ from typing import Any
 from eidolon_runner.sandbox import PathEscape, Sandbox
 
 TRUNCATED = "\n…[truncated {n} bytes]"
+# Timings and host paths never go into tool *content*: the model does not need them,
+# they must not leak, and a replayed run must see byte-identical results (durations
+# travel as RPC metadata; the workspace is always shown as /workspace).
+_PYTEST_TIMING = re.compile(r" in \d+\.\d+s\b")
+WORKSPACE_ALIAS = "/workspace"
 
 
 @dataclass(frozen=True)
@@ -117,7 +123,17 @@ class Tools:
     def __init__(self, sandbox: Sandbox, limits: Limits, env: dict[str, str]):
         self.sandbox = sandbox
         self.limits = limits
-        self.env = env
+        self.env = dict(env)
+        # `python` in a shell must be the interpreter the runner itself uses, so
+        # run_tests (sys.executable) and `shell("python x.py")` agree everywhere.
+        self.env["PATH"] = os.pathsep.join(
+            [str(Path(sys.executable).parent), *filter(None, [self.env.get("PATH")])]
+        )
+        self._paths = sorted(
+            {str(self.sandbox.workspace), os.path.realpath(self.sandbox.workspace)},
+            key=len,
+            reverse=True,
+        )
 
     def execute(self, name: str, arguments: dict[str, Any]) -> ToolResult:
         handler = getattr(self, f"tool_{name}", None)
@@ -227,13 +243,16 @@ class Tools:
         if timed_out:
             parts.append(f"[timed out after {timeout:g}s; process group killed]")
         else:
-            parts.append(f"[exit {proc.returncode} in {elapsed:.1f}s]")
-        result = self._bounded("\n".join(parts))
+            parts.append(f"[exit {proc.returncode}]")
+        del elapsed  # reported by the server as duration_ms, not in the content
+        result = self._bounded(_PYTEST_TIMING.sub(" in Xs", "\n".join(parts)))
         return ToolResult(
             result.content, is_error=timed_out or proc.returncode != 0, truncated=result.truncated
         )
 
     def _bounded(self, text: str) -> ToolResult:
+        for real in self._paths:
+            text = text.replace(real, WORKSPACE_ALIAS)
         data = text.encode("utf-8")
         cap = self.limits.max_output_bytes
         if len(data) <= cap:

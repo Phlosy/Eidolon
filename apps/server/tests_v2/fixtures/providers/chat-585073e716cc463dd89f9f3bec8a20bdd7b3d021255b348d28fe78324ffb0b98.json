@@ -1,0 +1,2241 @@
+{
+  "events": [
+    {
+      "text": "All",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "12",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": " pass",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " output",
+      "type": "text"
+    },
+    {
+      "text": " matches",
+      "type": "text"
+    },
+    {
+      "text": " real",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "wc",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " (`",
+      "type": "text"
+    },
+    {
+      "text": "2",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "4",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "24",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": ").\n\n",
+      "type": "text"
+    },
+    {
+      "text": "**",
+      "type": "text"
+    },
+    {
+      "text": "Files",
+      "type": "text"
+    },
+    {
+      "text": " created",
+      "type": "text"
+    },
+    {
+      "text": "**\n\n",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " **",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": "wc",
+      "type": "text"
+    },
+    {
+      "text": "_l",
+      "type": "text"
+    },
+    {
+      "text": "ite",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": "**",
+      "type": "text"
+    },
+    {
+      "text": " —",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " plus",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " import",
+      "type": "text"
+    },
+    {
+      "text": "able",
+      "type": "text"
+    },
+    {
+      "text": " API",
+      "type": "text"
+    },
+    {
+      "text": ":\n",
+      "type": "text"
+    },
+    {
+      "text": "  ",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "count",
+      "type": "text"
+    },
+    {
+      "text": "(path",
+      "type": "text"
+    },
+    {
+      "text": ")`",
+      "type": "text"
+    },
+    {
+      "text": " →",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "Count",
+      "type": "text"
+    },
+    {
+      "text": "(lines",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " words",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " chars",
+      "type": "text"
+    },
+    {
+      "text": ")`",
+      "type": "text"
+    },
+    {
+      "text": " named",
+      "type": "text"
+    },
+    {
+      "text": "tuple",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "field",
+      "type": "text"
+    },
+    {
+      "text": " order",
+      "type": "text"
+    },
+    {
+      "text": " matches",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "wc",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": ").\n",
+      "type": "text"
+    },
+    {
+      "text": "  ",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "format",
+      "type": "text"
+    },
+    {
+      "text": "_counts",
+      "type": "text"
+    },
+    {
+      "text": "(result",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " fields",
+      "type": "text"
+    },
+    {
+      "text": ")`",
+      "type": "text"
+    },
+    {
+      "text": " →",
+      "type": "text"
+    },
+    {
+      "text": " single",
+      "type": "text"
+    },
+    {
+      "text": " space",
+      "type": "text"
+    },
+    {
+      "text": "-se",
+      "type": "text"
+    },
+    {
+      "text": "par",
+      "type": "text"
+    },
+    {
+      "text": "ated",
+      "type": "text"
+    },
+    {
+      "text": " output",
+      "type": "text"
+    },
+    {
+      "text": " line",
+      "type": "text"
+    },
+    {
+      "text": ".\n",
+      "type": "text"
+    },
+    {
+      "text": "  ",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "build",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "parser",
+      "type": "text"
+    },
+    {
+      "text": "()`",
+      "type": "text"
+    },
+    {
+      "text": " /",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "main",
+      "type": "text"
+    },
+    {
+      "text": "(argv",
+      "type": "text"
+    },
+    {
+      "text": "=None",
+      "type": "text"
+    },
+    {
+      "text": ")`",
+      "type": "text"
+    },
+    {
+      "text": " →",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "main",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " returns",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " exit",
+      "type": "text"
+    },
+    {
+      "text": " status",
+      "type": "text"
+    },
+    {
+      "text": " instead",
+      "type": "text"
+    },
+    {
+      "text": " of",
+      "type": "text"
+    },
+    {
+      "text": " calling",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "sys",
+      "type": "text"
+    },
+    {
+      "text": ".exit",
+      "type": "text"
+    },
+    {
+      "text": "`,",
+      "type": "text"
+    },
+    {
+      "text": " so",
+      "type": "text"
+    },
+    {
+      "text": " it",
+      "type": "text"
+    },
+    {
+      "text": "'s",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": "able",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": "-process",
+      "type": "text"
+    },
+    {
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "__",
+      "type": "text"
+    },
+    {
+      "text": "main",
+      "type": "text"
+    },
+    {
+      "text": "__",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " guard",
+      "type": "text"
+    },
+    {
+      "text": " does",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "sys",
+      "type": "text"
+    },
+    {
+      "text": ".exit",
+      "type": "text"
+    },
+    {
+      "text": "(m",
+      "type": "text"
+    },
+    {
+      "text": "ain",
+      "type": "text"
+    },
+    {
+      "text": "())",
+      "type": "text"
+    },
+    {
+      "text": "`.\n",
+      "type": "text"
+    },
+    {
+      "text": "  ",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": " Flags",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "l",
+      "type": "text"
+    },
+    {
+      "text": "`,",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "w",
+      "type": "text"
+    },
+    {
+      "text": "`,",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "c",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "plus",
+      "type": "text"
+    },
+    {
+      "text": " long",
+      "type": "text"
+    },
+    {
+      "text": " forms",
+      "type": "text"
+    },
+    {
+      "text": ");",
+      "type": "text"
+    },
+    {
+      "text": " no",
+      "type": "text"
+    },
+    {
+      "text": " flags",
+      "type": "text"
+    },
+    {
+      "text": " means",
+      "type": "text"
+    },
+    {
+      "text": " all",
+      "type": "text"
+    },
+    {
+      "text": " three",
+      "type": "text"
+    },
+    {
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " output",
+      "type": "text"
+    },
+    {
+      "text": " always",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " canonical",
+      "type": "text"
+    },
+    {
+      "text": " lines",
+      "type": "text"
+    },
+    {
+      "text": "→",
+      "type": "text"
+    },
+    {
+      "text": "words",
+      "type": "text"
+    },
+    {
+      "text": "→",
+      "type": "text"
+    },
+    {
+      "text": "chars",
+      "type": "text"
+    },
+    {
+      "text": " order",
+      "type": "text"
+    },
+    {
+      "text": " regardless",
+      "type": "text"
+    },
+    {
+      "text": " of",
+      "type": "text"
+    },
+    {
+      "text": " flag",
+      "type": "text"
+    },
+    {
+      "text": " order",
+      "type": "text"
+    },
+    {
+      "text": ".\n",
+      "type": "text"
+    },
+    {
+      "text": "  ",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": " Missing",
+      "type": "text"
+    },
+    {
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": " →",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "wc",
+      "type": "text"
+    },
+    {
+      "text": "_l",
+      "type": "text"
+    },
+    {
+      "text": "ite",
+      "type": "text"
+    },
+    {
+      "text": ":",
+      "type": "text"
+    },
+    {
+      "text": " error",
+      "type": "text"
+    },
+    {
+      "text": ":",
+      "type": "text"
+    },
+    {
+      "text": " <",
+      "type": "text"
+    },
+    {
+      "text": "path",
+      "type": "text"
+    },
+    {
+      "text": ">:",
+      "type": "text"
+    },
+    {
+      "text": " no",
+      "type": "text"
+    },
+    {
+      "text": " such",
+      "type": "text"
+    },
+    {
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " on",
+      "type": "text"
+    },
+    {
+      "text": " **",
+      "type": "text"
+    },
+    {
+      "text": "st",
+      "type": "text"
+    },
+    {
+      "text": "derr",
+      "type": "text"
+    },
+    {
+      "text": "**,",
+      "type": "text"
+    },
+    {
+      "text": " stdout",
+      "type": "text"
+    },
+    {
+      "text": " empty",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " exit",
+      "type": "text"
+    },
+    {
+      "text": " status",
+      "type": "text"
+    },
+    {
+      "text": " **",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "**.",
+      "type": "text"
+    },
+    {
+      "text": " Direct",
+      "type": "text"
+    },
+    {
+      "text": "ories",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " other",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "OS",
+      "type": "text"
+    },
+    {
+      "text": "Error",
+      "type": "text"
+    },
+    {
+      "text": "`s",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "e",
+      "type": "text"
+    },
+    {
+      "text": ".g",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " permission",
+      "type": "text"
+    },
+    {
+      "text": " denied",
+      "type": "text"
+    },
+    {
+      "text": ")",
+      "type": "text"
+    },
+    {
+      "text": " are",
+      "type": "text"
+    },
+    {
+      "text": " handled",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " same",
+      "type": "text"
+    },
+    {
+      "text": " way",
+      "type": "text"
+    },
+    {
+      "text": ".\n",
+      "type": "text"
+    },
+    {
+      "text": "  ",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": " Document",
+      "type": "text"
+    },
+    {
+      "text": "ed",
+      "type": "text"
+    },
+    {
+      "text": " counting",
+      "type": "text"
+    },
+    {
+      "text": " rules",
+      "type": "text"
+    },
+    {
+      "text": ":",
+      "type": "text"
+    },
+    {
+      "text": " lines",
+      "type": "text"
+    },
+    {
+      "text": " =",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "\"\\",
+      "type": "text"
+    },
+    {
+      "text": "n",
+      "type": "text"
+    },
+    {
+      "text": "\"",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " count",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "same",
+      "type": "text"
+    },
+    {
+      "text": " as",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "wc",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": "l",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " words",
+      "type": "text"
+    },
+    {
+      "text": " =",
+      "type": "text"
+    },
+    {
+      "text": " whites",
+      "type": "text"
+    },
+    {
+      "text": "pace",
+      "type": "text"
+    },
+    {
+      "text": "-se",
+      "type": "text"
+    },
+    {
+      "text": "par",
+      "type": "text"
+    },
+    {
+      "text": "ated",
+      "type": "text"
+    },
+    {
+      "text": " tokens",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " characters",
+      "type": "text"
+    },
+    {
+      "text": " =",
+      "type": "text"
+    },
+    {
+      "text": " Unicode",
+      "type": "text"
+    },
+    {
+      "text": " code",
+      "type": "text"
+    },
+    {
+      "text": " points",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "not",
+      "type": "text"
+    },
+    {
+      "text": " bytes",
+      "type": "text"
+    },
+    {
+      "text": ")",
+      "type": "text"
+    },
+    {
+      "text": " after",
+      "type": "text"
+    },
+    {
+      "text": " UTF",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "8",
+      "type": "text"
+    },
+    {
+      "text": " decoding",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "sur",
+      "type": "text"
+    },
+    {
+      "text": "rogate",
+      "type": "text"
+    },
+    {
+      "text": "escape",
+      "type": "text"
+    },
+    {
+      "text": "`,",
+      "type": "text"
+    },
+    {
+      "text": " so",
+      "type": "text"
+    },
+    {
+      "text": " odd",
+      "type": "text"
+    },
+    {
+      "text": " bytes",
+      "type": "text"
+    },
+    {
+      "text": " never",
+      "type": "text"
+    },
+    {
+      "text": " crash",
+      "type": "text"
+    },
+    {
+      "text": ".\n\n",
+      "type": "text"
+    },
+    {
+      "text": "2",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " **",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": "test",
+      "type": "text"
+    },
+    {
+      "text": "_w",
+      "type": "text"
+    },
+    {
+      "text": "c",
+      "type": "text"
+    },
+    {
+      "text": "_l",
+      "type": "text"
+    },
+    {
+      "text": "ite",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": "**",
+      "type": "text"
+    },
+    {
+      "text": " —",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "12",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " all",
+      "type": "text"
+    },
+    {
+      "text": " using",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "tmp",
+      "type": "text"
+    },
+    {
+      "text": "_path",
+      "type": "text"
+    },
+    {
+      "text": "`,",
+      "type": "text"
+    },
+    {
+      "text": " no",
+      "type": "text"
+    },
+    {
+      "text": " third",
+      "type": "text"
+    },
+    {
+      "text": "-party",
+      "type": "text"
+    },
+    {
+      "text": " de",
+      "type": "text"
+    },
+    {
+      "text": "ps",
+      "type": "text"
+    },
+    {
+      "text": ":\n",
+      "type": "text"
+    },
+    {
+      "text": "  ",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": " **",
+      "type": "text"
+    },
+    {
+      "text": "API",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": ":**",
+      "type": "text"
+    },
+    {
+      "text": " basic",
+      "type": "text"
+    },
+    {
+      "text": " counts",
+      "type": "text"
+    },
+    {
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " no",
+      "type": "text"
+    },
+    {
+      "text": " trailing",
+      "type": "text"
+    },
+    {
+      "text": " new",
+      "type": "text"
+    },
+    {
+      "text": "line",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "lines",
+      "type": "text"
+    },
+    {
+      "text": " =",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "0",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " w",
+      "type": "text"
+    },
+    {
+      "text": "c",
+      "type": "text"
+    },
+    {
+      "text": " convention",
+      "type": "text"
+    },
+    {
+      "text": ");",
+      "type": "text"
+    },
+    {
+      "text": " empty",
+      "type": "text"
+    },
+    {
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " non",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "ASCII",
+      "type": "text"
+    },
+    {
+      "text": " text",
+      "type": "text"
+    },
+    {
+      "text": " where",
+      "type": "text"
+    },
+    {
+      "text": " chars",
+      "type": "text"
+    },
+    {
+      "text": " ≠",
+      "type": "text"
+    },
+    {
+      "text": " UTF",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "8",
+      "type": "text"
+    },
+    {
+      "text": " bytes",
+      "type": "text"
+    },
+    {
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "File",
+      "type": "text"
+    },
+    {
+      "text": "NotFound",
+      "type": "text"
+    },
+    {
+      "text": "Error",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " missing",
+      "type": "text"
+    },
+    {
+      "text": " path",
+      "type": "text"
+    },
+    {
+      "text": ".\n",
+      "type": "text"
+    },
+    {
+      "text": "  ",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": " **",
+      "type": "text"
+    },
+    {
+      "text": "Sub",
+      "type": "text"
+    },
+    {
+      "text": "process",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": "**",
+      "type": "text"
+    },
+    {
+      "text": " (`",
+      "type": "text"
+    },
+    {
+      "text": "sys",
+      "type": "text"
+    },
+    {
+      "text": ".exec",
+      "type": "text"
+    },
+    {
+      "text": "utable",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " +",
+      "type": "text"
+    },
+    {
+      "text": " tool",
+      "type": "text"
+    },
+    {
+      "text": " script",
+      "type": "text"
+    },
+    {
+      "text": "):",
+      "type": "text"
+    },
+    {
+      "text": " default",
+      "type": "text"
+    },
+    {
+      "text": " three",
+      "type": "text"
+    },
+    {
+      "text": "-value",
+      "type": "text"
+    },
+    {
+      "text": " output",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " each",
+      "type": "text"
+    },
+    {
+      "text": " single",
+      "type": "text"
+    },
+    {
+      "text": " flag",
+      "type": "text"
+    },
+    {
+      "text": " via",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "param",
+      "type": "text"
+    },
+    {
+      "text": "etri",
+      "type": "text"
+    },
+    {
+      "text": "ze",
+      "type": "text"
+    },
+    {
+      "text": "`,",
+      "type": "text"
+    },
+    {
+      "text": " combined",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "c",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": "l",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " producing",
+      "type": "text"
+    },
+    {
+      "text": " canonical",
+      "type": "text"
+    },
+    {
+      "text": " order",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " missing",
+      "type": "text"
+    },
+    {
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": " →",
+      "type": "text"
+    },
+    {
+      "text": " exit",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " empty",
+      "type": "text"
+    },
+    {
+      "text": " stdout",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " path",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " st",
+      "type": "text"
+    },
+    {
+      "text": "derr",
+      "type": "text"
+    },
+    {
+      "text": ".\n",
+      "type": "text"
+    },
+    {
+      "text": "  ",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": " **",
+      "type": "text"
+    },
+    {
+      "text": "In",
+      "type": "text"
+    },
+    {
+      "text": "-process",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": ":**",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "main",
+      "type": "text"
+    },
+    {
+      "text": "()`",
+      "type": "text"
+    },
+    {
+      "text": " returns",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " writes",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " error",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " st",
+      "type": "text"
+    },
+    {
+      "text": "derr",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "via",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "caps",
+      "type": "text"
+    },
+    {
+      "text": "ys",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": ").\n\n",
+      "type": "text"
+    },
+    {
+      "text": "**",
+      "type": "text"
+    },
+    {
+      "text": "Cho",
+      "type": "text"
+    },
+    {
+      "text": "ices",
+      "type": "text"
+    },
+    {
+      "text": " I",
+      "type": "text"
+    },
+    {
+      "text": " made",
+      "type": "text"
+    },
+    {
+      "text": ":**",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "wc",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "com",
+      "type": "text"
+    },
+    {
+      "text": "patible",
+      "type": "text"
+    },
+    {
+      "text": " line",
+      "type": "text"
+    },
+    {
+      "text": " semantics",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "count",
+      "type": "text"
+    },
+    {
+      "text": " of",
+      "type": "text"
+    },
+    {
+      "text": " new",
+      "type": "text"
+    },
+    {
+      "text": "lines",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " character",
+      "type": "text"
+    },
+    {
+      "text": " counting",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " Unicode",
+      "type": "text"
+    },
+    {
+      "text": " code",
+      "type": "text"
+    },
+    {
+      "text": " points",
+      "type": "text"
+    },
+    {
+      "text": " rather",
+      "type": "text"
+    },
+    {
+      "text": " than",
+      "type": "text"
+    },
+    {
+      "text": " bytes",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "main",
+      "type": "text"
+    },
+    {
+      "text": "()`",
+      "type": "text"
+    },
+    {
+      "text": " returning",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " int",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " easy",
+      "type": "text"
+    },
+    {
+      "text": " testing",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "All 12 tests pass, and output matches real `wc` (2 4 24). The last shell exit=0 is from the final `wc` command, fine.\n\nLet me double-check the `-l -w` etc. combos and a directory error, quickly. Not strictly necessary but a quick sanity check.\n\nAlso verify `python3 wc_lite.py` with no args exits 2 via argparse — fine.\n\nI'm done. Provide summary."
+      },
+      "attempts": 1,
+      "latency_ms": 3961,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "b375e5d9-e007-455d-b259-fa2cd74240f1",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 3840,
+        "cache_write_tokens": 0,
+        "input_tokens": 3974,
+        "output_tokens": 596
+      }
+    }
+  ],
+  "fingerprint": "585073e716cc463dd89f9f3bec8a20bdd7b3d021255b348d28fe78324ffb0b98",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T08:56:45+00:00",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Build a small command-line tool and its tests.\n\nRequirements:\n1. Create `wc_lite.py`: a CLI (argparse) that takes one file path and prints the number of lines, words and characters of that file, e.g. `3 12 71 notes.txt`. Flags `-l`, `-w`, `-c` restrict the output to lines, words or characters respectively (any combination; no flags means all three). A missing file must print an error to stderr and exit with status 1.\n2. Create `test_wc_lite.py` with at least three pytest tests that use `tmp_path` and run the tool through its Python API (a function such as `count(path)`) or via `subprocess` with `sys.executable`.\n3. Run the tests with run_tests. If anything fails, fix it and run again.\n4. When the tests pass, reply with a short summary: the files you created and what the tests cover.",
+        "role": "user"
+      },
+      {
+        "content": "I'll start by inspecting the workspace, then build the tool and its tests.",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "path": "."
+            },
+            "id": "call_00_ET_im9q94ZsTZmubLGuv9WB2881",
+            "name": "list_dir"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "(empty)",
+          "is_error": false,
+          "tool_call_id": "call_00_ET_im9q94ZsTZmubLGuv9WB2881"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "Empty workspace. Let's create wc_lite.py.\n\nDesign:\n- `count(path)` returns a tuple/namedtuple of (lines, words, chars).\n- Character counting: should characters be bytes or str chars? Requirement says characters. I'll decode as text with UTF-8 and count len of str. Hmm, but wc -c counts bytes. Let's be reasonable: count characters as Unicode code points, reading with default encoding. I'll document it. Maybe also handle read errors gracefully.\n\nActually to be safe, I'll count characters on the decoded text (utf-8 with surrogateescape fallback). Lines: number of lines — count '\\n' occurrences plus a trailing non-newline fragment (like wc -l counts newlines; but a file \"abc\" without newline has wc -l = 0). Hmm. Which to choose? Requirement: \"prints the number of lines\". Ambiguity. I'll follow wc semantics: lines = number of newlines, but many naive implementations use splitlines. Let me pick splitlines-based counting? Tests are mine, so either works. I'll go with wc semantics (count of '\\n') since it's \"wc_lite\" — but then a test with a file having no trailing newline... I'll just be explicit in the docstring. Actually, let's be friendlier: count complete lines as newline count, but if the text is non-empty and doesn't end with a newline, count that last partial line too? That deviates from wc. I'll stick to real wc semantics and document it, testing both cases.\n\nWords: split on whitespace (Python str.split()) — matches wc for typical text.\n\nCLI: argparse with positional `path`, flags -l -w -c. If no flags, all three. Output joined by spaces, single line. Error: print to stderr \"wc_lite: error: ...\" exit 1. Use argparse? argparse errors exit with 2; for missing file we do our own print to stderr and sys.exit(1).\n\nAlso handle directory / unreadable file → error exit 1.\n\nWrite functions: `count(path)` returns namedtuple Count(lines, words, chars), `format_counts(count, show_lines, show_words, show_chars)`, `main(argv=None)` returns exit code, and `if __name__ == \"__main__\": sys.exit(main())`.\n\nTests: at least three using tmp_path; mix of API and subprocess with sys.executable.\n\nLet's write files."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "content": "#!/usr/bin/env python3\n\"\"\"wc_lite: a tiny, dependency-free `wc` look-alike.\n\nUsage:\n    python wc_lite.py notes.txt          # -> \"3 12 71 notes.txt\" style counts\n    python wc_lite.py -l notes.txt       # lines only\n    python wc_lite.py -w -c notes.txt    # words and characters\n\nCounting rules (documented so behaviour is predictable):\n    lines       number of newline characters (same as `wc -l`)\n    words       whitespace-separated tokens (same as `wc -w`)\n    characters  number of Unicode code points in the decoded text\n\nThe module is importable too: ``count(path)`` returns a ``Count`` namedtuple\nand ``format_counts(...)`` renders it, which is handy for tests.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport argparse\nimport sys\nfrom collections import namedtuple\nfrom pathlib import Path\nfrom typing import Iterable, List, Optional, Sequence, Union\n\n__all__ = [\n    \"Count\",\n    \"count\",\n    \"format_counts\",\n    \"build_parser\",\n    \"main\",\n]\n\n#: Result of :func:`count`.  Field order matches `wc`'s output order.\nCount = namedtuple(\"Count\", [\"lines\", \"words\", \"chars\"])\n\nPathLike = Union[str, \"Path\"]\n\n\ndef count(path: PathLike) -> Count:\n    \"\"\"Count lines, words and characters in ``path``.\n\n    Raises:\n        FileNotFoundError: the path does not exist.\n        IsADirectoryError: the path is a directory.\n        OSError: any other I/O problem (e.g. permission denied).\n    \"\"\"\n    p = Path(path)\n    # Read bytes first, then decode, so we control the decoding ourselves and\n    # never crash on odd bytes (undecodable bytes become lone surrogates).\n    raw = p.read_bytes()\n    text = raw.decode(\"utf-8\", errors=\"surrogateescape\")\n\n    lines = text.count(\"\\n\")\n    words = len(text.split())\n    chars = len(text)\n    return Count(lines, words, chars)\n\n\ndef _selected_fields(args: argparse.Namespace) -> List[str]:\n    \"\"\"Return the requested fields in canonical (lines, words, chars) order.\"\"\"\n    any_flag = args.lines or args.words or args.chars\n    selected = []\n    if args.lines or not any_flag:\n        selected.append(\"lines\")\n    if args.words or not any_flag:\n        selected.append(\"words\")\n    if args.chars or not any_flag:\n        selected.append(\"chars\")\n    return selected\n\n\ndef format_counts(result: Count, fields: Iterable[str] = (\"lines\", \"words\", \"chars\")) -> str:\n    \"\"\"Render a :class:`Count` as a single space-separated line (no name).\"\"\"\n    return \" \".join(str(getattr(result, name)) for name in fields)\n\n\ndef build_parser() -> argparse.ArgumentParser:\n    parser = argparse.ArgumentParser(\n        prog=\"wc_lite\",\n        description=\"Print line, word and character counts for a file.\",\n    )\n    parser.add_argument(\"path\", help=\"file to inspect\")\n    parser.add_argument(\"-l\", \"--lines\", action=\"store_true\", help=\"show line count\")\n    parser.add_argument(\"-w\", \"--words\", action=\"store_true\", help=\"show word count\")\n    parser.add_argument(\"-c\", \"--chars\", action=\"store_true\", help=\"show character count\")\n    return parser\n\n\ndef main(argv: Optional[Sequence[str]] = None) -> int:\n    \"\"\"Entry point.  Returns the process exit status.\"\"\"\n    args = build_parser().parse_args(argv)\n\n    try:\n        result = count(args.path)\n    except FileNotFoundError:\n        print(\"wc_lite: error: {}: no such file\".format(args.path), file=sys.stderr)\n        return 1\n    except IsADirectoryError:\n        print(\"wc_lite: error: {}: is a directory\".format(args.path), file=sys.stderr)\n        return 1\n    except OSError as exc:\n        print(\"wc_lite: error: {}: {}\".format(args.path, exc.strerror or exc), file=sys.stderr)\n        return 1\n\n    print(format_counts(result, _selected_fields(args)))\n    return 0\n\n\nif __name__ == \"__main__\":  # pragma: no cover\n    sys.exit(main())\n",
+              "path": "wc_lite.py"
+            },
+            "id": "call_00_vC9yuU1veWqdOm51LwJq9335",
+            "name": "write_file"
+          },
+          {
+            "arguments": {
+              "content": "\"\"\"Tests for wc_lite (pytest, standard library only).\"\"\"\n\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nimport pytest\n\nimport wc_lite\n\nTOOL = Path(__file__).resolve().parent / \"wc_lite.py\"\n\n\ndef run_cli(*args):\n    \"\"\"Run wc_lite.py as a real subprocess with this interpreter.\"\"\"\n    return subprocess.run(\n        [sys.executable, str(TOOL), *args],\n        capture_output=True,\n        text=True,\n    )\n\n\n# --- Python API -----------------------------------------------------------\n\n\ndef test_count_simple_text(tmp_path):\n    f = tmp_path / \"notes.txt\"\n    f.write_text(\"alpha beta\\ngamma\\n\", encoding=\"utf-8\")\n\n    result = wc_lite.count(f)\n\n    assert result == wc_lite.Count(lines=2, words=3, chars=17)\n    # field access also works positionally, wc-style\n    assert tuple(result) == (2, 3, 17)\n\n\ndef test_count_without_trailing_newline(tmp_path):\n    f = tmp_path / \"no_newline.txt\"\n    f.write_text(\"one two three\", encoding=\"utf-8\")\n\n    result = wc_lite.count(f)\n\n    assert result.lines == 0  # same convention as `wc -l`\n    assert result.words == 3\n    assert result.chars == 13\n\n\ndef test_count_empty_file(tmp_path):\n    f = tmp_path / \"empty.txt\"\n    f.write_text(\"\", encoding=\"utf-8\")\n\n    assert wc_lite.count(f) == wc_lite.Count(0, 0, 0)\n\n\ndef test_count_non_ascii_counts_characters_not_bytes(tmp_path):\n    f = tmp_path / \"unicode.txt\"\n    f.write_text(\"héllo wörld\\n\", encoding=\"utf-8\")\n\n    result = wc_lite.count(f)\n\n    assert result.words == 2\n    assert result.chars == 12  # 11 characters + newline, not 15 UTF-8 bytes\n\n\ndef test_count_missing_file_raises(tmp_path):\n    with pytest.raises(FileNotFoundError):\n        wc_lite.count(tmp_path / \"nope.txt\")\n\n\n# --- CLI through subprocess ----------------------------------------------\n\n\ndef test_cli_prints_all_three_by_default(tmp_path):\n    f = tmp_path / \"notes.txt\"\n    f.write_text(\"hello world\\nsecond line\\n\", encoding=\"utf-8\")\n\n    proc = run_cli(str(f))\n\n    assert proc.returncode == 0\n    assert proc.stderr == \"\"\n    assert proc.stdout.strip() == \"2 4 24\"\n\n\n@pytest.mark.parametrize(\n    \"flags, expected\",\n    [\n        ((\"-l\",), \"2\"),\n        ((\"-w\",), \"4\"),\n        ((\"-c\",), \"24\"),\n    ],\n)\ndef test_cli_single_flags(tmp_path, flags, expected):\n    f = tmp_path / \"notes.txt\"\n    f.write_text(\"hello world\\nsecond line\\n\", encoding=\"utf-8\")\n\n    proc = run_cli(*flags, str(f))\n\n    assert proc.returncode == 0\n    assert proc.stdout.strip() == expected\n\n\ndef test_cli_combined_flags_keep_canonical_order(tmp_path):\n    f = tmp_path / \"notes.txt\"\n    f.write_text(\"hello world\\nsecond line\\n\", encoding=\"utf-8\")\n\n    proc = run_cli(\"-c\", \"-l\", str(f))\n\n    assert proc.returncode == 0\n    assert proc.stdout.strip() == \"2 24\"  # lines before chars regardless of flag order\n\n\ndef test_cli_missing_file_exits_1_with_stderr_message(tmp_path):\n    missing = tmp_path / \"ghost.txt\"\n\n    proc = run_cli(str(missing))\n\n    assert proc.returncode == 1\n    assert proc.stdout == \"\"\n    assert \"no such file\" in proc.stderr.lower()\n    assert str(missing) in proc.stderr\n\n\ndef test_main_returns_status_for_missing_file(tmp_path, capsys):\n    status = wc_lite.main([str(tmp_path / \"ghost.txt\")])\n\n    captured = capsys.readouterr()\n    assert status == 1\n    assert captured.out == \"\"\n    assert \"error\" in captured.err.lower()\n",
+              "path": "test_wc_lite.py"
+            },
+            "id": "call_01_kehwhchkk9JZAyxzN4Mw2545",
+            "name": "write_file"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "wrote 3726 bytes to wc_lite.py",
+          "is_error": false,
+          "tool_call_id": "call_00_vC9yuU1veWqdOm51LwJq9335"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "wrote 3316 bytes to test_wc_lite.py",
+          "is_error": false,
+          "tool_call_id": "call_01_kehwhchkk9JZAyxzN4Mw2545"
+        }
+      },
+      {
+        "content": "Now let me run the tests and try the CLI manually.",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "path": "."
+            },
+            "id": "call_00_ET_llgGFzHEXzVtnOSohqlc1103",
+            "name": "run_tests"
+          },
+          {
+            "arguments": {
+              "command": "printf 'hello world\\nsecond line\\n' > /tmp/demo.txt && python3 wc_lite.py /tmp/demo.txt; python3 wc_lite.py -l /tmp/demo.txt; python3 wc_lite.py -w -c /tmp/demo.txt; python3 wc_lite.py /tmp/missing-file.txt; echo \"exit=$?\"; wc /tmp/demo.txt"
+            },
+            "id": "call_01_ET_bTTxAej4wjaRp3gtQ95D2759",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "............                                                             [100%]\n12 passed in Xs\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_ET_llgGFzHEXzVtnOSohqlc1103"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "2 4 24\n2\n4 24\nexit=1\n       2       4      24 /tmp/demo.txt\n[stderr]\nwc_lite: error: /tmp/missing-file.txt: no such file\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_01_ET_bTTxAej4wjaRp3gtQ95D2759"
+        }
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are a software engineer employed by a small studio. You work alone in an empty workspace directory using the tools provided: write files with write_file, inspect with read_file and list_dir, run commands with shell, and run pytest with run_tests. Work incrementally: create the code, create the tests, run the tests, fix what fails, and only finish when the tests pass. Keep files small and dependency-free (standard library only). Do not ask questions; make reasonable choices and state them.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

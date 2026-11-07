@@ -411,3 +411,10 @@ episodic 的时间衰减（半衰期 30 天，semantic 不衰减）；检索默�
 反思不在循环里做：`Reflector` 消费 `agent.run.completed`，由 worker 异步跑，一次模型调用、同一事务落事实并推进游标（K6），
 请求只由 transcript 构造（不含 id/时间），所以回放的 run 得到同样的 fixture；模型不给 JSON 也落原文，消费者不会卡在一条 run 上。
 全文检索先用 PostgreSQL `english` 配置；中文分词与向量检索（pgvector）在接口上留了位置（排序再乘一个因子）。
+
+**v2-ADR-11（2026-11-07）R2 go；验收 = 真实一次 + 回放永远；工具输出必须可复现。**
+R2-e 的真实任务在 DeepSeek 上两次完成（见 kernel-plan §8），自研循环 + runner + 记忆可以稳定完成真实交付，R2 判定 **GO**，进入 R3。
+验收口径从此固定：每个真实场景先对真实模型跑一次并录制，之后的回归用回放走**同一条代码路径**（真实 CLI、真实 runner 子进程、
+真实 PostgreSQL），只有模型应答来自 fixture。回放要逐字节可复现，前提是工具输出不含任何随运行而变的东西：runner 把耗时移到
+RPC 元数据、把工作区绝对路径统一显示为 `/workspace`（顺带不向模型泄露宿主路径）、把 shell 里的 `python` 固定为 runner 自己的解释器。
+真实调用的开关：`EIDOLON_V2_LIVE_TASK=1` 跑 R2-e 真实任务，有 key 自动跑 provider 的 ping；没有 key 一律 skip 并写明原因，不计入通过。
