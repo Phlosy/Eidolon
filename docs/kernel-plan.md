@@ -288,8 +288,8 @@ Reviewer Agent（真实）用现有评审工具出 PASS
 |---|---|---|---|
 | WP-00 WAL | DONE | （随 WP-02 提交） | `core/database.py` connect 事件：WAL / synchronous=NORMAL / busy_timeout；测试基座已处理 -wal/-shm |
 | WP-01 收口 WIP | DONE | `16aa26f` | U16 第十三段（任务 Evidence 恢复）20 测试通过后提交；handover / m3 plan 漂移已修 |
-| WP-02 基线 | DONE | （本次提交） | 见下方基线数字；R0 完成 |
-| R1-a 内核骨架 + PG 基座 | DONE | （本次提交） | `eidolon/kernel/{facts,hashchain,store,consumers,notify,contracts}` + `alembic-v2.ini`/`0001_kernel` + `tests_v2`（22 测试：并发不分叉、触发器不可改、篡改可检、重放/重建、NOTIFY 仅提交）+ `scripts/devpg.sh` + compose `postgres` + CI `backend-v2`。v2-ADR-1..4 |
+| WP-02 基线 | DONE | `9719a7b` | 见下方基线数字；R0 完成 |
+| R1-a 内核骨架 + PG 基座 | DONE | `d39e9a2` | `eidolon/kernel/{facts,hashchain,store,consumers,notify,contracts}` + `alembic-v2.ini`/`0001_kernel` + `tests_v2`（22 测试：并发不分叉、触发器不可改、篡改可检、重放/重建、NOTIFY 仅提交）+ `scripts/devpg.sh` + compose `postgres` + CI `backend-v2`。v2-ADR-1..4 |
 | R1-b worker 进程 + CLI | TODO | | `eidolon-worker`（LISTEN 唤醒 + 游标 drain + 优雅停止）；`python -m eidolon` 子命令：migrate / verify-chain / rebuild；结构化日志 |
 | R1-c 溯源原语 | TODO | | correlation/causation 回溯、provenance bundle 导出 + 离线校验脚本（K4 的 WP-40/42 提前，因为是纯内核） |
 | R2 智能体框架 MVP | TODO | | go/no-go 点 |
