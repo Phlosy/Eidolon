@@ -291,7 +291,7 @@ Reviewer Agent（真实）用现有评审工具出 PASS
 | WP-02 基线 | DONE | `9719a7b` | 见下方基线数字；R0 完成 |
 | R1-a 内核骨架 + PG 基座 | DONE | `d39e9a2` | `eidolon/kernel/{facts,hashchain,store,consumers,notify,contracts}` + `alembic-v2.ini`/`0001_kernel` + `tests_v2`（22 测试：并发不分叉、触发器不可改、篡改可检、重放/重建、NOTIFY 仅提交）+ `scripts/devpg.sh` + compose `postgres` + CI `backend-v2`。v2-ADR-1..4 |
 | R1-b worker 进程 + CLI | DONE | `06fcf8b` | `eidolon/worker.py`（启动即从游标 drain = replay；LISTEN + self-pipe 唤醒；SIGTERM/SIGINT 完成当前批次后 exit 0；消费者失败隔离并重试）+ `python -m eidolon` migrate / verify-chain / rebuild / cursors / worker + `eidolon/logging.py` JSON 行日志（脱敏）+ `eidolon/registry.py` 唯一消费者注册表 + Makefile `v2-worker/v2-verify/v2-cursors`。tests_v2 22 → 38（含真实子进程 SIGTERM 退出码 0、CLI 篡改后 exit 1）。v2-ADR-5 |
-| R1-c 溯源原语 | DONE | （本提交） | `kernel/provenance.py`：`trace`（causation 向上有界回溯 + 同 correlation 全集，环路/悬空 cause 安全）、`bundle`（整链 / correlation / fact_ids，含每条 hash、链头、整文件 seal）；`scripts/verify_bundle.py` 纯标准库、不连库、不 import 应用的独立校验器（exit 0/1/2）；CLI `export-bundle` / `trace`；K10 入 contracts。tests_v2 38 → 47（11 种篡改全部被检出、重封印仍失败、子集与空链、真实子进程端到端）。v2-ADR-6 |
+| R1-c 溯源原语 | DONE | `517f1a0` | `kernel/provenance.py`：`trace`（causation 向上有界回溯 + 同 correlation 全集，环路/悬空 cause 安全）、`bundle`（整链 / correlation / fact_ids，含每条 hash、链头、整文件 seal）；`scripts/verify_bundle.py` 纯标准库、不连库、不 import 应用的独立校验器（exit 0/1/2）；CLI `export-bundle` / `trace`；K10 入 contracts。tests_v2 38 → 47（11 种篡改全部被检出、重封印仍失败、子集与空链、真实子进程端到端）。v2-ADR-6 |
 | R2 智能体框架 MVP | TODO | | go/no-go 点 |
 | R3 制度 + 工作域 | TODO | | |
 | R4 身份 + 钱 + 溯源 | TODO | | |
