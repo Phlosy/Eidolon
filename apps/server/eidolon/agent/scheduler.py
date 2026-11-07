@@ -123,11 +123,34 @@ def task_prompt(
                 f"{text[:EXCERPT]}"
             )
         parts.append("Inputs from earlier tasks:\n" + "\n".join(lines))
+    if task.reviews:
+        last = task.reviews[-1]
+        parts.append(
+            f"Previous review ({last['verdict']} by {last['reviewer']}): {last.get('reason') or ''}"
+            "\nAddress every point above before finishing."
+        )
     parts.append(
         "The workspace is yours. When the work is done, reply with a short summary of the "
         "files you created or changed."
     )
     return "\n\n".join(parts)
+
+
+def materialize_inputs(
+    state: ProjectState, task: TaskState, blobs: BlobStore, workspace: Path
+) -> int:
+    """H6 for code: the files of declared input tasks are copied into the workspace
+    (never overwriting what is already there), so the engineer can build on them."""
+    copied = 0
+    for art in state.artifacts.values():
+        if art.task_id in task.inputs and state.tasks[art.task_id].status == "done":
+            target = workspace / art.path
+            if target.exists() or ".." in Path(art.path).parts:
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(blobs.get_bytes(art.blob_ref))
+            copied += 1
+    return copied
 
 
 def collect_artifacts(workspace: Path) -> list[tuple[str, bytes]]:
@@ -186,6 +209,7 @@ class TaskRunExecutor:
                 return False  # projection lag; the fold is the truth
             template = _template(db, company_id)
         workspace = self.workspaces.for_task(company_id, project_id, task_id)
+        materialize_inputs(state, task, self.blobs, workspace)
         outcome = asyncio.run(
             self._run(
                 db_state=state, task=task, run_id=run_id, workspace=workspace, template=template
@@ -334,7 +358,9 @@ def parse_verdict(text: str) -> tuple[str, str] | None:
     return verdict, str(data.get("reason") or "").strip()[:2000]
 
 
-def review_prompt(state: ProjectState, task: TaskState, blobs: BlobStore) -> str:
+def review_prompt(
+    state: ProjectState, task: TaskState, blobs: BlobStore, *, limit: int | None = None
+) -> str:
     parts = [f"Review task: {task.title}", task.description.strip()]
     if task.acceptance_criteria:
         parts.append(
@@ -356,6 +382,16 @@ def review_prompt(state: ProjectState, task: TaskState, blobs: BlobStore) -> str
         parts.append("Submitted files (also present in the workspace):\n" + "\n".join(lines))
     else:
         parts.append("No files were submitted.")
+    if task.rework_count:
+        parts.append(
+            f"This task has already been sent back {task.rework_count} time(s) "
+            f"(limit {limit}). "
+            + (
+                "Beyond the limit only pass or escalate are available."
+                if limit is not None and task.rework_count >= limit
+                else ""
+            )
+        )
     parts.append(
         "Check the work against the criteria (run the tests with run_tests if any), then "
         "answer with the JSON verdict only."
@@ -479,7 +515,9 @@ class ReviewExecutor:
         self, state: ProjectState, task: TaskState, template: InstitutionTemplate, decision_id: UUID
     ) -> tuple[str, str] | None:
         workspace = self.workspaces.for_task(state.company_id, state.project_id, task.task_id)
-        run_id = uuid5(NAMESPACE_URL, f"eidolon:decision:{decision_id}:reviewer-run")
+        run_id = attempt_run_id(
+            self.session_factory, self.store, f"eidolon:decision:{decision_id}:reviewer-run"
+        )
 
         async def go():
             tools = await (
@@ -504,10 +542,12 @@ class ReviewExecutor:
                     person_id=self.reviewer,
                     model=self.model or _default_model(),
                     system=ROLES["qa"],
-                    prompt=review_prompt(state, task, self.blobs),
+                    prompt=review_prompt(
+                        state, task, self.blobs, limit=template.review_policy.rework_limit
+                    ),
                     task_id=str(task.task_id),
                     budget=R.RunBudget(max_steps=self.max_steps),
-                    max_tokens_per_step=1024,
+                    max_tokens_per_step=4096,
                     temperature=0.0,
                 )
                 return await runner.start(spec)
@@ -544,6 +584,28 @@ def _run_exists(factory: sessionmaker, store: FactStore, run_id: UUID) -> bool:
         return bool(store.by_correlation(db, run_id, kinds=[R.RUN_STARTED]))
 
 
+def run_status(factory: sessionmaker, store: FactStore, run_id: UUID) -> str | None:
+    with factory() as db:
+        facts = store.by_correlation(db, run_id, kinds=R.RUN_KINDS)
+    return R.RunState.from_facts(run_id, facts).status if facts else None
+
+
+def attempt_run_id(
+    factory: sessionmaker, store: FactStore, key: str, *, max_attempts: int = 3
+) -> UUID:
+    """A deterministic run id per (key, attempt): a completed or running attempt is
+    reused (resume / replay); a failed one yields the next attempt, up to the cap."""
+    attempt = 1
+    run_id = uuid5(NAMESPACE_URL, f"{key}:{attempt}")
+    while (
+        run_status(factory, store, run_id) in ("failed", "budget_exceeded", "cancelled")
+        and attempt < max_attempts
+    ):
+        attempt += 1
+        run_id = uuid5(NAMESPACE_URL, f"{key}:{attempt}")
+    return run_id
+
+
 def _default_model() -> str:
     from eidolon.agent.providers import default_model
 
@@ -555,6 +617,8 @@ def _media(path: str) -> str:
 
 
 __all__ = [
+    "attempt_run_id",
+    "materialize_inputs",
     "ReviewExecutor",
     "RunLauncher",
     "TaskRunExecutor",

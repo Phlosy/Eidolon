@@ -450,3 +450,13 @@ Worker 的循环因此变成 drain → jobs → drain：作业产生的事实立
 评审同样不是系统判断：`ReviewExecutor` 只负责开决策（id 由 task+run 派生，幂等）、跑 Reviewer agent、把 agent 的 JSON 结论作为
 该 reviewer 的签字写进决策信封，`conclude` 落账后才写 `task.reviewed`；agent 没给出可解析的结论就什么都不写，任务留在 in_review 等待（RV1/RV6）。
 身份层未到前，reviewer 的 person/role 来自配置（`EIDOLON_V2_REVIEWER_PERSON/ROLE`）。
+
+**v2-ADR-16（2026-11-07）管理 agent 走同一循环：决策 run 产出结构化答案，由该角色签字；项目由 mission 派生。**
+CEO / PM / Tech Lead 没有特殊通道：`Deciders.ask` 用普通 AgentRunner（无工具、两步预算）跑一次，答案是 JSON，解析后作为**该角色的签字**
+写进决策信封；解析失败或 run 失败则什么都不写，下一轮换一个 attempt 的 run id 再试（上限 3），系统从不代签（§1.2）。
+PM 的计划同样是 agent 的产物：任务以 PM 名义创建（task id 由 project+key 派生，幂等），然后走 plan.approve；"接受的 mission 生出一个 project"
+是派生不是判断，所以由系统写 `project.created`。R3-e 的真实运行证明了三条真实路径里的第一条（交付）：一个 mission 在 DeepSeek 上
+由 CEO→PM→TL→Engineer×2→QA 六个 agent 用同一循环、同一制度、同一账本跑到 Owner 交付。
+录制模式新增"复用已有 fixture"：长场景迭代时只对缺的请求真调，fixture 的 mtime 标记本轮用到了哪些，未触碰者即陈旧。
+回放匹配键从精确指纹改为**对话形状**（`ChatRequest.replay_key`：system、模型、每条文本、工具调用名与参数、工具结果只取 id 与 is_error）：
+工程师一句 `ls -la` 就让工具输出永远不可能逐字节重现，而回放时工具本来就真实执行；事实里的 `context_hash` 仍是精确指纹，不受影响。

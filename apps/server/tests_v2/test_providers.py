@@ -577,7 +577,7 @@ async def test_record_then_replay_is_byte_for_byte(tmp_path):
     assert await recording.embed(["x", "y"], model="emb") == [[0.5, 0.25], [0.5, 0.25]]
 
     files = sorted(p.name for p in tmp_path.iterdir())
-    assert files == [f"chat-{req.fingerprint()}.json", f"embed-{files[1][6:-5]}.json"]
+    assert files == [f"chat-{req.replay_key()}.json", f"embed-{files[1][6:-5]}.json"]
     data = json.loads((tmp_path / files[0]).read_text())
     assert data["request"] == req.as_dict() and data["provider"] == "scripted"
 
@@ -614,6 +614,10 @@ def test_model_called_fact_shape_and_context_requirement():
     fact = model_called_fact(ping(context=ctx), done(), mode="replay")
     assert fact.kind == KIND and fact.company_id == company and fact.actor.id == "person-1"
     assert fact.idempotency_key == "agent.model.called:scripted:req-1"
+    caused = model_called_fact(
+        ping(context=CallContext(company, Actor.system(), causation_id=ctx.company_id)), done()
+    )
+    assert caused.idempotency_key == f"agent.model.called:scripted:req-1:{ctx.company_id}"
     p = fact.payload
     assert p["usage"] == {
         "input_tokens": 10,
@@ -685,7 +689,7 @@ def test_build_provider_modes(tmp_path, monkeypatch):
 @pytest.mark.parametrize("name", sorted(EXPECTATIONS))
 async def test_replay_of_recorded_deepseek_fixture(name):
     request = cases(DEEPSEEK_MODEL)[name]
-    path = FIXTURES / f"chat-{request.fingerprint()}.json"
+    path = FIXTURES / f"chat-{request.replay_key()}.json"
     assert path.exists(), (
         f"fixture for {name} missing ({path.name}); run scripts/record_provider_fixtures.py"
     )

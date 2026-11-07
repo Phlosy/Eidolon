@@ -585,6 +585,7 @@
   "kind": "chat",
   "provider": "openai_compatible",
   "recorded_at": "2026-11-07T10:19:38+00:00",
+  "replay_key": "673feedbff71c5f634ddffd41439c5325ebcd57ce180dffb67b26812b79c9eed",
   "request": {
     "max_tokens": 512,
     "messages": [

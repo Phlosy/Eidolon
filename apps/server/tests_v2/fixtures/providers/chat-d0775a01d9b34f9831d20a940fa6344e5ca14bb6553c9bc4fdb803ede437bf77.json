@@ -1,0 +1,170 @@
+{
+  "events": [
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "assign",
+      "type": "text"
+    },
+    {
+      "text": "ee",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "eng",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "reason",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "eng",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " engineer",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " zero",
+      "type": "text"
+    },
+    {
+      "text": " open",
+      "type": "text"
+    },
+    {
+      "text": " tasks",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " fitting",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " integration",
+      "type": "text"
+    },
+    {
+      "text": " testing",
+      "type": "text"
+    },
+    {
+      "text": " work",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "}",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "We need answer JSON only. Need inspect roster? Task asks pick exactly one person role fits and fewest open tasks. Both eng-1 and eng-2 engineers, both 0 open tasks. Need pick one. Could use tools? We have no tools listed. Need answer JSON only. But maybe need reason. We need choose exactly one. Since tie, arbitrary. Need ensure role fits task (engineer). Answer JSON only. Use eng-1 or eng-2. Reason one sentence. Need not call tools. Final plain? User says answer JSON only. So final JSON."
+      },
+      "attempts": 1,
+      "latency_ms": 1821,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "3913e325-7031-42ef-b6a3-6263bb35625f",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "input_tokens": 269,
+        "output_tokens": 152
+      }
+    }
+  ],
+  "fingerprint": "d0775a01d9b34f9831d20a940fa6344e5ca14bb6553c9bc4fdb803ede437bf77",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T11:30:26+00:00",
+  "replay_key": "d0775a01d9b34f9831d20a940fa6344e5ca14bb6553c9bc4fdb803ede437bf77",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Task: Add CLI integration tests and verify the full suite\nCreate tests/test_cli.py that drives the CLI both in-process (cli.main([...])) and via subprocess to assert exit codes and stdout/stderr for add, list and delete, always with --file pointing at a tmp_path file. Then run `pytest` at the repo root and confirm the entire suite (test_notes.py + test_cli.py) passes. Add a short README.md with the three example commands if time allows.\n\nRoster:\n- eng-1 (engineer, open tasks: 0)\n- eng-2 (engineer, open tasks: 0)",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the tech lead of a small software studio assigning a task. Pick exactly one person from the roster whose role fits the task and who has the fewest open tasks. Answer with JSON only: {\"assignee\": \"<person id from the roster>\", \"reason\": \"<one sentence>\"}.\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": []
+  }
+}

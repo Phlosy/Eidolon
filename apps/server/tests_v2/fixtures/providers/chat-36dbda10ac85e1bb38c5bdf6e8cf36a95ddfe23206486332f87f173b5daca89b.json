@@ -1,0 +1,194 @@
+{
+  "events": [
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "assign",
+      "type": "text"
+    },
+    {
+      "text": "ee",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "eng",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "reason",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "Both",
+      "type": "text"
+    },
+    {
+      "text": " engineers",
+      "type": "text"
+    },
+    {
+      "text": " have",
+      "type": "text"
+    },
+    {
+      "text": " zero",
+      "type": "text"
+    },
+    {
+      "text": " open",
+      "type": "text"
+    },
+    {
+      "text": " tasks",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " fit",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " implementation",
+      "type": "text"
+    },
+    {
+      "text": " role",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " so",
+      "type": "text"
+    },
+    {
+      "text": " eng",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " selected",
+      "type": "text"
+    },
+    {
+      "text": " as",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " first",
+      "type": "text"
+    },
+    {
+      "text": " available",
+      "type": "text"
+    },
+    {
+      "text": " engineer",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "}",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "We need answer JSON only. Need pick exactly one person role fits task and fewest open tasks. Both eng-1 and eng-2 engineers 0 open. Need choose one. Could use tools? There is no tool namespace provided except maybe none. We can answer JSON. Need reason one sentence. Assignee id. Since tie, pick eng-1. Ensure JSON only."
+      },
+      "attempts": 1,
+      "latency_ms": 1573,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "53c927e4-8c93-405c-a040-8845b7bbfd68",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "input_tokens": 327,
+        "output_tokens": 116
+      }
+    }
+  ],
+  "fingerprint": "36dbda10ac85e1bb38c5bdf6e8cf36a95ddfe23206486332f87f173b5daca89b",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T11:21:44+00:00",
+  "replay_key": "36dbda10ac85e1bb38c5bdf6e8cf36a95ddfe23206486332f87f173b5daca89b",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Task: Implement cli.py with argparse subcommands add/list/delete\nCreate cli.py that imports from notes.py and exposes a main(argv=None) entry point using argparse with subparsers: `add <text>` prints a confirmation of the created note, `list` prints numbered notes ('1. ...' per line) or a friendly message when empty, `delete <number>` deletes by 1-based number and prints confirmation. Add a `--file` option (default notes.json) accepted globally or per subcommand and pass it through to the storage functions. Delete must catch ValueError from the module and exit with status 1 and an error message on stderr; successful commands exit 0. Include `if __name__ == '__main__': main()`. Standard library only.\n\nRoster:\n- eng-1 (engineer, open tasks: 0)\n- eng-2 (engineer, open tasks: 0)",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the tech lead of a small software studio assigning a task. Pick exactly one person from the roster whose role fits the task and who has the fewest open tasks. Answer with JSON only: {\"assignee\": \"<person id from the roster>\", \"reason\": \"<one sentence>\"}.\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": []
+  }
+}

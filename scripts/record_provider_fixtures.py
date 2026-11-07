@@ -43,7 +43,9 @@ from provider_cases import (
 
 async def run(kind: str, directory: Path) -> int:
     model = ANTHROPIC_MODEL if kind == "anthropic" else DEEPSEEK_MODEL
-    provider = Recording(live_provider(settings, kind=kind), directory)
+    provider = Recording(
+        live_provider(settings, kind=kind), directory, reuse_existing=True
+    )
     failures = 0
     for name, request in cases(model).items():
         text, calls, done = "", [], None
@@ -78,7 +80,9 @@ async def run_loop(kind: str, directory: Path) -> int:
 
     live = live_provider(settings, kind=kind)
     provider = Ledgered(
-        Recording(live, directory), ModelCallLedger(SessionLocal), mode="record"
+        Recording(live, directory, reuse_existing=True),
+        ModelCallLedger(SessionLocal),
+        mode="record",
     )
     blobs = BlobStore(SERVER / settings.transcript_dir)
     keys: list[str] = []
@@ -129,7 +133,12 @@ def main() -> int:
         help="also record the dispatch/review project scenario",
     )
     parser.add_argument(
-        "--only", default=None, help="run only this scenario: loop | project"
+        "--only", default=None, help="run only this scenario: loop | project | company"
+    )
+    parser.add_argument(
+        "--company",
+        action="store_true",
+        help="also record the three-role company scenario",
     )
     args = parser.parse_args()
     directory = Path(args.dir) if args.dir else fixture_dir(settings)
@@ -140,7 +149,61 @@ def main() -> int:
         code = asyncio.run(run_loop(args.kind, directory)) or code
     if args.project and args.only in (None, "project"):
         code = run_project(args.kind, directory) or code
+    if args.company and args.only in (None, "company"):
+        code = run_company(args.kind, directory) or code
     return code
+
+
+def run_company(kind: str, directory: Path) -> int:
+    """R3-e: CEO → PM → Tech Lead → engineers → QA on one mission, recording every run."""
+    import tempfile
+
+    from company_support import (
+        company_project_id,
+        drive_company,
+        owner_delivers,
+        propose_mission,
+        set_up_company,
+        studio_jobs,
+    )
+    from eidolon.agent.blobs import BlobStore
+    from eidolon.agent.providers import Ledgered, ModelCallLedger
+    from eidolon.db import SessionLocal
+    from project_support import svc
+
+    live = live_provider(settings, kind=kind)
+    provider = Ledgered(
+        Recording(live, directory, reuse_existing=True),
+        ModelCallLedger(SessionLocal),
+        mode="record",
+    )
+    blobs = BlobStore(SERVER / settings.transcript_dir)
+    with tempfile.TemporaryDirectory(prefix="eidolon-r3e-") as ws, SessionLocal() as db:
+        company = set_up_company(db)
+        mission_id = propose_mission(db, company)
+        jobs = studio_jobs(SessionLocal, provider, blobs, Path(ws))
+        trail = drive_company(SessionLocal, db, mission_id, jobs)
+        pid = company_project_id(db, mission_id)
+        ok = bool(trail[-1]["tasks"]) and all(
+            s == "done" for s in trail[-1]["tasks"].values()
+        )
+        if ok:
+            owner_delivers(db, company, pid)
+        state = svc.project(db, pid) if pid else None
+        print(
+            f"{'ok ' if ok else 'BAD'} {kind}/company company={company} mission={mission_id} "
+            f"project={pid} cycles={len(trail)} final={trail[-1]} "
+            f"status={state.status if state else None}"
+        )
+        for t in state.tasks.values() if state else ():
+            print(
+                f"   task {t.title!r} -> {t.assignee} {t.status} rework={t.rework_count} "
+                f"deps={len(t.depends_on)} inputs={len(t.inputs)}"
+            )
+    close = getattr(live, "aclose", None)
+    if close:
+        asyncio.run(close())
+    return 0 if ok else 1
 
 
 def run_project(kind: str, directory: Path) -> int:
@@ -155,7 +218,9 @@ def run_project(kind: str, directory: Path) -> int:
 
     live = live_provider(settings, kind=kind)
     provider = Ledgered(
-        Recording(live, directory), ModelCallLedger(SessionLocal), mode="record"
+        Recording(live, directory, reuse_existing=True),
+        ModelCallLedger(SessionLocal),
+        mode="record",
     )
     blobs = BlobStore(SERVER / settings.transcript_dir)
     with tempfile.TemporaryDirectory(prefix="eidolon-r3d-") as ws, SessionLocal() as db:

@@ -1,0 +1,222 @@
+{
+  "events": [
+    {
+      "text": "I",
+      "type": "text"
+    },
+    {
+      "text": "'ll",
+      "type": "text"
+    },
+    {
+      "text": " start",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " inspecting",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " workspace",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " then",
+      "type": "text"
+    },
+    {
+      "text": " write",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " module",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {
+        "depth": 3,
+        "path": "."
+      },
+      "id": "call_00_ET_51pVhpxTjipn9iRGytOe6735",
+      "name": "list_dir",
+      "type": "tool_call"
+    },
+    {
+      "arguments": {
+        "command": "python3 --version; pwd; ls -la"
+      },
+      "id": "call_01_ET_QIqyJlcUxLKPJMKYOUzy0101",
+      "name": "shell",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 1077,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "c4b15b07-ab0c-4367-9ac5-5158c54489fb",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 640,
+        "cache_write_tokens": 0,
+        "input_tokens": 1212,
+        "output_tokens": 104
+      }
+    }
+  ],
+  "fingerprint": "e53e307aa2282f6826f50250a5953cf318cf14ced60f8a194f0683e68cc9d86e",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T11:21:15+00:00",
+  "replay_key": "e53e307aa2282f6826f50250a5953cf318cf14ced60f8a194f0683e68cc9d86e",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Task: Implement notes.py storage module (add/list/delete over JSON)\n\nCreate notes.py in the repo root exposing three functions that operate on a JSON file whose path is a parameter (default 'notes.json' in the current working directory): add_note(text, path='notes.json') -> dict, list_notes(path='notes.json') -> list[dict], delete_note(index, path='notes.json') -> dict. The file stores a JSON array of objects like {\"text\": ..., \"created\": ...}. Create the file on first add if missing; treat a missing file on list as an empty list. delete_note takes a 1-based number, removes that entry, rewrites the file, and raises ValueError for out-of-range or non-positive numbers. Standard library only (json, os, datetime, tempfile not required). No CLI code in this module.\n\nAcceptance criteria:\n- notes.py defines add_note, list_notes and delete_note with the signatures described\n- add_note persists a note to the JSON array and returns the stored dict\n- list_notes returns [] when the file does not exist and the full list otherwise\n- delete_note(1) on a one-note file removes it and leaves an empty JSON array on disk\n- delete_note raises ValueError for index 0, negative indexes, and indexes past the end\n- `python -c \"import notes\"` succeeds with no third-party imports\n\nThe workspace is yours. When the work is done, reply with a short summary of the files you created or changed.",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are a software engineer employed by a small studio. You work alone in an empty workspace directory using the tools provided: write files with write_file, inspect with read_file and list_dir, run commands with shell, and run pytest with run_tests. Work incrementally: create the code, create the tests, run the tests, fix what fails, and only finish when the tests pass. Keep files small and dependency-free (standard library only). Do not ask questions; make reasonable choices and state them.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

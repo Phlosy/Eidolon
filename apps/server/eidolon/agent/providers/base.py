@@ -176,7 +176,24 @@ class ChatRequest:
         )
 
     def fingerprint(self) -> str:
+        """Exact content hash (what ``agent.step.requested`` records)."""
         return hashlib.sha256(canonical_json(self.as_dict())).hexdigest()
+
+    def replay_key(self) -> str:
+        """What a recorded answer is matched on: the conversation's *shape* — system,
+        model, every user/assistant text, tool calls with arguments, and for tool
+        results only their id and error flag. Tool output text is excluded because
+        shells print timestamps, sizes and other things that are real yet never
+        identical twice; replays still run the tools for real."""
+        shape = self.as_dict()
+        for m in shape["messages"]:
+            result = m.get("tool_result")
+            if result is not None:
+                m["tool_result"] = {
+                    "tool_call_id": result["tool_call_id"],
+                    "is_error": result["is_error"],
+                }
+        return hashlib.sha256(canonical_json(shape)).hexdigest()
 
 
 def canonical_json(value: Any) -> bytes:

@@ -278,7 +278,7 @@ v2-cursors: check-env
 ## v2-record-fixtures: 对真实模型重录 provider/loop 回放 fixture（需要 key；写入开发库一条真实 run）
 .PHONY: v2-record-fixtures
 v2-record-fixtures: check-env
-	@$(PYBIN) $(CURDIR)/scripts/record_provider_fixtures.py --loop --project $(V2_ARGS)
+	@$(PYBIN) $(CURDIR)/scripts/record_provider_fixtures.py --loop --project --company $(V2_ARGS)
 
 ## migrate-v2: v2 数据库升到最新（alembic-v2.ini，独立版本表）
 .PHONY: migrate-v2

@@ -1,0 +1,151 @@
+{
+  "events": [
+    {
+      "text": "The",
+      "type": "text"
+    },
+    {
+      "text": " weather",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " Beijing",
+      "type": "text"
+    },
+    {
+      "text": " right",
+      "type": "text"
+    },
+    {
+      "text": " now",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " sunny",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " temperature",
+      "type": "text"
+    },
+    {
+      "text": " of",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "22",
+      "type": "text"
+    },
+    {
+      "text": "°",
+      "type": "text"
+    },
+    {
+      "text": "C",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 819,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "148cc904-f62d-41de-b122-8a46a413fb02",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 256,
+        "cache_write_tokens": 0,
+        "input_tokens": 474,
+        "output_tokens": 18
+      }
+    }
+  ],
+  "fingerprint": "a652b20ac588876e5ffd054e0fc782d3579be5db18a93d80f99caa7705bafe7f",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T10:19:36+00:00",
+  "replay_key": "fd33b118108f46c6c0896732768e83bfde3508a182603eb8b2a951b053bd3300",
+  "request": {
+    "max_tokens": 256,
+    "messages": [
+      {
+        "content": "What is the weather in Beijing right now? Use the get_weather tool, then answer in one sentence.",
+        "role": "user"
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "The user wants me to call get_weather for Beijing."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "city": "Beijing"
+            },
+            "id": "call_00_kESrUle9Y70cGOXu3DKp8427",
+            "name": "get_weather"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "{\"temperature_c\": 22, \"sky\": \"sunny\"}",
+          "is_error": false,
+          "tool_call_id": "call_00_kESrUle9Y70cGOXu3DKp8427"
+        }
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are an engineer at a small software studio. Answer briefly.\n\nAvailable tools:\n- get_weather: Get the current weather for a city\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0,
+    "tools": [
+      {
+        "description": "Get the current weather for a city",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "city": {
+              "description": "City name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "city"
+          ],
+          "type": "object"
+        },
+        "name": "get_weather"
+      }
+    ]
+  }
+}

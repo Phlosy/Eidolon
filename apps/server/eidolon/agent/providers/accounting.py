@@ -35,7 +35,11 @@ def model_called_fact(request: ChatRequest, completed: Completed, *, mode: str =
         raise ValueError("a ledgered call needs request.context (CallContext)")
     fingerprint = request.fingerprint()
     cost = pricing.estimate(completed.model, completed.usage)
-    key_tail = completed.request_id or f"{fingerprint}:{completed.latency_ms}"
+    # One fact per logical call: the provider's request id plus what caused the call
+    # (the step fact). A replayed answer in another run is another call, not a dup.
+    key_tail = (completed.request_id or f"{fingerprint}:{completed.latency_ms}") + (
+        f":{ctx.causation_id}" if ctx.causation_id else ""
+    )
     payload: dict[str, Any] = {
         "provider": completed.provider,
         "model": completed.model,

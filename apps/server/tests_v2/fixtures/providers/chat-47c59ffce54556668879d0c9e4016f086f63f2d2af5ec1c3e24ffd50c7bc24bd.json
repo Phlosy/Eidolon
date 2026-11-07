@@ -1,0 +1,931 @@
+{
+  "events": [
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "ver",
+      "type": "text"
+    },
+    {
+      "text": "dict",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "pass",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "reason",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "All",
+      "type": "text"
+    },
+    {
+      "text": " acceptance",
+      "type": "text"
+    },
+    {
+      "text": " criteria",
+      "type": "text"
+    },
+    {
+      "text": " are",
+      "type": "text"
+    },
+    {
+      "text": " met",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " hello",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " prints",
+      "type": "text"
+    },
+    {
+      "text": " exactly",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "Hello",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " Eid",
+      "type": "text"
+    },
+    {
+      "text": "olon",
+      "type": "text"
+    },
+    {
+      "text": "!",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " plus",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " new",
+      "type": "text"
+    },
+    {
+      "text": "line",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "verified",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " hex",
+      "type": "text"
+    },
+    {
+      "text": "dump",
+      "type": "text"
+    },
+    {
+      "text": ":",
+      "type": "text"
+    },
+    {
+      "text": " bytes",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "486",
+      "type": "text"
+    },
+    {
+      "text": "5",
+      "type": "text"
+    },
+    {
+      "text": "...",
+      "type": "text"
+    },
+    {
+      "text": "210",
+      "type": "text"
+    },
+    {
+      "text": "a",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " exit",
+      "type": "text"
+    },
+    {
+      "text": " code",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "0",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " contains",
+      "type": "text"
+    },
+    {
+      "text": " no",
+      "type": "text"
+    },
+    {
+      "text": " logic",
+      "type": "text"
+    },
+    {
+      "text": " beyond",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " main",
+      "type": "text"
+    },
+    {
+      "text": "()",
+      "type": "text"
+    },
+    {
+      "text": " guard",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "hello",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " exists",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " exactly",
+      "type": "text"
+    },
+    {
+      "text": " one",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": " that",
+      "type": "text"
+    },
+    {
+      "text": " inv",
+      "type": "text"
+    },
+    {
+      "text": "okes",
+      "type": "text"
+    },
+    {
+      "text": " hello",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " via",
+      "type": "text"
+    },
+    {
+      "text": " sub",
+      "type": "text"
+    },
+    {
+      "text": "process",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " sys",
+      "type": "text"
+    },
+    {
+      "text": ".exec",
+      "type": "text"
+    },
+    {
+      "text": "utable",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " asserts",
+      "type": "text"
+    },
+    {
+      "text": " exact",
+      "type": "text"
+    },
+    {
+      "text": " stdout",
+      "type": "text"
+    },
+    {
+      "text": " equality",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "and",
+      "type": "text"
+    },
+    {
+      "text": " return",
+      "type": "text"
+    },
+    {
+      "text": "code",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "0",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " which",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " stronger",
+      "type": "text"
+    },
+    {
+      "text": " than",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " substring",
+      "type": "text"
+    },
+    {
+      "text": " check",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "python",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": "m",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": "q",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " run",
+      "type": "text"
+    },
+    {
+      "text": " from",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " workspace",
+      "type": "text"
+    },
+    {
+      "text": " passes",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": " passed",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " exit",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "0",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " as",
+      "type": "text"
+    },
+    {
+      "text": " does",
+      "type": "text"
+    },
+    {
+      "text": " run",
+      "type": "text"
+    },
+    {
+      "text": "_t",
+      "type": "text"
+    },
+    {
+      "text": "ests",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " Both",
+      "type": "text"
+    },
+    {
+      "text": " files",
+      "type": "text"
+    },
+    {
+      "text": " are",
+      "type": "text"
+    },
+    {
+      "text": " byte",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "identical",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " submitted",
+      "type": "text"
+    },
+    {
+      "text": " versions",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " use",
+      "type": "text"
+    },
+    {
+      "text": " only",
+      "type": "text"
+    },
+    {
+      "text": " standard",
+      "type": "text"
+    },
+    {
+      "text": "-library",
+      "type": "text"
+    },
+    {
+      "text": " modules",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "sub",
+      "type": "text"
+    },
+    {
+      "text": "process",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " sys",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " path",
+      "type": "text"
+    },
+    {
+      "text": "lib",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " no",
+      "type": "text"
+    },
+    {
+      "text": " extra",
+      "type": "text"
+    },
+    {
+      "text": " or",
+      "type": "text"
+    },
+    {
+      "text": " missing",
+      "type": "text"
+    },
+    {
+      "text": " files",
+      "type": "text"
+    },
+    {
+      "text": " affect",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " result",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "}",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "Everything checks out. `python -m pytest -q` passes, exactly one test, stdlib only, output exactly \"Hello, Eidolon!\\n\".\n\nVerdict: pass."
+      },
+      "attempts": 1,
+      "latency_ms": 2226,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "63d8627d-83a1-4ac0-81d7-445f60645179",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 1664,
+        "cache_write_tokens": 0,
+        "input_tokens": 1903,
+        "output_tokens": 205
+      }
+    }
+  ],
+  "fingerprint": "dfdf5f9f0e2be31ba12e42384e95460cdf6a21f7c32ff3953246bedf299b88ae",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T11:34:30+00:00",
+  "replay_key": "47c59ffce54556668879d0c9e4016f086f63f2d2af5ec1c3e24ffd50c7bc24bd",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Review task: Greeting CLI\n\nCreate `hello.py`: when run it prints exactly `Hello, Eidolon!`. Create `test_hello.py` with one pytest test that runs hello.py with `sys.executable` via subprocess and asserts the output. Run the tests with run_tests until they pass.\n\nAcceptance criteria:\n- hello.py prints exactly `Hello, Eidolon!` followed by a newline\n- test_hello.py exists and `python -m pytest -q` passes in the workspace\n- standard library only\n\nSubmitted files (also present in the workspace):\n--- hello.py ---\n\"\"\"Print a greeting for Eidolon.\"\"\"\n\n\ndef main() -> None:\n    print(\"Hello, Eidolon!\")\n\n\nif __name__ == \"__main__\":\n    main()\n\n--- test_hello.py ---\n\"\"\"Test that hello.py prints the expected greeting.\"\"\"\n\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nHELLO = Path(__file__).resolve().parent / \"hello.py\"\n\n\ndef test_hello_output():\n    result = subprocess.run(\n        [sys.executable, str(HELLO)],\n        capture_output=True,\n        text=True,\n    )\n    assert result.returncode == 0\n    assert result.stdout == \"Hello, Eidolon!\\n\"\n\n\nCheck the work against the criteria (run the tests with run_tests if any), then answer with the JSON verdict only.",
+        "role": "user"
+      },
+      {
+        "content": "I'll start by inspecting the workspace files.",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "path": "."
+            },
+            "id": "call_00_ET_prhL8SvUwAc5imJvNb1s8601",
+            "name": "list_dir"
+          },
+          {
+            "arguments": {
+              "path": "hello.py"
+            },
+            "id": "call_01_ET_TVktIxYy28a29PsKt4qS3651",
+            "name": "read_file"
+          },
+          {
+            "arguments": {
+              "path": "test_hello.py"
+            },
+            "id": "call_02_ET_3UaAJ1PLXdwTZePmrSqv3652",
+            "name": "read_file"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "hello.py  (127 bytes)\ntest_hello.py  (394 bytes)",
+          "is_error": false,
+          "tool_call_id": "call_00_ET_prhL8SvUwAc5imJvNb1s8601"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "\"\"\"Print a greeting for Eidolon.\"\"\"\n\n\ndef main() -> None:\n    print(\"Hello, Eidolon!\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+          "is_error": false,
+          "tool_call_id": "call_01_ET_TVktIxYy28a29PsKt4qS3651"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "\"\"\"Test that hello.py prints the expected greeting.\"\"\"\n\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nHELLO = Path(__file__).resolve().parent / \"hello.py\"\n\n\ndef test_hello_output():\n    result = subprocess.run(\n        [sys.executable, str(HELLO)],\n        capture_output=True,\n        text=True,\n    )\n    assert result.returncode == 0\n    assert result.stdout == \"Hello, Eidolon!\\n\"\n",
+          "is_error": false,
+          "tool_call_id": "call_02_ET_3UaAJ1PLXdwTZePmrSqv3652"
+        }
+      },
+      {
+        "content": "Both files match the submission. Now let me verify runtime behavior and run the test suite.",
+        "provider_state": {
+          "reasoning_content": "Files match submitted. Now run the script and tests."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "python hello.py | xxd | head -5; echo \"exit=$?\""
+            },
+            "id": "call_00_sj44dCCPYVDVTZE8dsg39947",
+            "name": "shell"
+          },
+          {
+            "arguments": {
+              "path": "."
+            },
+            "id": "call_01_cRTVi4dTrX9WkCqCFsvZ9134",
+            "name": "run_tests"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "00000000: 4865 6c6c 6f2c 2045 6964 6f6c 6f6e 210a  Hello, Eidolon!.\nexit=0\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_sj44dCCPYVDVTZE8dsg39947"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": ".                                                                        [100%]\n1 passed in Xs\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_01_cRTVi4dTrX9WkCqCFsvZ9134"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "Also check python -m pytest -q directly, and check no stray files / third-party imports. Also check there's no conftest or other tests. Let me run pytest -q and also verify stdin/quiet handling.\n\nAlso check test asserts stdout exactly. Good. Also check no extra data on stderr — subprocess captures stderr but doesn't assert; fine.\n\nLet me run `python -m pytest -q` from workspace to confirm the exact command."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "python -m pytest -q 2>&1 | tail -3; echo \"---\"; python --version; echo \"---\"; ls -a"
+            },
+            "id": "call_00_EYeBxy9h3PTqDSmchSyQ5905",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": ".                                                                        [100%]\n1 passed in Xs\n---\nPython 3.12.14\n---\n.\n..\n.eidolon\n.pytest_cache\n__pycache__\nhello.py\ntest_hello.py\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_EYeBxy9h3PTqDSmchSyQ5905"
+        }
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the QA reviewer of a small software studio. You review a colleague's finished task against its acceptance criteria. You may read files and run the tests with the tools, but you must not modify anything. Be concrete and fair: judge what is there. Your final answer must be JSON only, exactly: {\"verdict\": \"pass\" | \"rework\" | \"escalate\", \"reason\": \"<one paragraph>\"}. Use pass when the criteria are met, rework when the author can fix it, escalate when the task itself is unclear or beyond the author's authority.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

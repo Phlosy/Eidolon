@@ -33,6 +33,7 @@
   "kind": "chat",
   "provider": "openai_compatible",
   "recorded_at": "2026-11-07T10:19:35+00:00",
+  "replay_key": "070be023fe7afb4f3582b1b810d2b794ef2e3e345f608b7204ced1ee4968ad3f",
   "request": {
     "max_tokens": 256,
     "messages": [

@@ -42,9 +42,20 @@ def default_jobs(session_factory=None) -> list:
     provider = build_provider(settings, session_factory=factory)
     blobs = BlobStore(SERVER_ROOT / settings.transcript_dir)
     workspaces = Workspaces(SERVER_ROOT / settings.workspace_root)
+    from eidolon.agent.managers import Assigner, Deciders, MissionIntake, Planner, default_roster
+
+    deciders = Deciders(factory, provider, blobs)
+    roster = default_roster()
     return [
+        MissionIntake(factory, deciders, roster),
+        Planner(factory, deciders, roster),
+        Assigner(factory, deciders, roster),
         TaskRunExecutor(
-            factory, provider, blobs, workspaces, memory=MemoryRecall(factory, MemoryRepository())
+            factory,
+            provider,
+            blobs,
+            workspaces,
+            memory=MemoryRecall(factory, MemoryRepository()),
         ),
         ReviewExecutor(
             factory,
