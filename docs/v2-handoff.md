@@ -1,6 +1,6 @@
 # Eidolon v2 交接文档（终端会话入口）
 
-> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1、R2 完成（R2-e GO），R1–R3 完成，R4 已拆成 R4-a..c，R4-a 完成，下一个包是 **R4-b**（钱：复式账本 + 成本计量，需新表先报批）。
+> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1、R2 完成（R2-e GO），R1–R3 完成，R4 已拆成 R4-a..c，R4-a、R4-b 完成，下一个包是 **R4-c**（费用溯源：`cost-trace`、项目费用汇总、bundle 含分录）。
 > 这是新会话的**唯一入口**：先读本文，再按 §1 的顺序读其余文档。
 > 文档体系：本文（入口与状态）→ `kernel-plan.md`（本质、纪律、Progress）→ `v2-architecture.md`（设计、路线、ADR）。
 
@@ -12,12 +12,12 @@
 git pull                                   # 或从你本机推上去的 dev 开始
 make install                               # conda env eidolon（Python 3.12）+ pnpm
 make pg-up                                 # 或 scripts/devpg.sh start；或用你自己的 PG（.env 已配）
-make test-v2                               # v2 内核测试：期望 148 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
+make test-v2                               # v2 内核测试：期望 154 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
 make test-server                           # 旧应用全量：期望 3228 passed（SQLite，约 4.5 分钟 -n 4）
 make lint                                  # ruff + tsc + eslint + prettier
 ```
 
-然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R4-b**），按 §5 的流程做。
+然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R4-c**），按 §5 的流程做。
 
 ---
 
@@ -82,10 +82,11 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `11f905c` | **R3-d**：`work/dispatch.py`、`agent/scheduler.py`（RunLauncher / TaskRunExecutor / ReviewExecutor）、Worker 作业钩子、项目场景 fixture、runner list_dir 隐藏缓存；tests_v2 140 条。v2-ADR-15 |
 | `037aa9b` | **R3-e**：`agent/managers.py`（MissionIntake / Planner / Assigner / Deciders / Roster）、输入产物实体化、评审 attempt、录制复用、公司场景 fixture；tests_v2 144 条。v2-ADR-16。R3 完成 |
 | `dab51a1` | **R4-a**：`identity/`、`institution/staffing.py`、`0004_identity`、`IdentityRoster`；tests_v2 150 条。v2-ADR-17 |
+| `PENDING` | **R4-b**：`money/`（复式账本事实、`CostMeter`、投影、`ledger-verify` / `balances` CLI、budgets 单位换算）、`0005_money`；tests_v2 156 条。v2-ADR-18 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
-**基线数字**：旧应用 pytest 3228 passed；v2 148 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(392)/build 全绿。
+**基线数字**：旧应用 pytest 3228 passed；v2 154 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(392)/build 全绿。
 
 ---
 
@@ -93,7 +94,7 @@ R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司�
 
 - **本机 PostgreSQL 18**（容器 `local-postgres-5432-db-1`，`127.0.0.1:5432`，用户 `postgres`）：`.env`（gitignored）里已写 `EIDOLON_V2_DATABASE_URL`（库 `eidolon`）与 `EIDOLON_V2_TEST_DATABASE_URL`（库 `eidolon_test`）。**两个库需先建**：
   `docker exec -it local-postgres-5432-db-1 psql -U postgres -c "CREATE DATABASE eidolon;" -c "CREATE DATABASE eidolon_test;"`
-  （2026-11-07 已建好并 `make migrate-v2` 到 `0004`。）`postgres:18-alpine` 不带 pgvector；R2 记忆检索前换 `pgvector/pgvector:pg18` 或装扩展。
+  （2026-11-07 已建好并 `make migrate-v2` 到 `0005`。）`postgres:18-alpine` 不带 pgvector；R2 记忆检索前换 `pgvector/pgvector:pg18` 或装扩展。
 - conda 环境 `eidolon` 在 lock 变更后要重装：R1-a 加了 psycopg / pytest-xdist，若 `make test-v2` 报 `No module named 'psycopg'`，跑 `make install-server`（或 `pip install -r apps/server/requirements.lock`）。
 - 直接用 `pytest` 跑 tests_v2 不会读 `.env`（只有 `make test-v2` 会 export），会连到默认的 5433；要么走 make，要么先导出 `EIDOLON_V2_TEST_DATABASE_URL`。
 - 没有本机 PG 时：`make pg-up`（compose postgres:16，端口 5433）或 `scripts/devpg.sh start`（用户态集群，无 Docker）。
@@ -178,12 +179,12 @@ R3 拆包见 `kernel-plan.md` §8（R3-a..e）；R4–R6 见 `v2-architecture.md
 4. apps/server/eidolon/kernel/*.py 与 apps/server/tests_v2/*.py
 
 然后核对环境并把结果报给我：
-- make test-v2 应为 148 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
+- make test-v2 应为 154 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
 - make lint 全绿
 - 不必每次跑旧应用全量（make test-server，3228 条，约 4.5 分钟）；只在触碰 apps/server/app/ 时跑
 
 工作方式：
-- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R4-b），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
+- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R4-c），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
 - 每个包完成的定义：代码 + 测试（真实 PostgreSQL）+ make test-v2 与 make lint 全绿 + kernel-plan.md §8 对应行改为 DONE 并填提交号 + 若有新裁决则在 v2-architecture.md §11 追加 ADR。
 - 遵守 docs/v2-handoff.md §6 的七条规则：v2 不 import 旧 app；只有 Fact 与投影两种持久状态；系统不做管理判断；mock 只在单测；密钥不进提交；不写新的阶段设计文档。
 - 包粒度：一个会话做完一个包；做不完就拆成更小的包并在 Progress 登记，不要留"第 N 段"。

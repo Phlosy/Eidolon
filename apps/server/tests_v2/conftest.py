@@ -41,6 +41,8 @@ KERNEL_TABLES = (
     "identity_companies",
     "identity_persons",
     "identity_employments",
+    "money_accounts",
+    "money_journal",
 )
 
 # The session fixture drops and recreates schema "public". Refuse to do that to

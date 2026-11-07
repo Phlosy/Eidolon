@@ -193,6 +193,65 @@ def cmd_trace(args, registry, factory, out) -> int:
     return EXIT_OK
 
 
+def cmd_ledger_verify(args, registry, factory, out) -> int:
+    from eidolon.money import facts as MF
+    from eidolon.money import verify as ledger_verify
+
+    store = FactStore()
+    broken = 0
+    with factory() as db:
+        if args.company:
+            companies = [args.company]
+        else:
+            companies = sorted(
+                {f.company_id for f in store.stream(db, kinds=MF.KINDS, limit=1_000_000)},
+                key=str,
+            )
+        if not companies:
+            print("no ledger facts yet", file=out)
+            return EXIT_OK
+        for company in companies:
+            report = ledger_verify(db, company, store=store)
+            head = (
+                f"{company} accounts={report.accounts} entries={report.entries} "
+                f"costs={report.costs} unposted={report.unposted} "
+                f"debits={report.debit_total} credits={report.credit_total} "
+                f"projection_lag={report.projection_lag}"
+            )
+            if report.ok:
+                print(f"{head} ok", file=out)
+            else:
+                broken += 1
+                print(f"{head} BROKEN", file=out)
+                for problem in report.problems:
+                    print(f"  {problem}", file=out)
+    print(f"{len(companies)} companies, {broken} broken", file=out)
+    return EXIT_FAIL if broken else EXIT_OK
+
+
+def cmd_balances(args, registry, factory, out) -> int:
+    from eidolon.money import accounts
+
+    with factory() as db:
+        rows = accounts(db, args.company)
+    if not rows:
+        print(f"{args.company}: no accounts", file=out)
+        return EXIT_OK
+    width = max(len(r.code) for r in rows)
+    print(
+        f"{'account':<{width}}  kind       cur  {'debit':>16}  {'credit':>16}  {'balance':>16}",
+        file=out,
+    )
+    for r in rows:
+        print(
+            f"{r.code:<{width}}  {r.kind:<9}  {r.currency}  {r.debit_total_micro:>16}  "
+            f"{r.credit_total_micro:>16}  {r.balance_micro:>16}",
+            file=out,
+        )
+    print("(amounts in micro-units: 1 000 000 = 1.00)", file=out)
+    return EXIT_OK
+
+
 def cmd_run_task(args, registry, factory, out) -> int:
     import asyncio
     from uuid import uuid4
@@ -378,6 +437,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("fact_id", type=UUID)
     p.add_argument("--depth", type=int, default=10)
     p.set_defaults(fn=cmd_trace)
+
+    p = sub.add_parser("ledger-verify", help="verify every company's ledger against its facts")
+    p.add_argument("--company", type=UUID, default=None, help="only this company")
+    p.set_defaults(fn=cmd_ledger_verify)
+
+    p = sub.add_parser("balances", help="print a company's accounts and balances")
+    p.add_argument("--company", type=UUID, required=True)
+    p.set_defaults(fn=cmd_balances)
 
     p = sub.add_parser("run-task", help="run one agent task in a sandboxed workspace")
     p.add_argument("--workspace", required=True)

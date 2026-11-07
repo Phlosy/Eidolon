@@ -467,3 +467,14 @@ PM 的计划同样是 agent 的产物：任务以 PM 名义创建（task id 由 
 现取，R3 的配置花名册只保留给测试（`StaticRoster`）。identity 在 institution 之下，所以"这个角色在不在制度里、kind 对不对"由
 `institution/staffing.hire` 补上规则再调 identity；agent 招人/解雇必须带 `hire`/`fire` gate 的 decision_id，human 可以直接做，Owner 的雇佣不可结束。
 密码、会话、Passkey 属于 API 层（R5），不进 identity 事实。
+
+**v2-ADR-18（2026-11-07）钱是复式账本事实；每次模型调用由系统记量并过账，制度用"分"，账本用"微"。**
+`money.entry.posted` 一条事实就是一笔平衡分录（≥2 行、Σ借=Σ贷、只记到已开立且币种一致的科目），没有"分录修改"事实，错账只能反向冲销；
+`money.account.opened` 开科目。`CostMeter` 是反应器而非投影：它把 `agent.model.called` 的供应商币种估价按**版本化簿记汇率**换算成公司记账币种，
+先落 `money.cost.recorded`（总是记：replay、未知模型、无公司、零额都记，`posted=false` 带 reason），live 且可换算的再落分录：借 `compute`（费用）贷 `ap:<provider>`（负债）；
+两条事实都以调用事实 id 为幂等键，崩溃重放命中 K2。记量是系统的机械行为，不是管理判断，所以 actor 是 system。
+投影 `money_accounts` / `money_journal` 只是 `money.*` 事实的读模型；项目费用汇总是 `journal.task_id` 与 `work_tasks` 的查询时连接，不落库，
+所以账本不依赖消费者先后顺序；`ledger-verify` 把投影与**其游标之内**的事实比对，落后是 lag 不是损坏。
+单位：制度模板里的预算与 `spend.approve` 金额是记账币种的最小单位（分），账本是微单位（1 分 = 10 000 微，单次调用只有零点几分），
+只在 `money/budgets.py` 换算，模板数字与模型看到的提示词都不变（不必重录 fixture）。
+回放的调用默认只记量不过账（不花钱）；驱动回放 fixture 的测试用 `CostMeter(book_replays=True)` 走完整链路。记账政策是部署常量：同一日志上跑两个政策不同的 meter 会在 K2 冲突。

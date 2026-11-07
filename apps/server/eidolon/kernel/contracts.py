@@ -136,3 +136,35 @@ WORK_INVARIANTS: tuple[Invariant, ...] = (
         "test_work::test_projection_matches_the_fold_and_rebuilds",
     ),
 )
+
+
+# Money invariants (R4-b): the ledger is double-entry, derived, and verifiable.
+MONEY_INVARIANTS: tuple[Invariant, ...] = (
+    Invariant(
+        "M1",
+        "an entry is ≥ 2 positive integer lines with Σdebit = Σcredit, posting only to "
+        "accounts that exist in the entry's currency; the fact builder, the fold and "
+        "the projection all refuse anything else",
+        "test_money::test_entries_must_balance_and_post_to_known_accounts",
+    ),
+    Invariant(
+        "M2",
+        "every live, priced model call is metered once in the company's currency at a "
+        "versioned book rate and booked debit compute / credit ap:<provider>; replays "
+        "and unpriced models are recorded but never booked",
+        "test_money::test_cost_meter_books_live_calls_and_records_the_rest",
+    ),
+    Invariant(
+        "M3",
+        "account balances and the journal are a projection of money.* facts: tampering "
+        "with them is detected by ledger-verify and undone by rebuild",
+        "test_money::test_ledger_verify_detects_tampering_and_rebuild_repairs",
+    ),
+    Invariant(
+        "M4",
+        "budget amounts cross from units (minor currency units, the institution's "
+        "numbers) to micro (the ledger's) only through money.budgets; project spend is "
+        "a query joining journal lines to tasks, never stored",
+        "test_money::test_budgets_roll_up_spend_by_run_task_and_project",
+    ),
+)

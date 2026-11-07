@@ -26,6 +26,15 @@ from eidolon.db import SessionLocal
 from eidolon.institution import RECORDED as DECISION_RECORDED
 from eidolon.institution import SIGNED
 from eidolon.kernel import provenance
+from eidolon.kernel.consumers import process
+from eidolon.money import (
+    COST_RECORDED,
+    CostMeter,
+    LedgerProjection,
+    company_spend_micro,
+    project_spend_micro,
+)
+from eidolon.money import verify as ledger_verify
 from eidolon.work import facts as F
 
 
@@ -114,6 +123,17 @@ def test_three_roles_deliver_a_project_from_replayed_fixtures(db, tmp_path):
     assert calls and all(f.payload["cost"]["currency"] == "CNY" for f in calls)
     total = sum(f.payload["cost"]["amount_micro"] for f in calls) / 1_000_000
     assert total < 2.0  # CNY
+    # Money (R4-b): every call is metered; replays are recorded but not booked by default,
+    # and a meter that books replays carries each one into the ledger, attributed to its
+    # task, so the project's spend is a query over the journal.
+    process(SessionLocal, CostMeter(book_replays=True))
+    process(SessionLocal, LedgerProjection())
+    costs = store.stream(db, kinds=[COST_RECORDED], company_id=company, limit=500)
+    assert len(costs) == len(calls) and all(f.payload["mode"] == "replay" for f in costs)
+    assert all(f.payload["posted"] for f in costs)
+    assert 0 < project_spend_micro(db, pid) < company_spend_micro(db, company)  # + manager runs
+    assert company_spend_micro(db, company) == sum(f.payload["cost"]["amount_micro"] for f in calls)
+    assert ledger_verify(db, company).ok
 
     # The Owner delivers; provenance holds.
     owner_delivers(db, company, pid)

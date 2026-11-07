@@ -16,6 +16,7 @@ def default_registry() -> Registry:
     from eidolon.config import settings
     from eidolon.db import SessionLocal
     from eidolon.identity import IdentityProjection
+    from eidolon.money import CostMeter, LedgerProjection
     from eidolon.work import WorkProjection
 
     registry = Registry()
@@ -28,7 +29,10 @@ def default_registry() -> Registry:
     registry.register(MemoryProjection())
     blobs = BlobStore(SERVER_ROOT / settings.transcript_dir)
     registry.register(Reflector(build_provider(settings, session_factory=SessionLocal), blobs))
-    # identity / institution / work / money / talent register here as each is ported.
+    # money layer (R4-b): every model call is metered and booked; the ledger read model.
+    registry.register(CostMeter())
+    registry.register(LedgerProjection())
+    # talent registers here when it is ported (R5).
     return registry
 
 

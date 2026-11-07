@@ -183,6 +183,8 @@ def test_real_process_exits_zero_on_sigterm_with_json_logs():
             "run_launcher",
             "memory_entries",
             "memory_reflector",
+            "cost_meter",
+            "money_ledger",
         ]
         assert first["level"] == "INFO" and "ts" in first
         proc.send_signal(signal.SIGTERM)
