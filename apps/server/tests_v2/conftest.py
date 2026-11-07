@@ -14,14 +14,30 @@ from sqlalchemy import text
 
 SERVER_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_URL = "postgresql+psycopg://eidolon:eidolon@127.0.0.1:5433/eidolon_test"
-os.environ.setdefault(
-    "EIDOLON_V2_DATABASE_URL", os.environ.get("EIDOLON_V2_TEST_DATABASE_URL", DEFAULT_URL)
+# Precedence: explicit test URL > whatever the dev URL is > the compose/devpg default.
+# `make test-v2` exports .env, so a dev URL is usually present; the *_test guard below
+# is what keeps it from ever being used by mistake.
+os.environ["EIDOLON_V2_DATABASE_URL"] = (
+    os.environ.get("EIDOLON_V2_TEST_DATABASE_URL")
+    or os.environ.get("EIDOLON_V2_DATABASE_URL")
+    or DEFAULT_URL
 )
+
+from sqlalchemy import make_url  # noqa: E402
 
 from eidolon.config import settings  # noqa: E402
 from eidolon.db import SessionLocal, engine  # noqa: E402
 
 KERNEL_TABLES = ("facts", "fact_chains", "fact_cursors")
+
+# The session fixture drops and recreates schema "public". Refuse to do that to
+# anything that is not unmistakably a test database.
+_db_name = make_url(settings.database_url).database or ""
+if not _db_name.endswith("_test"):
+    raise SystemExit(
+        f"refusing to run tests_v2 against database {_db_name!r}: the test database "
+        "name must end with '_test' (set EIDOLON_V2_TEST_DATABASE_URL)"
+    )
 
 
 def alembic_config() -> Config:
