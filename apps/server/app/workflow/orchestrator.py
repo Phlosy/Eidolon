@@ -115,6 +115,8 @@ class Orchestrator:
         self._decision_recovery_through: int | None = None
         self._project_recovery_cursor = 0
         self._project_recovery_through: int | None = None
+        self._evidence_recovery_cursor = 0
+        self._evidence_recovery_through: int | None = None
 
     def start(self) -> None:
         self._recovery_through = recovery.work_session_boundary() or None
@@ -127,6 +129,10 @@ class Orchestrator:
         self._decision_recovery_cursor = 0
         self._project_recovery_through = recovery.project_boundary() or None
         self._project_recovery_cursor = 0
+        self._evidence_recovery_through = (
+            recovery.task_boundary() or None if settings.evidence_pipeline_enabled else None
+        )
+        self._evidence_recovery_cursor = 0
         self._loop = asyncio.get_running_loop()
         self._runner = asyncio.create_task(self._run(), name="eidolon-orchestrator")
 
@@ -196,6 +202,14 @@ class Orchestrator:
                 self._project_recovery_cursor = projects.cursor
                 if projects.complete:
                     self._project_recovery_through = None
+            if settings.evidence_pipeline_enabled and self._evidence_recovery_through is not None:
+                evidence = recovery.reconcile_task_evidence(
+                    through_id=self._evidence_recovery_through,
+                    after_id=self._evidence_recovery_cursor,
+                )
+                self._evidence_recovery_cursor = evidence.cursor
+                if evidence.complete:
+                    self._evidence_recovery_through = None
             await self._dispatch_pending()
         elif signal["type"] == "stop_work":
             identifier = signal.get("work_session_id")

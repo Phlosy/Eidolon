@@ -6,10 +6,12 @@ from sqlalchemy import func, select
 
 from app.core.database import SessionLocal
 from app.core.request_context import get_request_identity
+from app.evidence import normalize, task_facts
+from app.evidence.collectors import REGISTRY
 from app.models.action_confirmation import ActionConfirmation
 from app.models.decision import DecisionRecord, ToolAudit
 from app.models.enums import DecisionStatus
-from app.models.project import Project, WorkSession
+from app.models.project import Project, Task, WorkSession
 from app.models.runtime_artifact import RuntimeArtifactCollection
 from app.models.runtime_execution import RuntimeAttempt
 from app.models.runtime_operation import RuntimeOperation
@@ -67,6 +69,23 @@ class ProjectRecoveryBatch:
     cursor: int
     complete: bool
     items: tuple[project_completion.CompletionObservation, ...]
+
+
+@dataclass(frozen=True)
+class TaskEvidenceObservation:
+    task_id: int
+    work_session_id: int | None
+    outcome: str
+    status: str
+    evidence_ids: tuple[int, ...] = ()
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
+class TaskEvidenceBatch:
+    cursor: int
+    complete: bool
+    items: tuple[TaskEvidenceObservation, ...]
 
 
 def _scoped(query, model=WorkSession):
@@ -421,5 +440,99 @@ def reconcile_projects(*, through_id, after_id=0, limit=25, session_factory=Sess
             results.append(checked)
     cursor = observations[-1].project_id if observations else through_id
     return ProjectRecoveryBatch(
+        cursor, len(observations) < limit or cursor == through_id, tuple(results)
+    )
+
+
+def _task_scope(query):
+    return _scoped(query.join(Project, Project.id == Task.project_id), Project)
+
+
+def task_boundary(*, session_factory=SessionLocal):
+    with session_factory() as db:
+        return db.scalar(_task_scope(select(func.max(Task.id)))) or 0
+
+
+def _observe_task_evidence(db, task):
+    if task.status not in {"done", "failed"}:
+        return TaskEvidenceObservation(task.id, None, "not_terminal", task.status)
+    try:
+        original = task_facts.historical_worker(db, task)
+    except ValueError as exc:
+        return TaskEvidenceObservation(
+            task.id, None, "source_unknown", task.status, reason=str(exc)
+        )
+    if original is None:
+        return TaskEvidenceObservation(task.id, None, "not_real_worker", task.status)
+    return TaskEvidenceObservation(task.id, original.id, "needs_recovery", task.status)
+
+
+def reconcile_task_evidence(*, through_id, after_id=0, limit=25, session_factory=SessionLocal):
+    """Recover one finite Task page through the existing Evidence writer.
+
+    Eligibility is read without a writer. Each eligible Task is then rechecked
+    under a short transaction; all its competency candidates commit together.
+    Storage errors propagate so the caller retains the page cursor for retry.
+    """
+    _validate_page(through_id, after_id, limit)
+    with session_factory() as db:
+        tasks = db.scalars(
+            _task_scope(
+                select(Task)
+                .where(Task.id > after_id, Task.id <= through_id)
+                .order_by(Task.id)
+                .limit(limit)
+            )
+        )
+        observations = [_observe_task_evidence(db, task) for task in tasks]
+    results = []
+    for observed in observations:
+        if observed.outcome != "needs_recovery":
+            results.append(observed)
+            continue
+        with session_factory() as db:
+            begin_observation(db)
+            task = db.scalar(_task_scope(select(Task).where(Task.id == observed.task_id)))
+            if task is None or _observe_task_evidence(db, task) != observed:
+                results.append(
+                    TaskEvidenceObservation(
+                        observed.task_id,
+                        observed.work_session_id,
+                        "source_changed",
+                        observed.status,
+                    )
+                )
+                continue
+            candidates = REGISTRY.get("task").collect(db, {"task_id": task.id})
+            evidence_ids, created = [], False
+            try:
+                for candidate in candidates:
+                    row, is_new = normalize.upsert_evidence(db, candidate)
+                    evidence_ids.append(row.id)
+                    created = created or is_new
+            except ValueError as exc:
+                db.rollback()
+                checked = TaskEvidenceObservation(
+                    task.id,
+                    observed.work_session_id,
+                    "source_rejected",
+                    observed.status,
+                    reason=str(exc),
+                )
+            else:
+                outcome = (
+                    "no_expectations"
+                    if not candidates
+                    else "recovered"
+                    if created
+                    else "already_recorded"
+                )
+                checked = TaskEvidenceObservation(
+                    task.id, observed.work_session_id, outcome, observed.status, tuple(evidence_ids)
+                )
+                db.commit()
+            results.append(checked)
+    cursor = observations[-1].task_id if observations else through_id
+    return TaskEvidenceBatch(
         cursor, len(observations) < limit or cursor == through_id, tuple(results)
     )
