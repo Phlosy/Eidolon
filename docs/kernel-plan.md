@@ -3,7 +3,7 @@
 > 日期：2026-11-06　基线：分支 `dev`，HEAD `43a04d5`（2026-09-21），工作树含未提交的 U16 第十三段。
 > 定位：这是 **M3.4 之后的新执行基线**，取代 `m3-implementation-plan.md` 中 U17–U31 的顺序；
 > 不作废 M1/T2/M2 的冻结面，但允许在 K2 以显式理由触碰它们。
-> 新会话从 §8 Progress 表恢复上下文，领取下一个未完成的 WP。
+> 新会话从 [`v2-handoff.md`](v2-handoff.md) 进入，再到本文 §8 Progress 领取下一个未完成的 WP。
 >
 > **2026-11-06 更新**：§3–§4 的 K1–K6 已被 [`v2-architecture.md`](v2-architecture.md) §8 的 R0–R6 取代
 > （自研智能体框架、Postgres、strangler 重构）。§1 本质陈述、§5 纪律、§7 旧包去向继续有效。

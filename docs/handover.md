@@ -6,7 +6,7 @@
 > 自研智能体框架、Postgres、strangler 重构）。R0 起 SQLite 已开 WAL（`core/database.py`）。
 > R1-a 已落地：v2 新应用骨架 `apps/server/eidolon/`（内核：事实日志/哈希链/消费者/重放）+ 真实 PostgreSQL 测试基座
 > `tests_v2`（`make test-v2`，库由 `make pg-up` 或 `scripts/devpg.sh start` 提供）。
-> 新会话从 `kernel-plan.md` §8 Progress 恢复上下文。以下为历史记录。
+> **新会话入口：[`v2-handoff.md`](v2-handoff.md)**（含审计结论、已完成工作、环境、下一步包与终端提示词）。以下为历史记录。
 
 > 覆盖范围：P5–P11 之后的「本地开发体验 / 入职与权限开通可靠性 / 教程交互」连续修复。
 > 状态基线：分支 `dev`，HEAD `430601e`，**工作树干净**，全量门禁绿（见 §5）。
