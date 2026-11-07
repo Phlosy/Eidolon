@@ -336,6 +336,7 @@ test-web:
 lint: check-env
 	$(RUFFBIN) check $(SERVER_DIR)/app $(SERVER_DIR)/tests $(SERVER_DIR)/eidolon $(SERVER_DIR)/tests_v2
 	$(RUFFBIN) format --check $(SERVER_DIR)/app $(SERVER_DIR)/tests $(SERVER_DIR)/eidolon $(SERVER_DIR)/tests_v2
+	cd apps/runner && $(RUFFBIN) check . && $(RUFFBIN) format --check .
 	cd $(WEB_DIR) && pnpm exec tsc --noEmit && pnpm exec eslint .
 	cd $(WEB_DIR) && pnpm exec prettier --check .
 

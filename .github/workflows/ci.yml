@@ -82,6 +82,7 @@ jobs:
         run: |
           ruff check apps/server/eidolon apps/server/tests_v2
           ruff format --check apps/server/eidolon apps/server/tests_v2
+          (cd apps/runner && ruff check . && ruff format --check .)
       - name: Test (v2, PostgreSQL)
         # tests_v2 migrates the database itself and includes `alembic check` + a
         # downgrade/upgrade round trip (test_kernel_guards).

@@ -1,6 +1,6 @@
 # Eidolon v2 交接文档（终端会话入口）
 
-> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1-b、R1-c、R2-a、R2-b 已完成，下一个包是 **R2-c**（runner）。
+> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1-b、R1-c、R2-a、R2-b、R2-c 已完成，下一个包是 **R2-d**（memory）。
 > 这是新会话的**唯一入口**：先读本文，再按 §1 的顺序读其余文档。
 > 文档体系：本文（入口与状态）→ `kernel-plan.md`（本质、纪律、Progress）→ `v2-architecture.md`（设计、路线、ADR）。
 
@@ -12,12 +12,12 @@
 git pull                                   # 或从你本机推上去的 dev 开始
 make install                               # conda env eidolon（Python 3.12）+ pnpm
 make pg-up                                 # 或 scripts/devpg.sh start；或用你自己的 PG（.env 已配）
-make test-v2                               # v2 内核测试：期望 77 passed + 1 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用，无 key）
+make test-v2                               # v2 内核测试：期望 90 passed + 1 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用，无 key）
 make test-server                           # 旧应用全量：期望 3228 passed（SQLite，约 4.5 分钟 -n 4）
 make lint                                  # ruff + tsc + eslint + prettier
 ```
 
-然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R2-c**），按 §5 的流程做。
+然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R2-d**），按 §5 的流程做。
 
 ---
 
@@ -73,10 +73,11 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `517f1a0` | **R1-c**：`kernel/provenance.py`（trace / bundle）、`scripts/verify_bundle.py` 独立离线校验器、CLI `export-bundle` / `trace`、K10；tests_v2 47 条。v2-ADR-6 |
 | `b783e5b` | **R2-a**：`agent/providers/`（协议、openai_compatible、anthropic、record/replay、pricing、accounting、工厂）、`scripts/record_provider_fixtures.py` + DeepSeek 录制 fixture、全层依赖守卫、`anthropic` SDK 入 lock；tests_v2 68 条。v2-ADR-7 |
 | `22a0b2d` | **R2-b**：`agent/{run,loop,context,blobs}.py`、`agent/tools/`（Tools 协议 + FunctionTools）、loop 场景 fixture、真实子进程崩溃恢复测试、`make v2-record-fixtures`；tests_v2 78 条。v2-ADR-8 |
+| （见 §8） | **R2-c**：`apps/runner/`（独立 runner 包，JSON-RPC/stdio，零密钥，路径限定，幂等账本）、`agent/runner/`（客户端 + RunnerTools）、`agent/tools/registry.py`；lint/CI 覆盖 apps/runner；tests_v2 91 条。v2-ADR-9 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
-**基线数字**：旧应用 pytest 3228 passed；v2 77 passed + 1 skipped；ruff/alembic/tsc/eslint/prettier/vitest(392)/build 全绿。
+**基线数字**：旧应用 pytest 3228 passed；v2 90 passed + 1 skipped；ruff/alembic/tsc/eslint/prettier/vitest(392)/build 全绿。
 
 ---
 
@@ -135,7 +136,7 @@ R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司�
 建议拆为 5 包，每包一个会话：
 - **R2-a providers**（DONE，见 §8）：`eidolon/agent/providers/{base,openai_compatible,anthropic,recorder}.py`；`ChatRequest/ChatEvent` 流式协议、tool_calls、usage；重试/超时；**录制/回放 Provider**（`record` 写 fixture，`replay` 按请求哈希回放）；每次调用落 `agent.model.called` 事实（usage、估价、request_id）。与规格的差异：多了 `pricing.py` / `accounting.py` / `build_provider`；`provider_state` 回传机制（v2-ADR-7）；Anthropic 真实调用未验（无 key，测试 skip）
 - **R2-b durable loop**（DONE，见 §8）：`eidolon/agent/{run,loop,context}.py`；每步先落 `agent.step.requested` 再调模型；工具调用 `agent.tool.requested/completed` 带幂等键；崩溃后从最后一条 `agent.*` 事实续跑（测试：真实子进程 `os._exit`）；取消 = `agent.run.cancel_requested` 事实。与规格的差异：多了 `agent/blobs.py`（transcript 内容寻址存储，v2-ADR-8）与 `agent/tools/`（Tools 协议，R2-c 的 runner 实现它）
-- **R2-c runner**：`apps/runner/`（Python 子进程，JSON-RPC over stdio）；工具：read/write/list/shell/test；路径限定 workspace；零密钥；超时与输出截断；`agent/tools/registry.py` 沿用 M2.3 的自描述（side_effect / required_authority / schema）
+- **R2-c runner**（DONE，见 §8）：`apps/runner/`（Python 子进程，JSON-RPC over stdio）；工具：read/write/list/shell/test；路径限定 workspace；零密钥；超时与输出截断；`agent/tools/registry.py` 沿用 M2.3 的自描述（side_effect / required_authority / schema）。与规格的差异：幂等账本放在 runner 侧（v2-ADR-9）；runner 死掉客户端自动重启重试一次；网络允许列表留到 R6
 - **R2-d memory**：`eidolon/agent/memory/`：episodic（run 结束 reflection → 事实）+ semantic（KnowledgeItem 三级 scope 的 v2 版）+ 检索（先 FTS，pgvector 后接）；按 person 隔离在仓库层强制
 - **R2-e 真实任务**：一个 Engineer agent 在沙箱完成"写一个 CLI 小工具 + 测试"的真实任务（真实模型，预算上限 ≤ $2），产物落盘 + 事实链完整；**同时**用录制的 fixture 做确定性回归。这是 go/no-go：跑不通则把失败清单写进 `docs/r2-findings.md`，先修再进 R3
 
@@ -169,17 +170,17 @@ R3–R6 见 `v2-architecture.md` §8。
 4. apps/server/eidolon/kernel/*.py 与 apps/server/tests_v2/*.py
 
 然后核对环境并把结果报给我：
-- make test-v2 应为 77 passed + 1 skipped（Anthropic 真实调用无 key）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
+- make test-v2 应为 90 passed + 1 skipped（Anthropic 真实调用无 key）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
 - make lint 全绿
 - 不必每次跑旧应用全量（make test-server，3228 条，约 4.5 分钟）；只在触碰 apps/server/app/ 时跑
 
 工作方式：
-- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R2-c），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
+- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R2-d），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
 - 每个包完成的定义：代码 + 测试（真实 PostgreSQL）+ make test-v2 与 make lint 全绿 + kernel-plan.md §8 对应行改为 DONE 并填提交号 + 若有新裁决则在 v2-architecture.md §11 追加 ADR。
 - 遵守 docs/v2-handoff.md §6 的七条规则：v2 不 import 旧 app；只有 Fact 与投影两种持久状态；系统不做管理判断；mock 只在单测；密钥不进提交；不写新的阶段设计文档。
 - 包粒度：一个会话做完一个包；做不完就拆成更小的包并在 Progress 登记，不要留"第 N 段"。
 - 遇到以下情况停下来问我，不要自行决定：改变已拍板的 V1–V6 或 ADR；需要新增持久表；需要真实模型调用的费用超过 2 美元；R2-e 的 go/no-go。
 - 其他实现细节自行决定并在提交信息里说明理由。
 
-做完 R2-c 后，不要自动进入 R2-d；先给我一段简短汇报（做了什么、测试数字、提交号、下一个包是什么），等我说"继续"。
+做完 R2-d 后，不要自动进入 R2-e；先给我一段简短汇报（做了什么、测试数字、提交号、下一个包是什么），等我说"继续"。
 ```

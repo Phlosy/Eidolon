@@ -7,13 +7,14 @@
 - `apps/server/eidolon/` — **v2 新应用**（PostgreSQL only，事实日志内核 + 自研智能体框架 + 制度层）。当前开发对象。
 - `apps/server/tests_v2/` — v2 测试，真实 PostgreSQL；库名必须以 `_test` 结尾。
 - `apps/server/app/` — 旧应用（SQLite），只作移植参考，R5 整体删除。原则上不改。
+- `apps/runner/` — 沙箱 runner（独立纯标准库包，JSON-RPC/stdio，零密钥；不 import `eidolon`）。
 - `apps/web/` — React 前端（R5 再裁剪接新 API）。
 - `docs/` — 以 `v2-handoff.md` / `kernel-plan.md` / `v2-architecture.md` 为准；其余是历史。
 
 ## 常用命令
 ```bash
 make pg-up            # PostgreSQL（compose）；或 scripts/devpg.sh start；或 .env 指向自己的 PG
-make test-v2          # v2 测试（期望全绿；当前 77 + 1 skipped）
+make test-v2          # v2 测试（期望全绿；当前 90 + 1 skipped）
 make lint             # ruff + tsc + eslint + prettier
 make test-server      # 旧应用全量 3228 条（约 4.5 分钟）；仅在触碰 apps/server/app/ 时跑
 make migrate-v2       # alembic -c alembic-v2.ini upgrade head

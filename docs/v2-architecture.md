@@ -392,3 +392,12 @@ fixture 由 `scripts/record_provider_fixtures.py` 对真实模型录制并提交
 事实只存哈希、引用和 ≤200 字摘要（K4 上限 64KB，DeepSeek 一步的 reasoning 就能超）；完整上下文、assistant 回合（含 provider_state）
 与工具结果存 `BlobStore`（`sha256:<hex>`，写一次不可改、读时校验），这是 §4.2/§7 所说的"transcript 存对象存储"的本地实现。
 blob 不是第二种持久状态：它是被事实引用的不可变内容，按制度保留期清理后事实依然自洽（引用悬空只影响重放，不影响账本）。
+
+**v2-ADR-9（2026-11-07）runner 是独立进程、独立包、零密钥，幂等账本在 runner 这一侧。**
+`apps/runner/eidolon_runner` 只用标准库、不 import `eidolon`，协议是 JSON-RPC 2.0 按行走 stdio；服务端只认协议不认实现，
+接口固定后可换容器或 Go（V3）。密钥隔离做两道锁：客户端 spawn 时只传白名单环境变量（PATH/HOME/LANG/TMPDIR/TZ + PYTHONPATH），
+runner 启动后再剔除名字含 KEY/SECRET/TOKEN/PASSWORD/CREDENTIAL 的变量，测试用父进程故意注入的假 key 验证 shell 里看不到。
+路径限定是"解析后必须落在 workspace 内"（跟随符号链接、拒绝绝对路径与 `..`、保护 `.eidolon/`），不是字符串前缀匹配。
+幂等账本放在 runner 侧（`.eidolon/runner-ledger.jsonl`）而不是服务端：副作用发生在哪里，"是否已发生"的记录就在哪里；
+循环崩溃后把同一个键再交过来，runner 返回存储的结果并标 `replayed`，读类工具永不重放。工具失败是带 `is_error` 的结果
+（模型应当看到），JSON-RPC error 只用于请求本身畸形。超时按进程组 kill（`start_new_session`），输出按字节截断并标注。
