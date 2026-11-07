@@ -58,6 +58,16 @@ class Settings(BaseSettings):
     api_port: int = 26881
     # Prometheus: the worker serves the registry on this port (0 = off); the API at /metrics.
     metrics_port: int = 0
+    # Secrets (R6-d): passphrase for Fernet-encrypting per-company provider keys.
+    secret_key: str = "change-me-in-production"
+    # WebAuthn relying party: must match the origin the SPA is served from.
+    webauthn_rp_id: str = "localhost"
+    webauthn_rp_name: str = "Eidolon"
+    webauthn_origin: str = "http://localhost:26880"
+    webauthn_challenge_ttl_minutes: int = 5
+    # Login rate limit: failures per key (account, client address) within the window.
+    login_rate_limit: int = 5
+    login_rate_window_s: int = 900
 
 
 settings = Settings()

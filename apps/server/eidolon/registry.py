@@ -45,13 +45,13 @@ def default_jobs(session_factory=None) -> list:
     """Worker jobs (R3-d): execute task runs and reviews with the configured provider."""
     from eidolon.agent.blobs import BlobStore
     from eidolon.agent.memory import MemoryRecall, MemoryRepository
-    from eidolon.agent.providers import SERVER_ROOT, build_provider
+    from eidolon.agent.providers import SERVER_ROOT
     from eidolon.agent.scheduler import ReviewExecutor, TaskRunExecutor, Workspaces
     from eidolon.config import settings
     from eidolon.db import SessionLocal
 
     factory = session_factory or SessionLocal
-    provider = build_provider(settings, session_factory=factory)
+    provider = routed_provider(factory)
     blobs = BlobStore(SERVER_ROOT / settings.transcript_dir)
     workspaces = Workspaces(SERVER_ROOT / settings.workspace_root)
     from eidolon.agent.escalation import EscalatedDecider, Escalator
@@ -93,3 +93,49 @@ def default_jobs(session_factory=None) -> list:
             budget=guard,
         ),
     ]
+
+
+def routed_provider(session_factory=None):
+    """The worker's provider: the process-wide one from ``.env``, overridden per
+    company by its own encrypted credentials (R6-d). In replay mode there is one
+    fixture set for everybody, so routing is skipped."""
+    from eidolon.agent.providers import SERVER_ROOT, build_provider, live_provider  # noqa: F401
+    from eidolon.agent.providers.accounting import Ledgered, ModelCallLedger
+    from eidolon.agent.providers.routing import Resolved, RoutedProvider
+    from eidolon.api.secrets import ProviderCredentials, SecretsError
+    from eidolon.config import Settings, settings
+    from eidolon.db import SessionLocal
+
+    factory = session_factory or SessionLocal
+    default = build_provider(settings, session_factory=factory)
+    if settings.provider_mode != "live":
+        return default
+    credentials = ProviderCredentials(settings.secret_key)
+
+    def resolve(company_id):
+        with factory() as db:
+            row = credentials.get(db, company_id)
+            if row is None:
+                return None
+            try:
+                cfg = credentials.config(db, company_id)
+            except SecretsError:
+                return None
+        overrides = {"provider_kind": cfg.kind}
+        if cfg.kind == "openai_compatible":
+            overrides["provider_openai_compat_api_key"] = cfg.api_key
+            if cfg.base_url:
+                overrides["provider_openai_compat_base_url"] = cfg.base_url
+            if cfg.model:
+                overrides["provider_openai_compat_model"] = cfg.model
+        else:
+            overrides["provider_anthropic_api_key"] = cfg.api_key
+            if cfg.base_url:
+                overrides["provider_anthropic_base_url"] = cfg.base_url
+            if cfg.model:
+                overrides["provider_anthropic_model"] = cfg.model
+        company_settings = Settings(**{**settings.model_dump(), **overrides})
+        live = Ledgered(live_provider(company_settings), ModelCallLedger(factory), mode="live")
+        return Resolved(live, generation=(row.updated_at, row.kind, row.key_tail))
+
+    return RoutedProvider(default, resolve)

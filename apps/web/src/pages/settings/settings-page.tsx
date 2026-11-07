@@ -14,8 +14,10 @@ import { useCurrentCompany } from "../../features/company/company-context";
 import { useCommand, useInstitution } from "../../hooks/queries";
 import { cn } from "../../utils/cn";
 import { formatDateTime } from "../../utils/format";
+import { PasskeysPanel } from "./passkeys-panel";
+import { ProviderSection } from "./provider-section";
 
-const SECTIONS = ["profile", "security", "institution", "about"] as const;
+const SECTIONS = ["profile", "security", "institution", "provider", "about"] as const;
 type SectionKey = (typeof SECTIONS)[number];
 
 export function SettingsPage() {
@@ -50,6 +52,7 @@ export function SettingsPage() {
           {active === "profile" ? <ProfileSection /> : null}
           {active === "security" ? <SecuritySection /> : null}
           {active === "institution" ? <InstitutionSection /> : null}
+          {active === "provider" ? <ProviderSection /> : null}
           {active === "about" ? <AboutSection /> : null}
         </div>
       </div>
@@ -119,6 +122,7 @@ function SecuritySection() {
           ))}
         </ul>
       </Section>
+      <PasskeysPanel />
       <Section title={t("settings.changePassword")}>
         <form onSubmit={submit} className="max-w-sm space-y-3">
           <Input

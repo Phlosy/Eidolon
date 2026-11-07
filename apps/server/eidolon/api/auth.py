@@ -146,10 +146,14 @@ class AuthService:
         cred = db.scalar(select(CredentialRow).where(CredentialRow.email == email.strip().lower()))
         if cred is None or not self._verify(cred, password):
             raise AuthError("invalid email or password")
+        return self.open_session(db, cred.user_id, user_agent=user_agent)
+
+    def open_session(self, db: Session, user_id: UUID, *, user_agent: str = "") -> Login:
+        """A session for an already-authenticated user (password or passkey)."""
         token, csrf, now = secrets.token_urlsafe(48), secrets.token_urlsafe(24), _now()
         row = SessionRow(
             session_id=uuid4(),
-            user_id=cred.user_id,
+            user_id=user_id,
             token_hash=_hash_token(token),
             csrf_token=csrf,
             created_at=now,

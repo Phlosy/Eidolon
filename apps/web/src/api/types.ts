@@ -341,3 +341,28 @@ export interface Decision {
   escalations: number;
   applied?: string | null;
 }
+
+export interface Passkey {
+  credential_id: string;
+  name: string;
+  transports: string[];
+  device_type: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+export interface WebAuthnOptions {
+  challenge: string;
+  public_key: Record<string, unknown>;
+}
+
+export interface ProviderCredential {
+  configured: boolean;
+  company_id?: string;
+  kind?: string;
+  base_url?: string | null;
+  model?: string | null;
+  key_tail?: string;
+  updated_at?: string;
+  updated_by?: string;
+}

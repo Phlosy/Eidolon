@@ -9,6 +9,8 @@ from sqlalchemy import engine_from_config, pool
 # Import every module that declares tables so autogenerate sees them.
 import eidolon.agent.memory.projection  # noqa: F401
 import eidolon.api.auth  # noqa: F401
+import eidolon.api.passkeys  # noqa: F401
+import eidolon.api.secrets  # noqa: F401
 import eidolon.identity.projection  # noqa: F401
 import eidolon.kernel.store  # noqa: F401
 import eidolon.money.projection  # noqa: F401

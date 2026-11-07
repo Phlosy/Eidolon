@@ -1,4 +1,4 @@
-import { del, get, getBlob, post } from "./client";
+import { del, get, getBlob, post, put } from "./client";
 import type {
   Company,
   CostTrace,
@@ -10,15 +10,18 @@ import type {
   LedgerVerify,
   Me,
   Mission,
+  Passkey,
   PersonProfile,
   Project,
   ProjectCosts,
+  ProviderCredential,
   ProjectDetail,
   RunDetail,
   RunSummary,
   SessionInfo,
   TaskDetail,
   Trace,
+  WebAuthnOptions,
 } from "./types";
 
 // -- auth ---------------------------------------------------------------------------
@@ -35,6 +38,19 @@ export const auth = {
   revokeSession: (id: string) => del<void>(`/auth/sessions/${id}`),
   changePassword: (old_password: string, new_password: string) =>
     post<void>("/auth/password", { old_password, new_password }),
+  passkeys: () => get<Passkey[]>("/auth/passkeys"),
+  passkeyRegistrationOptions: (name: string) =>
+    post<WebAuthnOptions>("/auth/passkeys/registration/options", { name }),
+  passkeyRegistrationVerify: (challenge: string, credential: Record<string, unknown>) =>
+    post<Passkey>("/auth/passkeys/registration/verify", { challenge, credential }),
+  passkeyAuthenticationOptions: () =>
+    post<WebAuthnOptions>("/auth/passkeys/authentication/options"),
+  passkeyAuthenticationVerify: (challenge: string, credential: Record<string, unknown>) =>
+    post<{ user_id: string; session_id: string }>("/auth/passkeys/authentication/verify", {
+      challenge,
+      credential,
+    }),
+  removePasskey: (id: string) => del<void>(`/auth/passkeys/${encodeURIComponent(id)}`),
 };
 
 // -- companies & people -----------------------------------------------------------------
@@ -67,6 +83,12 @@ export const companies = {
   ) => post<{ employment_id: string; person_id: string }>(`/companies/${id}/employees`, body),
   endEmployment: (id: string, employmentId: string, reason: string) =>
     post<{ fact_id: string }>(`/companies/${id}/employments/${employmentId}/end`, { reason }),
+  provider: (id: string) => get<ProviderCredential>(`/companies/${id}/provider`),
+  setProvider: (
+    id: string,
+    body: { kind: string; api_key: string; base_url: string | null; model: string | null },
+  ) => put<ProviderCredential>(`/companies/${id}/provider`, body),
+  clearProvider: (id: string) => del<void>(`/companies/${id}/provider`),
 };
 
 // -- work ----------------------------------------------------------------------------

@@ -47,6 +47,9 @@ KERNEL_TABLES = (
     "talent_competencies",
     "auth_credentials",
     "auth_sessions",
+    "provider_credentials",
+    "auth_passkeys",
+    "auth_webauthn_challenges",
 )
 
 # The session fixture drops and recreates schema "public". Refuse to do that to

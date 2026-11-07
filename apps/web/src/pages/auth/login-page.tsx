@@ -1,4 +1,4 @@
-import { ArrowRight, KeyRound, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
+import { ArrowRight, Fingerprint, KeyRound, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -6,6 +6,7 @@ import { auth as authApi } from "../../api";
 import { Button } from "../../components/common/button";
 import { Input } from "../../components/common/input";
 import { useAuth } from "../../features/auth/auth-context";
+import { passkeysAvailable, signInWithPasskey } from "../../features/auth/webauthn";
 
 export function LoginPage() {
   const { t } = useTranslation("auth");
@@ -24,6 +25,20 @@ export function LoginPage() {
     setPending(true);
     try {
       await authApi.login(email, password);
+      setMe(await authApi.me());
+      navigate(destination, { replace: true });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t("errors.unknown"));
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const passkeyLogin = async () => {
+    setError("");
+    setPending(true);
+    try {
+      await signInWithPasskey();
       setMe(await authApi.me());
       navigate(destination, { replace: true });
     } catch (reason) {
@@ -90,6 +105,24 @@ export function LoginPage() {
           <ArrowRight className="h-4 w-4" />
         </Button>
       </form>
+      <div className="my-6 flex items-center gap-3 text-[10px] uppercase tracking-[.16em] text-muted-foreground">
+        <span className="h-px flex-1 bg-border" />
+        {t("login.or")}
+        <span className="h-px flex-1 bg-border" />
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        className="h-12 w-full border-primary/30 bg-primary/5"
+        disabled={!passkeysAvailable() || pending}
+        onClick={() => void passkeyLogin()}
+      >
+        <Fingerprint className="h-4 w-4" />
+        {t("login.passkey")}
+      </Button>
+      {!passkeysAvailable() ? (
+        <p className="mt-2 text-xs text-warning">{t("login.passkeyUnavailable")}</p>
+      ) : null}
       <p className="mt-6 text-center text-xs text-muted-foreground">
         {t("login.newHere")}{" "}
         <Link to="/auth/register" className="font-medium text-primary hover:underline">

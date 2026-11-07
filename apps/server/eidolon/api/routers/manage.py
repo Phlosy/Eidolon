@@ -4,12 +4,13 @@ fire. All are a human's own acts, allowed by their grants in the institution."""
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from eidolon.api.commands import Commands, Conflict, DomainError, Forbidden, idem, person_in
 from eidolon.api.deps import CurrentUser, current_user, get_db, member_of
+from eidolon.api.secrets import ProviderCredentials, SecretsError
 from eidolon.identity import EmploymentRow
 
 router = APIRouter(tags=["manage"])
@@ -149,3 +150,68 @@ def fire(
     except (Forbidden, Conflict, *DomainError) as exc:
         raise guard(exc) from exc
     return {"fact_id": str(fact.id), "employment_id": str(employment_id)}
+
+
+# -- provider credentials (R6-d) --------------------------------------------------------------
+
+
+class ProviderIn(BaseModel):
+    kind: str = Field(pattern="^(openai_compatible|anthropic)$")
+    api_key: str = Field(min_length=8, max_length=500)
+    base_url: str | None = Field(default=None, max_length=500)
+    model: str | None = Field(default=None, max_length=200)
+
+
+def _provider_access(db: Session, employment: EmploymentRow) -> None:
+    try:
+        commands.require(db, person_in(db, employment), "provider.manage")
+    except (Forbidden, Conflict) as exc:
+        raise guard(exc) from exc
+
+
+@router.get("/companies/{company_id}/provider")
+def get_provider(
+    company_id: UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    employment: EmploymentRow = Depends(member_of),
+):
+    _provider_access(db, employment)
+    row = request.app.state.credentials.get(db, company_id)
+    return {"configured": row is not None, **(ProviderCredentials.masked(row) if row else {})}
+
+
+@router.put("/companies/{company_id}/provider")
+def set_provider(
+    company_id: UUID,
+    body: ProviderIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    employment: EmploymentRow = Depends(member_of),
+):
+    _provider_access(db, employment)
+    try:
+        row = request.app.state.credentials.set(
+            db,
+            company_id,
+            kind=body.kind,
+            api_key=body.api_key,
+            base_url=body.base_url,
+            model=body.model,
+            by=employment.person_id,
+        )
+    except SecretsError as exc:
+        raise HTTPException(409 if "SECRET_KEY" in str(exc) else 422, str(exc)) from exc
+    return {"configured": True, **ProviderCredentials.masked(row)}
+
+
+@router.delete("/companies/{company_id}/provider", status_code=204)
+def clear_provider(
+    company_id: UUID,
+    request: Request,
+    db: Session = Depends(get_db),
+    employment: EmploymentRow = Depends(member_of),
+):
+    _provider_access(db, employment)
+    request.app.state.credentials.clear(db, company_id)
+    return Response(status_code=204)

@@ -22,6 +22,8 @@ dependencies = [
     "httpx>=0.28",
     "anthropic>=2.6",
     "prometheus_client>=0.24",
+    "cryptography>=42",
+    "webauthn>=3.0",
 ]
 
 [project.optional-dependencies]

@@ -13,13 +13,21 @@ from sqlalchemy.orm import sessionmaker
 
 from eidolon import observability
 from eidolon.api.auth import AuthService
+from eidolon.api.passkeys import PasskeyService
+from eidolon.api.ratelimit import LoginLimiter
 from eidolon.api.routers import auth, companies, decisions, ledger, manage, provenance, runs, work
+from eidolon.api.secrets import ProviderCredentials
 from eidolon.config import Settings, settings
 
 PREFIX = "/api/v2"
 CSRF_COOKIE = "eidolon_csrf"
 CSRF_HEADER = "x-csrf-token"
-CSRF_EXEMPT = {f"{PREFIX}/auth/register", f"{PREFIX}/auth/login"}
+CSRF_EXEMPT = {
+    f"{PREFIX}/auth/register",
+    f"{PREFIX}/auth/login",
+    f"{PREFIX}/auth/passkeys/authentication/options",
+    f"{PREFIX}/auth/passkeys/authentication/verify",
+}
 MUTATING = {"POST", "PUT", "PATCH", "DELETE"}
 
 
@@ -57,6 +65,14 @@ def create_app(session_factory: sessionmaker | None = None, cfg: Settings = sett
     app.state.settings = cfg
     app.state.cookie_name = cfg.session_cookie_name
     app.state.auth = AuthService(session_ttl_hours=cfg.session_ttl_hours)
+    app.state.passkeys = PasskeyService(
+        rp_id=cfg.webauthn_rp_id,
+        rp_name=cfg.webauthn_rp_name,
+        origin=cfg.webauthn_origin,
+        ttl_minutes=cfg.webauthn_challenge_ttl_minutes,
+    )
+    app.state.limiter = LoginLimiter(limit=cfg.login_rate_limit, window_s=cfg.login_rate_window_s)
+    app.state.credentials = ProviderCredentials(cfg.secret_key)
 
     @app.middleware("http")
     async def csrf_protection(request: Request, call_next):
