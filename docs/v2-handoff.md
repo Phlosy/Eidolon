@@ -82,7 +82,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `11f905c` | **R3-d**：`work/dispatch.py`、`agent/scheduler.py`（RunLauncher / TaskRunExecutor / ReviewExecutor）、Worker 作业钩子、项目场景 fixture、runner list_dir 隐藏缓存；tests_v2 140 条。v2-ADR-15 |
 | `037aa9b` | **R3-e**：`agent/managers.py`（MissionIntake / Planner / Assigner / Deciders / Roster）、输入产物实体化、评审 attempt、录制复用、公司场景 fixture；tests_v2 144 条。v2-ADR-16。R3 完成 |
 | `dab51a1` | **R4-a**：`identity/`、`institution/staffing.py`、`0004_identity`、`IdentityRoster`；tests_v2 150 条。v2-ADR-17 |
-| `PENDING` | **R4-b**：`money/`（复式账本事实、`CostMeter`、投影、`ledger-verify` / `balances` CLI、budgets 单位换算）、`0005_money`；tests_v2 156 条。v2-ADR-18 |
+| `641f6c4` | **R4-b**：`money/`（复式账本事实、`CostMeter`、投影、`ledger-verify` / `balances` CLI、budgets 单位换算）、`0005_money`；tests_v2 156 条。v2-ADR-18 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
