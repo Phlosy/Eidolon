@@ -1,4 +1,27 @@
 services:
+  # Eidolon v2 (apps/server/eidolon) runs on PostgreSQL only. The port and credentials
+  # match EIDOLON_V2_DATABASE_URL's default and scripts/devpg.sh, so `make pg-up`
+  # (this service) and `scripts/devpg.sh start` (no Docker) are interchangeable.
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: eidolon
+      POSTGRES_PASSWORD: eidolon
+      POSTGRES_DB: eidolon
+    command: ["postgres", "-c", "fsync=off", "-c", "synchronous_commit=off"]
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - eidolon-pg:/var/lib/postgresql/data
+      - ./deployments/postgres/init-test-db.sql:/docker-entrypoint-initdb.d/10-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eidolon -d eidolon"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    networks:
+      - eidolon-internal
+
   server:
     build:
       context: .
@@ -36,3 +59,4 @@ networks:
 
 volumes:
   eidolon-data:
+  eidolon-pg:

@@ -289,7 +289,9 @@ Reviewer Agent（真实）用现有评审工具出 PASS
 | WP-00 WAL | DONE | （随 WP-02 提交） | `core/database.py` connect 事件：WAL / synchronous=NORMAL / busy_timeout；测试基座已处理 -wal/-shm |
 | WP-01 收口 WIP | DONE | `16aa26f` | U16 第十三段（任务 Evidence 恢复）20 测试通过后提交；handover / m3 plan 漂移已修 |
 | WP-02 基线 | DONE | （本次提交） | 见下方基线数字；R0 完成 |
-| R1 内核 + Postgres | TODO | | 首包：docker compose 起 PG + 测试基座切 PG |
+| R1-a 内核骨架 + PG 基座 | DONE | （本次提交） | `eidolon/kernel/{facts,hashchain,store,consumers,notify,contracts}` + `alembic-v2.ini`/`0001_kernel` + `tests_v2`（22 测试：并发不分叉、触发器不可改、篡改可检、重放/重建、NOTIFY 仅提交）+ `scripts/devpg.sh` + compose `postgres` + CI `backend-v2`。v2-ADR-1..4 |
+| R1-b worker 进程 + CLI | TODO | | `eidolon-worker`（LISTEN 唤醒 + 游标 drain + 优雅停止）；`python -m eidolon` 子命令：migrate / verify-chain / rebuild；结构化日志 |
+| R1-c 溯源原语 | TODO | | correlation/causation 回溯、provenance bundle 导出 + 离线校验脚本（K4 的 WP-40/42 提前，因为是纯内核） |
 | R2 智能体框架 MVP | TODO | | go/no-go 点 |
 | R3 制度 + 工作域 | TODO | | |
 | R4 身份 + 钱 + 溯源 | TODO | | |
@@ -298,4 +300,7 @@ Reviewer Agent（真实）用现有评审工具出 PASS
 
 **基线数字（2026-11-06，Linux aarch64 VM，Python 3.12.16，WAL 已开）**：
 ruff check 通过 / ruff format 557 files 已格式化 / alembic 干净库 up→down→up 通过、无漂移（head `64da10b82e39`，66 个迁移）/
-tsc、eslint、prettier 通过 / vitest 89 files 392 passed（21.8s）/ build 通过（9.9s）/ pytest ＿＿（填写中）
+tsc、eslint、prettier 通过 / vitest 89 files 392 passed（21.8s）/ build 通过（9.9s）/
+**pytest 3228 passed, 0 failed**（`-m 'not integration'`，xdist 4 workers 分 4 组共约 270s；串行约 1.5s/测试）。
+注意：`test_m3_worker_resume.py` 等子进程测试必须从仓库根目录运行（硬编码 `apps/server/tests` 相对路径）。
+VM 工具链：`uv python install 3.12` + `uv venv`；前端在仓库外副本跑 pnpm（避免把 Linux node_modules 写进 macOS 仓库）。

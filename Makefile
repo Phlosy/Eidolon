@@ -245,6 +245,31 @@ test: test-server test-web
 test-server: check-env
 	$(PYBIN) -m pytest $(SERVER_DIR)/tests -q
 
+## pg-up: 启动 v2 的 PostgreSQL（docker compose；无 Docker 用 scripts/devpg.sh start）
+.PHONY: pg-up
+pg-up:
+	docker compose up -d --wait postgres
+
+## pg-down: 停止 v2 的 PostgreSQL 容器
+.PHONY: pg-down
+pg-down:
+	docker compose stop postgres
+
+## test-v2: v2 内核及以上的测试（需要 PostgreSQL：make pg-up 或 scripts/devpg.sh start）
+.PHONY: test-v2
+test-v2: check-env
+	cd $(SERVER_DIR) && $(PYBIN) -m pytest tests_v2 -q
+
+## migrate-v2: v2 数据库升到最新（alembic-v2.ini，独立版本表）
+.PHONY: migrate-v2
+migrate-v2: check-env
+	@cd $(SERVER_DIR) && $(ALEMBICBIN) -c alembic-v2.ini upgrade head && $(ALEMBICBIN) -c alembic-v2.ini current
+
+## migrate-v2-new: 按 v2 model 变更生成一个 revision（仍需人工检查）
+.PHONY: migrate-v2-new
+migrate-v2-new: check-env
+	@cd $(SERVER_DIR) && $(ALEMBICBIN) -c alembic-v2.ini revision --autogenerate -m "$(or $(M),autogen)"
+
 ## test-integration: 真实 Docker 集成测试（需要本机 Docker daemon）
 .PHONY: test-integration
 test-integration: check-env
@@ -289,8 +314,8 @@ test-web:
 ## lint: ruff + prettier + eslint + tsc
 .PHONY: lint
 lint: check-env
-	$(RUFFBIN) check $(SERVER_DIR)/app $(SERVER_DIR)/tests
-	$(RUFFBIN) format --check $(SERVER_DIR)/app $(SERVER_DIR)/tests
+	$(RUFFBIN) check $(SERVER_DIR)/app $(SERVER_DIR)/tests $(SERVER_DIR)/eidolon $(SERVER_DIR)/tests_v2
+	$(RUFFBIN) format --check $(SERVER_DIR)/app $(SERVER_DIR)/tests $(SERVER_DIR)/eidolon $(SERVER_DIR)/tests_v2
 	cd $(WEB_DIR) && pnpm exec tsc --noEmit && pnpm exec eslint .
 	cd $(WEB_DIR) && pnpm exec prettier --check .
 

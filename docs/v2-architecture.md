@@ -333,3 +333,31 @@ fork → 改 gate 的 decider/role/quorum/tiers/timeout 与授权默认 → 校�
 - v1 §1（本质）、§5（纪律）、§7（旧 U 包去向）继续有效。
 - v1 §3–§4 的 K1–K6 由本文 §8 的 R0–R6 取代；v1 §8 Progress 表改为按 R 阶段 / WP 记录。
 - 下一步：用户确认 V1–V6 后，R0 开工。
+
+---
+
+## 11. ADR（实施中的裁决，按时间追加）
+
+**v2-ADR-1（2026-11-06）v2 是新应用，不与旧 `app/` 共库、不双写。**
+仓库没有生产数据，只有本地开发库。因此 v2 在 `apps/server/eidolon/` 用独立的 PostgreSQL schema、
+独立的 Alembic 链（`alembic-v2.ini`，版本表 `alembic_version_v2`，从 `0001` 重新编号）从零建起；
+旧 `app/` 只作移植参考，R5 整体删除后 cutover。§8 R1 中"旧 `events`/`tool_audits` 写入改经 Fact"一项
+作废——v2 里只有 Fact。好处：不必修 66 个 SQLite 迁移，不存在跨库事务。
+
+**v2-ADR-2（2026-11-06）事实日志即 outbox；NOTIFY 只是唤醒。**
+`FactStore.append` 在写事务内执行 `NOTIFY`，PostgreSQL 保证只有提交才送达（K9）。消费者按
+`fact_cursors` 游标推进，处理与推进同一事务（K6）；错过通知无害，下一次唤醒或超时轮询补上。
+没有独立的 outbox 表、没有"事务提交后再发事件"的手工纪律、没有按子系统的恢复代码——
+`replay_all` 是唯一恢复机制。
+
+**v2-ADR-3（2026-11-06）测试基座 = 真实 PostgreSQL，不可用即失败而非跳过。**
+`tests_v2/conftest.py` 连不上库直接 `pytest.exit`。两种等价的本地库：`make pg-up`（compose，
+postgres:16）或 `scripts/devpg.sh start`（用户态集群，任何 PG ≥ 14 二进制，无需 Docker/root）。
+两者都暴露 `127.0.0.1:5433`、`eidolon/eidolon`、库 `eidolon` + `eidolon_test`。CI 用 service 容器。
+最低版本 PostgreSQL 14（`Identity(always=True)`、`ON CONFLICT`、JSONB 均可用）；pgvector 到 R2 再要求。
+
+**v2-ADR-4（2026-11-06）不可篡改 = 触发器 + 哈希链两层。**
+`facts` 上的 BEFORE UPDATE/DELETE 触发器拒绝改写（K1）；每公司一条 sha256 链 + `fact_chains`
+行锁串行化同公司追加（K3）。触发器挡住应用层，哈希链让拥有数据库权限的篡改可被 `verify_chain`
+发现。生产部署应撤销应用角色对 `facts` 的 UPDATE/DELETE/TRUNCATE 权限（R6 加固项）。
+

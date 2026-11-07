@@ -26,6 +26,7 @@ dependencies = [
     "argon2-cffi>=25.1",
     "webauthn>=2.2",
     "email-validator>=2.2",
+    "psycopg[binary]>=3.2",
 ]
 
 [project.optional-dependencies]
@@ -36,15 +37,16 @@ dev = [
     # 格式化器版本会改变 `ruff format --check` 的判定，不 pin 就会让 CI 红绿灯不可复现。
     # 完整锁版本见 requirements.lock（CI 与 make install 都走它）。
     "ruff~=0.16.5",
+    "pytest-xdist>=3.6",
 ]
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["app*", "eidolon*"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-extend-exclude = ["migrations"]
+extend-exclude = ["migrations", "eidolon/migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B"]
@@ -52,6 +54,7 @@ select = ["E", "F", "W", "I", "UP", "B"]
 [tool.ruff.lint.per-file-ignores]
 # FastAPI idiom: Depends() in argument defaults
 "app/api/**" = ["B008"]
+"eidolon/api/**" = ["B008"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

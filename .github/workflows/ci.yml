@@ -55,6 +55,41 @@ jobs:
           docker logs "$container_name"
           exit 1
 
+  backend-v2:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: eidolon
+          POSTGRES_PASSWORD: eidolon
+          POSTGRES_DB: eidolon_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U eidolon -d eidolon_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          pip install -r apps/server/requirements.lock
+          pip install -e apps/server --no-build-isolation --no-deps
+      - name: Ruff (v2)
+        run: |
+          ruff check apps/server/eidolon apps/server/tests_v2
+          ruff format --check apps/server/eidolon apps/server/tests_v2
+      - name: Test (v2, PostgreSQL)
+        # tests_v2 migrates the database itself and includes `alembic check` + a
+        # downgrade/upgrade round trip (test_kernel_guards).
+        env:
+          EIDOLON_V2_DATABASE_URL: postgresql+psycopg://eidolon:eidolon@127.0.0.1:5433/eidolon_test
+        run: python -m pytest tests_v2 -q
+        working-directory: apps/server
+
   frontend:
     runs-on: ubuntu-latest
     steps:

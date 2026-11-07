@@ -4,6 +4,8 @@
 > U15 停止与重试、U16 崩溃恢复十三段，末次 `16aa26f`）但**未做联合验收、未关闭**。现行执行基线是
 > [`kernel-plan.md`](kernel-plan.md)（本质与纪律）+ [`v2-architecture.md`](v2-architecture.md)（R0–R6 重构路线：
 > 自研智能体框架、Postgres、strangler 重构）。R0 起 SQLite 已开 WAL（`core/database.py`）。
+> R1-a 已落地：v2 新应用骨架 `apps/server/eidolon/`（内核：事实日志/哈希链/消费者/重放）+ 真实 PostgreSQL 测试基座
+> `tests_v2`（`make test-v2`，库由 `make pg-up` 或 `scripts/devpg.sh start` 提供）。
 > 新会话从 `kernel-plan.md` §8 Progress 恢复上下文。以下为历史记录。
 
 > 覆盖范围：P5–P11 之后的「本地开发体验 / 入职与权限开通可靠性 / 教程交互」连续修复。
