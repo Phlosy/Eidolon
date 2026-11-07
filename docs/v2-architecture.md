@@ -441,3 +441,12 @@ human decider 可达 Owner、组织图是树、升级不成环、system 不带 q
 "可派发" = READY 且已有被决策指定的 assignee（R1/R3），READY 但无人 = 管理问题（R4），系统永不填人（R2/R12）。
 M2 的 R/H/RV/RD 不变量折成 W1–W10 放进 `kernel/contracts.WORK_INVARIANTS`，每条有测试锚且被守卫机器检查。
 评审映射一向：decision approved → pass → done，rework → rework → todo（计数），rejected → escalate → blocked（等人）；系统从不产生评审结论（RV1）。
+
+**v2-ADR-15（2026-11-07）派发与评审：请求是事实，启动是短事务，执行是作业；评审结论永远由 reviewer 签字。**
+派发分三段：`request_runs`（work 层，纯事实，不 import agent）→ `RunLauncher` 消费者把请求变成 `task.started`（几毫秒的事务；
+绝不能在消费者事务里跑 run，否则 `fact_chains` 的行锁会把同公司的所有追加堵死）→ `TaskRunExecutor` 作业在事务之外跑/续跑 AgentRunner，
+每一步（started / artifact / submitted / failed）都是独立提交的幂等事实，进程死在任何位置下一轮都能接上。
+Worker 的循环因此变成 drain → jobs → drain：作业产生的事实立刻被投影消化。
+评审同样不是系统判断：`ReviewExecutor` 只负责开决策（id 由 task+run 派生，幂等）、跑 Reviewer agent、把 agent 的 JSON 结论作为
+该 reviewer 的签字写进决策信封，`conclude` 落账后才写 `task.reviewed`；agent 没给出可解析的结论就什么都不写，任务留在 in_review 等待（RV1/RV6）。
+身份层未到前，reviewer 的 person/role 来自配置（`EIDOLON_V2_REVIEWER_PERSON/ROLE`）。

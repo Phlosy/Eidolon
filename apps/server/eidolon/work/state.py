@@ -27,6 +27,7 @@ class TaskState:
     assignee: str | None = None
     rework_count: int = 0
     current_run_id: UUID | None = None
+    pending_run_id: UUID | None = None  # requested, not yet started
     runs: list[UUID] = field(default_factory=list)
     reviews: list[dict[str, Any]] = field(default_factory=list)
     created_at: datetime | None = None
@@ -35,6 +36,10 @@ class TaskState:
 
     def node(self) -> Node:
         return Node(self.task_id, self.status, self.depends_on, self.inputs, self.assignee)
+
+    @property
+    def dispatchable(self) -> bool:
+        return self.pending_run_id is None and self.current_run_id is None
 
 
 @dataclass
@@ -156,9 +161,12 @@ def _apply_task_event(task: TaskState, fact: Fact) -> None:
     kind = fact.kind
     if kind == F.TASK_ASSIGNED:
         task.assignee = p["assignee"]
+    elif kind == F.RUN_REQUESTED:
+        task.pending_run_id = UUID(p["run_id"])
     elif kind == F.TASK_STARTED:
         task.status = "in_progress"
         task.current_run_id = UUID(p["run_id"])
+        task.pending_run_id = None
         task.runs.append(UUID(p["run_id"]))
     elif kind == F.TASK_SUBMITTED:
         task.status = "in_review"
@@ -189,6 +197,7 @@ def _apply_task_event(task: TaskState, fact: Fact) -> None:
     elif kind == F.TASK_CANCELLED:
         task.status = "cancelled"
         task.current_run_id = None
+        task.pending_run_id = None
     task.updated_at = fact.created_at
     task.last_fact_id = fact.id
 

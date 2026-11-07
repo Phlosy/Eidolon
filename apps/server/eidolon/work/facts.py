@@ -45,6 +45,7 @@ TASK_REOPENED = "work.task.reopened"
 TASK_CANCELLED = "work.task.cancelled"
 ARTIFACT_PRODUCED = "work.artifact.produced"
 ARTIFACT_CONSUMED = "work.artifact.consumed"
+RUN_REQUESTED = "work.run.requested"  # a dispatchable task is queued for its assignee
 
 MISSION_KINDS = frozenset({MISSION_CREATED, MISSION_ACCEPTED, MISSION_REJECTED})
 PROJECT_KINDS = frozenset(
@@ -65,6 +66,7 @@ PROJECT_KINDS = frozenset(
         TASK_CANCELLED,
         ARTIFACT_PRODUCED,
         ARTIFACT_CONSUMED,
+        RUN_REQUESTED,
     }
 )
 KINDS = MISSION_KINDS | PROJECT_KINDS
@@ -380,6 +382,40 @@ def artifact_consumed(
             "run_id": str(run_id) if run_id else None,  # H3: the using session
         },
         f"artifact:{artifact_id}:consumed:{by_task_id}:{run_id or '-'}",
+        correlation_id=project_id,
+        causation_id=causation_id,
+    )
+
+
+# -- dispatch ----------------------------------------------------------------------------------
+
+
+def run_requested(
+    company_id,
+    actor,
+    project_id: UUID,
+    task_id: UUID,
+    *,
+    run_id: UUID,
+    assignee: str,
+    role: str | None,
+    state_fact_id: UUID | None,
+    causation_id=None,
+) -> NewFact:
+    """Queue a run for a dispatchable task. The key includes the task's last fact id,
+    so repeated dispatch ticks over an unchanged task are the same request (R1)."""
+    return _new(
+        company_id,
+        actor,
+        RUN_REQUESTED,
+        {
+            "project_id": str(project_id),
+            "task_id": str(task_id),
+            "run_id": str(run_id),
+            "assignee": assignee,
+            "role": role,
+        },
+        f"task:{task_id}:run_requested:{state_fact_id}",
         correlation_id=project_id,
         causation_id=causation_id,
     )

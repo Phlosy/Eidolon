@@ -177,7 +177,12 @@ def test_real_process_exits_zero_on_sigterm_with_json_logs():
                 break
             assert first["msg"] == "worker.batch", first
         assert first["msg"] == "worker.started" and first["logger"] == "eidolon.worker"
-        assert first["consumers"] == ["work_items", "memory_entries", "memory_reflector"]
+        assert first["consumers"] == [
+            "work_items",
+            "run_launcher",
+            "memory_entries",
+            "memory_reflector",
+        ]
         assert first["level"] == "INFO" and "ts" in first
         proc.send_signal(signal.SIGTERM)
         code = proc.wait(timeout=10)

@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     # Content-addressed transcript store (full contexts / responses / tool results);
     # facts carry only hashes and summaries (v2-architecture §4.2). Relative to apps/server.
     transcript_dir: str = "data/transcripts"
+    # Per-task sandbox workspaces (R3-d): <root>/<company>/<project>/<task>; relative to
+    # apps/server.
+    workspace_root: str = "data/workspaces"
+    # Who reviews (until identity/employment lands in R4): the person id and role of the QA agent.
+    reviewer_person: str = "qa-1"
+    reviewer_role: str = "qa"
 
     # -- model providers (eidolon.agent.providers) ---------------------------------
     # kind: openai_compatible | anthropic. mode: live | record | replay (v2-arch §4.6).

@@ -10,13 +10,13 @@
     },
     {
       "assistant_state": {
-        "reasoning_content": "The user wants exactly one word: \"pong\". Simple."
+        "reasoning_content": "The user wants exactly one word: pong."
       },
       "attempts": 1,
-      "latency_ms": 723,
+      "latency_ms": 693,
       "model": "deepseek-flash",
       "provider": "openai_compatible",
-      "request_id": "ac944a78-a4a6-44a2-9c57-30662a636774",
+      "request_id": "0e221876-6479-4262-812f-f6c6763c17bb",
       "stop_detail": null,
       "stop_reason": "end_turn",
       "type": "completed",
@@ -24,7 +24,7 @@
         "cache_read_tokens": 0,
         "cache_write_tokens": 0,
         "input_tokens": 45,
-        "output_tokens": 16
+        "output_tokens": 13
       }
     }
   ],
@@ -32,7 +32,7 @@
   "format": "eidolon.provider.fixture/1",
   "kind": "chat",
   "provider": "openai_compatible",
-  "recorded_at": "2026-11-07T08:45:05+00:00",
+  "recorded_at": "2026-11-07T10:19:32+00:00",
   "request": {
     "max_tokens": 64,
     "messages": [

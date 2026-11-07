@@ -71,26 +71,26 @@
     {
       "assistant_state": null,
       "attempts": 1,
-      "latency_ms": 610,
+      "latency_ms": 819,
       "model": "deepseek-flash",
       "provider": "openai_compatible",
-      "request_id": "787a03d0-ed04-45ca-9690-1bae9b127960",
+      "request_id": "148cc904-f62d-41de-b122-8a46a413fb02",
       "stop_detail": null,
       "stop_reason": "end_turn",
       "type": "completed",
       "usage": {
         "cache_read_tokens": 256,
         "cache_write_tokens": 0,
-        "input_tokens": 462,
+        "input_tokens": 474,
         "output_tokens": 18
       }
     }
   ],
-  "fingerprint": "7970b12896c305af8236ba99ed8cc2ffbba89830a78206ea645700c948938dbb",
+  "fingerprint": "a652b20ac588876e5ffd054e0fc782d3579be5db18a93d80f99caa7705bafe7f",
   "format": "eidolon.provider.fixture/1",
   "kind": "chat",
   "provider": "openai_compatible",
-  "recorded_at": "2026-11-07T08:45:09+00:00",
+  "recorded_at": "2026-11-07T10:19:36+00:00",
   "request": {
     "max_tokens": 256,
     "messages": [
@@ -100,13 +100,16 @@
       },
       {
         "content": null,
+        "provider_state": {
+          "reasoning_content": "The user wants me to call get_weather for Beijing."
+        },
         "role": "assistant",
         "tool_calls": [
           {
             "arguments": {
               "city": "Beijing"
             },
-            "id": "call_00_ET_mzUFdTsde2Qw1GDcsdOK0445",
+            "id": "call_00_kESrUle9Y70cGOXu3DKp8427",
             "name": "get_weather"
           }
         ]
@@ -117,7 +120,7 @@
         "tool_result": {
           "content": "{\"temperature_c\": 22, \"sky\": \"sunny\"}",
           "is_error": false,
-          "tool_call_id": "call_00_ET_mzUFdTsde2Qw1GDcsdOK0445"
+          "tool_call_id": "call_00_kESrUle9Y70cGOXu3DKp8427"
         }
       }
     ],

@@ -13,7 +13,23 @@
       "type": "text"
     },
     {
-      "text": " that",
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " current",
+      "type": "text"
+    },
+    {
+      "text": " weather",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " Beijing",
       "type": "text"
     },
     {
@@ -32,17 +48,17 @@
       "arguments": {
         "city": "Beijing"
       },
-      "id": "call_00_ET_09VsyoqtKCvHqYJXHNSA8139",
+      "id": "call_00_ET_rV0DUcoqqbAFR5FoPjCH3427",
       "name": "get_weather",
       "type": "tool_call"
     },
     {
       "assistant_state": null,
       "attempts": 1,
-      "latency_ms": 649,
+      "latency_ms": 1193,
       "model": "deepseek-flash",
       "provider": "openai_compatible",
-      "request_id": "0b658364-591c-421b-a6a5-22a81489b72d",
+      "request_id": "13231a3b-ae3c-456f-be9d-656269cab594",
       "stop_detail": null,
       "stop_reason": "tool_use",
       "type": "completed",
@@ -50,7 +66,7 @@
         "cache_read_tokens": 128,
         "cache_write_tokens": 0,
         "input_tokens": 318,
-        "output_tokens": 45
+        "output_tokens": 49
       }
     }
   ],
@@ -58,7 +74,7 @@
   "format": "eidolon.provider.fixture/1",
   "kind": "chat",
   "provider": "openai_compatible",
-  "recorded_at": "2026-11-07T08:45:06+00:00",
+  "recorded_at": "2026-11-07T10:19:33+00:00",
   "request": {
     "max_tokens": 128,
     "messages": [

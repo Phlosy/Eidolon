@@ -123,12 +123,57 @@ def main() -> int:
     parser.add_argument(
         "--loop", action="store_true", help="also record the agent-loop scenario"
     )
+    parser.add_argument(
+        "--project",
+        action="store_true",
+        help="also record the dispatch/review project scenario",
+    )
+    parser.add_argument(
+        "--only", default=None, help="run only this scenario: loop | project"
+    )
     args = parser.parse_args()
     directory = Path(args.dir) if args.dir else fixture_dir(settings)
-    code = asyncio.run(run(args.kind, directory))
-    if args.loop:
+    code = 0
+    if args.only is None:
+        code = asyncio.run(run(args.kind, directory))
+    if args.loop and args.only in (None, "loop"):
         code = asyncio.run(run_loop(args.kind, directory)) or code
+    if args.project and args.only in (None, "project"):
+        code = run_project(args.kind, directory) or code
     return code
+
+
+def run_project(kind: str, directory: Path) -> int:
+    """R3-d: a one-task project through dispatch → engineer run → review, recording
+    both agent runs. Writes a real project into the configured database."""
+    import tempfile
+
+    from eidolon.agent.blobs import BlobStore
+    from eidolon.agent.providers import Ledgered, ModelCallLedger
+    from eidolon.db import SessionLocal
+    from project_support import components, drive, set_up_project, svc
+
+    live = live_provider(settings, kind=kind)
+    provider = Ledgered(
+        Recording(live, directory), ModelCallLedger(SessionLocal), mode="record"
+    )
+    blobs = BlobStore(SERVER / settings.transcript_dir)
+    with tempfile.TemporaryDirectory(prefix="eidolon-r3d-") as ws, SessionLocal() as db:
+        company, pid, task = set_up_project(db)
+        runs, reviews = components(SessionLocal, provider, blobs, Path(ws))
+        trail = drive(SessionLocal, db, pid, runs, reviews)
+        state = svc.project(db, pid)
+        t = state.tasks[task]
+        ok = trail[-1] == "done"
+        print(
+            f"{'ok ' if ok else 'BAD'} {kind}/project company={company} project={pid} task={task} "
+            f"trail={trail} artifacts={sorted(a.path for a in state.artifacts.values())} "
+            f"review={t.reviews[-1] if t.reviews else None}"
+        )
+    close = getattr(live, "aclose", None)
+    if close:
+        asyncio.run(close())
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

@@ -261,6 +261,10 @@ class WorkService:
             )
         if not graph.is_ready({n.task_id: n for n in state.nodes()}, task_id):
             raise F.WorkError(f"task {task_id} is not ready: dependencies or inputs are not done")
+        if task.pending_run_id is not None and task.pending_run_id != run_id:
+            raise F.WorkError(
+                f"task {task_id} has a pending run {task.pending_run_id}, not {run_id}"
+            )
         return self.write(
             db,
             F.task_event(

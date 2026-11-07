@@ -181,7 +181,9 @@ class Tools:
                 lines.append(f"{self.sandbox.display(directory)}: {exc}")
                 return
             for entry in entries:
-                if entry.name == ".eidolon" and directory == self.sandbox.workspace:
+                # Derived caches and dot-directories are noise for the model and not
+                # reproducible across machines (a .pyc embeds its source path).
+                if entry.is_dir() and (entry.name.startswith(".") or entry.name == "__pycache__"):
                     continue
                 rel = self.sandbox.display(entry)
                 if entry.is_dir() and not entry.is_symlink():

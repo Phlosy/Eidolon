@@ -15,8 +15,9 @@ import select
 import signal
 import threading
 import time
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
+from typing import Protocol
 
 from sqlalchemy.orm import sessionmaker
 
@@ -28,11 +29,21 @@ from eidolon.logging import get_logger
 log = get_logger("eidolon.worker")
 
 
+class Job(Protocol):
+    """Work that is not a fact consumer but runs each cycle after the drain
+    (R3-d: executing task runs and reviews). ``tick`` returns how much it did."""
+
+    name: str
+
+    def tick(self) -> int: ...
+
+
 @dataclass
 class WorkerStats:
     cycles: int = 0
     batches: int = 0
     handled: int = 0
+    jobs: int = 0
     failures: dict[str, int] = field(default_factory=dict)
 
 
@@ -46,8 +57,10 @@ class Worker:
         poll_interval: float = 5.0,
         batch_limit: int = 200,
         store: FactStore | None = None,
+        jobs: Sequence[Job] = (),
     ):
         self.registry = registry
+        self.jobs = list(jobs)
         self.session_factory = session_factory
         self.listener = listener
         self.poll_interval = poll_interval
@@ -77,6 +90,7 @@ class Worker:
             "worker.started",
             extra={
                 "consumers": [c.name for c in self.consumers],
+                "jobs": [j.name for j in self.jobs],
                 "replayed": handled,
                 "ms": _ms(t0),
                 "poll_interval": self.poll_interval,
@@ -91,6 +105,10 @@ class Worker:
         try:
             while not self._stop.is_set():
                 self.drain()
+                if self._stop.is_set():
+                    break
+                if self.run_jobs():
+                    self.drain()  # jobs wrote facts; let the projections catch up now
                 if self._stop.is_set():
                     break
                 self.wait()
@@ -165,6 +183,25 @@ class Worker:
             )
             if result.scanned < self.batch_limit or self._stop.is_set():
                 return results
+
+    def run_jobs(self) -> int:
+        """Each job once; a failing job is logged and retried next cycle like a consumer."""
+        total = 0
+        for job in self.jobs:
+            if self._stop.is_set():
+                break
+            t0 = time.monotonic()
+            try:
+                did = job.tick()
+            except Exception:
+                self.stats.failures[job.name] = self.stats.failures.get(job.name, 0) + 1
+                log.exception("worker.job.failed", extra={"job": job.name, "ms": _ms(t0)})
+                continue
+            if did:
+                self.stats.jobs += did
+                log.info("worker.job", extra={"job": job.name, "did": did, "ms": _ms(t0)})
+            total += did
+        return total
 
     def wait(self) -> int:
         """Block until a NOTIFY arrives, ``stop`` is called, or ``poll_interval``

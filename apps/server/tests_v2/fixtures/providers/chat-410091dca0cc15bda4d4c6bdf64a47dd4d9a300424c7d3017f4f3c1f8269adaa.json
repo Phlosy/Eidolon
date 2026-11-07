@@ -17,6 +17,10 @@
       "type": "text"
     },
     {
+      "text": ",",
+      "type": "text"
+    },
+    {
       "text": " it",
       "type": "text"
     },
@@ -41,140 +45,24 @@
       "type": "text"
     },
     {
-      "text": " (",
+      "text": " and",
       "type": "text"
     },
     {
-      "text": "about",
+      "text": " sunny",
       "type": "text"
     },
     {
-      "text": " ",
-      "type": "text"
-    },
-    {
-      "text": "72",
-      "type": "text"
-    },
-    {
-      "text": " °",
-      "type": "text"
-    },
-    {
-      "text": "F",
-      "type": "text"
-    },
-    {
-      "text": ")**",
-      "type": "text"
-    },
-    {
-      "text": " with",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " **",
-      "type": "text"
-    },
-    {
-      "text": "sun",
-      "type": "text"
-    },
-    {
-      "text": "ny",
-      "type": "text"
-    },
-    {
-      "text": "**",
-      "type": "text"
-    },
-    {
-      "text": " sky",
-      "type": "text"
-    },
-    {
-      "text": " —",
-      "type": "text"
-    },
-    {
-      "text": " pleasant",
-      "type": "text"
-    },
-    {
-      "text": " weather",
-      "type": "text"
-    },
-    {
-      "text": " overall",
-      "type": "text"
-    },
-    {
-      "text": ".",
-      "type": "text"
-    },
-    {
-      "text": " Let",
-      "type": "text"
-    },
-    {
-      "text": " me",
-      "type": "text"
-    },
-    {
-      "text": " know",
-      "type": "text"
-    },
-    {
-      "text": " if",
-      "type": "text"
-    },
-    {
-      "text": " you",
-      "type": "text"
-    },
-    {
-      "text": "'d",
-      "type": "text"
-    },
-    {
-      "text": " like",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " weather",
-      "type": "text"
-    },
-    {
-      "text": " for",
-      "type": "text"
-    },
-    {
-      "text": " another",
-      "type": "text"
-    },
-    {
-      "text": " city",
-      "type": "text"
-    },
-    {
-      "text": ".",
+      "text": "**.",
       "type": "text"
     },
     {
       "assistant_state": null,
       "attempts": 1,
-      "latency_ms": 1155,
+      "latency_ms": 1127,
       "model": "deepseek-flash",
       "provider": "openai_compatible",
-      "request_id": "98b66d27-95ae-4fb9-8231-1d03dfde53c5",
+      "request_id": "b93e1575-b1c8-45fa-9983-bd592445e7d6",
       "stop_detail": null,
       "stop_reason": "end_turn",
       "type": "completed",
@@ -182,7 +70,7 @@
         "cache_read_tokens": 256,
         "cache_write_tokens": 0,
         "input_tokens": 395,
-        "output_tokens": 43
+        "output_tokens": 15
       }
     }
   ],
@@ -190,7 +78,7 @@
   "format": "eidolon.provider.fixture/1",
   "kind": "chat",
   "provider": "openai_compatible",
-  "recorded_at": "2026-11-07T08:45:07+00:00",
+  "recorded_at": "2026-11-07T10:19:34+00:00",
   "request": {
     "max_tokens": 64,
     "messages": [

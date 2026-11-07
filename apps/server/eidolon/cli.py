@@ -132,6 +132,9 @@ def cmd_cursors(args, registry, factory, out) -> int:
 
 
 def cmd_worker(args, registry, factory, out) -> int:
+    from eidolon.registry import default_jobs
+
+    jobs = [] if args.no_jobs else default_jobs(factory)
     with listening() as listener:
         worker = Worker(
             registry,
@@ -139,6 +142,7 @@ def cmd_worker(args, registry, factory, out) -> int:
             listener,
             poll_interval=args.poll_interval,
             batch_limit=args.batch_limit,
+            jobs=jobs,
         )
         worker.install_signal_handlers()
         try:
@@ -357,6 +361,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("worker", help="run the worker process")
     p.add_argument("--poll-interval", type=float, default=settings.worker_poll_interval)
     p.add_argument("--batch-limit", type=int, default=settings.worker_batch_limit)
+    p.add_argument(
+        "--no-jobs", action="store_true", help="consumers only; no task/review execution"
+    )
     p.set_defaults(fn=cmd_worker)
 
     p = sub.add_parser("export-bundle", help="export a provenance bundle (JSON)")

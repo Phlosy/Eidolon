@@ -211,6 +211,8 @@ class WorkProjection:
                     },
                 ]
                 row.last_seq = fact.seq
+        elif k == F.RUN_REQUESTED:
+            return  # transient; the started fact is what the read model shows
         else:
             row = db.get(TaskRow, UUID(p["task_id"]))
             if _fresh(row, fact):
