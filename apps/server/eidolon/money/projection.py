@@ -173,3 +173,7 @@ def project_spend_micro(db: Session, project_id: UUID) -> int:
 
 def company_spend_micro(db: Session, company_id: UUID) -> int:
     return _expense_debits(db, JournalRow.company_id == company_id)
+
+
+def company_spend_since_micro(db: Session, company_id: UUID, since: datetime) -> int:
+    return _expense_debits(db, JournalRow.company_id == company_id, JournalRow.posted_at >= since)

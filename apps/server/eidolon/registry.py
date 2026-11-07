@@ -51,20 +51,31 @@ def default_jobs(session_factory=None) -> list:
     provider = build_provider(settings, session_factory=factory)
     blobs = BlobStore(SERVER_ROOT / settings.transcript_dir)
     workspaces = Workspaces(SERVER_ROOT / settings.workspace_root)
-    from eidolon.agent.managers import Assigner, Deciders, IdentityRoster, MissionIntake, Planner
+    from eidolon.agent.managers import (
+        Assigner,
+        Deciders,
+        IdentityRoster,
+        MissionIntake,
+        Planner,
+        SpendApprover,
+    )
+    from eidolon.money.guard import BudgetGuard
 
     deciders = Deciders(factory, provider, blobs)
     roster = IdentityRoster()
+    guard = BudgetGuard()  # money layer, injected: agent never imports money (R6-a)
     return [
         MissionIntake(factory, deciders, roster),
         Planner(factory, deciders, roster),
         Assigner(factory, deciders, roster),
+        SpendApprover(factory, deciders, roster),
         TaskRunExecutor(
             factory,
             provider,
             blobs,
             workspaces,
             memory=MemoryRecall(factory, MemoryRepository()),
+            budget=guard,
         ),
         ReviewExecutor(
             factory,
@@ -73,5 +84,6 @@ def default_jobs(session_factory=None) -> list:
             workspaces,
             reviewer=settings.reviewer_person,
             role=settings.reviewer_role,
+            budget=guard,
         ),
     ]

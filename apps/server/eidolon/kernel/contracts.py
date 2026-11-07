@@ -193,3 +193,30 @@ TALENT_INVARIANTS: tuple[Invariant, ...] = (
         "test_talent::test_evidence_is_derived_from_facts_and_rebuilds",
     ),
 )
+
+
+# Budget invariants (R6-a): the institution's budget_policy, enforced with the ledger's
+# numbers — three levels, none of them a judgment.
+BUDGET_INVARIANTS: tuple[Invariant, ...] = (
+    Invariant(
+        "B1",
+        "a run carries a money allowance (run_default units in the company's currency); "
+        "the loop accumulates the price-list estimate of every step and ends the run with "
+        "agent.run.budget_exceeded(max_cost) once the allowance is spent",
+        "test_budget::test_run_stops_when_its_money_allowance_is_spent",
+    ),
+    Invariant(
+        "B2",
+        "past warn_ratio of a project's budget every tranche of run_default needs a "
+        "spend.approve decision resolved by the gate's amount tiers (system records, an "
+        "agent role signs, a human decides); no run starts while it is pending or rejected "
+        "unless hard_stop is off",
+        "test_budget::test_project_tranches_need_spend_approval_past_warn_ratio",
+    ),
+    Invariant(
+        "B3",
+        "a company runs at most max_concurrent_runs tasks at once and spends at most "
+        "daily_cap units per day; beyond either the next run simply waits",
+        "test_budget::test_company_concurrency_and_daily_cap_hold_runs",
+    ),
+)

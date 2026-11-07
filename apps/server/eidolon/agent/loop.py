@@ -34,6 +34,7 @@ from eidolon.agent.blobs import BlobStore
 from eidolon.agent.context import ContextBuilder
 from eidolon.agent.memory.recall import MemoryRecall
 from eidolon.agent.memory.repository import Viewer
+from eidolon.agent.providers import pricing
 from eidolon.agent.providers.base import (
     CallContext,
     Completed,
@@ -172,6 +173,18 @@ class AgentRunner:
                     {"reason": "max_total_tokens", "usage": state.usage_total.as_dict()},
                 )
                 break
+            if state.over_cost_budget():
+                await self._terminal(
+                    state,
+                    R.RUN_BUDGET_EXCEEDED,
+                    {
+                        "reason": "max_cost",
+                        "cost": dict(state.cost_total),
+                        "max_cost_micro": state.budget.max_cost_micro,
+                        "currency": state.budget.cost_currency,
+                    },
+                )
+                break
             await self._step(state, state.last_step_no + 1, 1)
         return self._outcome(state)
 
@@ -250,6 +263,7 @@ class AgentRunner:
 
         assistant = Message.assistant(text or None, *calls, provider_state=done.assistant_state)
         response_ref = self.blobs.put_json(assistant.as_dict())
+        cost = pricing.estimate(done.model, done.usage)
         await self._append(
             state,
             self._fact(
@@ -264,6 +278,7 @@ class AgentRunner:
                     "stop_reason": done.stop_reason,
                     "stop_detail": done.stop_detail,
                     "usage": done.usage.as_dict(),
+                    "cost": cost.as_dict() if cost else None,
                     "model": done.model,
                     "request_id": done.request_id,
                     "latency_ms": round((time.monotonic() - t0) * 1000),
@@ -273,6 +288,7 @@ class AgentRunner:
         )
         state.pending_step = None
         state.steps_completed += 1
+        state.add_cost(cost.as_dict() if cost else None)
         state.current_calls = [{"id": c.id, "name": c.name} for c in calls]
         state.tools_requested, state.tools_completed = {}, set()
         state.history_refs.append(("assistant", response_ref))

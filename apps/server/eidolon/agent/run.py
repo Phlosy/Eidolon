@@ -6,7 +6,7 @@ run's ``agent.*`` facts in order — the only persistent state; crash recovery i
 tool results are blobs referenced from the facts by hash.
 """
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
@@ -49,9 +49,19 @@ TERMINAL = frozenset({"completed", "failed", "cancelled", "budget_exceeded"})
 class RunBudget:
     max_steps: int = 20
     max_total_tokens: int | None = None  # input + output across the run
+    # Money: the run's allowance in micro-units of ``cost_currency`` (the company's
+    # accounting currency). Compared against the price-list estimate of each step;
+    # a provider billed in another currency is not compared (the project guard still is).
+    max_cost_micro: int | None = None
+    cost_currency: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
-        return {"max_steps": self.max_steps, "max_total_tokens": self.max_total_tokens}
+        return {
+            "max_steps": self.max_steps,
+            "max_total_tokens": self.max_total_tokens,
+            "max_cost_micro": self.max_cost_micro,
+            "cost_currency": self.cost_currency,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,12 +110,24 @@ class RunState:
     tools_completed: set[str] = field(default_factory=set)
     history_refs: list[tuple[str, str]] = field(default_factory=list)  # (assistant|tool, ref)
     usage_total: Usage = Usage()
+    cost_total: dict[str, int] = field(default_factory=dict)  # currency -> micro (estimates)
     last_fact_id: UUID | None = None
     last_stop_reason: str | None = None
     final_ref: str | None = None
     error: str | None = None
 
     # -- derived views ----------------------------------------------------------
+
+    def add_cost(self, cost: Mapping[str, Any] | None) -> None:
+        if cost:
+            cur = cost["currency"]
+            self.cost_total[cur] = self.cost_total.get(cur, 0) + int(cost["amount_micro"])
+
+    def over_cost_budget(self) -> bool:
+        b = self.budget
+        if b.max_cost_micro is None or b.cost_currency is None:
+            return False
+        return self.cost_total.get(b.cost_currency, 0) >= b.max_cost_micro
 
     @property
     def terminal(self) -> bool:
@@ -155,7 +177,13 @@ class RunState:
                     system_ref=p["system_ref"],
                     prompt_ref=p["prompt_ref"],
                     tool_names=tuple(p["tools"]),
-                    budget=RunBudget(**p["budget"]),
+                    budget=RunBudget(
+                        **{
+                            k: v
+                            for k, v in p["budget"].items()
+                            if k in RunBudget.__dataclass_fields__
+                        }
+                    ),
                     max_tokens_per_step=p["max_tokens_per_step"],
                     temperature=p.get("temperature"),
                     task_id=p.get("task_id"),
@@ -183,6 +211,7 @@ class RunState:
                     state.usage_total.cache_read_tokens + u["cache_read_tokens"],
                     state.usage_total.cache_write_tokens + u["cache_write_tokens"],
                 )
+                state.add_cost(p.get("cost"))
             elif fact.kind == TOOL_REQUESTED:
                 state.tools_requested[p["call_id"]] = p["idempotency_key"]
             elif fact.kind == TOOL_COMPLETED:

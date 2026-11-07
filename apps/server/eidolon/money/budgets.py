@@ -12,9 +12,8 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from eidolon.institution.schema import MICRO_PER_UNIT
 from eidolon.money import projection as P
-
-MICRO_PER_UNIT = 10_000  # 1 minor unit (0.01) = 10 000 micro
 
 
 def to_units(micro: int) -> int:

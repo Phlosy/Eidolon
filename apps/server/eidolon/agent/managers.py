@@ -30,6 +30,7 @@ from eidolon.agent.loop import AgentRunner
 from eidolon.agent.providers.base import Provider
 from eidolon.agent.tools import FunctionTools
 from eidolon.institution import (
+    REQUESTED,
     DecisionError,
     DecisionState,
     GateContext,
@@ -699,3 +700,86 @@ __all__ = [
     "default_roster",
     "parse_json",
 ]
+
+
+# -- spend approval (R6-a) ----------------------------------------------------------------------
+
+SPEND_SYSTEM = (
+    "You are the project manager of a software studio. A project has reached the part of "
+    "its budget where every further tranche of spend needs your approval. Judge whether the "
+    "spend so far is proportionate to progress and whether the next tranche is worth it. "
+    'Answer with JSON only: {"verdict": "approve" | "reject", "reason": "<one sentence>"}.'
+)
+
+
+@dataclass
+class SpendApprover:
+    """``spend.approve`` decisions in the agent tier: the role the gate names (PM in
+    software-studio-v1) looks at the project's spend and signs. Human tiers wait in
+    the decisions inbox; the system tier was recorded by the guard itself."""
+
+    session_factory: sessionmaker
+    deciders: Deciders
+    rosters: RosterSource
+    svc: WorkService = field(default_factory=WorkService)
+    store: FactStore = field(default_factory=FactStore)
+    name: str = "spend_approver"
+
+    def tick(self) -> int:
+        with self.session_factory() as db:
+            requested = self.store.stream(db, kinds=[REQUESTED], limit=100_000)
+            pending = [
+                (f.company_id, f.correlation_id)
+                for f in requested
+                if f.payload.get("gate") == "spend.approve"
+                and f.payload.get("resolution", {}).get("decider") == "agent"
+            ]
+        done = 0
+        for company_id, decision_id in pending:
+            if self._approve(company_id, decision_id):
+                done += 1
+        return done
+
+    def _approve(self, company_id: UUID, decision_id: UUID) -> bool:
+        with self.session_factory() as db:
+            decision = load(db, decision_id, store=self.store)
+            if decision.status != "pending" or decision.signatures:
+                return False
+            template = _template(db, company_id)
+            if template is None:
+                return False
+            roster = self.rosters.for_company(db, company_id)
+            signer = next(
+                (p for p in roster.people if p.role in decision.resolution.allowed_roles), None
+            )
+            if signer is None:
+                return False
+            s = decision.subject
+            project_id = UUID(s["project_id"])
+            state = self.svc.project(db, project_id)
+            tasks = "\n".join(f"- {t.title} [{t.status}]" for t in state.tasks.values())
+            prompt = (
+                f"Project: {state.title}\nBudget: {s.get('budget_units')} units. "
+                f"Spent so far: {s.get('spent_units')} units. "
+                f"Requested tranche: {s.get('tranche_units')} units "
+                f"(tranche #{s.get('tranche')}).\n"
+                f"Tasks:\n{tasks}"
+            )
+            answer = self.deciders.ask(
+                company_id=company_id,
+                person=signer,
+                system=SPEND_SYSTEM,
+                prompt=prompt,
+                run_key=f"decision:{decision_id}:spend",
+                causation_id=decision.last_fact_id,
+            )
+            if not answer or answer.get("verdict") not in ("approve", "reject"):
+                return False
+            decision = self.deciders.sign_and_conclude(
+                db, template, decision, signer, answer["verdict"], str(answer.get("reason", ""))
+            )
+            log.info(
+                "spend.decided",
+                extra={"decision_id": str(decision_id), "status": decision.status},
+            )
+            return True

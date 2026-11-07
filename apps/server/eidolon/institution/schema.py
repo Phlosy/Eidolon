@@ -87,12 +87,19 @@ class GateRule:
                 raise SchemaError(f"unknown separation rule {s!r}; known: {SEPARATIONS}")
 
 
+# Budgets are in *units*: the minor unit (分 / cents) of the company's accounting
+# currency. The ledger keeps micro-units (1 000 000 per 1.00); this is the only bridge.
+MICRO_PER_UNIT = 10_000
+
+
 @dataclass(frozen=True, slots=True)
 class BudgetPolicy:
-    project_default: int  # money units (the company's accounting currency, R4)
-    run_default: int
-    warn_ratio: float = 0.8
-    hard_stop: bool = True
+    project_default: int  # units (see MICRO_PER_UNIT)
+    run_default: int  # units: one run's allowance, and the tranche spend is approved in
+    warn_ratio: float = 0.8  # of the project budget: above it every tranche needs spend.approve
+    hard_stop: bool = True  # False: decisions are still opened but never block a run
+    daily_cap: int | None = None  # units per company per UTC day; None = no cap
+    max_concurrent_runs: int = 4  # per company: tasks in progress at once
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,6 +188,8 @@ class InstitutionTemplate:
                 "run_default": self.budget_policy.run_default,
                 "warn_ratio": self.budget_policy.warn_ratio,
                 "hard_stop": self.budget_policy.hard_stop,
+                "daily_cap": self.budget_policy.daily_cap,
+                "max_concurrent_runs": self.budget_policy.max_concurrent_runs,
             },
             "review_policy": {
                 "rework_limit": self.review_policy.rework_limit,

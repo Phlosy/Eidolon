@@ -531,3 +531,10 @@ strangler 的终点是把被缠绕的树砍掉。旧应用没有被"迁移"—�
 `extensions/README.md` 与 `docs/archive/README.md` 指向那里；要接回某个扩展（R7）只能对着事实日志与投影重写，不能复活旧表。
 一个镜像两种进程：`api` 先 migrate 再 serve，`worker` 同镜像换 command，是唯一持有模型 key 的进程；runner 随镜像装入但零密钥。
 依赖锁按"v2 真正 import 的包"手工裁剪并在干净 venv 里验证，而不是 `pip freeze` 把旧应用的残留一起锁进去。
+
+**v2-ADR-26（2026-11-07）预算不是循环里的一个数，而是制度在账本上的三道闸：run 的零花钱、项目的分期审批、公司的并发与日限。**
+run 级：每步按价目表估价累计，超过模板的 `run_default` 就停——这是机械上限，不是判断；币种不同就不比，因为换算属于 money 层。
+项目级：没有"预算超了就停"的全局开关，而是把花费切成 `run_default` 大小的 tranche，过了 `warn_ratio` 之后每一份都要经 `spend.approve`，
+金额分层决定谁来签：系统层机械记录，中层由 PM agent 看着项目进度签，上层由 Owner 在收件箱签；pending 就等，rejected 就停。
+守卫只提问、不决定，它用注入的方式进 agent 层（agent 不 import money），所以预算规则改在制度和 money 里，循环和执行器不动。
+公司级：并发与日限是配额不是判断，超了只是等待，不开决定。

@@ -61,6 +61,10 @@ def validate(template: InstitutionTemplate) -> list[str]:
             problems.append(f"authority_defaults: unknown role {code!r}")
     if not 0 < template.budget_policy.warn_ratio <= 1:
         problems.append("budget_policy.warn_ratio must be in (0, 1]")
+    if template.budget_policy.max_concurrent_runs < 1:
+        problems.append("budget_policy.max_concurrent_runs must be >= 1")
+    if template.budget_policy.daily_cap is not None and template.budget_policy.daily_cap <= 0:
+        problems.append("budget_policy.daily_cap must be positive or null")
     if template.budget_policy.project_default <= 0 or template.budget_policy.run_default <= 0:
         problems.append("budget defaults must be positive")
     if template.review_policy.rework_limit < 0 or template.review_policy.escalate_after < 0:

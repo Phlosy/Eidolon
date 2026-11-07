@@ -20,7 +20,7 @@ import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from sqlalchemy import select
@@ -33,6 +33,7 @@ from eidolon.agent.memory import MemoryRecall
 from eidolon.agent.prompts import ROLES
 from eidolon.agent.providers.base import Provider
 from eidolon.agent.runner import RunnerTools
+from eidolon.identity import IdentityError, IdentityService
 from eidolon.institution import (
     GateContext,
     InstitutionTemplate,
@@ -43,6 +44,7 @@ from eidolon.institution import (
     tool_gate,
 )
 from eidolon.institution.adoption import current as current_institution
+from eidolon.institution.schema import MICRO_PER_UNIT
 from eidolon.kernel.facts import Actor, ActorKind, Fact
 from eidolon.kernel.store import FactStore
 from eidolon.logging import get_logger
@@ -171,6 +173,33 @@ def artifact_id_for(run_id: UUID, path: str) -> UUID:
 # -- task runs (job) ---------------------------------------------------------------------------
 
 
+class BudgetGuard(Protocol):
+    """Asked before a new run starts: may this project spend another tranche now?
+    Implemented by the money layer (``money.guard.BudgetGuard``) and injected by the
+    registry; the agent layer never imports money."""
+
+    def check(
+        self, db: Session, company_id: UUID, project_id: UUID, template: InstitutionTemplate
+    ) -> Any: ...  # .allow: bool, .reason: str
+
+
+def run_allowance(
+    template: InstitutionTemplate | None, currency: str | None
+) -> tuple[int | None, str | None]:
+    """The run-level money cap from the institution: ``run_default`` units in the
+    company's currency, as micro-units."""
+    if template is None or currency is None:
+        return None, None
+    return template.budget_policy.run_default * MICRO_PER_UNIT, currency
+
+
+def _currency(db: Session, company_id: UUID) -> str | None:
+    try:
+        return IdentityService().company(db, company_id).currency
+    except IdentityError:
+        return None
+
+
 @dataclass
 class TaskRunExecutor:
     session_factory: sessionmaker
@@ -180,6 +209,7 @@ class TaskRunExecutor:
     svc: WorkService = field(default_factory=WorkService)
     store: FactStore = field(default_factory=FactStore)
     memory: MemoryRecall | None = None
+    budget: BudgetGuard | None = None
     model: str | None = None
     max_steps: int = 24
     max_tokens_per_step: int = 8192
@@ -208,11 +238,29 @@ class TaskRunExecutor:
             if task.status != "in_progress" or task.current_run_id != run_id:
                 return False  # projection lag; the fold is the truth
             template = _template(db, company_id)
+            currency = _currency(db, company_id)
+            if (
+                self.budget is not None
+                and template is not None
+                and not _run_exists(self.session_factory, self.store, run_id)
+            ):
+                verdict = self.budget.check(db, company_id, project_id, template)
+                if not verdict.allow:
+                    log.info(
+                        "task.run_held",
+                        extra={"task_id": str(task_id), "reason": verdict.reason},
+                    )
+                    return False  # the task waits; the next tick asks again
         workspace = self.workspaces.for_task(company_id, project_id, task_id)
         materialize_inputs(state, task, self.blobs, workspace)
         outcome = asyncio.run(
             self._run(
-                db_state=state, task=task, run_id=run_id, workspace=workspace, template=template
+                db_state=state,
+                task=task,
+                run_id=run_id,
+                workspace=workspace,
+                template=template,
+                currency=currency,
             )
         )
         with self.session_factory() as db:
@@ -246,8 +294,10 @@ class TaskRunExecutor:
         run_id: UUID,
         workspace: Path,
         template: InstitutionTemplate | None,
+        currency: str | None = None,
     ) -> R.RunOutcome:
         role = task.role or "engineer"
+        max_cost, cost_currency = run_allowance(template, currency)
         tools = await (
             self.tools_factory(workspace) if self.tools_factory else RunnerTools.start(workspace)
         )
@@ -276,7 +326,9 @@ class TaskRunExecutor:
                 system=ROLES.get(role, ROLES["engineer"]),
                 prompt=task_prompt(db_state, task, self.blobs),
                 task_id=str(task.task_id),
-                budget=R.RunBudget(max_steps=self.max_steps),
+                budget=R.RunBudget(
+                    max_steps=self.max_steps, max_cost_micro=max_cost, cost_currency=cost_currency
+                ),
                 max_tokens_per_step=self.max_tokens_per_step,
                 temperature=0.0,
                 causation_id=task.last_fact_id,  # work.task.started → run (R4-c)
@@ -420,6 +472,7 @@ class ReviewExecutor:
     model: str | None = None
     max_steps: int = 8
     tools_factory: Callable[[Path], Any] | None = None
+    budget: BudgetGuard | None = None
     name: str = "reviews"
 
     def tick(self) -> int:
@@ -483,6 +536,14 @@ class ReviewExecutor:
                 if task.assignee == self.reviewer:
                     log.warning("review.separation", extra={"task_id": str(task_id)})
                     return False
+                if self.budget is not None:
+                    held = self.budget.check(db, company_id, project_id, template)
+                    if not held.allow:
+                        log.info(
+                            "review.run_held",
+                            extra={"task_id": str(task_id), "reason": held.reason},
+                        )
+                        return False
                 verdict = self._run_reviewer(state, task, template, decision_id)
                 if verdict is None:
                     return False  # RV1: no verdict means no verdict; the task waits
@@ -530,6 +591,8 @@ class ReviewExecutor:
         run_id = attempt_run_id(
             self.session_factory, self.store, f"eidolon:decision:{decision_id}:reviewer-run"
         )
+        with self.session_factory() as db:
+            max_cost, cost_currency = run_allowance(template, _currency(db, state.company_id))
 
         async def go():
             tools = await (
@@ -558,7 +621,11 @@ class ReviewExecutor:
                         state, task, self.blobs, limit=template.review_policy.rework_limit
                     ),
                     task_id=str(task.task_id),
-                    budget=R.RunBudget(max_steps=self.max_steps),
+                    budget=R.RunBudget(
+                        max_steps=self.max_steps,
+                        max_cost_micro=max_cost,
+                        cost_currency=cost_currency,
+                    ),
                     max_tokens_per_step=4096,
                     temperature=0.0,
                     causation_id=task.last_fact_id,  # work.task.submitted → review run
