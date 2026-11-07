@@ -478,3 +478,11 @@ PM 的计划同样是 agent 的产物：任务以 PM 名义创建（task id 由 
 单位：制度模板里的预算与 `spend.approve` 金额是记账币种的最小单位（分），账本是微单位（1 分 = 10 000 微，单次调用只有零点几分），
 只在 `money/budgets.py` 换算，模板数字与模型看到的提示词都不变（不必重录 fixture）。
 回放的调用默认只记量不过账（不花钱）；驱动回放 fixture 的测试用 `CostMeter(book_replays=True)` 走完整链路。记账政策是部署常量：同一日志上跑两个政策不同的 meter 会在 K2 冲突。
+
+**v2-ADR-19（2026-11-07）费用归属是因果的，不是存储的：每条 run 必须说出是哪条事实要了它。**
+`agent.run.started` 带 causation：执行器指向 `work.task.started`，评审器指向 `work.task.submitted`，管理作业指向 mission / 项目 / 任务事实。
+于是一笔分录只靠 causation 与 correlation 就能走回去：分录 ← 成本 ← 调用 ← step，调用的 correlation 是 run，run 的 causation 是「谁要的」，那条事实的
+correlation 就是 project / mission / decision。`cost_trace` 走不通的环节记在 `missing` 里而不报错（run 外的调用、老数据没有 causation 都是合法状态）。
+项目费用 = 任务 run 的分录（按 journal.task_id）+ 项目事实召唤的无任务管理 run（按 run.started 的 causation 落在项目 correlation 内）；
+CEO 的 mission run 归 mission，不归项目。这些都是查询，不建新表、不在事实里存 project_id——否则换一种归属规则就得重写事实。
+bundle 不另设「账本段」：`--with-ledger` 只是把项目花费背后的 `money.*` 事实并入同一个事实选择，封印与离线校验不变。

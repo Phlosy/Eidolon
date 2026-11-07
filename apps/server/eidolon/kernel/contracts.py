@@ -167,4 +167,11 @@ MONEY_INVARIANTS: tuple[Invariant, ...] = (
         "a query joining journal lines to tasks, never stored",
         "test_money::test_budgets_roll_up_spend_by_run_task_and_project",
     ),
+    Invariant(
+        "M5",
+        "every run names the fact that called for it (causation on agent.run.started), so "
+        "a ledger line walks back through cost, call, step, run, task and project by "
+        "causation and correlation alone, and a project's spend is a query, never stored",
+        "test_cost_trace::test_cost_trace_walks_from_entry_to_project",
+    ),
 )

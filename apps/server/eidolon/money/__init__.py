@@ -24,6 +24,14 @@ from eidolon.money.projection import (
     run_spend_micro,
     task_spend_micro,
 )
+from eidolon.money.trace import (
+    CostTrace,
+    ProjectCosts,
+    TraceError,
+    cost_trace,
+    ledger_fact_ids,
+    project_costs,
+)
 from eidolon.money.verify import LedgerReport, verify
 
 __all__ = [
@@ -36,6 +44,7 @@ __all__ = [
     "Account",
     "AccountRow",
     "CostMeter",
+    "CostTrace",
     "Entry",
     "JournalRow",
     "Ledger",
@@ -44,12 +53,17 @@ __all__ = [
     "LedgerState",
     "Line",
     "MoneyError",
+    "ProjectCosts",
+    "TraceError",
     "accounts",
     "budgets",
     "company_spend_micro",
+    "cost_trace",
     "fx",
+    "ledger_fact_ids",
     "normal_side",
     "payable",
+    "project_costs",
     "project_spend_micro",
     "run_spend_micro",
     "task_spend_micro",

@@ -30,8 +30,12 @@ from eidolon.kernel.consumers import process
 from eidolon.money import (
     COST_RECORDED,
     CostMeter,
+    JournalRow,
     LedgerProjection,
     company_spend_micro,
+    cost_trace,
+    ledger_fact_ids,
+    project_costs,
     project_spend_micro,
 )
 from eidolon.money import verify as ledger_verify
@@ -134,6 +138,29 @@ def test_three_roles_deliver_a_project_from_replayed_fixtures(db, tmp_path):
     assert 0 < project_spend_micro(db, pid) < company_spend_micro(db, company)  # + manager runs
     assert company_spend_micro(db, company) == sum(f.payload["cost"]["amount_micro"] for f in calls)
     assert ledger_verify(db, company).ok
+    # R4-c: a ledger line of an engineer run traces back to its step, run, task and this
+    # project; the roll-up covers the engineers' runs per task plus the PM / Tech Lead
+    # management runs the project called for, but not the CEO's mission run.
+    row = (
+        db.query(JournalRow)
+        .filter(JournalRow.company_id == company, JournalRow.task_id.is_not(None))
+        .first()
+    )
+    t = cost_trace(db, row.entry_id)
+    assert t.project_id == pid and t.task_id in state.tasks and t.missing == []
+    assert t.cause is not None and t.cause.kind.startswith("work.task.")
+    # engineers, QA and the Tech Lead's assignment runs all carry the task they are about
+    assert t.step is not None
+    assert t.run_started.payload["person_id"] in ("eng-1", "eng-2", "qa-1", "tl-1")
+    costs = project_costs(db, pid)
+    assert {tc.task_id for tc in costs.tasks} == set(state.tasks)
+    assert costs.task_micro == project_spend_micro(db, pid) > 0
+    assert {r.person_id for r in costs.management} == {"pm-1", "tl-1"}
+    assert 0 < costs.total_micro < company_spend_micro(db, company)
+    ids = ledger_fact_ids(db, pid)
+    bundle = provenance.bundle(db, company, correlation_id=pid, fact_ids=ids)
+    assert {f["kind"] for f in bundle["facts"]} >= {COST_RECORDED, "money.entry.posted"}
+    assert bundle["bundle_hash"] == provenance.seal(bundle)
 
     # The Owner delivers; provenance holds.
     owner_delivers(db, company, pid)

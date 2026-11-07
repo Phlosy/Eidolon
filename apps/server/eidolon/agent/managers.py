@@ -168,6 +168,7 @@ class Deciders:
         task_id: str | None = None,
         max_tokens: int = 4096,  # thinking-mode models spend output tokens before the JSON
         max_attempts: int = 3,
+        causation_id: UUID | None = None,  # what called for the decision (R4-c cost trace)
     ) -> dict[str, Any] | None:
         """One structured answer from ``person``'s agent. The run id derives from
         ``run_key`` and an attempt number: a completed run is reused (replay/resume),
@@ -202,6 +203,7 @@ class Deciders:
                 budget=R.RunBudget(max_steps=2),
                 max_tokens_per_step=max_tokens,
                 temperature=0.0,
+                causation_id=causation_id,
             )
             return await runner.start(spec)
 
@@ -349,6 +351,7 @@ class MissionIntake:
                     system=CEO_SYSTEM,
                     prompt=prompt,
                     run_key=f"mission:{mission_id}:ceo",
+                    causation_id=mission.last_fact_id,
                 )
                 if not answer or answer.get("verdict") not in ("approve", "reject"):
                     return False
@@ -454,6 +457,7 @@ class Planner:
                     prompt=brief,
                     run_key=f"project:{project_id}:plan",
                     max_tokens=2048,
+                    causation_id=state.last_fact_id,
                 )
                 tasks = (answer or {}).get("tasks")
                 if not isinstance(tasks, list) or not tasks:
@@ -508,6 +512,7 @@ class Planner:
                     system=TECH_LEAD_PLAN_SYSTEM,
                     prompt=prompt,
                     run_key=f"project:{project_id}:plan-review:{len(state.tasks)}",
+                    causation_id=state.last_fact_id,
                 )
                 if not answer or answer.get("verdict") not in ("approve", "rework"):
                     return False
@@ -619,6 +624,7 @@ class Assigner:
                     prompt=prompt,
                     run_key=f"task:{ts.task_id}:assign:{ts.last_fact_id}",
                     task_id=str(ts.task_id),
+                    causation_id=ts.last_fact_id,
                 )
                 assignee = (answer or {}).get("assignee")
                 if not assignee or roster.role_of(str(assignee)) is None:

@@ -154,8 +154,16 @@ def cmd_worker(args, registry, factory, out) -> int:
 
 def cmd_export_bundle(args, registry, factory, out) -> int:
     with factory() as db:
+        fact_ids = list(args.fact or [])
+        if args.with_ledger:
+            if args.correlation is None:
+                print("--with-ledger needs --correlation <project_id>", file=sys.stderr)
+                return EXIT_USAGE
+            from eidolon.money.trace import ledger_fact_ids
+
+            fact_ids += ledger_fact_ids(db, args.correlation)
         data = provenance.bundle(
-            db, args.company, fact_ids=args.fact or None, correlation_id=args.correlation
+            db, args.company, fact_ids=fact_ids or None, correlation_id=args.correlation
         )
     text_out = json.dumps(data, ensure_ascii=False, indent=2 if args.pretty else None)
     if args.output:
@@ -248,6 +256,70 @@ def cmd_balances(args, registry, factory, out) -> int:
             f"{r.credit_total_micro:>16}  {r.balance_micro:>16}",
             file=out,
         )
+    print("(amounts in micro-units: 1 000 000 = 1.00)", file=out)
+    return EXIT_OK
+
+
+def cmd_cost_trace(args, registry, factory, out) -> int:
+    from eidolon.money.trace import TraceError, cost_trace
+
+    with factory() as db:
+        try:
+            trace = cost_trace(db, args.ref)
+        except TraceError as exc:
+            print(str(exc), file=sys.stderr)
+            return EXIT_USAGE
+    if args.json:
+        print(json.dumps(trace.as_dict(), ensure_ascii=False, indent=2), file=out)
+        return EXIT_OK
+    d = trace.as_dict()
+    booked = d["booked"]
+    amount = f"{booked['amount_micro']} micro {booked['currency']}" if booked else "unbooked"
+    print(
+        f"cost {amount} ({'posted' if d['posted'] else 'not posted: ' + str(d['reason'])}) "
+        f"model={d['model']} provider={d['provider']} mode={d['mode']}",
+        file=out,
+    )
+    for f in trace.chain:
+        print(
+            f"  seq={f.seq} {f.kind} {f.id} "
+            f"[{f.actor.kind.value}{':' + f.actor.id if f.actor.id else ''}]",
+            file=out,
+        )
+    for key in (
+        "run_id",
+        "person_id",
+        "task_id",
+        "task_title",
+        "project_id",
+        "mission_id",
+        "decision_id",
+    ):
+        if d[key]:
+            print(f"{key}: {d[key]}", file=out)
+    for m in d["missing"]:
+        print(f"missing: {m}", file=out)
+    return EXIT_OK
+
+
+def cmd_project_costs(args, registry, factory, out) -> int:
+    from eidolon.money.trace import project_costs
+
+    with factory() as db:
+        costs = project_costs(db, args.project)
+    if args.json:
+        print(json.dumps(costs.as_dict(), ensure_ascii=False, indent=2), file=out)
+        return EXIT_OK
+    cur = costs.currency or "-"
+    print(f"project {costs.project_id}: total {costs.total_micro} micro {cur}", file=out)
+    for t in costs.tasks:
+        print(f"  task {t.task_id} [{t.status}] {t.title}: {t.micro}", file=out)
+        for r in t.runs:
+            print(f"    run {r.run_id} ({r.person_id}): {r.micro}", file=out)
+    if costs.management:
+        print(f"  management: {costs.management_micro}", file=out)
+        for r in costs.management:
+            print(f"    run {r.run_id} ({r.person_id}): {r.micro}", file=out)
     print("(amounts in micro-units: 1 000 000 = 1.00)", file=out)
     return EXIT_OK
 
@@ -431,6 +503,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--fact", type=UUID, action="append", help="a fact id (repeatable)")
     p.add_argument("-o", "--output", default=None, help="write to this file instead of stdout")
     p.add_argument("--pretty", action="store_true", help="indent the JSON")
+    p.add_argument(
+        "--with-ledger",
+        action="store_true",
+        help="also include the money.* facts behind the project's spend (--correlation = project)",
+    )
     p.set_defaults(fn=cmd_export_bundle)
 
     p = sub.add_parser("trace", help="show a fact's causal ancestry and correlated facts")
@@ -445,6 +522,18 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("balances", help="print a company's accounts and balances")
     p.add_argument("--company", type=UUID, required=True)
     p.set_defaults(fn=cmd_balances)
+
+    p = sub.add_parser("cost-trace", help="trace a ledger line back to the run, task and project")
+    p.add_argument(
+        "ref", type=UUID, help="an entry / cost / model-call fact id, or a journal entry_id"
+    )
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=cmd_cost_trace)
+
+    p = sub.add_parser("project-costs", help="what a project cost: per task, per run, management")
+    p.add_argument("--project", type=UUID, required=True)
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(fn=cmd_project_costs)
 
     p = sub.add_parser("run-task", help="run one agent task in a sandboxed workspace")
     p.add_argument("--workspace", required=True)

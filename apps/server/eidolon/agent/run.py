@@ -66,6 +66,7 @@ class RunSpec:
     budget: RunBudget = RunBudget()
     max_tokens_per_step: int = 4096
     temperature: float | None = None
+    causation_id: UUID | None = None  # the fact that called for this run (R4-c trace)
 
 
 @dataclass(frozen=True, slots=True)

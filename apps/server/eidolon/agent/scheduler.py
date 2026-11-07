@@ -279,6 +279,7 @@ class TaskRunExecutor:
                 budget=R.RunBudget(max_steps=self.max_steps),
                 max_tokens_per_step=self.max_tokens_per_step,
                 temperature=0.0,
+                causation_id=task.last_fact_id,  # work.task.started → run (R4-c)
             )
             return await runner.start(spec)
         finally:
@@ -560,6 +561,7 @@ class ReviewExecutor:
                     budget=R.RunBudget(max_steps=self.max_steps),
                     max_tokens_per_step=4096,
                     temperature=0.0,
+                    causation_id=task.last_fact_id,  # work.task.submitted → review run
                 )
                 return await runner.start(spec)
             finally:

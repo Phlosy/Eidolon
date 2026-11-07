@@ -100,7 +100,7 @@ class AgentRunner:
                 },
                 R.run_key(spec.run_id, "started"),
                 run_id=spec.run_id,
-                causation_id=None,
+                causation_id=spec.causation_id,
             ),
         )
         state = R.RunState.from_facts(spec.run_id, [started])
