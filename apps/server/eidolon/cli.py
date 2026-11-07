@@ -5,6 +5,9 @@
     rebuild <projection>         throw a projection away and derive it from the log
     cursors                      every consumer's cursor and how far behind it is
     worker [--poll-interval S]   run the worker process until SIGTERM / SIGINT
+    export-bundle --company ID   provenance bundle as JSON (whole chain, --correlation
+                                 and/or --fact); verify offline with scripts/verify_bundle.py
+    trace <fact-id> [--depth N]  causal ancestry + correlated facts of one fact
 
 Human-readable results go to stdout; logs are JSON lines on stderr. ``main`` takes
 an optional registry and session factory so tests can drive it in-process.
@@ -12,6 +15,7 @@ an optional registry and session factory so tests can drive it in-process.
 
 import argparse
 import importlib
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -24,6 +28,7 @@ from sqlalchemy.orm import sessionmaker
 
 from eidolon import logging as elog
 from eidolon.config import settings
+from eidolon.kernel import provenance
 from eidolon.kernel.consumers import Registry, rebuild
 from eidolon.kernel.notify import listening
 from eidolon.kernel.store import FactCursorRow, FactStore
@@ -141,6 +146,47 @@ def cmd_worker(args, registry, factory, out) -> int:
     return EXIT_OK
 
 
+def cmd_export_bundle(args, registry, factory, out) -> int:
+    with factory() as db:
+        data = provenance.bundle(
+            db, args.company, fact_ids=args.fact or None, correlation_id=args.correlation
+        )
+    text_out = json.dumps(data, ensure_ascii=False, indent=2 if args.pretty else None)
+    if args.output:
+        Path(args.output).write_text(text_out + "\n", encoding="utf-8")
+        print(
+            f"wrote {args.output}: {len(data['facts'])} facts, bundle_hash {data['bundle_hash']}",
+            file=sys.stderr,
+        )
+    else:
+        print(text_out, file=out)
+    return EXIT_OK
+
+
+def cmd_trace(args, registry, factory, out) -> int:
+    with factory() as db:
+        try:
+            result = provenance.trace(db, args.fact_id, depth=args.depth)
+        except provenance.UnknownFact as exc:
+            print(str(exc), file=sys.stderr)
+            return EXIT_USAGE
+    print(f"root {result.root}", file=out)
+    for f in result.facts:
+        marker = "*" if f.id == result.root else " "
+        cause = f" <- {f.causation_id}" if f.causation_id else ""
+        print(
+            f"{marker} seq={f.seq} chain_seq={f.chain_seq} {f.kind} {f.id} "
+            f"[{f.actor.kind.value}{':' + f.actor.id if f.actor.id else ''}]{cause}",
+            file=out,
+        )
+    print(f"{len(result.facts)} facts, {len(result.edges)} edges", file=out)
+    if result.depth_reached:
+        print(f"ancestry truncated at depth {args.depth}", file=out)
+    for missing in result.missing:
+        print(f"missing cause: {missing}", file=out)
+    return EXIT_OK
+
+
 # -- parser ---------------------------------------------------------------------
 
 
@@ -170,6 +216,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--poll-interval", type=float, default=settings.worker_poll_interval)
     p.add_argument("--batch-limit", type=int, default=settings.worker_batch_limit)
     p.set_defaults(fn=cmd_worker)
+
+    p = sub.add_parser("export-bundle", help="export a provenance bundle (JSON)")
+    p.add_argument("--company", type=UUID, required=True)
+    p.add_argument("--correlation", type=UUID, default=None, help="facts of this correlation")
+    p.add_argument("--fact", type=UUID, action="append", help="a fact id (repeatable)")
+    p.add_argument("-o", "--output", default=None, help="write to this file instead of stdout")
+    p.add_argument("--pretty", action="store_true", help="indent the JSON")
+    p.set_defaults(fn=cmd_export_bundle)
+
+    p = sub.add_parser("trace", help="show a fact's causal ancestry and correlated facts")
+    p.add_argument("fact_id", type=UUID)
+    p.add_argument("--depth", type=int, default=10)
+    p.set_defaults(fn=cmd_trace)
     return parser
 
 

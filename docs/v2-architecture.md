@@ -367,3 +367,10 @@ worker 启动与每次唤醒做的是同一件事：对注册表里的每个消�
 永不跳过事实、永不把游标推过失败点。理由：一条"毒事实"不应让整个进程反复崩溃并拖垮无关投影，而重试又保证修好处理器后无需人工干预即可恢复。
 停止（SIGTERM / SIGINT / `stop()`）只在批次边界生效：当前批次与其游标在同一事务提交后退出，退出码 0；等待中的 worker 由 self-pipe 立即唤醒。
 消费者注册表只有一个入口 `eidolon/registry.py:default_registry`，worker 与 CLI（`rebuild`、`cursors`）共用，`--registry module:callable` 仅用于测试与调试。
+
+**v2-ADR-6（2026-11-07）离线校验器是独立重实现；bundle 带整文件 seal。**
+`scripts/verify_bundle.py` 只用标准库、不连库、**不 import `eidolon`**：审计方拿到 bundle 和这一个文件就能验，
+不必信任应用代码。哈希规则因此在脚本里重述一遍，两套实现由 `test_provenance` 用真实导出互证（K10），漂移会红。
+bundle 除每条事实的 `prev_hash/hash` 与公司链头外，还带 `bundle_hash = sha256(canonical_json(其余全部))`：
+事实哈希证明"内容与账本一致"，seal 证明"文件未被改动"（含导出时间、选择条件、顺序）；重封印一个伪造 bundle 仍过不了事实哈希。
+子集导出（按 correlation / fact_ids）只校验相邻 chain_seq 之间的链接，并在子集含链尾时与链头比对；整链导出要求从 1 连续到链头。

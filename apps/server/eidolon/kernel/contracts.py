@@ -65,4 +65,11 @@ KERNEL_INVARIANTS: tuple[Invariant, ...] = (
         "a fact's NOTIFY reaches listeners only when its transaction commits",
         "test_kernel_notify::test_notify_only_on_commit",
     ),
+    Invariant(
+        "K10",
+        "any fact's provenance can be exported as a bundle that an independent, "
+        "database-free verifier accepts, and that fails verification if any of its "
+        "content is altered",
+        "test_provenance::test_bundle_verifies_offline_and_any_change_is_detected",
+    ),
 )
