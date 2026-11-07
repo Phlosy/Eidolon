@@ -1,177 +1,67 @@
 # Eidolon
 
-**Autonomous AI Organization Runtime** — 一个长期运行的自主 AI 组织与虚拟公司平台。
+**一本关于 AI 劳动的不可篡改账本 + 一条"谁来决定"的边界 + 全过程可追溯，上面跑着可定制的公司制度。**
 
-每个 AI 员工都是独立、持久存在的虚拟个体：拥有自己的身份、Agent Runtime、Workspace、Memory、Skills、工作经历与成长轨迹。多个 AI 员工通过项目、任务、Artifact 和消息协作，组成一家能实际执行工作的 AI 公司。
+Eidolon 让一家由 AI 员工组成的公司真的把软件做出来，同时把每一步都记成事实：谁在什么制度下
+做了什么决定、哪次模型调用花了多少钱、一个文件是哪个任务哪次运行产出的、一个人的能力分
+来自哪些证据。系统自己不做任何管理判断——选人、拆任务、判通过、招聘、解雇、验收都经由制度
+里的闸门，由被授权的人或 agent 签字。
 
-第一阶段主营业务：**AI Software Studio** —— 接受软件产品需求，由 AI 公司自主完成需求分析、调研、产品设计、技术设计、编码、测试、文档与交付。
+## 它是什么
 
-> 当前版本包含 Human Authentication、空公司首次体验、Persistent Workforce 与 Formal Project Delivery。默认可以用明确标记的 Mock Runtime 完成教学；接入真实 Hermes / OpenClaw 容器见 [docs/runtime/](docs/runtime/)。
-
-## Features
-
-- **真人账号与安全会话**：邮箱验证、Argon2id 密码、HttpOnly Cookie Session、CSRF、防重放挑战与设备撤销
-- **标准 Passkey / WebAuthn**：支持系统通行密钥与硬件安全密钥；服务器只保存公钥凭证
-- **空公司首次体验**：新用户获得零员工、零项目、零文档的 `FOUNDING` 公司，再通过真实业务流程亲手建立团队
-- **领域状态驱动教程**：引导可暂停、恢复、跳过；CEO、Runtime、Provider、Cloud Docs、Git、Snake 项目、Human Gate 与交付均由真实状态验证
-- **Employee ≠ Runtime**：员工身份、记忆、技能、经历与执行引擎完全解耦；Runtime 可整体替换
-- **One Employee = One Agent**：每个员工独占 Runtime Profile / Workspace / Memory namespace，杜绝记忆污染（有测试强制保证）
-- **Agent Runtime Gateway**：统一 Adapter 接口，内置完整 Mock Runtime；Hermes / OpenClaw Docker Adapter 已实现，Codex / Claude Code / OpenCode 接口预留
-- **完整业务闭环**：下单 → CEO 审单 → PM 出 PRD → Researcher 调研 → Engineer 开发 → QA 测试 → CEO 终审 → Release
-- **自主学习**：任务完成后自动 Reflection 生成 LearningRecord；知识分层（Private / Department / Company），晋升需 Proposal + Review；技能带成功率指标，验证后升级为 Validated Skill
-- **实时 Office**：WebSocket 事件流驱动，实时看到每位员工的工作状态
-- **项目工作流可视化**：React Flow 展示 Milestone / Task 依赖关系
-- **Docker Runtime 管理（v0.2）**：每员工一个持久容器实例（Hermes / OpenClaw），独立数据卷、专用容器网络、资源限制与生命周期管理
-- **Provider 管理（v0.2）**：模型供应商成为一级领域对象，凭证 Fernet 加密存储（不落明文），支持任意 OpenAI 兼容端点
-- **Runtime 更新与回滚（v0.2）**：镜像版本登记、更新检查、managed update（备份 → 升级 → 健康检查 → 失败自动回滚）
-- **员工大脑 EmployeeBrain（v0.2）**：人格 / 目标 / 兴趣 / 学习与记忆策略随员工持久化，切换 Runtime 不丢身份
-- **行为策略 behavior-v1**：`traits`（当前：好奇心）经 `app/brain/` 单一解析器换算成检索额度、反思额度与延伸学习额度，
-  随任务内联投递给 runtime 并投影为只读文件。**人格只改变工作方式，不改变成功判定与知识晋升**（阈值集中在一处，
-  业务层禁止 `if curiosity > 0.7`，由 AST 守卫测试强制）。设计：[docs/employee-brain-behavior-policy.md](docs/employee-brain-behavior-policy.md)
-
-## Architecture
-
-```text
-Frontend (React SPA)
-   ↓ REST + WebSocket
-Backend API (FastAPI)
-   ↓
-Service Layer → Repository Layer → SQLite
-   ↓
-Agent Runtime Gateway
-   ↓
-Runtime Adapter: Mock | Hermes | OpenClaw | Codex | Claude Code | OpenCode
-```
-
-五条不可破坏的架构边界：`Employee ≠ Runtime`、`Private Memory ≠ Company Knowledge`、`Task ≠ Agent Session`、`Domain Logic ≠ API`、`Frontend ≠ Runtime`。
-
-详见 [docs/architecture.md](docs/architecture.md)、[认证](docs/authentication.md)、[Passkey](docs/passkeys.md)、[员工行为策略](docs/employee-brain-behavior-policy.md) 与 [首次引导](docs/user-onboarding.md)。
-
-## Screenshots
-
-_（占位：Dashboard / Office / Projects 截图待补充）_
+- **事实日志内核**：所有状态变化都是追加写入、按公司哈希链接的事实；其它一切都是投影，可从事实重建。
+- **自研智能体框架**：可中断续跑的 durable 循环、内容寻址的 transcript、工具经零密钥的沙箱 runner 执行、记忆按人隔离、每次模型调用入账。
+- **制度层**：模板规定角色、闸门与权限（默认 `software-studio-v1`：CEO · PM · Tech Lead · 工程师 · QA，Owner 人工验收）；公司可定制，每次改动是事实。
+- **工作域**：使命 → 项目 → 任务 DAG → 派发 → 评审 → 交付，管理 agent 与执行 agent 走同一循环。
+- **钱**：复式账本；每次模型调用按版本化价目表与簿记汇率过账；一笔分录可回溯到调用、步骤、运行、任务、项目。
+- **人才**：证据由既有事实派生，能力是给人看的摘要，系统永远不用它选人。
+- **API 与前端**：`/api/v2` 薄客户端，六组核心页面。
 
 ## Quick Start
 
-要求：Miniconda（或任何 conda 发行版）、Node.js ≥ 20、pnpm（`npm i -g pnpm`）。
+要求：Miniconda、Node.js ≥ 22、pnpm、Docker（跑 PostgreSQL；或本机 PostgreSQL + `scripts/devpg.sh`）。
 
 ```bash
-git clone <repo-url>
-cd eidolon
-cp .env.example .env
-make install     # 建 conda 环境 eidolon（Python 3.12，与 CI 对齐）+ 装后端/前端依赖
-make run
+git clone <repo-url> && cd eidolon
+cp .env.example .env            # 模型 key 只放这里，禁止提交
+make install                    # conda 环境 eidolon + pnpm
+make pg-up && make migrate-v2   # PostgreSQL + schema
+make dev                        # api + worker + web
 ```
 
-> 后端不在仓库里建 `.venv`：环境由 conda 显式管理（`make install` 幂等，改名字用
-> `make CONDA_ENV=myenv install`，`conda activate eidolon` 后可直接 `python -m pytest`）。
-
-然后打开：
-
-- Web: http://localhost:26880
-- API: 127.0.0.1:26881（已由 Web 在 `/api`、`/ws` 反代，正常使用无需直接访问）
-
-Web 监听 `0.0.0.0`，局域网可直接访问（`http://<server-ip>:26880`）；API 只绑 loopback，不对外暴露。停止：`make stop`。
-
-### Docker
+打开 http://localhost:26880：注册 → 建公司 → 招几个 agent → 提一个使命。CEO agent 决定
+接不接，PM 规划，Tech Lead 审方案并指派，工程师在沙箱里干活，QA 评审，最后由你验收交付。
+模型默认走 DeepSeek（`DEEPSEEK_API_KEY`），也可切 Anthropic。
 
 ```bash
-docker compose up --build
-# Web: http://localhost:26880（API 仅在 compose 内部网络，经 Web 反代访问）
+docker compose up --build       # postgres + api + worker + web
 ```
 
 ## Make 命令
 
 | 命令 | 说明 |
 |---|---|
-| `make help` | 列出所有命令 |
 | `make install` | 安装前后端依赖（conda 环境 + pnpm；后端走 `requirements.lock`） |
-| `make lock-server` | 用当前 conda 环境的实测版本重写后端 `requirements.lock` |
-| `make run` / `make dev` | 一键启动 Frontend + Backend（先彻底清理旧进程，日志在 `.run/`） |
-| `make stop` | 停止（进程树 + 端口双路清理，必要时强杀） |
-| `make restart` | 重启 |
-| `make status` | 只看 26881 / 26880 是否有健在的服务 |
-| `make ps` | 列出本仓库全部 dev 进程（含漂移到其他端口的孤儿） |
-| `make logs` | 跟随前后端日志 |
-| `make test` | 后端 pytest + 前端 vitest |
-| `make migrate` | `alembic upgrade head`（改了 model 后、`make restart` 前必跑） |
-| `make migrate-new M="..."` | 按 model 变更 autogenerate 一个 revision（仍需人工检查） |
-| `make lint` | ruff（check + format）+ tsc + eslint + prettier |
-| `make format` | ruff format + prettier（与 CI / `package.json` 脚本同一入口） |
-| `make build` | 前端生产构建 |
-| `make clean` | 清理构建产物与运行数据 |
+| `make pg-up` / `make pg-down` | 启停 PostgreSQL 容器 |
+| `make migrate-v2` | 数据库升到最新 schema |
+| `make dev` / `make stop` / `make restart` / `make logs` | 启停 api + worker + web（日志在 `.run/`） |
+| `make test` | 后端 pytest（真实 PostgreSQL）+ 前端 vitest |
+| `make lint` / `make format` | ruff + tsc + eslint + prettier |
+| `make v2-verify` / `make v2-ledger-verify` | 校验哈希链 / 账本 |
+| `make v2-record-fixtures` | 对真实模型重录回放 fixture（需要 key） |
 
-## Configuration
-
-全部配置为环境变量（`.env`，见 [.env.example](.env.example)）：
-
-| 变量 | 默认 | 说明 |
-|---|---|---|
-| `EIDOLON_WEB_HOST` | `0.0.0.0` | Web 监听地址（局域网可访问） |
-| `EIDOLON_WEB_PORT` | `26880` | 前端端口（唯一对外入口） |
-| `EIDOLON_API_HOST` | `127.0.0.1` | 后端监听地址（loopback，仅经 Web 反代访问） |
-| `EIDOLON_API_PORT` | `26881` | 后端端口 |
-| `EIDOLON_DATABASE_URL` | `sqlite:///./data/eidolon.db` | 当前支持 SQLite；PostgreSQL 迁移适配尚未完成 |
-| `EIDOLON_WORKSPACE_ROOT` | `./data/workspaces` | 员工 Workspace 根目录 |
-| `EIDOLON_RUNTIME_MODE` | `mock` | `mock` / `auto`（探测真实 Runtime） |
-| `EIDOLON_MOCK_TASK_SECONDS` | `8` | Mock 单任务时长 |
-| `EIDOLON_SECRET_KEY` | （空） | Secret store 的 Fernet 密钥材料（Provider 凭证加密；v0.2 使用真实 Provider 前必须设置） |
-| `EIDOLON_UPDATE_CHECK_INTERVAL` | `21600` | Runtime 镜像更新检查间隔（秒，默认 6 小时） |
-| `EIDOLON_RUNTIME_DEBUG_PORT_START` | `26900` | Runtime debug 预留端口段起点 |
-| `EIDOLON_RUNTIME_DEBUG_PORT_END` | `26999` | Runtime debug 预留端口段终点 |
-| `VITE_API_BASE_URL` | 空（同源） | 可选覆盖；默认前端走同源相对路径，由 Web 反代 `/api`、`/ws` |
-
-端口统一维护在 [docs/ports.md](docs/ports.md)。任何 Secret 只允许放 `.env`，禁止提交。
-
-## Runtime Adapter
-
-统一接口见 `apps/server/app/runtimes/base.py`：`create_instance / start / stop / create_session / send_task / stream_events / cancel_task / get_artifacts ...`。
-
-- `mock`：完整实现，模拟 Thinking → Working → Artifact → Completed，用于开发、Demo 与 CI
-- `hermes` / `openclaw`：Docker 容器 Adapter 已实现（v0.2，真实容器验证进行中）——容器编排、协议驱动与凭证注入详见 [docs/runtime/](docs/runtime/)
-- `codex` / `claude_code` / `opencode` / `custom`：类型已注册，Adapter 待实现
-
-员工切换 Runtime 只修改配置，身份 / 记忆 / 技能 / 经历全部保留。
-
-## Project Structure
+## 项目结构
 
 ```text
-apps/
-  web/        # React 19 + Vite + TS strict + TanStack Query + Zustand + React Flow + Tailwind v4
-  server/     # FastAPI + SQLAlchemy 2.0 + Pydantic v2 + Alembic（分层：API→Service→Repository）
-docs/         # research.md / architecture.md / ports.md / runtime/（v0.2 Runtime 子系统专题文档）
-deployments/  # Dockerfile.server / Dockerfile.web
-.github/      # CI: lint + typecheck + test + build
-Makefile      # 唯一开发入口
+apps/server/eidolon/   后端（kernel · identity · institution · work · agent · money · talent · api）
+apps/server/tests_v2/  真实 PostgreSQL 测试 + 回放 fixture
+apps/runner/           零密钥沙箱 runner（独立包，JSON-RPC/stdio）
+apps/web/              React SPA（/api/v2 薄客户端）
+docs/                  v2-handoff.md（入口）· kernel-plan.md · v2-architecture.md · ports.md · deployment.md · archive/
+deployments/           Dockerfile.server（api/worker 共用）· Dockerfile.web · nginx.conf
 ```
 
-## Development
-
-```bash
-make install   # 首次
-make run       # 启动后创建 Project 即可观看 AI 公司自动接单干活
-make test      # 含员工隔离、Runtime、任务/项目生命周期、知识隔离测试
-```
-
-约束（详见 [CONTRIBUTING.md](CONTRIBUTING.md)）：后端严格分层、禁止 `print()`；前端禁止巨型单文件组件；新端口先登记 `docs/ports.md`。
-
-> 后端**没有** `--reload`，改完 Python 代码要 `make restart` 才生效。`make run` 会先调用
-> `scripts/devctl.sh stop` 按「pid 文件 + 端口占用 + 进程树」三路清理旧进程，并在返回前
-> 确认服务真的监听成功 —— 避免旧进程残留导致“改了代码但行为还是旧的”。
-
-## Roadmap
-
-- [~] Hermes / OpenClaw 真实 Adapter（v0.2 已实现 Docker Adapter，真实容器验证进行中）
-- [ ] 员工自主学习循环（Autonomous Research 真实执行）
-- [ ] 知识检索增强（向量索引）
-- [ ] 更多岗位：Designer / DevOps / CTO / Security Engineer
-- [ ] 2.5D Office（PixiJS）
-- [ ] Human-in-the-loop 审批（Approval 事件）
-- [ ] 多公司 / 多租户
-
-## Contributing
-
-欢迎 PR！请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。安全问题见 [SECURITY.md](SECURITY.md)。
+详见 [docs/v2-handoff.md](docs/v2-handoff.md)。贡献请读 [CONTRIBUTING.md](CONTRIBUTING.md)；安全问题见 [SECURITY.md](SECURITY.md)。
 
 ## License
 

@@ -249,6 +249,9 @@ def test_reflector_records_a_diary_entry_for_a_replayed_run(db, tmp_path):
 
     company = uuid4()
     blobs = BlobStore(tmp_path / "blobs")
+    # The reflector starts at head when first registered (it spends a model call per
+    # run), so register it before the run exists — as a deployment would.
+    process(SessionLocal, Reflector(replay_provider(SessionLocal), blobs))
     runner = AgentRunner(SessionLocal, replay_provider(SessionLocal), blobs, weather_tools())
     spec = new_spec(company)
     outcome = asyncio.run(runner.start(spec))
@@ -281,9 +284,10 @@ def test_reflector_records_a_diary_entry_for_a_replayed_run(db, tmp_path):
     model_calls = [f for f in facts if f.kind == MODEL_CALLED]
     assert len(model_calls) == 3 and model_calls[-1].causation_id == recorded[0].causation_id
 
-    # Idempotent: processing again (cursor reset) does not add a second entry.
+    # Idempotent: processing again (cursor rewound to 0 — deleting the row would mean
+    # "first registration", which starts at head) does not add a second entry.
     assert process(SessionLocal, reflector)[0].handled == 0
-    db.execute(text("DELETE FROM fact_cursors WHERE consumer = 'memory_reflector'"))
+    db.execute(text("UPDATE fact_cursors SET last_seq = 0 WHERE consumer = 'memory_reflector'"))
     db.commit()
     assert process(SessionLocal, reflector)[0].handled == 1
     with SessionLocal() as s:
@@ -372,3 +376,11 @@ async def test_recall_injects_memory_sections_into_the_context(db, tmp_path):
         plain.context_builder.system_text(new_spec(company).system, weather_tools().specs())
         == provider2.systems[0]
     )
+
+
+def test_reflector_never_replays_history():
+    """It spends a model call per completed run (kernel.consumers.starts_at_head)."""
+    from eidolon.agent.memory.reflection import Reflector
+    from eidolon.kernel.consumers import starts_at_head
+
+    assert Reflector.start_at_head is True and starts_at_head(Reflector)

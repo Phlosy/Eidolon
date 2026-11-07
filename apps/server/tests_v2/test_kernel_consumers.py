@@ -152,3 +152,27 @@ def test_rebuild_coexists_with_open_readers_and_never_hangs_on_locks(db):
         locker.rollback()
         locker.close()
     assert rebuild(SessionLocal, projection) == 3  # the cursor was not reset by the failed try
+
+
+def test_reactors_that_spend_start_at_head_not_zero(db):
+    """A consumer declaring ``start_at_head`` sees only facts recorded after it was
+    first registered; a projection (no flag) still replays from zero. The reflector
+    calls a model per completed run, so replaying history would be a bill."""
+    company = uuid4()
+    seed(db, company, 4)
+    seen: list[int] = []
+    spender = function_consumer("spender", None, lambda _db, fact: seen.append(fact.seq))
+    spender.start_at_head = True  # type: ignore[attr-defined]
+    assert process(SessionLocal, spender)[0].handled == 0
+    assert seen == []
+    assert consumers.cursor(db, "spender") == store.last_seq(db)
+    seed(db, company, 2, prefix="later-")
+    process(SessionLocal, spender)
+    assert len(seen) == 2 and seen == sorted(seen)
+    # the flag only matters on the very first run: an existing cursor is honoured
+    seed(db, company, 1, prefix="again-")
+    process(SessionLocal, spender)
+    assert len(seen) == 3
+    projection = KindCounts()
+    process(SessionLocal, projection)
+    assert counts(db) == {"work.task.created": 7}

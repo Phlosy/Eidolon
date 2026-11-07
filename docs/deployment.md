@@ -1,67 +1,39 @@
-# Eidolon 基础服务部署清单
+# Eidolon v2 部署清单
 
-> 当前版本 v0.3。端口统一登记在 docs/ports.md；本文档回答"要跑起 Eidolon 需要部署哪些东西"。
+> 端口统一登记在 `docs/ports.md`；上线门槛（Passkey、凭证加密、指标、限流、保留期、备份）见 `v2-architecture.md` §7，属 R6。
 
-## 一、必需服务（核心系统）
+## 进程（v2-architecture §2.2）
 
-| 服务 | 部署方式 | 监听 | 说明 |
+| 进程 | 启动 | 职责 | 持有密钥 |
 |---|---|---|---|
-| **Eidolon Web** | `make run`（Vite dev）或 docker compose（nginx 静态托管） | `0.0.0.0:26880` | 唯一对用户暴露的入口；反代 `/api`、`/ws` 到后端 |
-| **Eidolon Backend** | `make run`（uvicorn）或 docker compose | Host 开发：`127.0.0.1:26881`；容器内：`0.0.0.0:26881`（不 publish） | REST API + WebSocket + Runtime Gateway + Orchestrator |
-| **SQLite** | 内嵌（`data/eidolon.db`） | 无端口 | 默认数据库，无需部署；未来可切 PostgreSQL |
+| `eidolon-api` | `python -m eidolon api` / compose `api` | 读投影、经领域服务写事实；鉴权 + DTO；**不跑 agent 循环** | 否 |
+| `eidolon-worker` | `python -m eidolon worker` / compose `worker` | 消费者（投影、调度、记账、人才）+ 管理作业 + agent 循环；LISTEN/NOTIFY 唤醒 | **是**（模型 provider key） |
+| `eidolon-runner` | worker 按任务 workspace 拉起子进程（`apps/runner`） | 只执行工具（文件 / shell / 测试），路径限定 workspace | 零密钥 |
+| Web | `pnpm dev` / compose `web`（nginx 静态托管 + 反代 `/api`） | SPA | 否 |
+| PostgreSQL | compose `postgres` / `scripts/devpg.sh` | 事实日志 + 投影 + 游标 + API 秘密；唯一数据库（V1） | — |
 
-最小可用系统 = Web + Backend，`make run` 一条命令全部启动（Mock Runtime 模式）。
-
-## 二、可选服务（按需启用）
-
-| 服务 | 启用条件 | 镜像/来源 | 端口 | 说明 |
-|---|---|---|---|---|
-| **Docker Engine** | 真实 Runtime（Hermes/OpenClaw）时必需 | 宿主机安装 | — | Runtime 容器由 RuntimeManager 通过 Docker API 动态创建；不可用时系统自动降级 Mock |
-| **Gitea**（v0.3 阶段二，可选内置） | 用户在 UI 手动一键安装（`POST /api/v1/git/builtin/install`） | `EIDOLON_GITEA_IMAGE`（默认 `gitea/gitea:1`），由 Backend 经 DockerService 管理容器 `eidolon-gitea` | 仅发布 loopback：HTTP `127.0.0.1:26990`、SSH `127.0.0.1:26922` | 未安装时降级为本地 git 仓库，不影响主流程；外部 GitLab / 自托管 Gitea / GitHub Enterprise 仅作连接配置（`/api/v1/git/connections`），Eidolon 永不安装外部平台 |
-| **Ollama** | 想用本地模型作为 Provider | 官方安装 | `11434`（容器内经 `host.docker.internal` 访问） | 普通 Provider 的一种，不是 Eidolon 基础服务 |
-
-## 三、动态创建的运行时（非静态部署）
-
-禁止写进 docker-compose。由 RuntimeManager 按需创建，一个员工一个容器：
-
-| Runtime | 镜像 | 容器内端口（不映射 Host） | 持久卷 |
-|---|---|---|---|
-| Hermes | `nousresearch/hermes-agent:<pin>` | 8642 | `data/employees/{id}/runtime/hermes` → `/opt/data` |
-| OpenClaw | `ghcr.io/openclaw/openclaw:<pin>` | 18789 | `data/employees/{id}/runtime/openclaw` → `/home/node/.openclaw` 等 |
-
-全部接入 `eidolon-runtime-net`，Backend 经 Docker DNS 访问；Frontend 永远不能直连 Runtime。
-
-## 四、外部依赖（非自部署）
-
-| 依赖 | 用途 |
-|---|---|
-| LLM Provider API（OpenAI / Anthropic / OpenRouter / DeepSeek / Gemini / 自定义 OpenAI 兼容端点） | 员工的大脑；Key 存 SecretStore，每员工独立账号 |
-| Docker Hub / GHCR | 拉取 Runtime 镜像（`make runtime-pull`） |
-
-## 五、预留（未实施，端口已登记）
-
-| 服务 | 端口 | 触发条件 |
-|---|---|---|
-| PostgreSQL | 5432 | 生产化替换 SQLite 时 |
-| Redis | 6379 | 引入缓存/队列时（目前事件总线为进程内实现） |
-| Metrics | 26890 | 可观测性服务 |
-| Runtime Debug | 26900–26999 | 需要临时暴露 Runtime 调试端口时 |
-
-## 六、部署形态
+## 本机开发
 
 ```bash
-# 1. Host 开发（最常用）
-make install && make run          # Web 0.0.0.0:26880 + API 127.0.0.1:26881
-
-# 2. 一体化容器（用户只访问 26880）
-docker compose up --build         # web(nginx) + server，API 仅内部网络
+make install        # conda 环境 + pnpm
+make pg-up          # 或 scripts/devpg.sh start
+make migrate-v2     # alembic-v2.ini → head
+make dev            # api + worker + web，日志在 .run/
 ```
 
-内置 Gitea（v0.3 阶段二起）不进 compose：运行后由用户在 UI 手动一键安装
-（`POST /api/v1/git/builtin/install`），由 Backend 经 Docker API 管理。
+## Docker Compose
 
-无论哪种形态，Runtime 容器（Hermes/OpenClaw）都由 Backend 通过 Docker API 动态管理，
-docker-compose.yml 中**不出现**任何员工容器。
+```bash
+docker compose up --build
+# Web http://localhost:26880；API 仅内部网络；postgres 发布到 127.0.0.1:5433
+```
 
-安全边界：docker.sock 只允许挂给 Backend 容器（容器化部署 Backend 且需要管理 Runtime 时）；
-Runtime 容器 non-privileged，禁止挂载 `/` 与 docker.sock。详见 docs/runtime/security.md。
+`api` 容器启动时先 `python -m eidolon migrate` 再起 uvicorn；`worker` 共用同一镜像，
+只换 command。模型 key 通过 `.env`（compose `env_file`，不入镜像）注入，只有 `worker`
+真正用它。数据卷 `eidolon-data` 存 transcript blob 与任务 workspace；`eidolon-pg` 存库。
+
+## 恢复
+
+事实永久、投影可重建：`python -m eidolon rebuild <projection>` 从零重导；
+`python -m eidolon verify-chain` 校验哈希链，`python -m eidolon ledger-verify` 校验账本。
+API 秘密表（凭证、会话）不可重建，丢了只需重新登录 / 重设密码（v2-ADR-22）。

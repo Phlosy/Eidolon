@@ -1,7 +1,7 @@
 services:
-  # Eidolon v2 (apps/server/eidolon) runs on PostgreSQL only. The port and credentials
-  # match EIDOLON_V2_DATABASE_URL's default and scripts/devpg.sh, so `make pg-up`
-  # (this service) and `scripts/devpg.sh start` (no Docker) are interchangeable.
+  # PostgreSQL is the only database (V1). The port and credentials match
+  # EIDOLON_V2_DATABASE_URL's default and scripts/devpg.sh, so `make pg-up` (this
+  # service) and `scripts/devpg.sh start` (no Docker) are interchangeable.
   postgres:
     image: postgres:16-alpine
     environment:
@@ -22,23 +22,48 @@ services:
     networks:
       - eidolon-internal
 
-  server:
+  # eidolon-api: migrates, then serves /api/v2. Internal to the compose network; only
+  # the web tier is published.
+  api:
     build:
       context: .
       dockerfile: deployments/docker/Dockerfile.server
-    # API stays internal to the compose network; only the web tier is published.
     expose:
       - "26881"
     environment:
-      EIDOLON_API_HOST: 0.0.0.0
-      EIDOLON_API_PORT: "26881"
-      EIDOLON_DATABASE_URL: sqlite:///./data/eidolon.db
-      EIDOLON_WORKSPACE_ROOT: ./data/workspaces
-      EIDOLON_RUNTIME_MODE: mock
-      EIDOLON_RUNTIME_CONTROL_MODE: docker
-      EIDOLON_CORS_ORIGINS: http://localhost:26880
+      EIDOLON_V2_DATABASE_URL: postgresql+psycopg://eidolon:eidolon@postgres:5432/eidolon
+      EIDOLON_V2_TRANSCRIPT_DIR: /data/transcripts
+      EIDOLON_V2_WORKSPACE_ROOT: /data/workspaces
+      EIDOLON_V2_COOKIE_SECURE: "false"
+    env_file:
+      - path: .env
+        required: false
     volumes:
-      - eidolon-data:/app/data
+      - eidolon-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - eidolon-internal
+
+  # eidolon-worker: the scheduler + agent loop; the only process holding provider keys.
+  worker:
+    build:
+      context: .
+      dockerfile: deployments/docker/Dockerfile.server
+    command: ["python", "-m", "eidolon", "worker"]
+    environment:
+      EIDOLON_V2_DATABASE_URL: postgresql+psycopg://eidolon:eidolon@postgres:5432/eidolon
+      EIDOLON_V2_TRANSCRIPT_DIR: /data/transcripts
+      EIDOLON_V2_WORKSPACE_ROOT: /data/workspaces
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - eidolon-data:/data
+    depends_on:
+      api:
+        condition: service_started
     networks:
       - eidolon-internal
 
@@ -49,7 +74,7 @@ services:
     ports:
       - "26880:26880"
     depends_on:
-      - server
+      - api
     networks:
       - eidolon-internal
 

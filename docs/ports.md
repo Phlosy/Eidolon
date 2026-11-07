@@ -2,25 +2,18 @@
 
 | 服务 | 端口 | 监听 | 说明 |
 |---|---|---|---|
-| Web (Vite dev / nginx prod) | 26880 | 0.0.0.0 | 前端开发/生产服务器；唯一对外入口，反向代理 `/api`、`/ws` 到后端 |
-| Backend API (FastAPI/Uvicorn) | 26881 | 127.0.0.1（宿主机开发）；docker 中仅内部网络可达（不发布端口） | REST API + WebSocket `/ws/events`，正常情况下只经 Web 反代访问 |
-| 隔离验收 Web | 28180 | 127.0.0.1 | 临时浏览器验收，使用独立数据库和 mock runtime；验收后停止 |
-| 隔离验收 API | 28181 | 127.0.0.1 | 仅供隔离验收 Web 代理，不连接日常开发数据库 |
-| Runtime 控制面（宿主机模式） | 26900–26921 / 26923–26989 | 127.0.0.1 | M3 U4：从此固定范围预留每实例端口，排除 Gitea；使用独立控制凭证，旧容器需显式重建才应用 |
-| 隔离模型验收预算代理 | 8642（容器内部） | 仅测试私有 Docker 网络，不发布宿主端口 | M3 U4：每个验收容器至多转发一次指定模型请求；测试后按记录 ID 清理 |
+| Web (Vite dev / nginx prod) | 26880 | 0.0.0.0 | 唯一对外入口；反向代理 `/api` 到 API |
+| API (`python -m eidolon api`) | 26881 | 127.0.0.1（宿主机开发）；docker 中仅内部网络可达（不发布端口） | REST `/api/v2`；正常情况下只经 Web 反代访问 |
+| PostgreSQL | 5433 → 容器 5432 | 127.0.0.1 | `docker compose` 的 `postgres` 服务；`scripts/devpg.sh` 同端口 |
+| Worker (`python -m eidolon worker`) | — | — | 不监听端口；经 LISTEN/NOTIFY 唤醒 |
 
 预留（未来引入时在此登记，禁止随机端口）：
 
 | 服务 | 端口 | 说明 |
 |---|---|---|
-| Metrics | 26890 | 未来 metrics/tracing 端点 |
-| Gitea SSH | 26922 | v0.3 阶段二（可选内置 Gitea，手动一键安装），仅发布到 127.0.0.1 loopback |
-| Gitea HTTP | 26990 | v0.3 阶段二（可选内置 Gitea，手动一键安装），仅发布到 127.0.0.1 loopback |
-| PostgreSQL | 5432 | 生产数据库 |
-| Redis | 6379 | 缓存/队列 |
+| Metrics | 26890 | R6：Prometheus 指标端点 |
 
 规则：
 - Web 监听 `0.0.0.0`（局域网可访问），是唯一对外暴露的端口。
-- Backend API 在宿主机开发时只绑 `127.0.0.1`；docker 中不发布端口，仅 compose 内部网络可达。前端永远通过同源相对路径（`/api`、`/ws`）访问 API，不硬编码 API origin。
+- API 在宿主机开发时只绑 `127.0.0.1`；docker 中不发布端口，仅 compose 内部网络可达。前端永远通过同源相对路径（`/api/v2`）访问 API，不硬编码 API origin。
 - 新增端口必须先更新本文档。
-- Runtime 的 `loopback` 模式供本地后端使用，不监听公网地址；`docker` 模式不发布端口，要求后端与 Runtime 处于同一私有网络。

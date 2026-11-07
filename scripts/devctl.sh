@@ -4,9 +4,10 @@
 # 为什么需要显式的进程树清理，而不是 kill $(cat .run/*.pid)：
 # `nohup … & echo $!` 记录的是**启动器**的 pid，不是真正的服务器：
 #
-#   /bin/sh -c 'cd apps/server && nohup …/envs/eidolon/bin/python -m uvicorn … & echo $! > server.pid'
-#     └ sh -c / nohup 包装            ← $! 常常是它
-#        └ python -m uvicorn :26881   ← 真正占端口的人（conda 环境里的解释器）
+#   /bin/sh -c 'cd apps/server && nohup …/envs/eidolon/bin/python -m eidolon api … & echo $! > api.pid'
+#     └ sh -c / nohup 包装                 ← $! 常常是它
+#        └ python -m eidolon api :26881    ← 真正占端口的人（conda 环境里的解释器）
+#   同样的包装还有 python -m eidolon worker（不占端口，只能靠命令行特征找到）
 #   /bin/sh -c 'cd apps/web && nohup pnpm dev … & echo $! > web.pid'
 #     └ pnpm dev                   ← $! 是它
 #        └ node vite.js :26880     ← 真正占端口的人（孙辈）
@@ -44,14 +45,15 @@ port_listeners() {
 
 # 只匹配本仓库的开发进程，绝不误伤别的项目。
 pattern_pids() {
-  pgrep -f "uvicorn app\.main:app" 2>/dev/null || true
+  pgrep -f "python -m eidolon api" 2>/dev/null || true
+  pgrep -f "python -m eidolon worker" 2>/dev/null || true
   pgrep -f "$ROOT/apps/web/node_modules/.*bin/vite" 2>/dev/null || true
   pgrep -f "cd apps/server && nohup" 2>/dev/null || true
   pgrep -f "cd apps/web && nohup" 2>/dev/null || true
 }
 
 pid_file_pids() {
-  for name in server web; do
+  for name in api worker web; do
     [ -f "$RUN_DIR/$name.pid" ] && cat "$RUN_DIR/$name.pid" 2>/dev/null || true
   done
 }
@@ -121,7 +123,7 @@ do_stop() {
   else
     echo "nothing running"
   fi
-  if [ $dry -eq 0 ]; then rm -f "$RUN_DIR/server.pid" "$RUN_DIR/web.pid"; fi
+  if [ $dry -eq 0 ]; then rm -f "$RUN_DIR/api.pid" "$RUN_DIR/worker.pid" "$RUN_DIR/web.pid"; fi
 
   stale=""
   for port in "$API_PORT" "$WEB_PORT"; do
@@ -164,7 +166,7 @@ do_ps() {
 }
 
 do_status() {
-  for spec in "backend $API_PORT" "web $WEB_PORT"; do
+  for spec in "api $API_PORT" "web $WEB_PORT"; do
     set -- $spec
     holder=$(port_listeners "$2" | head -1)
     if [ -n "$holder" ]; then

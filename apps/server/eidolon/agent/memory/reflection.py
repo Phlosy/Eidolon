@@ -162,6 +162,9 @@ def entry_from(fields: dict[str, Any], state: R.RunState, *, parsed: bool, model
 class Reflector:
     """Consumer: ``agent.run.completed`` → one model call → ``agent.memory.recorded``."""
 
+    # Spends a model call per completed run: never replay history (kernel.consumers).
+    start_at_head = True
+
     name = "memory_reflector"
     handles = frozenset({R.RUN_COMPLETED})
 

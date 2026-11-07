@@ -6,14 +6,16 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from eidolon.config import settings
-from eidolon.db import Base, require_postgres
-
 # Import every module that declares tables so autogenerate sees them.
 import eidolon.agent.memory.projection  # noqa: F401
+import eidolon.api.auth  # noqa: F401
 import eidolon.identity.projection  # noqa: F401
 import eidolon.kernel.store  # noqa: F401
+import eidolon.money.projection  # noqa: F401
+import eidolon.talent.projection  # noqa: F401
 import eidolon.work.projection  # noqa: F401
+from eidolon.config import settings
+from eidolon.db import Base, require_postgres
 
 config = context.config
 if config.config_file_name is not None and config.attributes.get("configure_logger", True):

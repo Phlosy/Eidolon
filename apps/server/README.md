@@ -1,106 +1,37 @@
-# Eidolon Server
+# Eidolon Server (v2)
 
-Backend of Eidolon — Autonomous AI Organization Runtime. FastAPI + SQLAlchemy 2.0 + SQLite.
-Binding spec: [`docs/architecture.md`](../../docs/architecture.md).
+`eidolon/` — the fact-log kernel, the agent framework, the institution layer and the
+HTTP API. PostgreSQL only. Binding docs: `docs/v2-handoff.md` → `docs/kernel-plan.md`
+→ `docs/v2-architecture.md` (repository root).
+
+```
+eidolon/
+  kernel/        facts · store (hash chain, idempotency, cursors) · consumers · provenance · contracts
+  identity/      users · companies · persons · employments
+  institution/   templates · gates · decisions · authority · confirmation · staffing
+  work/          missions · projects · task graph · dispatch · reviews · artifacts
+  agent/         durable loop · memory · tools · runner client · providers · scheduler · managers
+  money/         double-entry ledger · cost metering · budgets · verify · cost trace
+  talent/        evidence · competencies · profile · resume
+  api/           FastAPI /api/v2: auth · read routes · commands
+  migrations/    alembic chain 0001… (alembic-v2.ini)
+tests_v2/        real PostgreSQL; replayed model fixtures in tests_v2/fixtures/providers
+```
 
 ## Setup
 
-后端环境统一由**本地 conda 环境**提供（仓库内不建 `.venv`）。在仓库根目录：
+The backend runs in the local conda environment created by `make install` at the
+repository root (`requirements.lock`, Python 3.12). From the root:
 
 ```bash
-make install-server        # conda create -n eidolon python=3.12 + pip install -r requirements.lock
+make pg-up && make migrate-v2
+make test-v2          # expects a database whose name ends in _test
+make v2-api           # python -m eidolon api
+make v2-worker        # python -m eidolon worker
 ```
 
-等价的手工步骤（等价于 `make install-server` 展开）：
+## CLI
 
-```bash
-conda create -y -n eidolon --override-channels -c conda-forge python=3.12
-conda activate eidolon
-cd apps/server
-pip install -r requirements.lock   # 锁版本，与 CI / make install 完全一致
-pip install -e . --no-deps         # 再以开发模式装进本项目
-```
-
-激活后 `python` / `pytest` / `ruff` / `alembic` / `uvicorn` 都在 PATH 里，
-下面各节的命令都按“已 `conda activate eidolon`”写。
-
-改过 `pyproject.toml` 的依赖后，先 `make install-server` 装新版，再跑 `make lock-server`
-重写 `requirements.lock`，两份一起提交 —— 锁文件一旦没跟上，CI 会直接 `ModuleNotFoundError`。
-
-## Run tests
-
-```bash
-# 先 conda activate eidolon（或在仓库根用 make test-server）
-python -m pytest tests -q
-ruff check app tests
-ruff format --check app tests
-```
-
-测试默认使用独立临时目录、文件 SQLite 和 mock runtime。每个用例结束时，先关闭
-应用事件循环及后台任务，再还原迁移/seed 后的数据库、工作区与进程全局状态。
-用例内的多个 `SessionLocal` 仍走独立连接并真实提交，SQLite 并发测试保留真实竞争。
-不要依赖其他用例留下的业务数据或事件。
-
-验证顺序无关性时，显式打乱实际收集到的用例，并记录顺序（包括参数化用例）：
-
-```bash
-python -m pytest tests -q --test-order-seed 20260920 --test-order-output /tmp/eidolon-order.json
-```
-
-`--test-order-output` 也可单独使用，记录默认顺序。M3 隔离门禁要求默认顺序和至少
-五个不同 seed 的完整套件通过；失败后保留 seed、顺序和日志，修复原因后再验证。
-
-## Run the server
-
-```bash
-# binds settings.api_host / settings.api_port (default 127.0.0.1:26881)
-python -m app.main
-# or explicitly:
-EIDOLON_MOCK_TASK_SECONDS=2 uvicorn app.main:app --host 127.0.0.1 --port 26881
-```
-
-- REST API: `http://127.0.0.1:26881/api/v1` (OpenAPI docs at `/docs`)
-- Health: `GET /health`
-- Realtime events: `ws://127.0.0.1:26881/ws/events`
-- The frontend normally reaches the API via the Web tier proxy (`/api`, `/ws`); direct access is for debugging.
-
-On startup the app creates tables (dev convenience) and seeds the default company
-"Eidolon Studio" with 5 departments and 5 mock-runtime employees (Alice/Morgan/Bob/Charlie/Dana).
-Create a project with `POST /api/v1/projects {"name": "...", "description": "..."}` and the
-orchestrator runs the full order → planning → research → development → testing → release loop.
-
-## Configuration
-
-All settings use the `EIDOLON_` prefix (see `app/core/config.py`, `.env.example` at repo root).
-One flag is worth knowing about when debugging behavior: `EIDOLON_BEHAVIOR_POLICY_ENABLED=false`
-makes every resolver call fall back to `DEFAULT_POLICY` — i.e. the pre-v1 literal constants —
-without rewriting any stored `traits` (kill switch, see `docs/employee-brain-behavior-policy.md` §13).
-Key ones: `EIDOLON_DATABASE_URL`, `EIDOLON_WORKSPACE_ROOT`, `EIDOLON_RUNTIME_MODE` (`mock`),
-`EIDOLON_MOCK_TASK_SECONDS`, `EIDOLON_CORS_ORIGINS`.
-
-招聘在同一事务中记录 Runtime 开通意图，响应中的 `pending` 表示等待后台处理。
-`EIDOLON_RUNTIME_PROVISIONING_ENABLED` 默认开启；执行者启动时及每隔
-`EIDOLON_RUNTIME_PROVISIONING_POLL_SECONDS`（默认 1 秒）扫描已提交意图。
-关闭该开关会暂停后台领取，保留待办和查询结果。测试默认关闭并显式驱动执行。
-
-`GET /api/v1/provisioning-jobs/{id}` 返回任务 owner/source 和分步回执；`partial` 保留
-已成功步骤，修复原因后可通过既有 retry 端点重新排队失败步骤。进程中断后的过期领取会
-被扫描恢复，默认领取有效期为单步超时的三倍加 30 秒。U2 只接通意图与现有环境步骤，
-Hermes/OpenClaw 的真实幂等容器开通和主动探测继续在 U3/U4 完成。
-
-## Migrations
-
-Alembic lives in `migrations/` (initial revision included):
-
-```bash
-alembic upgrade head                      # 或仓库根目录 make migrate
-alembic revision --autogenerate -m "..."  # 或 make migrate-new M="..."
-```
-
-改过 `app/models/**` 就要开一个 revision，并且**先 `make stop`、`alembic upgrade head`、
-再 `make run`**：启动时 schema 的全权所有者是 Alembic（`app/core/database.py:
-ensure_database_schema`：空库直接 `upgrade head`，已有库不在仓库 head 或没有
-`alembic_version` 就抛 `DatabaseSchemaError` 拒绝启动），所以忘了 migration 不可能“本地不报错”。
-CI 再加一道 `alembic check` 挡模型与 revision 漂移。
-例外是历史库：更早的 dev 库可能被当年的 `create_all` 先把表建了出来，所以 v0.8 / v0.9
-`upgrade()` 里的 `create_table` / `add_column` 先过 `sa.inspect(bind)` 判存。
+`python -m eidolon <command>`: `migrate`, `verify-chain`, `ledger-verify`, `balances`,
+`rebuild <projection>`, `cursors`, `worker [--no-jobs]`, `api`, `export-bundle`,
+`trace`, `cost-trace`, `project-costs`, `talent-profile`, `run-task`, `show-run`.

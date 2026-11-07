@@ -37,6 +37,17 @@ class Consumer(Protocol):
     def handle(self, db: Session, fact: Fact) -> None: ...
 
 
+def starts_at_head(consumer: Consumer) -> bool:
+    """A consumer whose *first* cursor is the current head rather than zero.
+
+    Projections must replay from zero (that is what makes them rebuildable). A
+    reactor that spends money or talks to the outside world (the reflector calls a
+    model per completed run) must not: registering it on a database with history
+    would otherwise act on every historical fact at once — a bill, not a replay.
+    Declare ``start_at_head = True`` on such consumers."""
+    return bool(getattr(consumer, "start_at_head", False))
+
+
 @runtime_checkable
 class Projection(Consumer, Protocol):
     """A consumer whose state is entirely derived and can be rebuilt from zero."""
@@ -62,8 +73,13 @@ class Registry:
 
 
 def cursor(db: Session, consumer_name: str) -> int:
+    return stored_cursor(db, consumer_name) or 0
+
+
+def stored_cursor(db: Session, consumer_name: str) -> int | None:
+    """The cursor row's value, or None when the consumer has never run."""
     query = select(FactCursorRow.last_seq).where(FactCursorRow.consumer == consumer_name)
-    return db.scalar(query) or 0
+    return db.scalar(query)
 
 
 def set_cursor(db: Session, consumer_name: str, seq: int) -> None:
@@ -89,7 +105,12 @@ def process_batch(
 ) -> BatchResult:
     """Handle up to ``limit`` facts after the cursor and advance it, in ``db``'s transaction."""
     store = store or FactStore()
-    start = cursor(db, consumer.name)
+    stored = stored_cursor(db, consumer.name)
+    if stored is None and starts_at_head(consumer):
+        head = store.last_seq(db)
+        set_cursor(db, consumer.name, head)
+        return BatchResult(consumer.name, 0, 0, head)
+    start = stored or 0
     facts = store.stream(db, after_seq=start, limit=limit)
     handled = 0
     for fact in facts:

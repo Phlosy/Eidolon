@@ -525,3 +525,9 @@ API 只查 `has_authority(template, role, grant)`，然后调领域服务——�
 真需要推送时再加 SSE，而不是先把复杂度放进去。签字在前端只是"把服务端绑定的 action 原样回传"，前端不构造也不解释动作，
 所以它不可能批准一个和服务端记录不同的东西。公司是显式上下文（当前公司存在 localStorage，多家时可切换），没有公司先 onboarding 建司。
 邮箱验证与 Passkey 随 R6 的 API 一起回来；前端不为尚不存在的端点留壳。
+
+**v2-ADR-25（2026-11-07）cutover 是删除，不是并存：旧应用整体归档到一个 commit，仓库里只剩 v2。**
+strangler 的终点是把被缠绕的树砍掉。旧应用没有被"迁移"——它的 116 张表、3228 条测试和 66 个迁移整体停在 `232ceff`，
+`extensions/README.md` 与 `docs/archive/README.md` 指向那里；要接回某个扩展（R7）只能对着事实日志与投影重写，不能复活旧表。
+一个镜像两种进程：`api` 先 migrate 再 serve，`worker` 同镜像换 command，是唯一持有模型 key 的进程；runner 随镜像装入但零密钥。
+依赖锁按"v2 真正 import 的包"手工裁剪并在干净 venv 里验证，而不是 `pip freeze` 把旧应用的残留一起锁进去。

@@ -5,57 +5,10 @@ on:
     # dev 是日常开发分支（main 长期停在发布线），不在这里列出来的分支只能靠 PR 触发。
     branches: [main, dev]
   pull_request:
-  # 手动跑一次（改完 CI 配置想立即验证，又不想造一个空提交）
   workflow_dispatch:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install
-        # 走 requirements.lock，和开发者用同一套版本；ruff/pytest 不再随手升到最新。
-        run: |
-          pip install -r apps/server/requirements.lock
-          pip install -e apps/server --no-build-isolation --no-deps
-      - name: Ruff
-        run: |
-          ruff check apps/server/app apps/server/tests
-          ruff format --check apps/server/app apps/server/tests
-      - name: Alembic model drift
-        env:
-          EIDOLON_DATABASE_URL: sqlite:///${{ runner.temp }}/eidolon-alembic.db
-        run: |
-          python -m alembic upgrade head
-          python -m alembic check
-        working-directory: apps/server
-      - name: Test
-        run: python -m pytest apps/server/tests -q
-      - name: Server image smoke test
-        run: |
-          docker build --file deployments/docker/Dockerfile.server --tag eidolon-server:ci .
-          container_name="eidolon-server-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          trap 'docker rm --force "$container_name" >/dev/null 2>&1 || true' EXIT
-          docker run --detach \
-            --name "$container_name" \
-            --publish 127.0.0.1:26881:26881 \
-            --env EIDOLON_API_HOST=0.0.0.0 \
-            --env EIDOLON_RUNTIME_MODE=mock \
-            --env EIDOLON_UPDATE_CHECK_ENABLED=false \
-            eidolon-server:ci
-          for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:26881/health; then
-              exit 0
-            fi
-            sleep 1
-          done
-          docker logs "$container_name"
-          exit 1
-
-  backend-v2:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -75,21 +28,42 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
+        # 走 requirements.lock，和开发者用同一套版本；ruff/pytest 不随手升到最新。
         run: |
           pip install -r apps/server/requirements.lock
           pip install -e apps/server --no-build-isolation --no-deps
-      - name: Ruff (v2)
+      - name: Ruff
         run: |
-          ruff check apps/server/eidolon apps/server/tests_v2
-          ruff format --check apps/server/eidolon apps/server/tests_v2
+          ruff check apps/server/eidolon apps/server/tests_v2 scripts
+          ruff format --check apps/server/eidolon apps/server/tests_v2 scripts
           (cd apps/runner && ruff check . && ruff format --check .)
-      - name: Test (v2, PostgreSQL)
+      - name: Test (PostgreSQL)
         # tests_v2 migrates the database itself and includes `alembic check` + a
         # downgrade/upgrade round trip (test_kernel_guards).
         env:
           EIDOLON_V2_DATABASE_URL: postgresql+psycopg://eidolon:eidolon@127.0.0.1:5433/eidolon_test
         run: python -m pytest tests_v2 -q
         working-directory: apps/server
+      - name: API image smoke test
+        # The production image migrates and serves /api/v2/health against the same PostgreSQL.
+        run: |
+          docker build --file deployments/docker/Dockerfile.server --tag eidolon-api:ci .
+          container_name="eidolon-api-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'docker rm --force "$container_name" >/dev/null 2>&1 || true' EXIT
+          docker run --detach --network host \
+            --name "$container_name" \
+            --env EIDOLON_V2_DATABASE_URL=postgresql+psycopg://eidolon:eidolon@127.0.0.1:5433/eidolon_test \
+            --env EIDOLON_V2_API_HOST=127.0.0.1 \
+            --env EIDOLON_V2_API_PORT=26881 \
+            eidolon-api:ci
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:26881/api/v2/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs "$container_name"
+          exit 1
 
   frontend:
     runs-on: ubuntu-latest

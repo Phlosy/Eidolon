@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     cors_origins: str = ""  # comma-separated; empty = same origin only
     api_host: str = "127.0.0.1"
-    api_port: int = 8010
+    api_port: int = 26881
 
 
 settings = Settings()

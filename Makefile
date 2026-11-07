@@ -4,11 +4,9 @@
 -include .env
 export
 
-API_HOST      ?= $(or $(EIDOLON_API_HOST),127.0.0.1)
-API_PORT      ?= $(or $(EIDOLON_API_PORT),26881)
+API_HOST      ?= $(or $(EIDOLON_V2_API_HOST),127.0.0.1)
+API_PORT      ?= $(or $(EIDOLON_V2_API_PORT),26881)
 WEB_PORT      ?= $(or $(EIDOLON_WEB_PORT),26880)
-RUNTIME_MODE  ?= $(or $(EIDOLON_RUNTIME_MODE),mock)
-INV_ARGS      ?=   # 传给 make dev-inventory 的参数，如 INV_ARGS="--format json"
 
 SERVER_DIR    := apps/server
 WEB_DIR       := apps/web
@@ -16,9 +14,7 @@ RUN_DIR       := .run
 DEVCTL        := $(CURDIR)/scripts/devctl.sh
 
 # Python 工具链：后端跑在**本地 conda 环境**里（默认名 eidolon），仓库内不建 .venv。
-# 环境来源显式化才有意义：conda 环境由 `make install` 按 conda-forge + Python 版本
-# 创建，与 CI 用同一份 requirements.lock；仓库内的 .venv 既不进版本控制，
-# 也不会告诉新同学它的解释器版本 —— 本地 3.14 / CI 3.12 的差异就是这么漏出来的。
+# conda 环境由 `make install` 按 conda-forge + Python 版本创建，与 CI 用同一份 requirements.lock。
 CONDA         ?= $(shell command -v conda 2>/dev/null)
 CONDA_BASE    := $(if $(CONDA),$(shell $(CONDA) info --base 2>/dev/null),)
 CONDA_ENV     ?= eidolon
@@ -26,7 +22,6 @@ CONDA_PY      ?= 3.12   # 与 CI 的 python-version 对齐（.github/workflows/c
 PYBIN         := $(CONDA_BASE)/envs/$(CONDA_ENV)/bin/python
 PIPBIN        := $(PYBIN) -m pip
 RUFFBIN       := $(PYBIN) -m ruff
-UVICORNBIN    := $(PYBIN) -m uvicorn
 ALEMBICBIN    := $(PYBIN) -m alembic
 
 .DEFAULT_GOAL := help
@@ -47,21 +42,19 @@ check-tools:
 	@command -v conda >/dev/null || { echo "ERROR: conda not found. Install Miniconda (https://docs.conda.io/en/latest/miniconda.html) or pass CONDA=/path/to/conda"; exit 1; }
 	@command -v pnpm >/dev/null || { echo "ERROR: pnpm not found. Install: npm i -g pnpm (or https://pnpm.io/installation)"; exit 1; }
 
-# 所有需要解释器的目标都依赖它：环境缺失时给出一行可执行的修复命令，
-# 而不是让 uvicorn/ruff 以 "no such file or directory" 的形式失败。
+# 所有需要解释器的目标都依赖它：环境缺失时给出一行可执行的修复命令。
 .PHONY: check-env
 check-env: check-tools
 	@[ -x $(PYBIN) ] || { echo "ERROR: conda env '$(CONDA_ENV)' missing ($(PYBIN)). Run: make install-server"; exit 1; }
 
 .PHONY: install-server
 install-server: check-tools
-	# --override-channels -c conda-forge：绕开 Anaconda defaults 通道的 ToS 拦截
-	# （未 `conda tos accept` 时，conda create 会直接报错退出）。
+	# --override-channels -c conda-forge：绕开 Anaconda defaults 通道的 ToS 拦截。
 	@[ -x $(PYBIN) ] || $(CONDA) create -y -n $(CONDA_ENV) --override-channels -c conda-forge python=$(CONDA_PY)
 	$(PIPBIN) install -r $(SERVER_DIR)/requirements.lock
 	$(PIPBIN) install -e '$(SERVER_DIR)' --no-deps
 
-## lock-server: 用当前 conda 环境的实测版本重写后端 requirements.lock
+## lock-server: 用当前 conda 环境的实测版本重写后端 requirements.lock（只保留 v2 真正 import 的包；检查 diff 再提交）
 .PHONY: lock-server
 lock-server: check-env
 	@$(PIPBIN) freeze --exclude-editable | grep -Ev '^-e | @ ' | sort -f > $(SERVER_DIR)/requirements.lock
@@ -73,7 +66,27 @@ install-web:
 	# 与 CI 完全一致：lock 与 package.json 不一致就当场报错，而不是默默改 lock。
 	cd $(WEB_DIR) && pnpm install --frozen-lockfile
 
-## run: 一次启动 Frontend + Backend（后台运行，日志在 .run/）
+## pg-up: 启动 PostgreSQL（docker compose；无 Docker 用 scripts/devpg.sh start）
+.PHONY: pg-up
+pg-up:
+	docker compose up -d --wait postgres
+
+## pg-down: 停止 PostgreSQL 容器
+.PHONY: pg-down
+pg-down:
+	docker compose stop postgres
+
+## migrate-v2: 数据库升到最新（alembic-v2.ini）
+.PHONY: migrate-v2
+migrate-v2: check-env
+	@cd $(SERVER_DIR) && $(ALEMBICBIN) -c alembic-v2.ini upgrade head && $(ALEMBICBIN) -c alembic-v2.ini current
+
+## migrate-v2-new: 按 model 变更生成一个 revision（仍需人工检查；新表先报批）
+.PHONY: migrate-v2-new
+migrate-v2-new: check-env
+	@cd $(SERVER_DIR) && $(ALEMBICBIN) -c alembic-v2.ini revision --autogenerate -m "$(or $(M),autogen)"
+
+## run: 一次启动 API + worker + Web（后台运行，日志在 .run/；需要 PostgreSQL 已就绪并 migrate-v2）
 .PHONY: run
 run: dev
 
@@ -81,32 +94,28 @@ run: dev
 .PHONY: dev
 dev: check-env stop
 	@mkdir -p $(RUN_DIR)
-	@cd $(SERVER_DIR) && nohup $(UVICORNBIN) app.main:app --host $(API_HOST) --port $(API_PORT) > $(CURDIR)/$(RUN_DIR)/server.log 2>&1 & echo $$! > $(CURDIR)/$(RUN_DIR)/server.pid
+	@cd $(SERVER_DIR) && nohup $(PYBIN) -m eidolon api --host $(API_HOST) --port $(API_PORT) > $(CURDIR)/$(RUN_DIR)/api.log 2>&1 & echo $$! > $(CURDIR)/$(RUN_DIR)/api.pid
+	@cd $(SERVER_DIR) && nohup $(PYBIN) -m eidolon worker > $(CURDIR)/$(RUN_DIR)/worker.log 2>&1 & echo $$! > $(CURDIR)/$(RUN_DIR)/worker.pid
 	@cd $(WEB_DIR) && nohup pnpm dev > $(CURDIR)/$(RUN_DIR)/web.log 2>&1 & echo $$! > $(CURDIR)/$(RUN_DIR)/web.pid
 	@failed=""; \
-	 up=0; for i in $$(seq 1 30); do curl -sf -o /dev/null "http://127.0.0.1:$(API_PORT)/health" && { up=1; break; }; sleep 1; done; \
-	 [ "$$up" = 1 ] || failed="$$failed backend(:$(API_PORT))"; \
+	 up=0; for i in $$(seq 1 30); do curl -sf -o /dev/null "http://127.0.0.1:$(API_PORT)/api/v2/health" && { up=1; break; }; sleep 1; done; \
+	 [ "$$up" = 1 ] || failed="$$failed api(:$(API_PORT))"; \
 	 up=0; for i in $$(seq 1 30); do lsof -nP -tiTCP:$(WEB_PORT) -sTCP:LISTEN >/dev/null 2>&1 && { up=1; break; }; sleep 1; done; \
 	 [ "$$up" = 1 ] || failed="$$failed web(:$(WEB_PORT))"; \
 	 if [ -n "$$failed" ]; then \
 	   echo "ERROR: Eidolon did not come up — not listening:$$failed"; \
-	   echo "--- $(RUN_DIR)/server.log (tail) ---"; tail -n 15 $(RUN_DIR)/server.log 2>/dev/null; \
+	   echo "--- $(RUN_DIR)/api.log (tail) ---"; tail -n 15 $(RUN_DIR)/api.log 2>/dev/null; \
+	   echo "--- $(RUN_DIR)/worker.log (tail) ---"; tail -n 15 $(RUN_DIR)/worker.log 2>/dev/null; \
 	   echo "--- $(RUN_DIR)/web.log (tail) ---"; tail -n 15 $(RUN_DIR)/web.log 2>/dev/null; \
 	   echo "hint: 'make stop' force-clears the whole process tree; 'make ps' lists strays"; \
 	   exit 1; \
-	 fi; \
-	 for spec in "server $(API_PORT)" "web $(WEB_PORT)"; do \
-	   set -- $$spec; holder=$$(lsof -nP -tiTCP:$$2 -sTCP:LISTEN 2>/dev/null | head -1); \
-	   [ -n "$$holder" ] && echo $$holder > $(RUN_DIR)/$$1.pid; \
-	   true; \
-	 done
+	 fi
 	@echo "Eidolon is running:"
-	@echo "  Eidolon Web     http://localhost:$(WEB_PORT)"
-	@echo "  Network Access  http://<server-ip>:$(WEB_PORT)"
-	@echo "  Backend API     $(API_HOST):$(API_PORT) (proxied via Web at /api, /ws — normally not needed directly)"
-	@echo "  Runtime Mode    $(RUNTIME_MODE)"
-	@echo "  Logs:           $(RUN_DIR)/server.log, $(RUN_DIR)/web.log"
-	@echo "  Stop:           make stop"
+	@echo "  Web      http://localhost:$(WEB_PORT)"
+	@echo "  API      $(API_HOST):$(API_PORT)/api/v2 (proxied via Web at /api)"
+	@echo "  Worker   see $(RUN_DIR)/worker.log"
+	@echo "  Logs:    $(RUN_DIR)/api.log, $(RUN_DIR)/worker.log, $(RUN_DIR)/web.log"
+	@echo "  Stop:    make stop"
 
 ## stop: 停止开发进程（进程树 + 端口双路清理，详见 scripts/devctl.sh）
 .PHONY: stop
@@ -118,219 +127,58 @@ stop:
 ps:
 	@EIDOLON_API_PORT=$(API_PORT) EIDOLON_WEB_PORT=$(WEB_PORT) sh $(DEVCTL) ps
 
-## status: 只看 26881 / 26880 是否有健在的服务
+## status: 只看 API / Web 端口是否有健在的服务
 .PHONY: status
 status:
 	@EIDOLON_API_PORT=$(API_PORT) EIDOLON_WEB_PORT=$(WEB_PORT) sh $(DEVCTL) status
 
-## dev-inventory: **只读**清点开发库（按公司口径；不删不改。JSON 用 INV_ARGS="--format json"）
-.PHONY: dev-inventory
-dev-inventory: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/dev_inventory.py $(INV_ARGS)
-
-## market-issue: 发行本地市场人才（T2.4；走真实培养链，档位只影响采样参数）
-##   例：make market-issue ISSUE_ARGS="--tier rare --count 2"
-.PHONY: market-issue
-market-issue: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/issue_talent.py $(ISSUE_ARGS)
-
-## work-order-publish: 发布官方工作订单（M1.3；预算内发行。例：WO_ARGS='--title "写文档" --reward 5000 --require readme'）
-.PHONY: work-order-publish
-work-order-publish: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py publish $(WO_ARGS)
-
-## work-order-list: 列出工作订单（WO_ARGS='--status open --limit 50'）
-.PHONY: work-order-list
-work-order-list: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py list $(WO_ARGS)
-
-## work-order-evaluate: 验收订单（M1.3；管理面。例：WO_ARGS='--order 1 --verdict approved --score 95 --bonus early_delivery=1000'）
-.PHONY: work-order-evaluate
-work-order-evaluate: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py evaluate $(WO_ARGS)
-
-## work-order-settle: 结算订单（幂等；WO_ARGS='--order 1'）
-.PHONY: work-order-settle
-work-order-settle: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py settle $(WO_ARGS)
-
-## work-order-expire: 过期扫描（未领取订单过期、已领取未开工订单取消；执行中的订单保留）
-.PHONY: work-order-expire
-work-order-expire: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/work_orders.py expire
-
-## agent-tools: 列出 Agent 工具（M2.3；调试口。AGENT_TOOLS_ARGS="describe"）
-.PHONY: agent-tools
-agent-tools: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/agent_tools.py $(or $(AGENT_TOOLS_ARGS),list)
-
-## agent-tool-call: 以某员工身份调用一个工具（M2.3；**需要 EIDOLON_AGENT_TOOL_CLI_ENABLED=true**）
-##   例：make agent-tool-call AT_EMPLOYEE=alice AT_TOOL=inspect_project AT_ARGS='{"project_id":1}'
-.PHONY: agent-tool-call
-agent-tool-call: check-env
-	@[ -n "$(AT_EMPLOYEE)" ] || { echo "ERROR: 必须给 AT_EMPLOYEE（如 AT_EMPLOYEE=alice）"; exit 2; }
-	@[ -n "$(AT_TOOL)" ] || { echo "ERROR: 必须给 AT_TOOL（如 AT_TOOL=inspect_project）"; exit 2; }
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/agent_tools.py call --employee $(AT_EMPLOYEE) --tool $(AT_TOOL) --args '$(or $(AT_ARGS),{})'
-
-## economy-stats: 经济快照（M1.9；只读。STATS_ARGS="--json" 输出 JSON）
-.PHONY: economy-stats
-economy-stats: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_stats.py $(STATS_ARGS)
-
-## economy-check: 一致性巡检（M1.9；只读：投影对账 + 托管归零 + 余额非负 + NPC 注入封顶）
-.PHONY: economy-check
-economy-check: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_stats.py --check
-
-## economy-policy-reload: 在线刷新经济政策（M1.9；重读 .env/EIDOLON_ECONOMY_*）
-.PHONY: economy-policy-reload
-economy-policy-reload: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_stats.py --policy-reload
-
-## npc-economy-status: NPC 经济状态（M1.8；余额/累计注入/参数）
-.PHONY: npc-economy-status
-npc-economy-status: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/npc_economy.py status
-
-## npc-economy-inject: 给 NPC 注入预算（M1.8；mint，受 budget_cap 封顶。NPC_ARGS='--npc xinghai --amount 50000'）
-.PHONY: npc-economy-inject
-npc-economy-inject: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/npc_economy.py inject $(NPC_ARGS)
-
-## npc-economy-run: 跑一轮 NPC 活动（M1.8；在预算内成交。先看：NPC_ARGS='--dry-run'）
-.PHONY: npc-economy-run
-npc-economy-run: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/npc_economy.py run $(NPC_ARGS)
-
-## economy-verify: **只读**对账账本 vs 钱包投影（M1.1；drift 只报告不修）
-.PHONY: economy-verify
-economy-verify: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_wallets.py --verify
-
-## economy-rebuild: 由账本重建钱包投影（M1.1；安全——Ledger 是事实来源）
-.PHONY: economy-rebuild
-economy-rebuild: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_wallets.py --rebuild --yes
-
-## economy-supply: 打印货币供给快照（minted / burned / supply / circulating）
-.PHONY: economy-supply
-economy-supply: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/economy_wallets.py --supply
-
-## market-npc: 跑一轮 NPC 市场活动（T2.7c；发现 → Fit → 成交。先看：NPC_ARGS="--dry-run"）
-.PHONY: market-npc
-market-npc: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/npc_market_run.py $(NPC_ARGS)
-
-## dev-cleanup-plan: **只读**清理规划（dry-run；必须显式传 COMPANY_IDS，如 COMPANY_IDS="1 3"；不删不改）
-.PHONY: dev-cleanup-plan
-dev-cleanup-plan: check-env
-	@[ -n "$(COMPANY_IDS)" ] || { echo "ERROR: dev-cleanup-plan 必须显式传 COMPANY_IDS（如 make dev-cleanup-plan COMPANY_IDS=\"1 3\"）—— 拒绝默认全库"; exit 2; }
-	@cd $(SERVER_DIR) && $(PYBIN) $(CURDIR)/scripts/dev_cleanup_plan.py --company $(COMPANY_IDS) $(CLEANUP_ARGS)
-
-## logs: 跟随前后端日志（Ctrl-C 退出）
+## logs: 跟随 API / worker / Web 日志（Ctrl-C 退出）
 .PHONY: logs
 logs:
-	@tail -n 40 -f $(RUN_DIR)/server.log $(RUN_DIR)/web.log
+	@tail -n 50 -f $(RUN_DIR)/api.log $(RUN_DIR)/worker.log $(RUN_DIR)/web.log
 
 ## restart: 重启全部服务
 .PHONY: restart
 restart: stop dev
 
-## test: 后端 pytest + 前端 vitest
-.PHONY: test
-test: test-server test-web
-
-.PHONY: test-server
-test-server: check-env
-	$(PYBIN) -m pytest $(SERVER_DIR)/tests -q
-
-## pg-up: 启动 v2 的 PostgreSQL（docker compose；无 Docker 用 scripts/devpg.sh start）
-.PHONY: pg-up
-pg-up:
-	docker compose up -d --wait postgres
-
-## pg-down: 停止 v2 的 PostgreSQL 容器
-.PHONY: pg-down
-pg-down:
-	docker compose stop postgres
-
-## test-v2: v2 内核及以上的测试（需要 PostgreSQL：make pg-up 或 scripts/devpg.sh start）
-.PHONY: test-v2
-test-v2: check-env
-	cd $(SERVER_DIR) && $(PYBIN) -m pytest tests_v2 -q
-
-## v2-worker: 运行 v2 worker 进程（LISTEN 唤醒 + 游标 drain；SIGTERM 优雅停止）
+## v2-worker: 前台运行 worker 进程（LISTEN 唤醒 + 游标 drain；SIGTERM 优雅停止）
 .PHONY: v2-worker
 v2-worker: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon worker $(V2_ARGS)
 
-## v2-api: 运行 v2 API 进程（uvicorn；端口见 EIDOLON_V2_API_PORT，默认 8010）
+## v2-api: 前台运行 API 进程（uvicorn；端口 EIDOLON_V2_API_PORT，默认 26881）
 .PHONY: v2-api
 v2-api: check-env
-	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon api $(V2_ARGS)
+	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon api --host $(API_HOST) --port $(API_PORT) $(V2_ARGS)
 
 ## v2-verify: 校验所有公司的事实哈希链（任一断链 exit 1；V2_ARGS="--company <uuid>" 单查）
 .PHONY: v2-verify
 v2-verify: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon verify-chain $(V2_ARGS)
 
-## v2-cursors: 列出 v2 消费者游标与落后量
+## v2-ledger-verify: 校验所有公司的账本（折叠合法、试算平衡、投影一致、成本与分录对应）
+.PHONY: v2-ledger-verify
+v2-ledger-verify: check-env
+	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon ledger-verify $(V2_ARGS)
+
+## v2-cursors: 列出消费者游标与落后量
 .PHONY: v2-cursors
 v2-cursors: check-env
 	@cd $(SERVER_DIR) && $(PYBIN) -m eidolon cursors
 
-## v2-record-fixtures: 对真实模型重录 provider/loop 回放 fixture（需要 key；写入开发库一条真实 run）
+## v2-record-fixtures: 对真实模型重录 provider/loop/project/company 回放 fixture（需要 key；写入开发库真实 run）
 .PHONY: v2-record-fixtures
 v2-record-fixtures: check-env
 	@$(PYBIN) $(CURDIR)/scripts/record_provider_fixtures.py --loop --project --company $(V2_ARGS)
 
-## migrate-v2: v2 数据库升到最新（alembic-v2.ini，独立版本表）
-.PHONY: migrate-v2
-migrate-v2: check-env
-	@cd $(SERVER_DIR) && $(ALEMBICBIN) -c alembic-v2.ini upgrade head && $(ALEMBICBIN) -c alembic-v2.ini current
+## test: 后端 pytest（真实 PostgreSQL）+ 前端 vitest
+.PHONY: test
+test: test-v2 test-web
 
-## migrate-v2-new: 按 v2 model 变更生成一个 revision（仍需人工检查）
-.PHONY: migrate-v2-new
-migrate-v2-new: check-env
-	@cd $(SERVER_DIR) && $(ALEMBICBIN) -c alembic-v2.ini revision --autogenerate -m "$(or $(M),autogen)"
-
-## test-integration: 真实 Docker 集成测试（需要本机 Docker daemon）
-.PHONY: test-integration
-test-integration: check-env
-	$(PYBIN) -m pytest $(SERVER_DIR)/tests/integration -m integration -q
-
-## migrate: 把数据库升到最新 schema（改了 model 后、重启 dev 服务前必跑）
-.PHONY: migrate
-migrate: check-env
-	@cd $(SERVER_DIR) && $(ALEMBICBIN) upgrade head && $(ALEMBICBIN) current
-
-## migrate-new: 按 model 变更自动生成一个 revision（仍需人工 review）
-.PHONY: migrate-new
-migrate-new: check-env
-	@cd $(SERVER_DIR) && $(ALEMBICBIN) revision --autogenerate -m "$(or $(M),autogen)"
-	@echo "生成后请人工检查 $(SERVER_DIR)/migrations/versions/ 里的 upgrade/downgrade"
-
-## runtime-status: 通过 API 列出 runtime instances
-.PHONY: runtime-status
-runtime-status:
-	@curl -sf "http://localhost:$(WEB_PORT)/api/v1/runtimes" || curl -sf "http://$(API_HOST):$(API_PORT)/api/v1/runtimes"
-
-## runtime-list: 列出 eidolon-* 容器
-.PHONY: runtime-list
-runtime-list:
-	@docker ps -a --filter "name=eidolon-" --format "table {{.Names}}\t{{.Image}}\t{{.Status}}"
-
-## runtime-pull: 拉取 hermes/openclaw 运行时镜像
-.PHONY: runtime-pull
-runtime-pull:
-	docker pull $(or $(EIDOLON_HERMES_IMAGE),nousresearch/hermes-agent:latest)
-	docker pull $(or $(EIDOLON_OPENCLAW_IMAGE),ghcr.io/openclaw/openclaw:latest)
-
-## runtime-clean: 删除所有 eidolon-* 容器（不动数据目录）
-.PHONY: runtime-clean
-runtime-clean:
-	@docker ps -aq --filter "name=eidolon-" | xargs -r docker rm -f
+## test-v2: v2 测试（需要 PostgreSQL：make pg-up 或 scripts/devpg.sh start；库名须以 _test 结尾）
+.PHONY: test-v2
+test-v2: check-env
+	cd $(SERVER_DIR) && $(PYBIN) -m pytest tests_v2 -q
 
 .PHONY: test-web
 test-web:
@@ -339,16 +187,17 @@ test-web:
 ## lint: ruff + prettier + eslint + tsc
 .PHONY: lint
 lint: check-env
-	$(RUFFBIN) check $(SERVER_DIR)/app $(SERVER_DIR)/tests $(SERVER_DIR)/eidolon $(SERVER_DIR)/tests_v2
-	$(RUFFBIN) format --check $(SERVER_DIR)/app $(SERVER_DIR)/tests $(SERVER_DIR)/eidolon $(SERVER_DIR)/tests_v2
+	$(RUFFBIN) check $(SERVER_DIR)/eidolon $(SERVER_DIR)/tests_v2 scripts
+	$(RUFFBIN) format --check $(SERVER_DIR)/eidolon $(SERVER_DIR)/tests_v2 scripts
 	cd apps/runner && $(RUFFBIN) check . && $(RUFFBIN) format --check .
 	cd $(WEB_DIR) && pnpm exec tsc --noEmit && pnpm exec eslint .
 	cd $(WEB_DIR) && pnpm exec prettier --check .
 
-## format: ruff format + prettier（与 CI / package.json 脚本同一入口：整仓 + .prettierignore）
+## format: ruff format + prettier（与 CI / package.json 脚本同一入口）
 .PHONY: format
 format: check-env
-	$(RUFFBIN) format $(SERVER_DIR)/app $(SERVER_DIR)/tests
+	$(RUFFBIN) format $(SERVER_DIR)/eidolon $(SERVER_DIR)/tests_v2 scripts
+	cd apps/runner && $(RUFFBIN) format .
 	cd $(WEB_DIR) && pnpm exec prettier --write .
 
 ## build: 前端生产构建
@@ -356,32 +205,7 @@ format: check-env
 build:
 	cd $(WEB_DIR) && pnpm build
 
-## dev-seed-user: 注入本地测试账号（默认 **user@example.com / user**；OWNER + 自建 test-co 公司）
-##   · 幂等：已存在则重置密码并强制 active/verified；自定义用 SEED_EMAIL= SEED_PASSWORD= SEED_DISPLAY_NAME=
-##   · 前置 migrate（清库后**无需先 make run**，直接 make dev-seed-user 即可登录测试）
-##   · 只允许本地 SQLite（拒绝外部库）；.env 与其他表不动
-.PHONY: dev-seed-user
-dev-seed-user: migrate
-	@cd $(SERVER_DIR) && EIDOLON_DATABASE_URL="$(or $(EIDOLON_DATABASE_URL),sqlite:///./data/eidolon.db)" $(PYBIN) $(CURDIR)/scripts/dev_seed_user.py $(if $(SEED_EMAIL),--email $(SEED_EMAIL))$(if $(SEED_PASSWORD), --password $(SEED_PASSWORD))$(if $(SEED_DISPLAY_NAME), --display-name $(SEED_DISPLAY_NAME))
-
-## dev-restart-clean: **一条龙重置**：停服 → 清数据 → 建测试账号 → 重启
-##   · 破坏性操作，必须 DATA_CONFIRM=yes（等于先跑 dev-clear-data 再 dev-seed-user 再 run）
-##   · 不支持 DRY_RUN（要预览删除清单请单独 make dev-clear-data DRY_RUN=1）
-.PHONY: dev-restart-clean dev-restart-clean-guard
-dev-restart-clean: dev-restart-clean-guard stop dev-clear-data dev-seed-user run
-	@echo "OK：数据已清空，测试账号 user@example.com / user 可登录（make dev-seed-user SEED_EMAIL=... 可覆盖）"
-
-dev-restart-clean-guard:
-	@[ "$(DRY_RUN)" != "1" ] || { echo "ERROR: dev-restart-clean 不支持 DRY_RUN（要预览请 make dev-clear-data DRY_RUN=1）"; exit 2; }
-
-## dev-clear-data: 清除**本地开发数据**（apps/server/data 下的 sqlite/workspaces/employees；保留 .env）
-##   · 必须先确认：DATA_CONFIRM=yes（或交互输入 y）；DRY_RUN=1 只列出不删除（结尾 NO DATA HAS BEEN MODIFIED.）
-##   · 前置 stop（防数据库锁）；若 EIDOLON_DATABASE_URL 指向仓库外 ⇒ 拒绝，避免误删外部库
-.PHONY: dev-clear-data
-dev-clear-data: stop
-	@bash $(CURDIR)/scripts/dev_clear_data.sh --confirm="$(DATA_CONFIRM)" $(if $(filter 1,$(DRY_RUN)),--dry-run)
-
-## clean: 清理构建产物与本地运行数据（保留 .env）
+## clean: 清理构建产物与本地运行数据（保留 .env 与数据库）
 .PHONY: clean
 clean: stop
 	rm -rf $(RUN_DIR) $(WEB_DIR)/dist $(WEB_DIR)/node_modules/.vite

@@ -1,6 +1,6 @@
 # Eidolon v2 交接文档（终端会话入口）
 
-> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1–R4 完成（R2-e GO；R4 = 身份 + 钱 + 费用溯源），R5 已拆成 R5-a..e（见 §8），R5-a..d 完成，下一个包是 **R5-e 旧应用删除 + cutover**。
+> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1–R4 完成（R2-e GO；R4 = 身份 + 钱 + 费用溯源），R5 已拆成 R5-a..e（见 §8），R5 全部完成（旧应用已删除，cutover 到 v2），下一个是 **R6 上线加固**——§8 的 R6 行还没有规格，开工前先按 §5 拆包并写进 §8。
 > 这是新会话的**唯一入口**：先读本文，再按 §1 的顺序读其余文档。
 > 文档体系：本文（入口与状态）→ `kernel-plan.md`（本质、纪律、Progress）→ `v2-architecture.md`（设计、路线、ADR）。
 
@@ -12,12 +12,11 @@
 git pull                                   # 或从你本机推上去的 dev 开始
 make install                               # conda env eidolon（Python 3.12）+ pnpm
 make pg-up                                 # 或 scripts/devpg.sh start；或用你自己的 PG（.env 已配）
-make test-v2                               # v2 内核测试：期望 164 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
-make test-server                           # 旧应用全量：期望 3228 passed（SQLite，约 4.5 分钟 -n 4）
+make test-v2                               # v2 内核测试：期望 166 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
 make lint                                  # ruff + tsc + eslint + prettier
 ```
 
-然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R5-e**），按 §5 的流程做。
+然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R6**，需先拆包），按 §5 的流程做。
 
 ---
 
@@ -35,7 +34,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 
 ### 2.1 现状快照
 - 仓库 2026-09-01 建立，351 次提交集中在 09-01 ~ 09-21，之后停摆六周半（留有未提交 WIP，已于 R0 收口）。
-- 规模：后端 82k 行 / 116 表 / 66 迁移 / 3228 测试；前端 42k 行；文档 1.39 MB（含 50 份机器证据 JSON）。
+- 规模（旧应用，已于 R5-e 删除，历史在 `232ceff`）：后端 82k 行 / 116 表 / 66 迁移 / 3228 测试；前端 42k 行。v2 现状：后端约 14k 行 / 20 张表 / 7 个迁移 / 166 条测试；前端 4.7k 行。
 - 完成度：P1–P11、T2 人才市场、M1 经济、M2 工作域（105 条不变量）、M3.0–M3.3 均"冻结"；M3.4（U13–U16）代码已落地但未联合验收；U17–U31 未开始。
 
 ### 2.2 五个重大问题（按严重度）
@@ -88,10 +87,11 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `cda7876` | **R5-b**：`api/`（FastAPI `/api/v2`：鉴权 argon2 + cookie 会话 + CSRF，只读路由 companies / work / runs / ledger / provenance）、`0007_auth`、`make v2-api`；tests_v2 163 条。v2-ADR-22 |
 | `56a9492` | **R5-c**：`api/commands.py` + 写路由（建公司 / 制度 / 招解雇 / mission / 决策信封开与签 / 交付 / 取消 run）；tests_v2 166 条。v2-ADR-23 |
 | `36cc52d` | **R5-d**：前端按 V5 重写为 `/api/v2` 薄客户端（42k → 4.7k 行，11 个依赖删除，vitest 30）。v2-ADR-24 |
+| `PENDING` | **R5-e**：删除 `apps/server/app/`、旧 tests、旧 Alembic 链与 12 个旧脚本；Makefile / CI / compose / Dockerfile / nginx / .env.example / README / CONTRIBUTING 切到 v2；旧文档移入 `docs/archive/`；`requirements.lock` 裁到 v2 并在干净 venv 验证；`make dev` 真实起 api + worker + web 走通注册→建司→招人。v2-ADR-25。**R5 完成** |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
-**基线数字**：旧应用 pytest 3228 passed；v2 164 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(30)/build 全绿；前端 4.7k 行（R5-d 后）。
+**基线数字**：v2 166 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(30)/build 全绿；前端 4.7k 行（R5-d 后）。
 
 ---
 
@@ -99,13 +99,11 @@ R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司�
 
 - **本机 PostgreSQL 18**（容器 `local-postgres-5432-db-1`，`127.0.0.1:5432`，用户 `postgres`）：`.env`（gitignored）里已写 `EIDOLON_V2_DATABASE_URL`（库 `eidolon`）与 `EIDOLON_V2_TEST_DATABASE_URL`（库 `eidolon_test`）。**两个库需先建**：
   `docker exec -it local-postgres-5432-db-1 psql -U postgres -c "CREATE DATABASE eidolon;" -c "CREATE DATABASE eidolon_test;"`
-  （2026-11-07 已建好并 `make migrate-v2` 到 `0007`。）`postgres:18-alpine` 不带 pgvector；R2 记忆检索前换 `pgvector/pgvector:pg18` 或装扩展。
+  （2026-11-07 已建好并 `make migrate-v2` 到 `0007`；`make dev` 起 api + worker + web。）`postgres:18-alpine` 不带 pgvector；R2 记忆检索前换 `pgvector/pgvector:pg18` 或装扩展。
 - conda 环境 `eidolon` 在 lock 变更后要重装：R1-a 加了 psycopg / pytest-xdist，若 `make test-v2` 报 `No module named 'psycopg'`，跑 `make install-server`（或 `pip install -r apps/server/requirements.lock`）。
 - 直接用 `pytest` 跑 tests_v2 不会读 `.env`（只有 `make test-v2` 会 export），会连到默认的 5433；要么走 make，要么先导出 `EIDOLON_V2_TEST_DATABASE_URL`。
 - 没有本机 PG 时：`make pg-up`（compose postgres:16，端口 5433）或 `scripts/devpg.sh start`（用户态集群，无 Docker）。
-- 子进程类旧测试（`test_m3_worker_resume.py` 等）必须从**仓库根目录**运行（硬编码 `apps/server/tests` 相对路径）；`make test-server` 已是。
-- 旧应用全量用 `-n 4`（pytest-xdist 已进 lock）约 4.5 分钟。
-- 真实模型调用的 key：只放 `.env`（`EIDOLON_V2_PROVIDER_OPENAI_COMPAT_API_KEY` / `EIDOLON_V2_PROVIDER_ANTHROPIC_API_KEY`，未设时回退读 shell 的 `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY`）或 GitHub Actions secret；**禁止进提交**。本机 shell 环境里有 `DEEPSEEK_API_KEY`（余额约 16 CNY，2026-11-07），没有 Anthropic key 也没有 `ant` CLI。
+- 子进程类旧测试（`test_m3_worker_resume.py` 等）必须从**仓库根目录**运行（硬编码 `apps/server/tests` 相对路径）；`- 真实模型调用的 key：只放 `.env`（`EIDOLON_V2_PROVIDER_OPENAI_COMPAT_API_KEY` / `EIDOLON_V2_PROVIDER_ANTHROPIC_API_KEY`，未设时回退读 shell 的 `DEEPSEEK_API_KEY` / `ANTHROPIC_API_KEY`）或 GitHub Actions secret；**禁止进提交**。本机 shell 环境里有 `DEEPSEEK_API_KEY`（余额约 16 CNY，2026-11-07），没有 Anthropic key 也没有 `ant` CLI。
 - 改了 `tests_v2/provider_cases.py`、`tests_v2/loop_support.py` 或 `agent/context.py` 的 OUTPUT_CONTRACT 就要重录：`make v2-record-fixtures`（provider 用例 + loop + 项目 + 三角色公司场景；录制会复用已有 fixture，只对缺的真调；会在开发库写入真实 run、反思与项目，transcript 落在 `apps/server/data/transcripts/`，已 gitignore）。
 - `origin` 是 `git@github.com:Phlosy/Eidolon.git`，本地 `dev` 领先远端 80+ 提交——开工前 `git push origin dev`。
 
@@ -114,6 +112,7 @@ R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司�
 ### 4.1 已知的坑（踩过两次以上才记在这里）
 
 - **投影 `reset` 不得用 TRUNCATE。** TRUNCATE 要 ACCESS EXCLUSIVE 锁，任何一个未提交的读事务（API 请求、测试的 `db` 会话、一个开着的 psql）都会让 `rebuild` 永远等下去，而 rebuild 又挡住所有新读者——生产上等于停机，测试里表现为整套 pytest 卡死无输出。现在 `reset` 一律走 `kernel.consumers.clear_tables`（DELETE，与读者 MVCC 共存），`rebuild` 的重置段带 `lock_timeout`（默认 10s），真被锁住时抛 `RebuildBlocked` 而不是挂起。锚定测试：`test_kernel_consumers::test_rebuild_coexists_with_open_readers_and_never_hangs_on_locks`。写新投影时照抄既有 `reset`。
+- **会花钱的反应器第一次注册时从 head 开始，不从 0 回放。** 2026-11-07 第一次对开发库起 worker，`memory_reflector` 游标不存在，从 0 开始把历史上每条 `agent.run.completed` 都拿去调模型反思（被及时停掉，花了 3 次调用）。现在 `kernel.consumers.starts_at_head`：声明 `start_at_head = True` 的消费者首次运行把游标直接钉到 head；投影永远不许这样声明（它们必须能从 0 重建）。锚定测试：`test_kernel_consumers::test_reactors_that_spend_start_at_head_not_zero`。
 - 测试里要主动拿排他锁模拟"别人锁了表"时，先把自己的 `db` 会话 `commit()`，否则你自己的读事务就是那个挡路的人。
 - `SET LOCAL x = :param` 不能带绑定参数（SQL 语法错），用 `SELECT set_config('x', :param, true)`。
 
@@ -190,12 +189,11 @@ R3 拆包见 `kernel-plan.md` §8（R3-a..e）；R4–R6 见 `v2-architecture.md
 4. apps/server/eidolon/kernel/*.py 与 apps/server/tests_v2/*.py
 
 然后核对环境并把结果报给我：
-- make test-v2 应为 164 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
+- make test-v2 应为 166 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
 - make lint 全绿
-- 不必每次跑旧应用全量（make test-server，3228 条，约 4.5 分钟）；只在触碰 apps/server/app/ 时跑
-
+- 不必每次跑旧应用全量（
 工作方式：
-- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R5-e），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
+- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R6，先拆包写规格再做），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
 - 每个包完成的定义：代码 + 测试（真实 PostgreSQL）+ make test-v2 与 make lint 全绿 + kernel-plan.md §8 对应行改为 DONE 并填提交号 + 若有新裁决则在 v2-architecture.md §11 追加 ADR。
 - 遵守 docs/v2-handoff.md §6 的七条规则：v2 不 import 旧 app；持久状态只有 Fact、投影与 API 层的秘密；系统不做管理判断；mock 只在单测；密钥不进提交；不写新的阶段设计文档。
 - 包粒度：一个会话做完一个包；做不完就拆成更小的包并在 Progress 登记，不要留"第 N 段"。
