@@ -66,7 +66,7 @@ SOFTWARE_STUDIO_V1 = InstitutionTemplate(
             separation=("proposer!=approver",),
             conditions={
                 "co_signers": ["pm", "tech_lead"],
-                "escalate_if": {"tasks_gt": 20, "has_purchase": True},
+                "escalate_if": {"tasks_count_gt": 20, "has_purchase": True},
             },
             escalate_to="ceo",
             timeout_s=12 * 3600,

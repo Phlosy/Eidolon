@@ -425,3 +425,11 @@ human decider 可达 Owner、组织图是树、升级不成环、system 不带 q
 而不是 YAML：类型检查与 IDE 可见，且不需要新的加载/迁移机制；公司采用时把模板**全文**写进 `institution.template.adopted`，
 定制写进 `institution.template.changed`（上一版本的指纹与 causation 一起带上），所以任何历史决策都能按当时的制度解释，模板代码改了也不影响已采用的公司。
 采用与定制都是管理行为：`actor` 必须是 human，或带 `decision_id`（gate `escalation.resolve` / 将来的 `institution.change`）。
+
+**v2-ADR-13（2026-11-07）决策信封：谁决定由 resolve 算出，怎么决定由四种事实记录，系统永不签字。**
+`resolve` 是纯函数：模板 + 情境（提案人、作者、金额、规模等事实）→ Resolution，分支固定为 rule / tier / escalate_if / company_scope，
+结果带模板指纹，所以一条旧决策永远能按当时的制度解释。信封只有四种事实：requested（含 Resolution 与主体）、signed（每位决定者一条，
+带 authority 快照）、recorded（quorum 满足或任一否决时由系统**机械地**落账，理由是签字的汇总）、escalated（超时或强制，换下一位决定者）。
+系统的角色只有两种：对 decider=system 的 gate 把执行过的机械检查写成 recorded 的理由；对其他 gate 只做校验（actor 类型、角色、
+分离职责、理由、重复签字、human 的动作哈希）并在签字凑齐时落 recorded——永远不替任何人签字（§1.2）。
+工具调用的越权在循环里是**结果**不是异常：`tool_gate` 拒绝时写 `tool.completed{refused:true,is_error:true}`，模型看到原因后自行调整。

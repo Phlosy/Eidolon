@@ -22,6 +22,7 @@ stops. There is no other recovery code.
 import asyncio
 import dataclasses
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
@@ -67,6 +68,8 @@ class AgentRunner:
     store: FactStore | None = None
     context_builder: ContextBuilder | None = None
     memory: "MemoryRecall | None" = None  # R2-d: injects recalled memory into the context
+    # R3-b: authority check before every tool call; returns a refusal reason or None.
+    tool_gate: "Callable[[ToolCall], str | None] | None" = None
 
     def __post_init__(self) -> None:
         self.store = self.store or FactStore()
@@ -344,9 +347,13 @@ class AgentRunner:
                 )
                 state.tools_requested[call.id] = item.idempotency_key
             t0 = time.monotonic()
-            result = await self.tools.execute(
-                Execution(call, item.idempotency_key, str(state.run_id), state.last_step_no)
-            )
+            refusal = self.tool_gate(call) if self.tool_gate is not None else None
+            if refusal is not None:
+                result = ToolResult(call.id, refusal, is_error=True)
+            else:
+                result = await self.tools.execute(
+                    Execution(call, item.idempotency_key, str(state.run_id), state.last_step_no)
+                )
             if not isinstance(result, ToolResult):
                 raise TypeError(f"tool {call.name!r} returned {type(result).__name__}")
             tool_message = Message.tool(call.id, result.content, is_error=result.is_error)
@@ -363,6 +370,7 @@ class AgentRunner:
                         "result_ref": result_ref,
                         "result_preview": preview(result.content),
                         "is_error": result.is_error,
+                        "refused": refusal is not None,
                         "idempotency_key": item.idempotency_key,
                         "duration_ms": round((time.monotonic() - t0) * 1000),
                     },
