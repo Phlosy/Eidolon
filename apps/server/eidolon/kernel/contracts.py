@@ -73,3 +73,66 @@ KERNEL_INVARIANTS: tuple[Invariant, ...] = (
         "test_provenance::test_bundle_verifies_offline_and_any_change_is_detected",
     ),
 )
+
+# Work-domain invariants carried over from M2 (R1–R12 dispatch, H1–H8 handoff,
+# RV1–RV8 review, RD1 readiness), folded into the W series. Each names its test.
+WORK_INVARIANTS: tuple[Invariant, ...] = (
+    Invariant(
+        "W1",
+        "R1/R2/R4/R10: the system dispatches only to an assignee named by an approved "
+        "task.assign decision; a ready unassigned task is a management question",
+        "test_work::test_assignment_requires_an_approved_decision_naming_the_assignee",
+    ),
+    Invariant(
+        "W2",
+        "R3/R8/RD1: readiness is derived from facts (todo + dependencies and input "
+        "producers done), never stored, and is not a request for approval",
+        "test_work::test_readiness_is_derived_and_distinct_from_dispatchability",
+    ),
+    Invariant(
+        "W3",
+        "R5/R10/R12: a failed task returns to work only through a decision; nothing "
+        "retries, reassigns or plans on management's behalf",
+        "test_work::test_failed_task_returns_only_through_a_decision",
+    ),
+    Invariant(
+        "W4",
+        "H1/H2/H3: artifacts are blob refs attributed to their producing task and run; "
+        "consumption records the using task and run",
+        "test_work::test_artifacts_are_attributed_and_consumption_is_recorded",
+    ),
+    Invariant(
+        "W5",
+        "H4/H5/H8: inputs are producer tasks that must be DAG ancestors; only finished "
+        "work is consumable; the system resolves the artifacts at run time",
+        "test_work::test_inputs_must_be_ancestors_and_only_done_work_is_consumable",
+    ),
+    Invariant(
+        "W6",
+        "H7: an artifact's lineage is walkable back through its producer's inputs",
+        "test_work::test_lineage_walks_back_through_producers",
+    ),
+    Invariant(
+        "W7",
+        "RV1/RV2/RV3/RV4: a task leaves in_review only through a verdict signed by the "
+        "named reviewer in a task.review decision; the system never produces one",
+        "test_work::test_review_needs_a_signed_decision_and_maps_one_way",
+    ),
+    Invariant(
+        "W8",
+        "RV5/RV6/RV8: REWORK returns to todo and counts; ESCALATE blocks and waits; the "
+        "decision status maps to the verdict one way only",
+        "test_work::test_rework_counts_and_escalate_blocks",
+    ),
+    Invariant(
+        "W9",
+        "the task graph is a DAG: self loops, dangling and duplicate edges and cycles "
+        "are rejected at creation and before plan approval",
+        "test_work::test_graph_validation_rejects_bad_structure",
+    ),
+    Invariant(
+        "W10",
+        "the four work tables are projections: rebuilt from zero they equal the fold",
+        "test_work::test_projection_matches_the_fold_and_rebuilds",
+    ),
+)

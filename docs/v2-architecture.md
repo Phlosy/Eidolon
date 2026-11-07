@@ -433,3 +433,11 @@ human decider 可达 Owner、组织图是树、升级不成环、system 不带 q
 系统的角色只有两种：对 decider=system 的 gate 把执行过的机械检查写成 recorded 的理由；对其他 gate 只做校验（actor 类型、角色、
 分离职责、理由、重复签字、human 的动作哈希）并在签字凑齐时落 recorded——永远不替任何人签字（§1.2）。
 工具调用的越权在循环里是**结果**不是异常：`tool_gate` 拒绝时写 `tool.completed{refused:true,is_error:true}`，模型看到原因后自行调整。
+
+**v2-ADR-14（2026-11-07）工作域 = 事实 + 按 project 折叠的强一致状态 + 四张可重建投影；就绪永不落库。**
+一个 project 的所有事实（project、task、review、artifact）共享 `correlation_id = project_id`，`ProjectState.from_facts(by_correlation)`
+给出强一致视图，服务函数据此校验转换与决策；四张 `work_*` 表只是读模型（worker 异步推进，`rebuild work_items` 可从零重建），
+不参与任何判定。READY 是 `graph.is_ready` 的派生（todo 且依赖与输入生产者全部 done），没有列、没有枚举值（RD1）；
+"可派发" = READY 且已有被决策指定的 assignee（R1/R3），READY 但无人 = 管理问题（R4），系统永不填人（R2/R12）。
+M2 的 R/H/RV/RD 不变量折成 W1–W10 放进 `kernel/contracts.WORK_INVARIANTS`，每条有测试锚且被守卫机器检查。
+评审映射一向：decision approved → pass → done，rework → rework → todo（计数），rejected → escalate → blocked（等人）；系统从不产生评审结论（RV1）。

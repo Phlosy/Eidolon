@@ -14,8 +14,11 @@ def default_registry() -> Registry:
     from eidolon.agent.providers import SERVER_ROOT, build_provider
     from eidolon.config import settings
     from eidolon.db import SessionLocal
+    from eidolon.work import WorkProjection
 
     registry = Registry()
+    # work layer (R3): missions / projects / tasks / artifacts read model.
+    registry.register(WorkProjection())
     # agent layer (R2): the memory read model and the reflection that feeds it.
     registry.register(MemoryProjection())
     blobs = BlobStore(SERVER_ROOT / settings.transcript_dir)

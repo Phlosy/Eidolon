@@ -28,7 +28,16 @@ from sqlalchemy import make_url  # noqa: E402
 from eidolon.config import settings  # noqa: E402
 from eidolon.db import SessionLocal, engine  # noqa: E402
 
-KERNEL_TABLES = ("facts", "fact_chains", "fact_cursors", "memory_entries")
+KERNEL_TABLES = (
+    "facts",
+    "fact_chains",
+    "fact_cursors",
+    "memory_entries",
+    "work_missions",
+    "work_projects",
+    "work_tasks",
+    "work_artifacts",
+)
 
 # The session fixture drops and recreates schema "public". Refuse to do that to
 # anything that is not unmistakably a test database.
