@@ -90,7 +90,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `fb288d3` | **R5-e**：删除 `apps/server/app/`、旧 tests、旧 Alembic 链与 12 个旧脚本；Makefile / CI / compose / Dockerfile / nginx / .env.example / README / CONTRIBUTING 切到 v2；旧文档移入 `docs/archive/`；`requirements.lock` 裁到 v2 并在干净 venv 验证；`make dev` 真实起 api + worker + web 走通注册→建司→招人。v2-ADR-25。**R5 完成** |
 | `1dd4c00` | **R6-a**：预算三级生效（run 零花钱 `max_cost`、项目 tranche 经 `spend.approve`、公司并发/日限）；`money/guard.py` 注入执行器；`SpendApprover` 作业；契约 B1–B3。v2-ADR-26 |
 | `8e04f97` | **R6-b**：`agent/escalation.py`（Escalator + EscalatedDecider）、管理作业已决定优先、评审 reviewer 取签字人、`POST /decisions/{id}/escalate`、取消语义锚定；契约 G1–G2。v2-ADR-27 |
-| `PENDING` | **R6-c**：`observability.py`（prometheus_client：API 中间件 + `/metrics`、worker 批次/游标落后/作业指标 + 26890 端口、`MetricsConsumer` 事实派生指标）、`/health` 带 DB 与游标落后、bundle 时间窗。v2-ADR-28 |
+| `c94040d` | **R6-c**：`observability.py`（prometheus_client：API 中间件 + `/metrics`、worker 批次/游标落后/作业指标 + 26890 端口、`MetricsConsumer` 事实派生指标）、`/health` 带 DB 与游标落后、bundle 时间窗。v2-ADR-28 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
