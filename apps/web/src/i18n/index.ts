@@ -4,56 +4,13 @@ import { initReactI18next } from "react-i18next";
 
 import commonZh from "./locales/zh-CN/common.json";
 import navZh from "./locales/zh-CN/nav.json";
-import dashboardZh from "./locales/zh-CN/dashboard.json";
-import officeZh from "./locales/zh-CN/office.json";
-import employeeZh from "./locales/zh-CN/employee.json";
-import projectZh from "./locales/zh-CN/project.json";
-import driveZh from "./locales/zh-CN/drive.json";
-import runtimeZh from "./locales/zh-CN/runtime.json";
-import providerZh from "./locales/zh-CN/provider.json";
-import gitZh from "./locales/zh-CN/git.json";
-import settingsZh from "./locales/zh-CN/settings.json";
-import eventZh from "./locales/zh-CN/event.json";
-import lifecycleZh from "./locales/zh-CN/lifecycle.json";
 import authZh from "./locales/zh-CN/auth.json";
-import tutorialZh from "./locales/zh-CN/tutorial.json";
-import positionZh from "./locales/zh-CN/position.json";
-import knowledgeZh from "./locales/zh-CN/knowledge.json";
-import cultivationZh from "./locales/zh-CN/cultivation.json";
-import personZh from "./locales/zh-CN/person.json";
-import marketZh from "./locales/zh-CN/market.json";
-import economyZh from "./locales/zh-CN/economy.json";
-import workOrdersZh from "./locales/zh-CN/workOrders.json";
-import contractsZh from "./locales/zh-CN/contracts.json";
-
+import appZh from "./locales/zh-CN/app.json";
 import commonEn from "./locales/en-US/common.json";
 import navEn from "./locales/en-US/nav.json";
-import dashboardEn from "./locales/en-US/dashboard.json";
-import officeEn from "./locales/en-US/office.json";
-import employeeEn from "./locales/en-US/employee.json";
-import projectEn from "./locales/en-US/project.json";
-import driveEn from "./locales/en-US/drive.json";
-import runtimeEn from "./locales/en-US/runtime.json";
-import providerEn from "./locales/en-US/provider.json";
-import gitEn from "./locales/en-US/git.json";
-import settingsEn from "./locales/en-US/settings.json";
-import eventEn from "./locales/en-US/event.json";
-import lifecycleEn from "./locales/en-US/lifecycle.json";
 import authEn from "./locales/en-US/auth.json";
-import tutorialEn from "./locales/en-US/tutorial.json";
-import positionEn from "./locales/en-US/position.json";
-import knowledgeEn from "./locales/en-US/knowledge.json";
-import cultivationEn from "./locales/en-US/cultivation.json";
-import personEn from "./locales/en-US/person.json";
-import marketEn from "./locales/en-US/market.json";
-import economyEn from "./locales/en-US/economy.json";
-import workOrdersEn from "./locales/en-US/workOrders.json";
-import contractsEn from "./locales/en-US/contracts.json";
+import appEn from "./locales/en-US/app.json";
 
-/**
- * Supported UI languages. Adding a language = create `locales/<code>/` with
- * the same per-module namespaces as below + one entry here.
- */
 export const SUPPORTED_LANGUAGES = [
   { code: "zh-CN", label: "简体中文" },
   { code: "en-US", label: "English" },
@@ -61,119 +18,31 @@ export const SUPPORTED_LANGUAGES = [
 
 export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]["code"];
 
-/** localStorage key the detector reads/writes for the persisted language choice. */
 export const LANGUAGE_STORAGE_KEY = "eidolon-language";
 
-export const NAMESPACES = [
-  "common",
-  "nav",
-  "dashboard",
-  "office",
-  "employee",
-  "project",
-  "drive",
-  "runtime",
-  "provider",
-  "git",
-  "settings",
-  "event",
-  "lifecycle",
-  "auth",
-  "tutorial",
-  "position",
-  "knowledge",
-  "cultivation",
-  "person",
-  "market",
-  "economy",
-  "workOrders",
-  "contracts",
-] as const;
+export const NAMESPACES = ["common", "nav", "auth", "app"] as const;
 
 const resources = {
-  "zh-CN": {
-    common: commonZh,
-    nav: navZh,
-    dashboard: dashboardZh,
-    office: officeZh,
-    employee: employeeZh,
-    project: projectZh,
-    drive: driveZh,
-    runtime: runtimeZh,
-    provider: providerZh,
-    git: gitZh,
-    settings: settingsZh,
-    event: eventZh,
-    lifecycle: lifecycleZh,
-    auth: authZh,
-    tutorial: tutorialZh,
-    position: positionZh,
-    knowledge: knowledgeZh,
-    cultivation: cultivationZh,
-    person: personZh,
-    market: marketZh,
-    economy: economyZh,
-    workOrders: workOrdersZh,
-    contracts: contractsZh,
-  },
-  "en-US": {
-    common: commonEn,
-    nav: navEn,
-    dashboard: dashboardEn,
-    office: officeEn,
-    employee: employeeEn,
-    project: projectEn,
-    drive: driveEn,
-    runtime: runtimeEn,
-    provider: providerEn,
-    git: gitEn,
-    settings: settingsEn,
-    event: eventEn,
-    lifecycle: lifecycleEn,
-    auth: authEn,
-    tutorial: tutorialEn,
-    position: positionEn,
-    knowledge: knowledgeEn,
-    cultivation: cultivationEn,
-    person: personEn,
-    market: marketEn,
-    economy: economyEn,
-    workOrders: workOrdersEn,
-    contracts: contractsEn,
-  },
+  "zh-CN": { common: commonZh, nav: navZh, auth: authZh, app: appZh },
+  "en-US": { common: commonEn, nav: navEn, auth: authEn, app: appEn },
 };
 
-/**
- * Detection mapping: any navigator language starting with `zh` → zh-CN
- * (the product default), everything else → en-US. Applied to both the
- * persisted localStorage value and the navigator result, so a stored
- * "zh-CN"/"en-US" passes through unchanged.
- */
+/** zh* → zh-CN (the product default), everything else → en-US. */
 export function normalizeDetectedLanguage(lng: string): LanguageCode {
   return lng.toLowerCase().startsWith("zh") ? "zh-CN" : "en-US";
 }
 
-/**
- * Missing-key convention: `returnNull: false` + `fallbackLng: "zh-CN"`.
- * A key missing in the active language falls back to the zh-CN value; a key
- * missing everywhere renders the key itself (visible in dev, never crashes).
- */
 export function i18nConfig(overrides: InitOptions = {}): InitOptions {
   return {
     resources,
     fallbackLng: "zh-CN",
     defaultNS: "common",
     ns: [...NAMESPACES],
-    // Only the codes we ship are selectable; anything else resolves to the
-    // detection mapping (zh* → zh-CN, otherwise en-US).
     supportedLngs: ["zh-CN", "en-US"],
     returnNull: false,
     interpolation: { escapeValue: false },
-    // Resources are bundled: resolve immediately so `t()` never returns raw
-    // keys on the very first render (no key-flash before init settles).
     initAsync: false,
     detection: {
-      // localStorage (explicit user choice) wins over the browser language.
       order: ["localStorage", "navigator"],
       lookupLocalStorage: LANGUAGE_STORAGE_KEY,
       caches: ["localStorage"],
@@ -183,16 +52,11 @@ export function i18nConfig(overrides: InitOptions = {}): InitOptions {
   };
 }
 
-/** Keep <html lang> in sync with the active UI language (a11y + font shaping). */
-export function applyDocumentLang(lng: string): void {
-  document.documentElement.lang = normalizeDetectedLanguage(lng);
-}
+void i18next.use(LanguageDetector).use(initReactI18next).init(i18nConfig());
 
-/** The app-wide i18n instance. Tests may create isolated instances via i18nConfig. */
-const i18n = i18next.createInstance().use(LanguageDetector).use(initReactI18next);
-void i18n.init(i18nConfig());
+// Keep <html lang> in step so screen readers and CSS `:lang()` follow the UI language.
+i18next.on("languageChanged", (lng) => {
+  if (typeof document !== "undefined") document.documentElement.lang = lng;
+});
 
-i18n.on("languageChanged", (lng) => applyDocumentLang(lng));
-applyDocumentLang(i18n.resolvedLanguage ?? i18n.language ?? "zh-CN");
-
-export default i18n;
+export default i18next;

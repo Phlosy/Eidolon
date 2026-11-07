@@ -2,16 +2,15 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, type ReactNode } from "react";
-import { getAuthState } from "../../api/auth";
+import { auth as authApi } from "../../api";
 import { ApiError } from "../../api/client";
-import { useEventStreamStore } from "../../stores/events";
-import type { AuthState } from "../../types";
+import type { Me } from "../../api/types";
 
 interface AuthContextValue {
-  auth: AuthState | null;
+  me: Me | null;
   isLoading: boolean;
   error: Error | null;
-  setAuth: (auth: AuthState | null) => void;
+  setMe: (me: Me | null) => void;
   refresh: () => Promise<unknown>;
 }
 
@@ -19,10 +18,9 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export const AUTH_QUERY_KEY = ["auth", "me"] as const;
 
 /**
- * The session cookie itself is HttpOnly, but `eidolon_csrf` is written and cleared by
- * the same `create session` / `logout` calls (apps/server/app/services/auth.py), so its
- * presence is a reliable local hint that a session exists. Without it we skip the probe
- * entirely instead of letting the browser log a 401 for every guest page load.
+ * The session cookie is HttpOnly, but `eidolon_csrf` is set and cleared with it, so
+ * its presence is a reliable local hint. Without it we skip the probe instead of
+ * logging a 401 on every guest page load.
  */
 export function hasSessionHint(): boolean {
   if (typeof document === "undefined") return false;
@@ -31,62 +29,41 @@ export function hasSessionHint(): boolean {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const generation = useEventStreamStore((state) => state.generation);
-  const reconcileIdentity = useCallback(
-    (auth: AuthState | null) => {
-      const previous = queryClient.getQueryData<AuthState | null>(AUTH_QUERY_KEY);
-      if (previous?.user.id === auth?.user.id && previous?.company.id === auth?.company.id) return;
-
-      // Reset the generation first: queued socket frames and mutation results from
-      // the previous identity must be ignored, even before React unmounts its UI.
-      useEventStreamStore.getState().reset();
-      queryClient.removeQueries({
-        predicate: ({ queryKey }) =>
-          queryKey.length !== AUTH_QUERY_KEY.length ||
-          queryKey.some((part, index) => part !== AUTH_QUERY_KEY[index]),
-      });
-      queryClient.getMutationCache().clear();
+  const setMe = useCallback(
+    (me: Me | null) => {
+      void queryClient.cancelQueries({ queryKey: AUTH_QUERY_KEY, exact: true });
+      const previous = queryClient.getQueryData<Me | null>(AUTH_QUERY_KEY);
+      if (previous?.user_id !== me?.user_id) {
+        // another identity: nothing cached for the previous one may leak over
+        queryClient.removeQueries({
+          predicate: ({ queryKey }) => queryKey[0] !== AUTH_QUERY_KEY[0],
+        });
+      }
+      queryClient.setQueryData(AUTH_QUERY_KEY, me);
     },
     [queryClient],
   );
-  const setAuth = useCallback(
-    (auth: AuthState | null) => {
-      // A pending /auth/me response must not replace a newer login or logout.
-      void queryClient.cancelQueries({ queryKey: AUTH_QUERY_KEY, exact: true });
-      reconcileIdentity(auth);
-      queryClient.setQueryData(AUTH_QUERY_KEY, auth);
-    },
-    [queryClient, reconcileIdentity],
-  );
   const query = useQuery({
     queryKey: AUTH_QUERY_KEY,
-    queryFn: async ({ signal }) => {
+    queryFn: async () => {
       try {
-        const auth = await getAuthState();
-        if (!signal.aborted) reconcileIdentity(auth);
-        return auth;
+        return await authApi.me();
       } catch (error) {
-        if (!signal.aborted && error instanceof ApiError && error.status === 401) {
-          reconcileIdentity(null);
-          queryClient.setQueryData(AUTH_QUERY_KEY, null);
-        }
+        if (error instanceof ApiError && error.status === 401) return null;
         throw error;
       }
     },
     enabled: hasSessionHint(),
-    retry: (count, error) => !(error instanceof ApiError && error.status === 401) && count < 1,
+    retry: 1,
     staleTime: 30_000,
   });
   return (
     <AuthContext.Provider
-      // Remount identity consumers so removed QueryObservers and local drafts
-      // cannot carry their previous result into another user's first render.
-      key={generation}
       value={{
-        auth: query.data ?? null,
+        me: query.data ?? null,
         isLoading: query.isLoading,
         error: query.error,
-        setAuth,
+        setMe,
         refresh: query.refetch,
       }}
     >

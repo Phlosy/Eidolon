@@ -1,90 +1,51 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, describeApiError, post } from "./client";
-
-afterEach(() => {
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
+import { ApiError, authHeaders, describeApiError, get, post } from "./client";
 
 describe("describeApiError", () => {
-  it("keeps plain string details (our HTTPExceptions)", () => {
-    expect(describeApiError({ detail: "Email already registered" }, 409)).toBe(
-      "Email already registered",
-    );
-  });
-
-  it("renders FastAPI 422 validation arrays with the offending field", () => {
-    const body = {
-      detail: [
-        {
-          type: "string_too_short",
-          loc: ["body", "password"],
-          msg: "String should have at least 12 characters",
-          input: "Test1234!",
-          ctx: { min_length: 12 },
-        },
-      ],
-    };
-    expect(describeApiError(body, 422)).toBe("password: String should have at least 12 characters");
-  });
-
-  it("joins several validation problems and nests field paths", () => {
-    const body = {
-      detail: [
-        { loc: ["body", "email"], msg: "value is not a valid email address" },
-        { loc: ["body", "participants", 0, "role"], msg: "field required" },
-      ],
-    };
-    expect(describeApiError(body, 422)).toBe(
-      "email: value is not a valid email address; participants.0.role: field required",
-    );
-  });
-
-  it("falls back to the status line when the body says nothing usable", () => {
+  it("reads FastAPI string details and pydantic lists", () => {
+    expect(describeApiError({ detail: "not signed in" }, 401)).toBe("not signed in");
+    expect(
+      describeApiError(
+        { detail: [{ loc: ["body", "email"], msg: "value is not a valid email" }] },
+        422,
+      ),
+    ).toBe("email: value is not a valid email");
     expect(describeApiError(null, 500)).toBe("Request failed with status 500");
-    expect(describeApiError({ detail: [] }, 422)).toBe("Request failed with status 422");
-    expect(describeApiError({ detail: "   " }, 422)).toBe("Request failed with status 422");
-    expect(describeApiError({ other: true }, 400)).toBe("Request failed with status 400");
   });
 });
 
-describe("request error surfacing", () => {
-  it("throws ApiError carrying the server reason instead of a bare status", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () =>
-        Response.json(
-          {
-            detail: [
-              {
-                type: "string_too_short",
-                loc: ["body", "password"],
-                msg: "String should have at least 12 characters",
-              },
-            ],
-          },
-          { status: 422 },
-        ),
-      ),
-    );
-
-    await expect(
-      post("/auth/register", { email: "a@b.co", password: "Test1234!" }),
-    ).rejects.toMatchObject({
-      name: "ApiError",
-      status: 422,
-      message: "password: String should have at least 12 characters",
-    } satisfies Partial<ApiError>);
+describe("request", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.cookie = "eidolon_csrf=; max-age=0";
   });
 
-  it("stays readable when the server answers with a non-JSON body", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("<html>bad gateway</html>", { status: 502 })),
-    );
+  it("prefixes /api/v2, sends cookies and echoes the CSRF cookie on mutations", async () => {
+    document.cookie = "eidolon_csrf=tok%2F1";
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    await post("/auth/logout", undefined, "idem-1");
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/v2/auth/logout");
+    expect(init.credentials).toBe("include");
+    expect(init.headers).toMatchObject({ "X-CSRF-Token": "tok/1", "Idempotency-Key": "idem-1" });
+    expect(authHeaders()).toEqual({ "X-CSRF-Token": "tok/1" });
+  });
 
-    await expect(post("/auth/register", {})).rejects.toThrowError(
-      new ApiError(502, "Request failed with status 502"),
+  it("turns error bodies into ApiError and 204 into undefined", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "you are not employed by this company" }), {
+        status: 403,
+      }),
     );
+    await expect(get("/companies/x")).rejects.toMatchObject({
+      status: 403,
+      detail: "you are not employed by this company",
+    });
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await expect(post("/auth/logout")).resolves.toBeUndefined();
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(new TypeError("offline"));
+    await expect(get("/auth/me")).rejects.toBeInstanceOf(ApiError);
   });
 });

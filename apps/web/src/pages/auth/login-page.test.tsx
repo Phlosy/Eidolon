@@ -1,33 +1,28 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import i18n from "../../i18n";
 import { AuthShellLayout } from "../../features/auth/auth-shell";
 import { LoginPage } from "./login-page";
 
+const setMe = vi.fn();
+const login = vi.fn();
+const me = vi.fn();
+
 vi.mock("../../features/auth/auth-context", () => ({
-  useAuth: () => ({ setAuth: vi.fn() }),
+  useAuth: () => ({ setMe }),
+}));
+vi.mock("../../api", () => ({
+  auth: { login: (...a: unknown[]) => login(...a), me: () => me() },
 }));
 
-vi.mock("../../features/auth/webauthn", () => ({
-  passkeysAvailable: () => true,
-  signInWithPasskey: vi.fn(),
-}));
-
-vi.mock("../../features/auth-office-game/components/auth-office-game-canvas", () => ({
-  AuthOfficeGameCanvas: ({ label }: { label: string }) => (
-    <div role="img" aria-label={label} data-testid="auth-office-game-canvas" />
-  ),
-}));
-
-// The office and the header live in the /auth/* layout route, so the page has to be
-// rendered the way the router renders it.
 function renderLoginPage() {
   return render(
     <MemoryRouter initialEntries={["/auth/login"]}>
       <Routes>
         <Route element={<AuthShellLayout />}>
           <Route path="/auth/login" element={<LoginPage />} />
+          <Route path="/" element={<p>home</p>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -36,67 +31,35 @@ function renderLoginPage() {
 
 describe("LoginPage", () => {
   beforeEach(async () => {
+    vi.clearAllMocks();
     await i18n.changeLanguage("zh-CN");
   });
 
-  it("places passkey after password login and labels the account link as registration", () => {
+  it("renders the sign-in form and links to registration", () => {
     renderLoginPage();
-
-    const passwordLogin = screen.getByRole("button", { name: "登录" });
-    const passkeyLogin = screen.getByRole("button", { name: "使用通行密钥登录" });
-    expect(
-      passwordLogin.compareDocumentPosition(passkeyLogin) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "登录" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "注册" })).toHaveAttribute("href", "/auth/register");
-    expect(screen.getByRole("heading", { level: 1, name: "EIDOLON" })).toBeInTheDocument();
-    expect(screen.getByTestId("auth-shell")).toHaveClass("auth-world-shell");
-    expect(screen.getByTestId("auth-office-game")).toHaveAccessibleName(/2D 像素办公室/);
+    expect(screen.getByRole("heading", { level: 1, name: /EIDOLON/ })).toBeInTheDocument();
   });
 
-  it("lets people pause the looping office scene", () => {
+  it("signs in, loads /auth/me and navigates home", async () => {
+    login.mockResolvedValue({ user_id: "u", session_id: "s" });
+    me.mockResolvedValue({ user_id: "u", email: "o@x.io", companies: [] });
     renderLoginPage();
-
-    const pause = screen.getByRole("button", { name: "暂停办公室动画" });
-    expect(pause).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(pause);
-    expect(pause).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("auth-office-game")).toHaveClass("is-paused");
+    fireEvent.change(screen.getByLabelText("邮箱"), { target: { value: "o@x.io" } });
+    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "correct horse battery" } });
+    fireEvent.click(screen.getByRole("button", { name: "登录" }));
+    await waitFor(() => expect(screen.getByText("home")).toBeInTheDocument());
+    expect(login).toHaveBeenCalledWith("o@x.io", "correct horse battery");
+    expect(setMe).toHaveBeenCalledWith(expect.objectContaining({ user_id: "u" }));
   });
 
-  it("introduces each employee and pauses that character while they speak", () => {
+  it("shows the API's message when the password is wrong", async () => {
+    login.mockRejectedValue(new Error("invalid email or password"));
     renderLoginPage();
-
-    const engineer = screen.getByRole("button", { name: /林舟，工程负责人/ });
-    expect(engineer).toHaveAttribute("aria-expanded", "false");
-
-    fireEvent.pointerEnter(engineer);
-    expect(engineer).toHaveAttribute("aria-expanded", "true");
-    expect(engineer).toHaveClass("is-speaking");
-    expect(screen.getByText("构建通过了，准备今天的发布。")).toBeInTheDocument();
-
-    fireEvent.pointerLeave(engineer);
-    expect(engineer).toHaveAttribute("aria-expanded", "false");
-
-    const operations = screen.getByRole("button", { name: /苏禾，运营负责人/ });
-    fireEvent.pointerEnter(operations);
-    expect(screen.getByText("客户反馈已整理，下午同步给团队。")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /陈默，项目负责人/ })).toBeInTheDocument();
-  });
-
-  it("reveals the office introduction from an in-world notice", () => {
-    renderLoginPage();
-
-    const notice = screen.getByRole("button", { name: "打开办公室导览" });
-    expect(notice).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByRole("dialog", { name: "办公室导览" })).not.toBeInTheDocument();
-
-    fireEvent.click(notice);
-    expect(notice).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("dialog", { name: "办公室导览" })).toHaveTextContent(
-      "你的 AI 公司，从这里开始运转。",
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "关闭办公室导览" }));
-    expect(screen.queryByRole("dialog", { name: "办公室导览" })).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("邮箱"), { target: { value: "o@x.io" } });
+    fireEvent.change(screen.getByLabelText("密码"), { target: { value: "nope" } });
+    fireEvent.click(screen.getByRole("button", { name: "登录" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("invalid email or password");
   });
 });

@@ -1,26 +1,26 @@
 # @eidolon/web
 
-React SPA for Eidolon — the AI Company Command Center.
+React SPA for Eidolon v2: Overview (decisions waiting for you, missions),
+Projects (tasks, reviews, artifacts, costs, Owner delivery), Employees (evidence-based
+competencies, resumes, runs), Drive (artifacts), Economy (ledger, project costs,
+cost trace) and Settings (sessions, institution).
 
 ## Development
 
 ```bash
 pnpm install
-pnpm dev        # vite --host 0.0.0.0 (port 26880, from vite.config.ts / EIDOLON_WEB_PORT)
+pnpm dev        # vite --host 0.0.0.0 (port 26880 / EIDOLON_WEB_PORT)
 ```
 
-By default the SPA calls the API via same-origin relative paths (`/api/v1/...`);
-the Vite dev server proxies `/api` and `/ws` to `127.0.0.1:26881`
-(`EIDOLON_API_PORT`). The WebSocket URL (`/ws/events`) derives ws/wss from
-`window.location`. `VITE_API_BASE_URL` is an optional escape hatch for a
-non-same-origin backend. See `../../docs/architecture.md` §8 for the API
-contract and §3.3 for the shared enum string contracts mirrored in
-`src/types/`.
+The SPA calls the v2 API via same-origin relative paths (`/api/v2/...`); the Vite dev
+server proxies `/api` to `127.0.0.1:26881` (`EIDOLON_API_PORT`). Run the API with
+`make v2-api` from the repository root. `VITE_API_BASE_URL` is an escape hatch for a
+non-same-origin backend. Sessions are an HttpOnly cookie; the client echoes the
+readable `eidolon_csrf` cookie as `X-CSRF-Token` on every mutating request.
 
 ## Scripts
 
-- `pnpm dev` — dev server (bound to 0.0.0.0:26880)
+- `pnpm dev` — dev server
 - `pnpm build` — `tsc --noEmit && vite build`
 - `pnpm test` — vitest run
 - `pnpm lint` — eslint
-- `pnpm preview` — preview the production build

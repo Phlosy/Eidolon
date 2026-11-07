@@ -8,7 +8,7 @@
 - `apps/server/tests_v2/` — v2 测试，真实 PostgreSQL；库名必须以 `_test` 结尾。
 - `apps/server/app/` — 旧应用（SQLite），只作移植参考，R5 整体删除。原则上不改。
 - `apps/runner/` — 沙箱 runner（独立纯标准库包，JSON-RPC/stdio，零密钥；不 import `eidolon`）。
-- `apps/web/` — React 前端（R5 再裁剪接新 API）。
+- `apps/web/` — React 前端，`/api/v2` 的薄客户端（R5-d 已按 V5 裁剪重写；`pnpm test` 为 vitest）。
 - `docs/` — 以 `v2-handoff.md` / `kernel-plan.md` / `v2-architecture.md` 为准；其余是历史。
 
 ## 常用命令

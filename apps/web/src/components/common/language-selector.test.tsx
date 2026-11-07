@@ -19,7 +19,7 @@ describe("LanguageSelector", () => {
 
     await waitFor(() => expect(select).toHaveValue("zh-CN"));
     // Translation layer switched with it.
-    expect(i18n.t("nav:dashboard")).toBe("仪表盘");
+    expect(i18n.t("nav:overview")).toBe("总览");
     // <html lang> stays in sync (a11y).
     expect(document.documentElement.lang).toBe("zh-CN");
   });
@@ -42,6 +42,6 @@ describe("LanguageSelector", () => {
 
     fireEvent.change(select, { target: { value: "en-US" } });
     await waitFor(() => expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("en-US"));
-    expect(i18n.t("nav:dashboard")).toBe("Dashboard");
+    expect(i18n.t("nav:overview")).toBe("Overview");
   });
 });

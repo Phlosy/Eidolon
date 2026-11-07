@@ -1,50 +1,35 @@
-import { ArrowRight, Fingerprint, KeyRound, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
+import { ArrowRight, KeyRound, LoaderCircle, LockKeyhole, Mail } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { loginWithPassword } from "../../api/auth";
+import { auth as authApi } from "../../api";
 import { Button } from "../../components/common/button";
 import { Input } from "../../components/common/input";
 import { useAuth } from "../../features/auth/auth-context";
-import { passkeysAvailable, signInWithPasskey } from "../../features/auth/webauthn";
 
 export function LoginPage() {
   const { t } = useTranslation("auth");
-  const { setAuth } = useAuth();
+  const { setMe } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [identifier, setIdentifier] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [pending, setPending] = useState<"password" | "passkey" | null>(null);
+  const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const destination = (location.state as { from?: string } | null)?.from ?? "/";
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
-    setPending("password");
+    setPending(true);
     try {
-      const auth = await loginWithPassword(identifier, password);
-      setAuth(auth);
+      await authApi.login(email, password);
+      setMe(await authApi.me());
       navigate(destination, { replace: true });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("errors.unknown"));
     } finally {
-      setPending(null);
-    }
-  };
-
-  const passkeyLogin = async () => {
-    setError("");
-    setPending("passkey");
-    try {
-      const auth = await signInWithPasskey();
-      setAuth(auth);
-      navigate(destination, { replace: true });
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : t("errors.unknown"));
-    } finally {
-      setPending(null);
+      setPending(false);
     }
   };
 
@@ -60,20 +45,19 @@ export function LoginPage() {
           <KeyRound className="h-5 w-5" />
         </span>
       </div>
-
       <form onSubmit={submit} className="mt-7 space-y-4">
-        <label className="block text-xs font-medium" htmlFor="login-identifier">
-          {t("fields.identifier")}
+        <label className="block text-xs font-medium" htmlFor="login-email">
+          {t("fields.email")}
           <span className="relative mt-2 block">
             <Mail className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              id="login-identifier"
+              id="login-email"
               className="h-11 pl-10"
-              type="text"
+              type="email"
               autoComplete="username"
               required
-              value={identifier}
-              onChange={(event) => setIdentifier(event.target.value)}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
             />
           </span>
         </label>
@@ -100,34 +84,12 @@ export function LoginPage() {
             {error}
           </p>
         ) : null}
-        <Button className="h-12 w-full" type="submit" disabled={pending !== null}>
-          {pending === "password" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
+        <Button className="h-12 w-full" type="submit" disabled={pending}>
+          {pending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
           {t("login.submit")}
           <ArrowRight className="h-4 w-4" />
         </Button>
       </form>
-      <div className="my-6 flex items-center gap-3 text-[10px] uppercase tracking-[.16em] text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        {t("login.orPasskey")}
-        <span className="h-px flex-1 bg-border" />
-      </div>
-      <Button
-        type="button"
-        variant="outline"
-        className="h-12 w-full border-primary/30 bg-primary/5"
-        disabled={!passkeysAvailable() || pending !== null}
-        onClick={passkeyLogin}
-      >
-        {pending === "passkey" ? (
-          <LoaderCircle className="h-4 w-4 animate-spin" />
-        ) : (
-          <Fingerprint className="h-4 w-4" />
-        )}
-        {t("login.passkey")}
-      </Button>
-      {!passkeysAvailable() ? (
-        <p className="mt-2 text-xs text-warning">{t("login.passkeyUnavailable")}</p>
-      ) : null}
       <p className="mt-6 text-center text-xs text-muted-foreground">
         {t("login.newHere")}{" "}
         <Link to="/auth/register" className="font-medium text-primary hover:underline">

@@ -2,25 +2,27 @@ import {
   ArrowRight,
   Building2,
   Check,
-  Fingerprint,
   LoaderCircle,
   LockKeyhole,
   Mail,
   UserRound,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { registerAccount } from "../../api/auth";
+import { auth as authApi } from "../../api";
 import { Button } from "../../components/common/button";
 import { Input } from "../../components/common/input";
+import { useAuth } from "../../features/auth/auth-context";
 import { PASSWORD_MIN_LENGTH, passwordIssues } from "../../features/auth/password-policy";
 
 export function RegisterPage() {
-  const { t, i18n } = useTranslation("auth");
+  const { t } = useTranslation("auth");
+  const { setMe } = useAuth();
   const navigate = useNavigate();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
+  const [personId, setPersonId] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [pending, setPending] = useState(false);
@@ -34,18 +36,14 @@ export function RegisterPage() {
     setPending(true);
     setError("");
     try {
-      const result = await registerAccount({
+      await authApi.register({
         email,
         password,
         display_name: displayName,
-        locale: i18n.language.startsWith("zh") ? "zh-CN" : "en-US",
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        person_id: personId.trim() || undefined,
       });
-      // 注册必须真的走邮箱验证：只带 email，token 只能来自邮件里的链接。
-      // 开发模式（console 投递）下邮件打到后端控制台，dev=1 让验证页提示去哪里找。
-      const query = new URLSearchParams({ email: result.email });
-      if (result.development_verification_token) query.set("dev", "1");
-      navigate(`/auth/verify?${query}`);
+      setMe(await authApi.me());
+      navigate("/", { replace: true });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : t("errors.unknown"));
     } finally {
@@ -67,29 +65,18 @@ export function RegisterPage() {
           <Building2 className="h-5 w-5" />
         </span>
       </div>
-      <Link
-        to="/auth/login"
-        className="mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/5 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-      >
-        <Fingerprint className="h-4 w-4" />
-        {t("register.usePasskey")}
-      </Link>
-      <div className="my-5 flex items-center gap-3 text-[10px] uppercase tracking-[.16em] text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        {t("login.or")}
-        <span className="h-px flex-1 bg-border" />
-      </div>
-      <form onSubmit={submit} className="space-y-4">
-        <AuthField id="register-name" label={t("fields.name")} icon={UserRound}>
+      <form onSubmit={submit} className="mt-7 space-y-4">
+        <Field id="register-name" label={t("fields.name")} icon={<UserRound className="icon" />}>
           <Input
             id="register-name"
             className="h-11 pl-10"
             autoComplete="name"
+            required
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
           />
-        </AuthField>
-        <AuthField id="register-email" label={t("fields.email")} icon={Mail}>
+        </Field>
+        <Field id="register-email" label={t("fields.email")} icon={<Mail className="icon" />}>
           <Input
             id="register-email"
             className="h-11 pl-10"
@@ -99,8 +86,26 @@ export function RegisterPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
-        </AuthField>
-        <AuthField id="register-password" label={t("fields.password")} icon={LockKeyhole}>
+        </Field>
+        <Field
+          id="register-person"
+          label={t("fields.personId")}
+          icon={<UserRound className="icon" />}
+        >
+          <Input
+            id="register-person"
+            className="h-11 pl-10"
+            pattern="[A-Za-z0-9][A-Za-z0-9._-]*"
+            value={personId}
+            onChange={(event) => setPersonId(event.target.value)}
+          />
+        </Field>
+        <p className="text-[11px] text-muted-foreground">{t("register.personHint")}</p>
+        <Field
+          id="register-password"
+          label={t("fields.password")}
+          icon={<LockKeyhole className="icon" />}
+        >
           <Input
             id="register-password"
             className="h-11 pl-10"
@@ -111,12 +116,16 @@ export function RegisterPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
-        </AuthField>
+        </Field>
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
           <Check className={`h-3.5 w-3.5 ${passwordIsValid ? "text-success" : ""}`} />
           {t("register.passwordHint")}
         </div>
-        <AuthField id="register-confirm" label={t("fields.confirmPassword")} icon={LockKeyhole}>
+        <Field
+          id="register-confirm"
+          label={t("fields.confirmPassword")}
+          icon={<LockKeyhole className="icon" />}
+        >
           <Input
             id="register-confirm"
             className="h-11 pl-10"
@@ -126,7 +135,7 @@ export function RegisterPage() {
             value={confirm}
             onChange={(event) => setConfirm(event.target.value)}
           />
-        </AuthField>
+        </Field>
         {error ? (
           <p
             className="rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-xs text-danger"
@@ -151,22 +160,22 @@ export function RegisterPage() {
   );
 }
 
-function AuthField({
+function Field({
   id,
   label,
-  icon: Icon,
+  icon,
   children,
 }: {
   id: string;
   label: string;
-  icon: typeof Mail;
-  children: React.ReactNode;
+  icon: ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label className="block text-xs font-medium" htmlFor={id}>
       {label}
-      <span className="relative mt-2 block">
-        <Icon className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+      <span className="relative mt-2 block [&>.icon]:pointer-events-none [&>.icon]:absolute [&>.icon]:left-3 [&>.icon]:top-3 [&>.icon]:h-4 [&>.icon]:w-4 [&>.icon]:text-muted-foreground">
+        {icon}
         {children}
       </span>
     </label>

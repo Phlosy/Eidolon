@@ -1,15 +1,9 @@
 import i18n from "../i18n";
 
-/** Display number contract (§3.3): Task/Project render as `#EID-{id}`. */
-export function eid(id: number | string): string {
-  return `#EID-${id}`;
-}
-
 export function formatDateTime(iso: string | null | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  // Locale follows the active UI language so dates read naturally in zh-CN / en-US.
   return d.toLocaleString(i18n.resolvedLanguage ?? undefined, {
     month: "short",
     day: "numeric",
@@ -31,25 +25,43 @@ export function formatRelativeTime(iso: string | null | undefined): string {
   return i18n.t("common:time.daysAgo", { count: Math.floor(diffH / 24) });
 }
 
-export function formatPercent(rate: number | null | undefined): string {
-  if (rate == null) return "—";
-  return `${Math.round(rate * 100)}%`;
+/** The ledger keeps micro-units (1 000 000 = 1.00). Show up to four decimals. */
+export function formatMicro(micro: number | null | undefined, currency?: string | null): string {
+  if (micro == null) return "—";
+  const units = micro / 1_000_000;
+  const text = units.toLocaleString(i18n.resolvedLanguage ?? undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  });
+  return currency ? `${text} ${currency}` : text;
 }
 
-export function formatUsd(amount: number): string {
-  return `$${amount.toFixed(2)}`;
+/** Institution budgets are in minor units (cents / 分): 10 000 micro each. */
+export function formatUnits(units: number | null | undefined, currency?: string | null): string {
+  if (units == null) return "—";
+  return formatMicro(units * 10_000, currency);
+}
+
+export function formatBytes(size: number): string {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function formatLabel(value: string): string {
   return value
-    .split("_")
+    .split(/[_.]/)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }
 
+export function shortId(id: string | null | undefined, n = 8): string {
+  return id ? id.slice(0, n) : "—";
+}
+
 export function initials(name: string): string {
   return name
-    .split(/\s+/)
+    .split(/[\s-]+/)
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
