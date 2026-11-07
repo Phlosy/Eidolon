@@ -78,7 +78,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `afa427d` | **R2-e**：CLI `run-task` / `show-run`、`agent/prompts.py`、`tests_v2/r2e_task.md`、真实任务两次完成并录制、runner 输出可复现化（耗时/宿主路径）；tests_v2 102 条。v2-ADR-11，R2 GO |
 | `c65555d` | **R3-a**：`institution/`（schema、validate、三个内置模板、adoption 事实与折叠）；tests_v2 110 条。v2-ADR-12 |
 | `649868e` | **R3-b**：`institution/{gates,decisions,authority,confirmation}.py`、loop 的 tool_gate；tests_v2 122 条。v2-ADR-13 |
-| （见 §8） | **R3-c**：`work/`（facts、graph、state、projection、service）、`0003_work` 四张投影表、`kernel/contracts.WORK_INVARIANTS` W1–W10；tests_v2 133 条。v2-ADR-14 |
+| `e2e8813` | **R3-c**：`work/`（facts、graph、state、projection、service）、`0003_work` 四张投影表、`kernel/contracts.WORK_INVARIANTS` W1–W10；tests_v2 133 条。v2-ADR-14 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
