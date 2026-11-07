@@ -18,7 +18,7 @@ import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from sqlalchemy import select
@@ -104,6 +104,37 @@ class Roster:
 
     def as_text(self, roles: tuple[str, ...] = ("engineer",)) -> str:
         return "\n".join(f"- {p.person_id} ({p.role})" for p in self.people if p.role in roles)
+
+
+class RosterSource(Protocol):
+    """Who holds which role in a company, as of now."""
+
+    def for_company(self, db: Session, company_id: UUID) -> Roster: ...
+
+
+@dataclass
+class StaticRoster:
+    roster: Roster
+
+    def for_company(self, db: Session, company_id: UUID) -> Roster:
+        return self.roster
+
+
+class IdentityRoster:
+    """The roster is the company's active employments (R4-a): no configuration,
+    no second source of truth."""
+
+    def __init__(self, service=None):
+        from eidolon.identity import IdentityService
+
+        self.service = service or IdentityService()
+
+    def for_company(self, db: Session, company_id: UUID) -> Roster:
+        try:
+            state = self.service.company(db, company_id)
+        except Exception:  # noqa: BLE001 - company not created through identity (tests / legacy)
+            return Roster([])
+        return Roster([Person(e.person_id, e.role) for e in state.active()])
 
 
 def parse_json(text: str) -> dict[str, Any] | None:
@@ -251,7 +282,7 @@ def _open(
 class MissionIntake:
     session_factory: sessionmaker
     deciders: Deciders
-    roster: Roster
+    rosters: RosterSource
     svc: WorkService = field(default_factory=WorkService)
     name: str = "mission_intake"
 
@@ -269,7 +300,11 @@ class MissionIntake:
             template = _template(db, company_id)
             if template is None:
                 return False
-            ceo = self.roster.one("ceo")
+            roster = self.rosters.for_company(db, company_id)
+            if not roster.holding("ceo") or not roster.holding("pm"):
+                log.info("mission.waiting_for_management", extra={"mission_id": str(mission_id)})
+                return False
+            ceo = roster.one("ceo")
             decision_id = uuid5(NAMESPACE_URL, f"eidolon:mission:{mission_id}:accept")
             ctx = GateContext(
                 "mission.accept",
@@ -331,7 +366,7 @@ class MissionIntake:
             )
             db.commit()
             if decision.status == "approved":
-                pm = self.roster.one("pm")
+                pm = roster.one("pm")
                 project_id = uuid5(NAMESPACE_URL, f"eidolon:mission:{mission_id}:project")
                 try:
                     self.svc.create_project(
@@ -368,7 +403,7 @@ class MissionIntake:
 class Planner:
     session_factory: sessionmaker
     deciders: Deciders
-    roster: Roster
+    rosters: RosterSource
     svc: WorkService = field(default_factory=WorkService)
     name: str = "planner"
 
@@ -386,8 +421,12 @@ class Planner:
             template = _template(db, company_id)
             if template is None:
                 return False
-            pm = self.roster.one("pm")
-            tl = self.roster.one("tech_lead")
+            roster = self.rosters.for_company(db, company_id)
+            if not roster.holding("pm") or not roster.holding("tech_lead"):
+                log.info("plan.waiting_for_management", extra={"project_id": str(project_id)})
+                return False
+            pm = roster.one("pm")
+            tl = roster.one("tech_lead")
             mission = self.svc.mission(db, state.mission_id) if state.mission_id else None
             if not state.tasks:
                 brief = f"Project: {state.title}\nBudget: {state.budget} units.\n"
@@ -406,7 +445,7 @@ class Planner:
                             + "\n"
                         )
                 brief += "\nEngineers available: " + ", ".join(
-                    p.person_id for p in self.roster.holding("engineer")
+                    p.person_id for p in roster.holding("engineer")
                 )
                 answer = self.deciders.ask(
                     company_id=company_id,
@@ -534,7 +573,7 @@ class Planner:
 class Assigner:
     session_factory: sessionmaker
     deciders: Deciders
-    roster: Roster
+    rosters: RosterSource
     svc: WorkService = field(default_factory=WorkService)
     name: str = "assigner"
 
@@ -557,7 +596,10 @@ class Assigner:
             template = _template(db, company_id)
             if template is None:
                 return 0
-            tl = self.roster.one("tech_lead")
+            roster = self.rosters.for_company(db, company_id)
+            if not roster.holding("tech_lead"):
+                return 0
+            tl = roster.one("tech_lead")
             open_counts: dict[str, int] = {}
             for t in state.tasks.values():
                 if t.assignee and t.status not in ("done", "cancelled"):
@@ -567,7 +609,7 @@ class Assigner:
                 ts = state.tasks[task.task_id]
                 roster_lines = "\n".join(
                     f"- {p.person_id} ({p.role}, open tasks: {open_counts.get(p.person_id, 0)})"
-                    for p in self.roster.holding(ts.role or "engineer")
+                    for p in roster.holding(ts.role or "engineer")
                 )
                 prompt = f"Task: {ts.title}\n{ts.description}\n\nRoster:\n{roster_lines}"
                 answer = self.deciders.ask(
@@ -579,7 +621,7 @@ class Assigner:
                     task_id=str(ts.task_id),
                 )
                 assignee = (answer or {}).get("assignee")
-                if not assignee or self.roster.role_of(str(assignee)) is None:
+                if not assignee or roster.role_of(str(assignee)) is None:
                     continue
                 decision_id = uuid5(
                     NAMESPACE_URL, f"eidolon:task:{ts.task_id}:assign:{ts.last_fact_id}"

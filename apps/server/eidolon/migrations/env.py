@@ -11,6 +11,7 @@ from eidolon.db import Base, require_postgres
 
 # Import every module that declares tables so autogenerate sees them.
 import eidolon.agent.memory.projection  # noqa: F401
+import eidolon.identity.projection  # noqa: F401
 import eidolon.kernel.store  # noqa: F401
 import eidolon.work.projection  # noqa: F401
 

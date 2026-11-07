@@ -460,3 +460,10 @@ PM 的计划同样是 agent 的产物：任务以 PM 名义创建（task id 由 
 录制模式新增"复用已有 fixture"：长场景迭代时只对缺的请求真调，fixture 的 mtime 标记本轮用到了哪些，未触碰者即陈旧。
 回放匹配键从精确指纹改为**对话形状**（`ChatRequest.replay_key`：system、模型、每条文本、工具调用名与参数、工具结果只取 id 与 is_error）：
 工程师一句 `ls -la` 就让工具输出永远不可能逐字节重现，而回放时工具本来就真实执行；事实里的 `context_hash` 仍是精确指纹，不受影响。
+
+**v2-ADR-17（2026-11-07）人与账号是平台级事实，雇佣是公司级事实；花名册只是雇佣关系的投影。**
+`identity.user.registered` 与 `identity.person.created` 挂在固定的 PLATFORM 公司 id 下（人随人走，§4.1），`identity.company.created` 与
+`identity.employment.*` 以公司为 correlation。谁在公司里扮演什么角色，唯一来源是活跃雇佣：管理作业、派发、评审都通过 `RosterSource.for_company`
+现取，R3 的配置花名册只保留给测试（`StaticRoster`）。identity 在 institution 之下，所以"这个角色在不在制度里、kind 对不对"由
+`institution/staffing.hire` 补上规则再调 identity；agent 招人/解雇必须带 `hire`/`fire` gate 的 decision_id，human 可以直接做，Owner 的雇佣不可结束。
+密码、会话、Passkey 属于 API 层（R5），不进 identity 事实。

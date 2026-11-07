@@ -1,0 +1,201 @@
+{
+  "events": [
+    {
+      "arguments": {
+        "path": "hello.py"
+      },
+      "id": "call_00_79C55j0MF3OWjQ0tC2mb6062",
+      "name": "read_file",
+      "type": "tool_call"
+    },
+    {
+      "arguments": {
+        "command": "python hello.py | od -c; python hello.py; echo \"exit=$?\""
+      },
+      "id": "call_01_S2r7C028cVIlWAyFAo1A1194",
+      "name": "shell",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "Verify contents and actual output, plus stdlib only."
+      },
+      "attempts": 1,
+      "latency_ms": 1284,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "16010b49-7b91-4f2f-9e1a-a4b4db8086ad",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 1152,
+        "cache_write_tokens": 0,
+        "input_tokens": 1332,
+        "output_tokens": 93
+      }
+    }
+  ],
+  "fingerprint": "bf72590ffeb855060a22219babe62dba0829d12bab336c890d520f7379eaa125",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T12:09:51+00:00",
+  "replay_key": "82357315afa15f37aea38f0701cde24ae9b2486061ecbbc35b31508a76614b0b",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Review task: Greeting CLI\n\nCreate `hello.py`: when run it prints exactly `Hello, Eidolon!`. Create `test_hello.py` with one pytest test that runs hello.py with `sys.executable` via subprocess and asserts the output. Run the tests with run_tests until they pass.\n\nAcceptance criteria:\n- hello.py prints exactly `Hello, Eidolon!` followed by a newline\n- test_hello.py exists and `python -m pytest -q` passes in the workspace\n- standard library only\n\nSubmitted files (also present in the workspace):\n--- hello.py ---\n\"\"\"Print a greeting.\"\"\"\n\n\ndef main() -> None:\n    print(\"Hello, Eidolon!\")\n\n\nif __name__ == \"__main__\":\n    main()\n\n--- test_hello.py ---\n\"\"\"Test for hello.py, run as a subprocess.\"\"\"\n\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nHELLO = Path(__file__).resolve().parent / \"hello.py\"\n\n\ndef test_hello_output():\n    result = subprocess.run(\n        [sys.executable, str(HELLO)],\n        capture_output=True,\n        text=True,\n    )\n    assert result.returncode == 0\n    assert result.stderr == \"\"\n    assert result.stdout == \"Hello, Eidolon!\\n\"\n\n\nCheck the work against the criteria (run the tests with run_tests if any), then answer with the JSON verdict only.",
+        "role": "user"
+      },
+      {
+        "content": "I'll inspect the workspace and run the tests.",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "path": "."
+            },
+            "id": "call_00_ET_ka3lPg6m6keKSCG3mC2q0756",
+            "name": "list_dir"
+          },
+          {
+            "arguments": {
+              "path": "."
+            },
+            "id": "call_01_ET_j5FLbKUOlylWubtGkga55920",
+            "name": "run_tests"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "hello.py  (115 bytes)\ntest_hello.py  (416 bytes)",
+          "is_error": false,
+          "tool_call_id": "call_00_ET_ka3lPg6m6keKSCG3mC2q0756"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": ".                                                                        [100%]\n1 passed in Xs\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_01_ET_j5FLbKUOlylWubtGkga55920"
+        }
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the QA reviewer of a small software studio. You review a colleague's finished task against its acceptance criteria. You may read files and run the tests with the tools, but you must not modify anything. Be concrete and fair: judge what is there. Your final answer must be JSON only, exactly: {\"verdict\": \"pass\" | \"rework\" | \"escalate\", \"reason\": \"<one paragraph>\"}. Use pass when the criteria are met, rework when the author can fix it, escalate when the task itself is unclear or beyond the author's authority.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

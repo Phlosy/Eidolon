@@ -178,6 +178,7 @@ def test_real_process_exits_zero_on_sigterm_with_json_logs():
             assert first["msg"] == "worker.batch", first
         assert first["msg"] == "worker.started" and first["logger"] == "eidolon.worker"
         assert first["consumers"] == [
+            "identity",
             "work_items",
             "run_launcher",
             "memory_entries",

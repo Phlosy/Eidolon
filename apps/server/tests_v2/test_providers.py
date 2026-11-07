@@ -349,6 +349,33 @@ async def test_openai_compatible_retries_429_then_succeeds_and_never_retries_400
     with pytest.raises(ProviderError, match="bad SSE chunk"):
         await collect(oa_provider(broken), ping())
 
+    def bad_args(request):
+        return httpx.Response(
+            200,
+            content=sse(
+                oa_chunk(
+                    tool_calls=[
+                        {
+                            "index": 0,
+                            "id": "c9",
+                            "function": {
+                                "name": "write_file",
+                                "arguments": '{"path": "a", "content": "unterminated',
+                            },
+                        }
+                    ]
+                ),
+                {
+                    **oa_chunk(),
+                    "choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}],
+                },
+            ),
+        )
+
+    _, calls, finished = await collect(oa_provider(bad_args), ping())
+    assert finished.stop_reason == "tool_use" and calls[0].name == "write_file"
+    assert "_invalid_json" in calls[0].arguments and "_error" in calls[0].arguments
+
 
 async def test_openai_compatible_embed():
     def handler(request):

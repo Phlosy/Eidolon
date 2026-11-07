@@ -1,0 +1,190 @@
+{
+  "events": [
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "assign",
+      "type": "text"
+    },
+    {
+      "text": "ee",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "eng",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "reason",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "eng",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " engineer",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " relevant",
+      "type": "text"
+    },
+    {
+      "text": " role",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " has",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "0",
+      "type": "text"
+    },
+    {
+      "text": " open",
+      "type": "text"
+    },
+    {
+      "text": " tasks",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " tying",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " few",
+      "type": "text"
+    },
+    {
+      "text": "est",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "}",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "We need answer must pick one person role fits fewest open. Both eng same 0. Need maybe tools? Task says work on task using tools when help. We need likely assign task, not implement? Prompt: \"You are tech lead assigning a task. Pick exactly one person... Answer JSON only...\" We need output JSON only. Need choose exactly one. Tie eng-1/eng-2. Need reason one sentence. Must be JSON only final. We can just answer, no tools needed. Need ensure \"fewest open tasks\" both zero. Pick eng-1 arbitrarily. Reason mention engineer fit and zero open tasks. JSON valid."
+      },
+      "attempts": 1,
+      "latency_ms": 1808,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "4ca2b10f-bdad-4877-8915-ddb5ea62d508",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "input_tokens": 262,
+        "output_tokens": 169
+      }
+    }
+  ],
+  "fingerprint": "cf232fb252441692b4a37800082fbc35868eea171dc589acc74ce6cc856476cb",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-07T12:05:28+00:00",
+  "replay_key": "cf232fb252441692b4a37800082fbc35868eea171dc589acc74ce6cc856476cb",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Task: Implement JSON notes storage module\nCreate notes.py with a small standard-library-only API for storing notes in a JSON file in the working directory, defaulting to notes.json. Expose add(note, path='notes.json'), list(path='notes.json'), and delete(index, path='notes.json'). Store notes as a JSON array of strings; treat a missing file as an empty list; make delete use 1-based numbering and raise IndexError for out-of-range indexes.\n\nRoster:\n- eng-1 (engineer, open tasks: 0)\n- eng-2 (engineer, open tasks: 0)",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the tech lead of a small software studio assigning a task. Pick exactly one person from the roster whose role fits the task and who has the fewest open tasks. Answer with JSON only: {\"assignee\": \"<person id from the roster>\", \"reason\": \"<one sentence>\"}.\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": []
+  }
+}

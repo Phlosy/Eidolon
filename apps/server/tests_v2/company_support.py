@@ -10,9 +10,20 @@ from project_support import store, svc
 from sqlalchemy.orm import Session
 
 from eidolon.agent.blobs import BlobStore
-from eidolon.agent.managers import Assigner, Deciders, MissionIntake, Planner, default_roster
+from eidolon.agent.managers import Assigner, Deciders, IdentityRoster, MissionIntake, Planner
 from eidolon.agent.scheduler import ReviewExecutor, RunLauncher, TaskRunExecutor, Workspaces
-from eidolon.institution import GateContext, adopt, bind, conclude, customize, load, request, sign
+from eidolon.identity import IdentityService
+from eidolon.institution import (
+    GateContext,
+    adopt,
+    bind,
+    conclude,
+    customize,
+    load,
+    request,
+    sign,
+    staffing,
+)
 from eidolon.institution.templates import SOFTWARE_STUDIO_V1 as T
 from eidolon.kernel.consumers import process
 from eidolon.kernel.facts import Actor, ActorKind
@@ -35,10 +46,35 @@ CRITERIA = [
 BUDGET = 20_000
 
 
+STAFF = [
+    ("ceo-1", "Ada", "ceo"),
+    ("pm-1", "Grace", "pm"),
+    ("tl-1", "Linus", "tech_lead"),
+    ("eng-1", "Ken", "engineer"),
+    ("eng-2", "Dennis", "engineer"),
+    ("qa-1", "Margaret", "qa"),
+]
+
+
 def set_up_company(db: Session) -> UUID:
-    """Adopt the default institution; the Owner relaxes plan.approve to a single
-    Tech Lead signature because this studio has one PM and one Tech Lead."""
-    company = uuid4()
+    """A real company: the Owner registers, founds it, adopts the default institution,
+    relaxes plan.approve to a single Tech Lead signature (one PM, one Tech Lead) and
+    hires six agents into the studio's roles."""
+    ids = IdentityService(store)
+    user_id = uuid4()
+    ids.register_user(
+        db, email=f"owner-{user_id.hex[:8]}@example.com", display_name="Owner", user_id=user_id
+    )
+    owner_person = f"owner-{user_id.hex[:8]}"  # unique per run: the dev DB keeps old ones
+    ids.create_person(db, OWNER, owner_person, name="Owner", kind="human", user_id=user_id)
+    created, _ = ids.create_company(
+        db,
+        owner_user_id=user_id,
+        owner_person_id=owner_person,
+        name="Tiny Studio",
+        slug=f"tiny-{user_id.hex[:8]}",
+    )
+    company = created.company_id
     store.append(db, adopt(company, OWNER, T))
     db.commit()
     store.append(
@@ -51,6 +87,10 @@ def set_up_company(db: Session) -> UUID:
             reason="one PM and one Tech Lead: the Tech Lead alone countersigns plans",
         ),
     )
+    for person_id, name, role in STAFF:
+        if ids.person(db, person_id) is None:
+            ids.create_person(db, OWNER, person_id, name=name, kind="agent")
+        staffing.hire(db, company, OWNER, person_id=person_id, role=role)
     db.commit()
     return company
 
@@ -71,7 +111,7 @@ def propose_mission(db: Session, company: UUID) -> UUID:
 
 def studio_jobs(session_factory, provider, blobs: BlobStore, workspace_root: Path, **kw):
     deciders = Deciders(session_factory, provider, blobs)
-    roster = default_roster()
+    roster = IdentityRoster(IdentityService(store))
     workspaces = Workspaces(workspace_root)
     return [
         MissionIntake(session_factory, deciders, roster, svc=svc),

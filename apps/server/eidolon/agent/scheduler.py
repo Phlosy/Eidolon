@@ -113,7 +113,7 @@ def task_prompt(
     ]
     if inputs:
         lines = []
-        for art in sorted(inputs, key=lambda a: a.path):
+        for art in sorted(inputs, key=lambda a: (a.path, state.tasks[a.task_id].title)):
             try:
                 text = blobs.get_bytes(art.blob_ref).decode("utf-8", "replace")
             except Exception:  # noqa: BLE001 - a missing blob is reported, not fatal
@@ -181,8 +181,8 @@ class TaskRunExecutor:
     store: FactStore = field(default_factory=FactStore)
     memory: MemoryRecall | None = None
     model: str | None = None
-    max_steps: int = 16
-    max_tokens_per_step: int = 4096
+    max_steps: int = 24
+    max_tokens_per_step: int = 8192
     tools_factory: Callable[[Path], Any] | None = None  # for tests; default RunnerTools
     name: str = "task_runs"
 
@@ -190,9 +190,9 @@ class TaskRunExecutor:
         """Run or resume every in-progress task once. Returns how many were touched."""
         with self.session_factory() as db:
             rows = db.scalars(
-                select(TaskRow).where(
-                    TaskRow.status == "in_progress", TaskRow.current_run_id.is_not(None)
-                )
+                select(TaskRow)
+                .where(TaskRow.status == "in_progress", TaskRow.current_run_id.is_not(None))
+                .order_by(TaskRow.created_at, TaskRow.task_id)
             ).all()
             pending = [(r.company_id, r.project_id, r.task_id, r.current_run_id) for r in rows]
         touched = 0
@@ -296,9 +296,16 @@ class TaskRunExecutor:
         summary: str,
     ) -> None:
         actor = Actor(ActorKind.agent, task.assignee or "unassigned")
+        inherited = {
+            a.path: a.blob_ref
+            for a in state.artifacts.values()
+            if a.task_id in task.inputs and state.tasks[a.task_id].status == "done"
+        }
         ids: list[UUID] = []
         for path, data in collect_artifacts(workspace):
             ref = self.blobs.put_bytes(data)
+            if inherited.get(path) == ref:
+                continue  # an input file left untouched is the upstream task's work (H2)
             aid = artifact_id_for(run_id, path)
             if aid not in state.artifacts:
                 self.svc.produce_artifact(
@@ -416,7 +423,11 @@ class ReviewExecutor:
 
     def tick(self) -> int:
         with self.session_factory() as db:
-            rows = db.scalars(select(TaskRow).where(TaskRow.status == "in_review")).all()
+            rows = db.scalars(
+                select(TaskRow)
+                .where(TaskRow.status == "in_review")
+                .order_by(TaskRow.created_at, TaskRow.task_id)
+            ).all()
             pending = [(r.company_id, r.project_id, r.task_id) for r in rows]
         touched = 0
         for company_id, project_id, task_id in pending:

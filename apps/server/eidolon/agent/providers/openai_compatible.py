@@ -213,12 +213,12 @@ class OpenAICompatible:
             slot = pending[idx]
             try:
                 args = json.loads(slot["args"]) if slot["args"] else {}
+                if not isinstance(args, dict):
+                    raise json.JSONDecodeError("arguments must be an object", slot["args"], 0)
             except json.JSONDecodeError as exc:
-                raise ProviderError(
-                    f"tool call {slot['name']!r} has invalid JSON arguments: {slot['args'][:200]}",
-                    provider=NAME,
-                    request_id=request_id,
-                ) from exc
+                # The model's mistake, not the provider's: hand it back as a call whose
+                # execution fails, so the model sees the error and corrects itself.
+                args = {"_invalid_json": slot["args"][:4000], "_error": str(exc)[:200]}
             yield ToolCallEvent(ToolCall(slot["id"] or f"call_{idx}", slot["name"], args))
         yield Completed(
             stop_reason=stop,

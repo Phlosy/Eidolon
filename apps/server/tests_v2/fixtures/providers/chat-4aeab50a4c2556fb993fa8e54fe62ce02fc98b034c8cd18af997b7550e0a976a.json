@@ -9,11 +9,7 @@
       "type": "text"
     },
     {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " [",
+      "text": "\":[",
       "type": "text"
     },
     {
@@ -25,11 +21,7 @@
       "type": "text"
     },
     {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\":\"",
       "type": "text"
     },
     {
@@ -41,11 +33,7 @@
       "type": "text"
     },
     {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -53,11 +41,7 @@
       "type": "text"
     },
     {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\":\"",
       "type": "text"
     },
     {
@@ -65,11 +49,11 @@
       "type": "text"
     },
     {
-      "text": " notes",
+      "text": " JSON",
       "type": "text"
     },
     {
-      "text": ".py",
+      "text": " notes",
       "type": "text"
     },
     {
@@ -81,39 +65,7 @@
       "type": "text"
     },
     {
-      "text": " (",
-      "type": "text"
-    },
-    {
-      "text": "add",
-      "type": "text"
-    },
-    {
-      "text": "/list",
-      "type": "text"
-    },
-    {
-      "text": "/",
-      "type": "text"
-    },
-    {
-      "text": "delete",
-      "type": "text"
-    },
-    {
-      "text": " over",
-      "type": "text"
-    },
-    {
-      "text": " JSON",
-      "type": "text"
-    },
-    {
-      "text": ")\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -121,11 +73,7 @@
       "type": "text"
     },
     {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\":\"",
       "type": "text"
     },
     {
@@ -141,43 +89,47 @@
       "type": "text"
     },
     {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " small",
+      "type": "text"
+    },
+    {
+      "text": " standard",
+      "type": "text"
+    },
+    {
+      "text": "-library",
+      "type": "text"
+    },
+    {
+      "text": "-only",
+      "type": "text"
+    },
+    {
+      "text": " API",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " storing",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
       "text": " in",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " repo",
-      "type": "text"
-    },
-    {
-      "text": " root",
-      "type": "text"
-    },
-    {
-      "text": " exposing",
-      "type": "text"
-    },
-    {
-      "text": " three",
-      "type": "text"
-    },
-    {
-      "text": " functions",
-      "type": "text"
-    },
-    {
-      "text": " that",
-      "type": "text"
-    },
-    {
-      "text": " operate",
-      "type": "text"
-    },
-    {
-      "text": " on",
       "type": "text"
     },
     {
@@ -193,59 +145,11 @@
       "type": "text"
     },
     {
-      "text": " whose",
-      "type": "text"
-    },
-    {
-      "text": " path",
-      "type": "text"
-    },
-    {
-      "text": " is",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " parameter",
-      "type": "text"
-    },
-    {
-      "text": " (",
-      "type": "text"
-    },
-    {
-      "text": "default",
-      "type": "text"
-    },
-    {
-      "text": " '",
-      "type": "text"
-    },
-    {
-      "text": "notes",
-      "type": "text"
-    },
-    {
-      "text": ".json",
-      "type": "text"
-    },
-    {
-      "text": "'",
-      "type": "text"
-    },
-    {
       "text": " in",
       "type": "text"
     },
     {
       "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " current",
       "type": "text"
     },
     {
@@ -257,7 +161,39 @@
       "type": "text"
     },
     {
-      "text": "):",
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " default",
+      "type": "text"
+    },
+    {
+      "text": "ing",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".json",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " Ex",
+      "type": "text"
+    },
+    {
+      "text": "pose",
       "type": "text"
     },
     {
@@ -265,15 +201,11 @@
       "type": "text"
     },
     {
-      "text": "_n",
+      "text": "(n",
       "type": "text"
     },
     {
       "text": "ote",
-      "type": "text"
-    },
-    {
-      "text": "(text",
       "type": "text"
     },
     {
@@ -297,31 +229,11 @@
       "type": "text"
     },
     {
-      "text": "')",
-      "type": "text"
-    },
-    {
-      "text": " ->",
-      "type": "text"
-    },
-    {
-      "text": " dict",
-      "type": "text"
-    },
-    {
-      "text": ",",
+      "text": "'),",
       "type": "text"
     },
     {
       "text": " list",
-      "type": "text"
-    },
-    {
-      "text": "_",
-      "type": "text"
-    },
-    {
-      "text": "notes",
       "type": "text"
     },
     {
@@ -341,39 +253,15 @@
       "type": "text"
     },
     {
-      "text": "')",
+      "text": "'),",
       "type": "text"
     },
     {
-      "text": " ->",
-      "type": "text"
-    },
-    {
-      "text": " list",
-      "type": "text"
-    },
-    {
-      "text": "[",
-      "type": "text"
-    },
-    {
-      "text": "dict",
-      "type": "text"
-    },
-    {
-      "text": "],",
+      "text": " and",
       "type": "text"
     },
     {
       "text": " delete",
-      "type": "text"
-    },
-    {
-      "text": "_n",
-      "type": "text"
-    },
-    {
-      "text": "ote",
       "type": "text"
     },
     {
@@ -401,31 +289,19 @@
       "type": "text"
     },
     {
-      "text": "')",
+      "text": "').",
       "type": "text"
     },
     {
-      "text": " ->",
+      "text": " Store",
       "type": "text"
     },
     {
-      "text": " dict",
+      "text": " notes",
       "type": "text"
     },
     {
-      "text": ".",
-      "type": "text"
-    },
-    {
-      "text": " The",
-      "type": "text"
-    },
-    {
-      "text": " file",
-      "type": "text"
-    },
-    {
-      "text": " stores",
+      "text": " as",
       "type": "text"
     },
     {
@@ -445,83 +321,7 @@
       "type": "text"
     },
     {
-      "text": " objects",
-      "type": "text"
-    },
-    {
-      "text": " like",
-      "type": "text"
-    },
-    {
-      "text": " {\\",
-      "type": "text"
-    },
-    {
-      "text": "\"",
-      "type": "text"
-    },
-    {
-      "text": "text",
-      "type": "text"
-    },
-    {
-      "text": "\\\":",
-      "type": "text"
-    },
-    {
-      "text": " ...,",
-      "type": "text"
-    },
-    {
-      "text": " \\\"",
-      "type": "text"
-    },
-    {
-      "text": "created",
-      "type": "text"
-    },
-    {
-      "text": "\\\":",
-      "type": "text"
-    },
-    {
-      "text": " ...",
-      "type": "text"
-    },
-    {
-      "text": "}.",
-      "type": "text"
-    },
-    {
-      "text": " Create",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " file",
-      "type": "text"
-    },
-    {
-      "text": " on",
-      "type": "text"
-    },
-    {
-      "text": " first",
-      "type": "text"
-    },
-    {
-      "text": " add",
-      "type": "text"
-    },
-    {
-      "text": " if",
-      "type": "text"
-    },
-    {
-      "text": " missing",
+      "text": " strings",
       "type": "text"
     },
     {
@@ -545,14 +345,6 @@
       "type": "text"
     },
     {
-      "text": " on",
-      "type": "text"
-    },
-    {
-      "text": " list",
-      "type": "text"
-    },
-    {
       "text": " as",
       "type": "text"
     },
@@ -569,7 +361,11 @@
       "type": "text"
     },
     {
-      "text": ".",
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " make",
       "type": "text"
     },
     {
@@ -577,19 +373,7 @@
       "type": "text"
     },
     {
-      "text": "_n",
-      "type": "text"
-    },
-    {
-      "text": "ote",
-      "type": "text"
-    },
-    {
-      "text": " takes",
-      "type": "text"
-    },
-    {
-      "text": " a",
+      "text": " use",
       "type": "text"
     },
     {
@@ -605,47 +389,7 @@
       "type": "text"
     },
     {
-      "text": " number",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " removes",
-      "type": "text"
-    },
-    {
-      "text": " that",
-      "type": "text"
-    },
-    {
-      "text": " entry",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " rew",
-      "type": "text"
-    },
-    {
-      "text": "rites",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " file",
-      "type": "text"
-    },
-    {
-      "text": ",",
+      "text": " numbering",
       "type": "text"
     },
     {
@@ -653,11 +397,15 @@
       "type": "text"
     },
     {
-      "text": " raises",
+      "text": " raise",
       "type": "text"
     },
     {
-      "text": " ValueError",
+      "text": " Index",
+      "type": "text"
+    },
+    {
+      "text": "Error",
       "type": "text"
     },
     {
@@ -677,19 +425,7 @@
       "type": "text"
     },
     {
-      "text": " or",
-      "type": "text"
-    },
-    {
-      "text": " non",
-      "type": "text"
-    },
-    {
-      "text": "-positive",
-      "type": "text"
-    },
-    {
-      "text": " numbers",
+      "text": " indexes",
       "type": "text"
     },
     {
@@ -697,95 +433,7 @@
       "type": "text"
     },
     {
-      "text": " Standard",
-      "type": "text"
-    },
-    {
-      "text": " library",
-      "type": "text"
-    },
-    {
-      "text": " only",
-      "type": "text"
-    },
-    {
-      "text": " (",
-      "type": "text"
-    },
-    {
-      "text": "json",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " os",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " datetime",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " temp",
-      "type": "text"
-    },
-    {
-      "text": "file",
-      "type": "text"
-    },
-    {
-      "text": " not",
-      "type": "text"
-    },
-    {
-      "text": " required",
-      "type": "text"
-    },
-    {
-      "text": ").",
-      "type": "text"
-    },
-    {
-      "text": " No",
-      "type": "text"
-    },
-    {
-      "text": " CLI",
-      "type": "text"
-    },
-    {
-      "text": " code",
-      "type": "text"
-    },
-    {
-      "text": " in",
-      "type": "text"
-    },
-    {
-      "text": " this",
-      "type": "text"
-    },
-    {
-      "text": " module",
-      "type": "text"
-    },
-    {
-      "text": ".\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -809,7 +457,7 @@
       "type": "text"
     },
     {
-      "text": " [\"",
+      "text": "[\"",
       "type": "text"
     },
     {
@@ -821,75 +469,35 @@
       "type": "text"
     },
     {
-      "text": " defines",
+      "text": " imports",
       "type": "text"
     },
     {
-      "text": " add",
+      "text": " only",
       "type": "text"
     },
     {
-      "text": "_n",
+      "text": " Python",
       "type": "text"
     },
     {
-      "text": "ote",
+      "text": " standard",
       "type": "text"
     },
     {
-      "text": ",",
+      "text": "-library",
       "type": "text"
     },
     {
-      "text": " list",
+      "text": " modules",
       "type": "text"
     },
     {
-      "text": "_",
+      "text": ".",
       "type": "text"
     },
     {
-      "text": "notes",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " delete",
-      "type": "text"
-    },
-    {
-      "text": "_n",
-      "type": "text"
-    },
-    {
-      "text": "ote",
-      "type": "text"
-    },
-    {
-      "text": " with",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " signatures",
-      "type": "text"
-    },
-    {
-      "text": " described",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -897,15 +505,11 @@
       "type": "text"
     },
     {
-      "text": "_n",
+      "text": " app",
       "type": "text"
     },
     {
-      "text": "ote",
-      "type": "text"
-    },
-    {
-      "text": " persists",
+      "text": "ends",
       "type": "text"
     },
     {
@@ -914,6 +518,18 @@
     },
     {
       "text": " note",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " persists",
+      "type": "text"
+    },
+    {
+      "text": " it",
       "type": "text"
     },
     {
@@ -929,7 +545,39 @@
       "type": "text"
     },
     {
-      "text": " array",
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "list",
+      "type": "text"
+    },
+    {
+      "text": " returns",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " insertion",
+      "type": "text"
+    },
+    {
+      "text": " order",
       "type": "text"
     },
     {
@@ -941,43 +589,15 @@
       "type": "text"
     },
     {
-      "text": " the",
+      "text": " an",
       "type": "text"
     },
     {
-      "text": " stored",
+      "text": " empty",
       "type": "text"
     },
     {
-      "text": " dict",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "list",
-      "type": "text"
-    },
-    {
-      "text": "_",
-      "type": "text"
-    },
-    {
-      "text": "notes",
-      "type": "text"
-    },
-    {
-      "text": " returns",
-      "type": "text"
-    },
-    {
-      "text": " []",
+      "text": " list",
       "type": "text"
     },
     {
@@ -993,91 +613,23 @@
       "type": "text"
     },
     {
-      "text": " does",
+      "text": " is",
       "type": "text"
     },
     {
-      "text": " not",
+      "text": " missing",
       "type": "text"
     },
     {
-      "text": " exist",
+      "text": ".",
       "type": "text"
     },
     {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " full",
-      "type": "text"
-    },
-    {
-      "text": " list",
-      "type": "text"
-    },
-    {
-      "text": " otherwise",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\",\"",
       "type": "text"
     },
     {
       "text": "delete",
-      "type": "text"
-    },
-    {
-      "text": "_n",
-      "type": "text"
-    },
-    {
-      "text": "ote",
-      "type": "text"
-    },
-    {
-      "text": "(",
-      "type": "text"
-    },
-    {
-      "text": "1",
-      "type": "text"
-    },
-    {
-      "text": ")",
-      "type": "text"
-    },
-    {
-      "text": " on",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " one",
-      "type": "text"
-    },
-    {
-      "text": "-n",
-      "type": "text"
-    },
-    {
-      "text": "ote",
-      "type": "text"
-    },
-    {
-      "text": " file",
       "type": "text"
     },
     {
@@ -1085,75 +637,11 @@
       "type": "text"
     },
     {
-      "text": " it",
+      "text": " the",
       "type": "text"
     },
     {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " leaves",
-      "type": "text"
-    },
-    {
-      "text": " an",
-      "type": "text"
-    },
-    {
-      "text": " empty",
-      "type": "text"
-    },
-    {
-      "text": " JSON",
-      "type": "text"
-    },
-    {
-      "text": " array",
-      "type": "text"
-    },
-    {
-      "text": " on",
-      "type": "text"
-    },
-    {
-      "text": " disk",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "delete",
-      "type": "text"
-    },
-    {
-      "text": "_n",
-      "type": "text"
-    },
-    {
-      "text": "ote",
-      "type": "text"
-    },
-    {
-      "text": " raises",
-      "type": "text"
-    },
-    {
-      "text": " ValueError",
-      "type": "text"
-    },
-    {
-      "text": " for",
-      "type": "text"
-    },
-    {
-      "text": " index",
+      "text": " requested",
       "type": "text"
     },
     {
@@ -1161,23 +649,19 @@
       "type": "text"
     },
     {
-      "text": "0",
+      "text": "1",
       "type": "text"
     },
     {
-      "text": ",",
+      "text": "-based",
       "type": "text"
     },
     {
-      "text": " negative",
+      "text": " note",
       "type": "text"
     },
     {
-      "text": " indexes",
-      "type": "text"
-    },
-    {
-      "text": ",",
+      "text": " number",
       "type": "text"
     },
     {
@@ -1185,11 +669,7 @@
       "type": "text"
     },
     {
-      "text": " indexes",
-      "type": "text"
-    },
-    {
-      "text": " past",
+      "text": " persists",
       "type": "text"
     },
     {
@@ -1197,83 +677,79 @@
       "type": "text"
     },
     {
-      "text": " end",
+      "text": " updated",
       "type": "text"
     },
     {
-      "text": "\",",
+      "text": " list",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": ".",
       "type": "text"
     },
     {
-      "text": "`",
+      "text": "\",\"",
       "type": "text"
     },
     {
-      "text": "python",
+      "text": "Out",
       "type": "text"
     },
     {
-      "text": " -",
+      "text": "-of",
       "type": "text"
     },
     {
-      "text": "c",
+      "text": "-range",
       "type": "text"
     },
     {
-      "text": " \\\"",
+      "text": " delete",
       "type": "text"
     },
     {
-      "text": "import",
+      "text": " raises",
       "type": "text"
     },
     {
-      "text": " notes",
+      "text": " Index",
       "type": "text"
     },
     {
-      "text": "\\\"",
+      "text": "Error",
       "type": "text"
     },
     {
-      "text": "`",
+      "text": " without",
       "type": "text"
     },
     {
-      "text": " succeeds",
+      "text": " corrupt",
       "type": "text"
     },
     {
-      "text": " with",
+      "text": "ing",
       "type": "text"
     },
     {
-      "text": " no",
+      "text": " the",
       "type": "text"
     },
     {
-      "text": " third",
+      "text": " JSON",
       "type": "text"
     },
     {
-      "text": "-party",
+      "text": " file",
       "type": "text"
     },
     {
-      "text": " imports",
+      "text": ".\"",
       "type": "text"
     },
     {
-      "text": "\"],",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "],\"",
       "type": "text"
     },
     {
@@ -1293,11 +769,11 @@
       "type": "text"
     },
     {
-      "text": " [],",
+      "text": "[],",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": "\"",
       "type": "text"
     },
     {
@@ -1309,11 +785,11 @@
       "type": "text"
     },
     {
-      "text": " [],",
+      "text": "[],",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": "\"",
       "type": "text"
     },
     {
@@ -1321,11 +797,7 @@
       "type": "text"
     },
     {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\":\"",
       "type": "text"
     },
     {
@@ -1341,7 +813,7 @@
       "type": "text"
     },
     {
-      "text": " {\"",
+      "text": "{\"",
       "type": "text"
     },
     {
@@ -1349,11 +821,7 @@
       "type": "text"
     },
     {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\":\"",
       "type": "text"
     },
     {
@@ -1365,11 +833,7 @@
       "type": "text"
     },
     {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -1377,31 +841,11 @@
       "type": "text"
     },
     {
-      "text": "\":",
+      "text": "\":\"",
       "type": "text"
     },
     {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "Implement",
-      "type": "text"
-    },
-    {
-      "text": " cl",
-      "type": "text"
-    },
-    {
-      "text": "i",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
-      "text": " with",
+      "text": "Build",
       "type": "text"
     },
     {
@@ -1409,35 +853,15 @@
       "type": "text"
     },
     {
-      "text": " sub",
+      "text": " CLI",
       "type": "text"
     },
     {
-      "text": "commands",
+      "text": " wrapper",
       "type": "text"
     },
     {
-      "text": " add",
-      "type": "text"
-    },
-    {
-      "text": "/list",
-      "type": "text"
-    },
-    {
-      "text": "/",
-      "type": "text"
-    },
-    {
-      "text": "delete",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -1445,11 +869,7 @@
       "type": "text"
     },
     {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\":\"",
       "type": "text"
     },
     {
@@ -1477,6 +897,18 @@
       "type": "text"
     },
     {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " storage",
+      "type": "text"
+    },
+    {
+      "text": " functions",
+      "type": "text"
+    },
+    {
       "text": " from",
       "type": "text"
     },
@@ -1494,6 +926,54 @@
     },
     {
       "text": " exposes",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": " sub",
+      "type": "text"
+    },
+    {
+      "text": "commands",
+      "type": "text"
+    },
+    {
+      "text": ":",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " Provide",
       "type": "text"
     },
     {
@@ -1525,75 +1005,31 @@
       "type": "text"
     },
     {
-      "text": " using",
+      "text": " for",
       "type": "text"
     },
     {
-      "text": " argparse",
+      "text": " test",
       "type": "text"
     },
     {
-      "text": " with",
+      "text": "ability",
       "type": "text"
     },
     {
-      "text": " sub",
+      "text": ".",
       "type": "text"
     },
     {
-      "text": "par",
+      "text": " add",
       "type": "text"
     },
     {
-      "text": "sers",
+      "text": " takes",
       "type": "text"
     },
     {
-      "text": ":",
-      "type": "text"
-    },
-    {
-      "text": " `",
-      "type": "text"
-    },
-    {
-      "text": "add",
-      "type": "text"
-    },
-    {
-      "text": " <",
-      "type": "text"
-    },
-    {
-      "text": "text",
-      "type": "text"
-    },
-    {
-      "text": ">`",
-      "type": "text"
-    },
-    {
-      "text": " prints",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " confirmation",
-      "type": "text"
-    },
-    {
-      "text": " of",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " created",
+      "text": " one",
       "type": "text"
     },
     {
@@ -1601,19 +1037,15 @@
       "type": "text"
     },
     {
+      "text": " string",
+      "type": "text"
+    },
+    {
       "text": ",",
       "type": "text"
     },
     {
-      "text": " `",
-      "type": "text"
-    },
-    {
-      "text": "list",
-      "type": "text"
-    },
-    {
-      "text": "`",
+      "text": " list",
       "type": "text"
     },
     {
@@ -1629,38 +1061,6 @@
       "type": "text"
     },
     {
-      "text": " ('",
-      "type": "text"
-    },
-    {
-      "text": "1",
-      "type": "text"
-    },
-    {
-      "text": ".",
-      "type": "text"
-    },
-    {
-      "text": " ...",
-      "type": "text"
-    },
-    {
-      "text": "'",
-      "type": "text"
-    },
-    {
-      "text": " per",
-      "type": "text"
-    },
-    {
-      "text": " line",
-      "type": "text"
-    },
-    {
-      "text": ")",
-      "type": "text"
-    },
-    {
       "text": " or",
       "type": "text"
     },
@@ -1673,15 +1073,11 @@
       "type": "text"
     },
     {
-      "text": " message",
-      "type": "text"
-    },
-    {
-      "text": " when",
-      "type": "text"
-    },
-    {
       "text": " empty",
+      "type": "text"
+    },
+    {
+      "text": " message",
       "type": "text"
     },
     {
@@ -1689,35 +1085,19 @@
       "type": "text"
     },
     {
-      "text": " `",
+      "text": " and",
       "type": "text"
     },
     {
-      "text": "delete",
+      "text": " delete",
       "type": "text"
     },
     {
-      "text": " <",
+      "text": " takes",
       "type": "text"
     },
     {
-      "text": "number",
-      "type": "text"
-    },
-    {
-      "text": ">`",
-      "type": "text"
-    },
-    {
-      "text": " de",
-      "type": "text"
-    },
-    {
-      "text": "letes",
-      "type": "text"
-    },
-    {
-      "text": " by",
+      "text": " a",
       "type": "text"
     },
     {
@@ -1733,19 +1113,11 @@
       "type": "text"
     },
     {
+      "text": " note",
+      "type": "text"
+    },
+    {
       "text": " number",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " prints",
-      "type": "text"
-    },
-    {
-      "text": " confirmation",
       "type": "text"
     },
     {
@@ -1753,39 +1125,7 @@
       "type": "text"
     },
     {
-      "text": " Add",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " `",
-      "type": "text"
-    },
-    {
-      "text": "--",
-      "type": "text"
-    },
-    {
-      "text": "file",
-      "type": "text"
-    },
-    {
-      "text": "`",
-      "type": "text"
-    },
-    {
-      "text": " option",
-      "type": "text"
-    },
-    {
-      "text": " (",
-      "type": "text"
-    },
-    {
-      "text": "default",
+      "text": " Use",
       "type": "text"
     },
     {
@@ -1797,51 +1137,7 @@
       "type": "text"
     },
     {
-      "text": ")",
-      "type": "text"
-    },
-    {
-      "text": " accepted",
-      "type": "text"
-    },
-    {
-      "text": " globally",
-      "type": "text"
-    },
-    {
-      "text": " or",
-      "type": "text"
-    },
-    {
-      "text": " per",
-      "type": "text"
-    },
-    {
-      "text": " sub",
-      "type": "text"
-    },
-    {
-      "text": "command",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " pass",
-      "type": "text"
-    },
-    {
-      "text": " it",
-      "type": "text"
-    },
-    {
-      "text": " through",
-      "type": "text"
-    },
-    {
-      "text": " to",
+      "text": " in",
       "type": "text"
     },
     {
@@ -1849,43 +1145,23 @@
       "type": "text"
     },
     {
-      "text": " storage",
+      "text": " current",
       "type": "text"
     },
     {
-      "text": " functions",
+      "text": " working",
       "type": "text"
     },
     {
-      "text": ".",
+      "text": " directory",
       "type": "text"
     },
     {
-      "text": " Delete",
+      "text": " by",
       "type": "text"
     },
     {
-      "text": " must",
-      "type": "text"
-    },
-    {
-      "text": " catch",
-      "type": "text"
-    },
-    {
-      "text": " ValueError",
-      "type": "text"
-    },
-    {
-      "text": " from",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " module",
+      "text": " default",
       "type": "text"
     },
     {
@@ -1893,75 +1169,31 @@
       "type": "text"
     },
     {
-      "text": " exit",
+      "text": " return",
       "type": "text"
     },
     {
-      "text": " with",
+      "text": " non",
       "type": "text"
     },
     {
-      "text": " status",
+      "text": "-zero",
       "type": "text"
     },
     {
-      "text": " ",
+      "text": " for",
       "type": "text"
     },
     {
-      "text": "1",
+      "text": " invalid",
       "type": "text"
     },
     {
-      "text": " and",
+      "text": " delete",
       "type": "text"
     },
     {
-      "text": " an",
-      "type": "text"
-    },
-    {
-      "text": " error",
-      "type": "text"
-    },
-    {
-      "text": " message",
-      "type": "text"
-    },
-    {
-      "text": " on",
-      "type": "text"
-    },
-    {
-      "text": " st",
-      "type": "text"
-    },
-    {
-      "text": "derr",
-      "type": "text"
-    },
-    {
-      "text": ";",
-      "type": "text"
-    },
-    {
-      "text": " successful",
-      "type": "text"
-    },
-    {
-      "text": " commands",
-      "type": "text"
-    },
-    {
-      "text": " exit",
-      "type": "text"
-    },
-    {
-      "text": " ",
-      "type": "text"
-    },
-    {
-      "text": "0",
+      "text": " indexes",
       "type": "text"
     },
     {
@@ -1969,79 +1201,7 @@
       "type": "text"
     },
     {
-      "text": " Include",
-      "type": "text"
-    },
-    {
-      "text": " `",
-      "type": "text"
-    },
-    {
-      "text": "if",
-      "type": "text"
-    },
-    {
-      "text": " __",
-      "type": "text"
-    },
-    {
-      "text": "name",
-      "type": "text"
-    },
-    {
-      "text": "__",
-      "type": "text"
-    },
-    {
-      "text": " ==",
-      "type": "text"
-    },
-    {
-      "text": " '__",
-      "type": "text"
-    },
-    {
-      "text": "main",
-      "type": "text"
-    },
-    {
-      "text": "__",
-      "type": "text"
-    },
-    {
-      "text": "':",
-      "type": "text"
-    },
-    {
-      "text": " main",
-      "type": "text"
-    },
-    {
-      "text": "()",
-      "type": "text"
-    },
-    {
-      "text": "`.",
-      "type": "text"
-    },
-    {
-      "text": " Standard",
-      "type": "text"
-    },
-    {
-      "text": " library",
-      "type": "text"
-    },
-    {
-      "text": " only",
-      "type": "text"
-    },
-    {
-      "text": ".\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -2065,11 +1225,75 @@
       "type": "text"
     },
     {
-      "text": " [\"",
+      "text": "[\"",
       "type": "text"
     },
     {
-      "text": "`",
+      "text": "cli",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " builds",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": " parser",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " sub",
+      "type": "text"
+    },
+    {
+      "text": "commands",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -2097,7 +1321,7 @@
       "type": "text"
     },
     {
-      "text": "hello",
+      "text": "text",
       "type": "text"
     },
     {
@@ -2105,15 +1329,11 @@
       "type": "text"
     },
     {
-      "text": "`",
+      "text": " persists",
       "type": "text"
     },
     {
-      "text": " writes",
-      "type": "text"
-    },
-    {
-      "text": " the",
+      "text": " a",
       "type": "text"
     },
     {
@@ -2121,7 +1341,7 @@
       "type": "text"
     },
     {
-      "text": " to",
+      "text": " through",
       "type": "text"
     },
     {
@@ -2129,35 +1349,15 @@
       "type": "text"
     },
     {
-      "text": ".json",
+      "text": ".add",
       "type": "text"
     },
     {
-      "text": " and",
+      "text": ".",
       "type": "text"
     },
     {
-      "text": " exits",
-      "type": "text"
-    },
-    {
-      "text": " ",
-      "type": "text"
-    },
-    {
-      "text": "0",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "`",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -2181,75 +1381,15 @@
       "type": "text"
     },
     {
-      "text": "`",
-      "type": "text"
-    },
-    {
       "text": " prints",
       "type": "text"
     },
     {
-      "text": " numbered",
+      "text": " notes",
       "type": "text"
     },
     {
-      "text": " entries",
-      "type": "text"
-    },
-    {
-      "text": ";",
-      "type": "text"
-    },
-    {
-      "text": " on",
-      "type": "text"
-    },
-    {
-      "text": " an",
-      "type": "text"
-    },
-    {
-      "text": " empty",
-      "type": "text"
-    },
-    {
-      "text": "/m",
-      "type": "text"
-    },
-    {
-      "text": "issing",
-      "type": "text"
-    },
-    {
-      "text": " file",
-      "type": "text"
-    },
-    {
-      "text": " it",
-      "type": "text"
-    },
-    {
-      "text": " prints",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " friendly",
-      "type": "text"
-    },
-    {
-      "text": " message",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " exits",
+      "text": " with",
       "type": "text"
     },
     {
@@ -2257,19 +1397,23 @@
       "type": "text"
     },
     {
-      "text": "0",
+      "text": "1",
       "type": "text"
     },
     {
-      "text": "\",",
+      "text": "-based",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": " numbering",
       "type": "text"
     },
     {
-      "text": "`",
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -2298,10 +1442,6 @@
     },
     {
       "text": "1",
-      "type": "text"
-    },
-    {
-      "text": "`",
       "type": "text"
     },
     {
@@ -2321,151 +1461,7 @@
       "type": "text"
     },
     {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " exits",
-      "type": "text"
-    },
-    {
-      "text": " ",
-      "type": "text"
-    },
-    {
-      "text": "0",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "`",
-      "type": "text"
-    },
-    {
-      "text": "python",
-      "type": "text"
-    },
-    {
-      "text": " cl",
-      "type": "text"
-    },
-    {
-      "text": "i",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
-      "text": " delete",
-      "type": "text"
-    },
-    {
-      "text": " ",
-      "type": "text"
-    },
-    {
-      "text": "99",
-      "type": "text"
-    },
-    {
-      "text": "`",
-      "type": "text"
-    },
-    {
-      "text": " prints",
-      "type": "text"
-    },
-    {
-      "text": " an",
-      "type": "text"
-    },
-    {
-      "text": " error",
-      "type": "text"
-    },
-    {
-      "text": " to",
-      "type": "text"
-    },
-    {
-      "text": " st",
-      "type": "text"
-    },
-    {
-      "text": "derr",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " exits",
-      "type": "text"
-    },
-    {
-      "text": " ",
-      "type": "text"
-    },
-    {
-      "text": "1",
-      "type": "text"
-    },
-    {
-      "text": " without",
-      "type": "text"
-    },
-    {
-      "text": " modifying",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " file",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "cli",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
-      "text": " imports",
-      "type": "text"
-    },
-    {
-      "text": " storage",
-      "type": "text"
-    },
-    {
-      "text": " functions",
-      "type": "text"
-    },
-    {
-      "text": " from",
+      "text": " through",
       "type": "text"
     },
     {
@@ -2473,43 +1469,83 @@
       "type": "text"
     },
     {
-      "text": ".py",
+      "text": ".delete",
       "type": "text"
     },
     {
-      "text": " rather",
+      "text": ".",
       "type": "text"
     },
     {
-      "text": " than",
+      "text": "\",\"",
       "type": "text"
     },
     {
-      "text": " du",
+      "text": "De",
       "type": "text"
     },
     {
-      "text": "plic",
+      "text": "le",
       "type": "text"
     },
     {
-      "text": "ating",
+      "text": "ting",
       "type": "text"
     },
     {
-      "text": " JSON",
+      "text": " an",
       "type": "text"
     },
     {
-      "text": " logic",
+      "text": " invalid",
       "type": "text"
     },
     {
-      "text": "\",",
+      "text": " note",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": " number",
+      "type": "text"
+    },
+    {
+      "text": " exits",
+      "type": "text"
+    },
+    {
+      "text": " non",
+      "type": "text"
+    },
+    {
+      "text": "-zero",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " clear",
+      "type": "text"
+    },
+    {
+      "text": " error",
+      "type": "text"
+    },
+    {
+      "text": " message",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -2525,15 +1561,19 @@
       "type": "text"
     },
     {
-      "text": " is",
+      "text": " can",
       "type": "text"
     },
     {
-      "text": " call",
+      "text": " be",
       "type": "text"
     },
     {
-      "text": "able",
+      "text": " called",
+      "type": "text"
+    },
+    {
+      "text": " directly",
       "type": "text"
     },
     {
@@ -2541,39 +1581,35 @@
       "type": "text"
     },
     {
-      "text": "-process",
+      "text": " tests",
       "type": "text"
     },
     {
-      "text": " with",
+      "text": " without",
       "type": "text"
     },
     {
-      "text": " an",
+      "text": " spawning",
       "type": "text"
     },
     {
-      "text": " argument",
+      "text": " a",
       "type": "text"
     },
     {
-      "text": " list",
+      "text": " sub",
       "type": "text"
     },
     {
-      "text": " for",
+      "text": "process",
       "type": "text"
     },
     {
-      "text": " testing",
+      "text": ".\"",
       "type": "text"
     },
     {
-      "text": "\"],",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "],\"",
       "type": "text"
     },
     {
@@ -2593,7 +1629,7 @@
       "type": "text"
     },
     {
-      "text": " [\"",
+      "text": "[\"",
       "type": "text"
     },
     {
@@ -2609,7 +1645,7 @@
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": "\"",
       "type": "text"
     },
     {
@@ -2621,7 +1657,7 @@
       "type": "text"
     },
     {
-      "text": " [\"",
+      "text": "[\"",
       "type": "text"
     },
     {
@@ -2637,7 +1673,7 @@
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": "\"",
       "type": "text"
     },
     {
@@ -2645,11 +1681,7 @@
       "type": "text"
     },
     {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\":\"",
       "type": "text"
     },
     {
@@ -2665,7 +1697,7 @@
       "type": "text"
     },
     {
-      "text": " {\"",
+      "text": "{\"",
       "type": "text"
     },
     {
@@ -2673,11 +1705,7 @@
       "type": "text"
     },
     {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\":\"",
       "type": "text"
     },
     {
@@ -2689,11 +1717,7 @@
       "type": "text"
     },
     {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -2701,15 +1725,11 @@
       "type": "text"
     },
     {
-      "text": "\":",
+      "text": "\":\"",
       "type": "text"
     },
     {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "Write",
+      "text": "Add",
       "type": "text"
     },
     {
@@ -2717,11 +1737,7 @@
       "type": "text"
     },
     {
-      "text": " unit",
-      "type": "text"
-    },
-    {
-      "text": " tests",
+      "text": " coverage",
       "type": "text"
     },
     {
@@ -2729,7 +1745,67 @@
       "type": "text"
     },
     {
+      "text": " storage",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "description",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "Create",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": " under",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": "/",
+      "type": "text"
+    },
+    {
+      "text": " that",
+      "type": "text"
+    },
+    {
+      "text": " verify",
+      "type": "text"
+    },
+    {
       "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " core",
       "type": "text"
     },
     {
@@ -2741,75 +1817,7 @@
       "type": "text"
     },
     {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "description",
-      "type": "text"
-    },
-    {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "Create",
-      "type": "text"
-    },
-    {
-      "text": " tests",
-      "type": "text"
-    },
-    {
-      "text": "/test",
-      "type": "text"
-    },
-    {
-      "text": "_",
-      "type": "text"
-    },
-    {
-      "text": "notes",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
-      "text": " covering",
-      "type": "text"
-    },
-    {
-      "text": " add",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " list",
-      "type": "text"
-    },
-    {
       "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " delete",
-      "type": "text"
-    },
-    {
-      "text": " against",
       "type": "text"
     },
     {
@@ -2817,31 +1825,19 @@
       "type": "text"
     },
     {
-      "text": " notes",
+      "text": " argparse",
       "type": "text"
     },
     {
-      "text": ".py",
+      "text": " CLI",
       "type": "text"
     },
     {
-      "text": " module",
+      "text": ".",
       "type": "text"
     },
     {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " using",
-      "type": "text"
-    },
-    {
-      "text": " pytest",
-      "type": "text"
-    },
-    {
-      "text": "'s",
+      "text": " Use",
       "type": "text"
     },
     {
@@ -2853,19 +1849,7 @@
       "type": "text"
     },
     {
-      "text": " fixture",
-      "type": "text"
-    },
-    {
-      "text": " to",
-      "type": "text"
-    },
-    {
-      "text": " pass",
-      "type": "text"
-    },
-    {
-      "text": " an",
+      "text": " for",
       "type": "text"
     },
     {
@@ -2877,23 +1861,47 @@
       "type": "text"
     },
     {
-      "text": " file",
+      "text": " files",
       "type": "text"
     },
     {
-      "text": " path",
+      "text": " and",
       "type": "text"
     },
     {
-      "text": " to",
+      "text": " invoke",
       "type": "text"
     },
     {
-      "text": " every",
+      "text": " cl",
       "type": "text"
     },
     {
-      "text": " call",
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".main",
+      "type": "text"
+    },
+    {
+      "text": "(argv",
+      "type": "text"
+    },
+    {
+      "text": ")",
+      "type": "text"
+    },
+    {
+      "text": " directly",
+      "type": "text"
+    },
+    {
+      "text": " where",
+      "type": "text"
+    },
+    {
+      "text": " practical",
       "type": "text"
     },
     {
@@ -2901,31 +1909,31 @@
       "type": "text"
     },
     {
-      "text": " no",
+      "text": " tests",
       "type": "text"
     },
     {
-      "text": " test",
+      "text": " do",
       "type": "text"
     },
     {
-      "text": " touches",
+      "text": " not",
       "type": "text"
     },
     {
-      "text": " the",
+      "text": " depend",
       "type": "text"
     },
     {
-      "text": " real",
+      "text": " on",
       "type": "text"
     },
     {
-      "text": " notes",
+      "text": " global",
       "type": "text"
     },
     {
-      "text": ".json",
+      "text": " state",
       "type": "text"
     },
     {
@@ -2937,31 +1945,7 @@
       "type": "text"
     },
     {
-      "text": ":",
-      "type": "text"
-    },
-    {
-      "text": " add",
-      "type": "text"
-    },
-    {
-      "text": " then",
-      "type": "text"
-    },
-    {
-      "text": " list",
-      "type": "text"
-    },
-    {
-      "text": " returns",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " note",
+      "text": " adding",
       "type": "text"
     },
     {
@@ -2969,11 +1953,19 @@
       "type": "text"
     },
     {
-      "text": " adding",
+      "text": " listing",
       "type": "text"
     },
     {
-      "text": " multiple",
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " deleting",
       "type": "text"
     },
     {
@@ -2981,91 +1973,27 @@
       "type": "text"
     },
     {
-      "text": " preserves",
-      "type": "text"
-    },
-    {
-      "text": " order",
-      "type": "text"
-    },
-    {
       "text": ",",
       "type": "text"
     },
     {
-      "text": " list",
+      "text": " including",
       "type": "text"
     },
     {
-      "text": " on",
+      "text": " empty",
       "type": "text"
     },
     {
-      "text": " a",
+      "text": "-list",
       "type": "text"
     },
     {
-      "text": " missing",
-      "type": "text"
-    },
-    {
-      "text": " file",
-      "type": "text"
-    },
-    {
-      "text": " returns",
-      "type": "text"
-    },
-    {
-      "text": " [],",
-      "type": "text"
-    },
-    {
-      "text": " delete",
-      "type": "text"
-    },
-    {
-      "text": " removes",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " correct",
-      "type": "text"
-    },
-    {
-      "text": " entry",
+      "text": " behavior",
       "type": "text"
     },
     {
       "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " re",
-      "type": "text"
-    },
-    {
-      "text": "numbers",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " delete",
-      "type": "text"
-    },
-    {
-      "text": " with",
-      "type": "text"
-    },
-    {
-      "text": " an",
       "type": "text"
     },
     {
@@ -3073,67 +2001,11 @@
       "type": "text"
     },
     {
-      "text": " index",
+      "text": " delete",
       "type": "text"
     },
     {
-      "text": " raises",
-      "type": "text"
-    },
-    {
-      "text": " ValueError",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " on",
-      "type": "text"
-    },
-    {
-      "text": "-d",
-      "type": "text"
-    },
-    {
-      "text": "isk",
-      "type": "text"
-    },
-    {
-      "text": " file",
-      "type": "text"
-    },
-    {
-      "text": " is",
-      "type": "text"
-    },
-    {
-      "text": " valid",
-      "type": "text"
-    },
-    {
-      "text": " JSON",
-      "type": "text"
-    },
-    {
-      "text": " after",
-      "type": "text"
-    },
-    {
-      "text": " each",
-      "type": "text"
-    },
-    {
-      "text": " operation",
+      "text": " indexes",
       "type": "text"
     },
     {
@@ -3141,31 +2013,7 @@
       "type": "text"
     },
     {
-      "text": " Standard",
-      "type": "text"
-    },
-    {
-      "text": " library",
-      "type": "text"
-    },
-    {
-      "text": " plus",
-      "type": "text"
-    },
-    {
-      "text": " pytest",
-      "type": "text"
-    },
-    {
-      "text": " only",
-      "type": "text"
-    },
-    {
-      "text": ".\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -3189,7 +2037,7 @@
       "type": "text"
     },
     {
-      "text": " [\"",
+      "text": "[\"",
       "type": "text"
     },
     {
@@ -3213,79 +2061,11 @@
       "type": "text"
     },
     {
-      "text": " exists",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " `",
-      "type": "text"
-    },
-    {
-      "text": "p",
-      "type": "text"
-    },
-    {
-      "text": "ytest",
-      "type": "text"
-    },
-    {
-      "text": " tests",
-      "type": "text"
-    },
-    {
-      "text": "/test",
-      "type": "text"
-    },
-    {
-      "text": "_",
-      "type": "text"
-    },
-    {
-      "text": "notes",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
-      "text": "`",
-      "type": "text"
-    },
-    {
-      "text": " passes",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "Tests",
-      "type": "text"
-    },
-    {
-      "text": " exercise",
+      "text": " covers",
       "type": "text"
     },
     {
       "text": " add",
-      "type": "text"
-    },
-    {
-      "text": "_n",
-      "type": "text"
-    },
-    {
-      "text": "ote",
       "type": "text"
     },
     {
@@ -3297,75 +2077,11 @@
       "type": "text"
     },
     {
-      "text": "_",
-      "type": "text"
-    },
-    {
-      "text": "notes",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " delete",
-      "type": "text"
-    },
-    {
-      "text": "_n",
-      "type": "text"
-    },
-    {
-      "text": "ote",
-      "type": "text"
-    },
-    {
       "text": ",",
       "type": "text"
     },
     {
-      "text": " including",
-      "type": "text"
-    },
-    {
-      "text": " at",
-      "type": "text"
-    },
-    {
-      "text": " least",
-      "type": "text"
-    },
-    {
-      "text": " one",
-      "type": "text"
-    },
-    {
-      "text": " happy",
-      "type": "text"
-    },
-    {
-      "text": " path",
-      "type": "text"
-    },
-    {
       "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " one",
-      "type": "text"
-    },
-    {
-      "text": " error",
-      "type": "text"
-    },
-    {
-      "text": " path",
-      "type": "text"
-    },
-    {
-      "text": " for",
       "type": "text"
     },
     {
@@ -3373,155 +2089,15 @@
       "type": "text"
     },
     {
-      "text": "\",",
+      "text": " against",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": " an",
       "type": "text"
     },
     {
-      "text": "Every",
-      "type": "text"
-    },
-    {
-      "text": " test",
-      "type": "text"
-    },
-    {
-      "text": " uses",
-      "type": "text"
-    },
-    {
-      "text": " tmp",
-      "type": "text"
-    },
-    {
-      "text": "_path",
-      "type": "text"
-    },
-    {
-      "text": " (",
-      "type": "text"
-    },
-    {
-      "text": "or",
-      "type": "text"
-    },
-    {
-      "text": " monkey",
-      "type": "text"
-    },
-    {
-      "text": "patch",
-      "type": "text"
-    },
-    {
-      "text": ".ch",
-      "type": "text"
-    },
-    {
-      "text": "dir",
-      "type": "text"
-    },
-    {
-      "text": " to",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " tmp",
-      "type": "text"
-    },
-    {
-      "text": " dir",
-      "type": "text"
-    },
-    {
-      "text": ")",
-      "type": "text"
-    },
-    {
-      "text": " so",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " working",
-      "type": "text"
-    },
-    {
-      "text": "-direct",
-      "type": "text"
-    },
-    {
-      "text": "ory",
-      "type": "text"
-    },
-    {
-      "text": " notes",
-      "type": "text"
-    },
-    {
-      "text": ".json",
-      "type": "text"
-    },
-    {
-      "text": " is",
-      "type": "text"
-    },
-    {
-      "text": " never",
-      "type": "text"
-    },
-    {
-      "text": " read",
-      "type": "text"
-    },
-    {
-      "text": " or",
-      "type": "text"
-    },
-    {
-      "text": " written",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "At",
-      "type": "text"
-    },
-    {
-      "text": " least",
-      "type": "text"
-    },
-    {
-      "text": " one",
-      "type": "text"
-    },
-    {
-      "text": " test",
-      "type": "text"
-    },
-    {
-      "text": " asserts",
-      "type": "text"
-    },
-    {
-      "text": " the",
+      "text": " isolated",
       "type": "text"
     },
     {
@@ -3533,659 +2109,11 @@
       "type": "text"
     },
     {
-      "text": " content",
-      "type": "text"
-    },
-    {
-      "text": " directly",
-      "type": "text"
-    },
-    {
-      "text": " after",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " write",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "No",
-      "type": "text"
-    },
-    {
-      "text": " network",
-      "type": "text"
-    },
-    {
-      "text": " or",
-      "type": "text"
-    },
-    {
-      "text": " third",
-      "type": "text"
-    },
-    {
-      "text": "-party",
-      "type": "text"
-    },
-    {
-      "text": " imports",
-      "type": "text"
-    },
-    {
-      "text": " other",
-      "type": "text"
-    },
-    {
-      "text": " than",
-      "type": "text"
-    },
-    {
-      "text": " pytest",
-      "type": "text"
-    },
-    {
-      "text": "\"],",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "dep",
-      "type": "text"
-    },
-    {
-      "text": "ends",
-      "type": "text"
-    },
-    {
-      "text": "_on",
-      "type": "text"
-    },
-    {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " [\"",
-      "type": "text"
-    },
-    {
-      "text": "t",
-      "type": "text"
-    },
-    {
-      "text": "1",
-      "type": "text"
-    },
-    {
-      "text": "\"],",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "inputs",
-      "type": "text"
-    },
-    {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " [\"",
-      "type": "text"
-    },
-    {
-      "text": "t",
-      "type": "text"
-    },
-    {
-      "text": "1",
-      "type": "text"
-    },
-    {
-      "text": "\"],",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "role",
-      "type": "text"
-    },
-    {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "engine",
-      "type": "text"
-    },
-    {
-      "text": "er",
-      "type": "text"
-    },
-    {
-      "text": "\"},",
-      "type": "text"
-    },
-    {
-      "text": " {\"",
-      "type": "text"
-    },
-    {
-      "text": "key",
-      "type": "text"
-    },
-    {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "t",
-      "type": "text"
-    },
-    {
-      "text": "4",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "title",
-      "type": "text"
-    },
-    {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "Add",
-      "type": "text"
-    },
-    {
-      "text": " CLI",
-      "type": "text"
-    },
-    {
-      "text": " integration",
-      "type": "text"
-    },
-    {
-      "text": " tests",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " verify",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " full",
-      "type": "text"
-    },
-    {
-      "text": " suite",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "description",
-      "type": "text"
-    },
-    {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "Create",
-      "type": "text"
-    },
-    {
-      "text": " tests",
-      "type": "text"
-    },
-    {
-      "text": "/test",
-      "type": "text"
-    },
-    {
-      "text": "_cl",
-      "type": "text"
-    },
-    {
-      "text": "i",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
-      "text": " that",
-      "type": "text"
-    },
-    {
-      "text": " drives",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " CLI",
-      "type": "text"
-    },
-    {
-      "text": " both",
-      "type": "text"
-    },
-    {
-      "text": " in",
-      "type": "text"
-    },
-    {
-      "text": "-process",
-      "type": "text"
-    },
-    {
-      "text": " (",
-      "type": "text"
-    },
-    {
-      "text": "cli",
-      "type": "text"
-    },
-    {
-      "text": ".main",
-      "type": "text"
-    },
-    {
-      "text": "([",
-      "type": "text"
-    },
-    {
-      "text": "...",
-      "type": "text"
-    },
-    {
-      "text": "]))",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " via",
-      "type": "text"
-    },
-    {
-      "text": " sub",
-      "type": "text"
-    },
-    {
-      "text": "process",
-      "type": "text"
-    },
-    {
-      "text": " to",
-      "type": "text"
-    },
-    {
-      "text": " assert",
-      "type": "text"
-    },
-    {
-      "text": " exit",
-      "type": "text"
-    },
-    {
-      "text": " codes",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " stdout",
-      "type": "text"
-    },
-    {
-      "text": "/st",
-      "type": "text"
-    },
-    {
-      "text": "derr",
-      "type": "text"
-    },
-    {
-      "text": " for",
-      "type": "text"
-    },
-    {
-      "text": " add",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " list",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " delete",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " always",
-      "type": "text"
-    },
-    {
-      "text": " with",
-      "type": "text"
-    },
-    {
-      "text": " --",
-      "type": "text"
-    },
-    {
-      "text": "file",
-      "type": "text"
-    },
-    {
-      "text": " pointing",
-      "type": "text"
-    },
-    {
-      "text": " at",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " tmp",
-      "type": "text"
-    },
-    {
-      "text": "_path",
-      "type": "text"
-    },
-    {
-      "text": " file",
-      "type": "text"
-    },
-    {
       "text": ".",
       "type": "text"
     },
     {
-      "text": " Then",
-      "type": "text"
-    },
-    {
-      "text": " run",
-      "type": "text"
-    },
-    {
-      "text": " `",
-      "type": "text"
-    },
-    {
-      "text": "p",
-      "type": "text"
-    },
-    {
-      "text": "ytest",
-      "type": "text"
-    },
-    {
-      "text": "`",
-      "type": "text"
-    },
-    {
-      "text": " at",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " repo",
-      "type": "text"
-    },
-    {
-      "text": " root",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " confirm",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " entire",
-      "type": "text"
-    },
-    {
-      "text": " suite",
-      "type": "text"
-    },
-    {
-      "text": " (",
-      "type": "text"
-    },
-    {
-      "text": "test",
-      "type": "text"
-    },
-    {
-      "text": "_",
-      "type": "text"
-    },
-    {
-      "text": "notes",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
-      "text": " +",
-      "type": "text"
-    },
-    {
-      "text": " test",
-      "type": "text"
-    },
-    {
-      "text": "_cl",
-      "type": "text"
-    },
-    {
-      "text": "i",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
-      "text": ")",
-      "type": "text"
-    },
-    {
-      "text": " passes",
-      "type": "text"
-    },
-    {
-      "text": ".",
-      "type": "text"
-    },
-    {
-      "text": " Add",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " short",
-      "type": "text"
-    },
-    {
-      "text": " READ",
-      "type": "text"
-    },
-    {
-      "text": "ME",
-      "type": "text"
-    },
-    {
-      "text": ".md",
-      "type": "text"
-    },
-    {
-      "text": " with",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " three",
-      "type": "text"
-    },
-    {
-      "text": " example",
-      "type": "text"
-    },
-    {
-      "text": " commands",
-      "type": "text"
-    },
-    {
-      "text": " if",
-      "type": "text"
-    },
-    {
-      "text": " time",
-      "type": "text"
-    },
-    {
-      "text": " allows",
-      "type": "text"
-    },
-    {
-      "text": ".\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "accept",
-      "type": "text"
-    },
-    {
-      "text": "ance",
-      "type": "text"
-    },
-    {
-      "text": "_c",
-      "type": "text"
-    },
-    {
-      "text": "riteria",
-      "type": "text"
-    },
-    {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " [\"",
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -4225,6 +2153,10 @@
       "type": "text"
     },
     {
+      "text": ",",
+      "type": "text"
+    },
+    {
       "text": " and",
       "type": "text"
     },
@@ -4233,119 +2165,47 @@
       "type": "text"
     },
     {
-      "text": " including",
+      "text": " sub",
       "type": "text"
     },
     {
-      "text": " the",
+      "text": "commands",
       "type": "text"
     },
     {
-      "text": " failure",
+      "text": " through",
       "type": "text"
     },
     {
-      "text": " exit",
+      "text": " cl",
       "type": "text"
     },
     {
-      "text": " code",
+      "text": "i",
       "type": "text"
     },
     {
-      "text": " for",
+      "text": ".main",
       "type": "text"
     },
     {
-      "text": " an",
+      "text": "(argv",
       "type": "text"
     },
     {
-      "text": " out",
+      "text": ").",
       "type": "text"
     },
     {
-      "text": "-of",
+      "text": "\",\"",
       "type": "text"
     },
     {
-      "text": "-range",
+      "text": "Tests",
       "type": "text"
     },
     {
-      "text": " delete",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "CL",
-      "type": "text"
-    },
-    {
-      "text": "I",
-      "type": "text"
-    },
-    {
-      "text": " tests",
-      "type": "text"
-    },
-    {
-      "text": " use",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " temporary",
-      "type": "text"
-    },
-    {
-      "text": " --",
-      "type": "text"
-    },
-    {
-      "text": "file",
-      "type": "text"
-    },
-    {
-      "text": " path",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " do",
-      "type": "text"
-    },
-    {
-      "text": " not",
-      "type": "text"
-    },
-    {
-      "text": " touch",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " repo",
-      "type": "text"
-    },
-    {
-      "text": "'s",
+      "text": " verify",
       "type": "text"
     },
     {
@@ -4353,143 +2213,23 @@
       "type": "text"
     },
     {
-      "text": ".json",
+      "text": " persist",
       "type": "text"
     },
     {
-      "text": "\",",
+      "text": " across",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": " separate",
       "type": "text"
     },
     {
-      "text": "Running",
+      "text": " calls",
       "type": "text"
     },
     {
-      "text": " `",
-      "type": "text"
-    },
-    {
-      "text": "p",
-      "type": "text"
-    },
-    {
-      "text": "ytest",
-      "type": "text"
-    },
-    {
-      "text": "`",
-      "type": "text"
-    },
-    {
-      "text": " at",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " repo",
-      "type": "text"
-    },
-    {
-      "text": " root",
-      "type": "text"
-    },
-    {
-      "text": " reports",
-      "type": "text"
-    },
-    {
-      "text": " all",
-      "type": "text"
-    },
-    {
-      "text": " tests",
-      "type": "text"
-    },
-    {
-      "text": " passing",
-      "type": "text"
-    },
-    {
-      "text": " with",
-      "type": "text"
-    },
-    {
-      "text": " zero",
-      "type": "text"
-    },
-    {
-      "text": " failures",
-      "type": "text"
-    },
-    {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "A",
-      "type": "text"
-    },
-    {
-      "text": " note",
-      "type": "text"
-    },
-    {
-      "text": " added",
-      "type": "text"
-    },
-    {
-      "text": " via",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " CLI",
-      "type": "text"
-    },
-    {
-      "text": " is",
-      "type": "text"
-    },
-    {
-      "text": " visible",
-      "type": "text"
-    },
-    {
-      "text": " in",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " subsequent",
-      "type": "text"
-    },
-    {
-      "text": " list",
-      "type": "text"
-    },
-    {
-      "text": " output",
-      "type": "text"
-    },
-    {
-      "text": " within",
+      "text": " using",
       "type": "text"
     },
     {
@@ -4501,35 +2241,71 @@
       "type": "text"
     },
     {
-      "text": " test",
+      "text": " JSON",
       "type": "text"
     },
     {
-      "text": "\",",
+      "text": " path",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": ".",
       "type": "text"
     },
     {
-      "text": "No",
+      "text": "\",\"",
       "type": "text"
     },
     {
-      "text": " third",
+      "text": "Tests",
       "type": "text"
     },
     {
-      "text": "-party",
+      "text": " verify",
       "type": "text"
     },
     {
-      "text": " dependencies",
+      "text": " invalid",
       "type": "text"
     },
     {
-      "text": " beyond",
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": " behavior",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " both",
+      "type": "text"
+    },
+    {
+      "text": " storage",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "Running",
       "type": "text"
     },
     {
@@ -4537,15 +2313,7 @@
       "type": "text"
     },
     {
-      "text": " are",
-      "type": "text"
-    },
-    {
-      "text": " imported",
-      "type": "text"
-    },
-    {
-      "text": " by",
+      "text": " from",
       "type": "text"
     },
     {
@@ -4553,19 +2321,31 @@
       "type": "text"
     },
     {
-      "text": " test",
+      "text": " project",
       "type": "text"
     },
     {
-      "text": " suite",
+      "text": " root",
       "type": "text"
     },
     {
-      "text": "\"],",
+      "text": " passes",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": " all",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "],\"",
       "type": "text"
     },
     {
@@ -4585,7 +2365,19 @@
       "type": "text"
     },
     {
-      "text": " [\"",
+      "text": "[\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -4597,27 +2389,11 @@
       "type": "text"
     },
     {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "t",
-      "type": "text"
-    },
-    {
-      "text": "3",
-      "type": "text"
-    },
-    {
       "text": "\"],",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": "\"",
       "type": "text"
     },
     {
@@ -4629,7 +2405,19 @@
       "type": "text"
     },
     {
-      "text": " [\"",
+      "text": "[\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
       "type": "text"
     },
     {
@@ -4641,27 +2429,11 @@
       "type": "text"
     },
     {
-      "text": "\",",
-      "type": "text"
-    },
-    {
-      "text": " \"",
-      "type": "text"
-    },
-    {
-      "text": "t",
-      "type": "text"
-    },
-    {
-      "text": "3",
-      "type": "text"
-    },
-    {
       "text": "\"],",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": "\"",
       "type": "text"
     },
     {
@@ -4669,11 +2441,7 @@
       "type": "text"
     },
     {
-      "text": "\":",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "\":\"",
       "type": "text"
     },
     {
@@ -4689,11 +2457,7 @@
       "type": "text"
     },
     {
-      "text": "],",
-      "type": "text"
-    },
-    {
-      "text": " \"",
+      "text": "],\"",
       "type": "text"
     },
     {
@@ -4705,27 +2469,27 @@
       "type": "text"
     },
     {
-      "text": "\":",
+      "text": "\":\"",
       "type": "text"
     },
     {
-      "text": " \"",
+      "text": "This",
       "type": "text"
     },
     {
-      "text": "The",
+      "text": " split",
       "type": "text"
     },
     {
-      "text": " work",
+      "text": " gives",
       "type": "text"
     },
     {
-      "text": " splits",
+      "text": " one",
       "type": "text"
     },
     {
-      "text": " along",
+      "text": " engineer",
       "type": "text"
     },
     {
@@ -4737,55 +2501,11 @@
       "type": "text"
     },
     {
-      "text": " interface",
+      "text": " storage",
       "type": "text"
     },
     {
-      "text": " boundary",
-      "type": "text"
-    },
-    {
-      "text": ":",
-      "type": "text"
-    },
-    {
-      "text": " eng",
-      "type": "text"
-    },
-    {
-      "text": "-",
-      "type": "text"
-    },
-    {
-      "text": "1",
-      "type": "text"
-    },
-    {
-      "text": " owns",
-      "type": "text"
-    },
-    {
-      "text": " notes",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " its",
-      "type": "text"
-    },
-    {
-      "text": " unit",
-      "type": "text"
-    },
-    {
-      "text": " tests",
+      "text": " layer",
       "type": "text"
     },
     {
@@ -4793,43 +2513,19 @@
       "type": "text"
     },
     {
-      "text": " while",
+      "text": " a",
       "type": "text"
     },
     {
-      "text": " eng",
+      "text": " second",
       "type": "text"
     },
     {
-      "text": "-",
+      "text": " engineer",
       "type": "text"
     },
     {
-      "text": "2",
-      "type": "text"
-    },
-    {
-      "text": " owns",
-      "type": "text"
-    },
-    {
-      "text": " cl",
-      "type": "text"
-    },
-    {
-      "text": "i",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " the",
+      "text": " a",
       "type": "text"
     },
     {
@@ -4837,35 +2533,7 @@
       "type": "text"
     },
     {
-      "text": "-level",
-      "type": "text"
-    },
-    {
-      "text": " tests",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " so",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " two",
-      "type": "text"
-    },
-    {
-      "text": " works",
-      "type": "text"
-    },
-    {
-      "text": "paces",
+      "text": " that",
       "type": "text"
     },
     {
@@ -4873,15 +2541,15 @@
       "type": "text"
     },
     {
-      "text": " share",
+      "text": " depends",
       "type": "text"
     },
     {
-      "text": " the",
+      "text": " on",
       "type": "text"
     },
     {
-      "text": " small",
+      "text": " that",
       "type": "text"
     },
     {
@@ -4893,107 +2561,35 @@
       "type": "text"
     },
     {
-      "text": " surface",
-      "type": "text"
-    },
-    {
-      "text": " rather",
-      "type": "text"
-    },
-    {
-      "text": " than",
-      "type": "text"
-    },
-    {
-      "text": " editing",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " same",
-      "type": "text"
-    },
-    {
-      "text": " files",
-      "type": "text"
-    },
-    {
-      "text": ".",
-      "type": "text"
-    },
-    {
-      "text": " Order",
-      "type": "text"
-    },
-    {
-      "text": "ing",
-      "type": "text"
-    },
-    {
-      "text": " is",
-      "type": "text"
-    },
-    {
-      "text": " driven",
-      "type": "text"
-    },
-    {
-      "text": " by",
-      "type": "text"
-    },
-    {
-      "text": " real",
-      "type": "text"
-    },
-    {
-      "text": " file",
-      "type": "text"
-    },
-    {
-      "text": " dependencies",
-      "type": "text"
-    },
-    {
-      "text": " (",
-      "type": "text"
-    },
-    {
-      "text": "CL",
-      "type": "text"
-    },
-    {
-      "text": "I",
-      "type": "text"
-    },
-    {
-      "text": " imports",
-      "type": "text"
-    },
-    {
-      "text": " notes",
-      "type": "text"
-    },
-    {
-      "text": ".py",
-      "type": "text"
-    },
-    {
       "text": ",",
       "type": "text"
     },
     {
-      "text": " CLI",
+      "text": " and",
       "type": "text"
     },
     {
-      "text": " tests",
+      "text": " a",
       "type": "text"
     },
     {
-      "text": " need",
+      "text": " final",
+      "type": "text"
+    },
+    {
+      "text": " testing",
+      "type": "text"
+    },
+    {
+      "text": " task",
+      "type": "text"
+    },
+    {
+      "text": " that",
+      "type": "text"
+    },
+    {
+      "text": " validates",
       "type": "text"
     },
     {
@@ -5001,107 +2597,51 @@
       "type": "text"
     },
     {
-      "text": " the",
+      "text": " layers",
       "type": "text"
     },
     {
-      "text": " CLI",
+      "text": " together",
       "type": "text"
     },
     {
-      "text": " and",
+      "text": ".",
       "type": "text"
     },
     {
-      "text": " the",
+      "text": " The",
       "type": "text"
     },
     {
-      "text": " existing",
+      "text": " dependency",
       "type": "text"
     },
     {
-      "text": " test",
-      "type": "text"
-    },
-    {
-      "text": " layout",
-      "type": "text"
-    },
-    {
-      "text": "),",
-      "type": "text"
-    },
-    {
-      "text": " and",
-      "type": "text"
-    },
-    {
-      "text": " t",
-      "type": "text"
-    },
-    {
-      "text": "3",
-      "type": "text"
-    },
-    {
-      "text": " can",
-      "type": "text"
-    },
-    {
-      "text": " be",
-      "type": "text"
-    },
-    {
-      "text": " written",
-      "type": "text"
-    },
-    {
-      "text": " in",
-      "type": "text"
-    },
-    {
-      "text": " parallel",
-      "type": "text"
-    },
-    {
-      "text": " with",
-      "type": "text"
-    },
-    {
-      "text": " t",
-      "type": "text"
-    },
-    {
-      "text": "2",
-      "type": "text"
-    },
-    {
-      "text": " once",
-      "type": "text"
-    },
-    {
-      "text": " t",
-      "type": "text"
-    },
-    {
-      "text": "1",
-      "type": "text"
-    },
-    {
-      "text": " lands",
-      "type": "text"
-    },
-    {
-      "text": ",",
-      "type": "text"
-    },
-    {
-      "text": " which",
+      "text": " chain",
       "type": "text"
     },
     {
       "text": " keeps",
+      "type": "text"
+    },
+    {
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": " inputs",
+      "type": "text"
+    },
+    {
+      "text": " explicit",
+      "type": "text"
+    },
+    {
+      "text": " while",
+      "type": "text"
+    },
+    {
+      "text": " allowing",
       "type": "text"
     },
     {
@@ -5117,11 +2657,23 @@
       "type": "text"
     },
     {
-      "text": " a",
+      "text": " be",
       "type": "text"
     },
     {
-      "text": " single",
+      "text": " completed",
+      "type": "text"
+    },
+    {
+      "text": " independently",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " one",
       "type": "text"
     },
     {
@@ -5133,27 +2685,19 @@
       "type": "text"
     },
     {
-      "text": " only",
-      "type": "text"
-    },
-    {
-      "text": " the",
-      "type": "text"
-    },
-    {
       "text": " standard",
       "type": "text"
     },
     {
-      "text": " library",
+      "text": "-library",
       "type": "text"
     },
     {
-      "text": " plus",
+      "text": " production",
       "type": "text"
     },
     {
-      "text": " pytest",
+      "text": " code",
       "type": "text"
     },
     {
@@ -5161,43 +2705,11 @@
       "type": "text"
     },
     {
-      "text": " gives",
+      "text": " pytest",
       "type": "text"
     },
     {
-      "text": " the",
-      "type": "text"
-    },
-    {
-      "text": " suite",
-      "type": "text"
-    },
-    {
-      "text": " a",
-      "type": "text"
-    },
-    {
-      "text": " natural",
-      "type": "text"
-    },
-    {
-      "text": " verification",
-      "type": "text"
-    },
-    {
-      "text": " gate",
-      "type": "text"
-    },
-    {
-      "text": " in",
-      "type": "text"
-    },
-    {
-      "text": " t",
-      "type": "text"
-    },
-    {
-      "text": "4",
+      "text": " tests",
       "type": "text"
     },
     {
@@ -5210,13 +2722,13 @@
     },
     {
       "assistant_state": {
-        "reasoning_content": "The user wants JSON only as the final answer. But also says \"Work on the task using the tools when they help.\" There's no real tool needed here — this is a planning task. Let me think: should I call tools? The instruction says \"When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.\" I don't need tools; I can just produce JSON.\n\nActually the answer format: JSON only with tasks and rationale. But \"reply with the final answer in plain text\" — means not as tool call. So I'll output the JSON directly.\n\nDesign 2-4 tasks, separable across two engineers with depends_on/inputs.\n\nTask breakdown:\n- t1: core storage module `notes.py` with add/list/delete over JSON file. Engineer eng-1. No deps.\n- t2: CLI `cli.py` with argparse subcommands, depends on t1, inputs notes.py. Engineer eng-2.\n- t3: pytest tests, depends on t1 (and t2?). Tests should cover all three ops. Could depend on t1 only for module tests, but CLI tests also. Make t3 depend on t1 and t2, inputs both. Engineer eng-1.\n- Maybe t4: packaging/verification? Keep to 3-4. Could add a task for README/entry point but budget says small. Let's do 3 tasks, maybe 4 with a final verification/docs task. 3 is clean and concrete.\n\nActually splitting tests into module tests (t3, depends t1) and CLI tests (t4, depends t2, t3) could be nice but might be overkill. Let's do 4 tasks to use both engineers well:\n\nt1: notes.py core (eng-1)\nt2: cli.py argparse (eng-2, depends t1, inputs t1)\nt3: pytest tests for core module (eng-1, depends t1, inputs t1) — wait, tests for core can be written in parallel with CLI.\nt4: CLI integration tests + final verification (eng-2, depends t2, t3, inputs t2, t3) — hmm, inputs must be among depends_on. t3 outputs test file.\n\nActually maybe simpler: t3 covers all three operations at module level and CLI level, depends on t1 and t2, inputs both. Then t4 = final check: run pytest, add README/entry point. Hmm, that's low value.\n\nLet me do 4:\n- t1: notes.py storage module (eng-1)\n- t2: cli.py argparse wrapper (eng-2, depends t1, inputs notes.py)\n- t3: tests/test_notes.py unit tests for storage (eng-1, depends t1, inputs notes.py)\n- t4: tests/test_cli.py integration tests + full pytest run (eng-2, depends t2 and t3, inputs cli.py, notes.py, tests/test_notes.py)... inputs must be outputs of depends_on. test_notes.py is t3's output, fine.\n\nThat's reasonable and each doable in one sitting with stdlib.\n\nAcceptance criteria concrete.\n\nJSON only."
+        "reasoning_content": "We need answer JSON only. Need plan 2-4 tasks, dependencies, inputs. Need product manager. Mission Tiny notes CLI, budget irrelevant. Need tasks small concrete engineering tasks for Python engineers separate workspaces, standard library, one sitting. Need use depends_on, inputs for tasks needing another task's files (inputs must be among depends_on). Need final JSON only. We need parse desired schema. We can produce tasks 3 maybe:\nt1: implement core notes module storage over JSON file with add/list/delete functions and unit tests? But separate tasks. Need tests cover all three operations. Could have one engineer implement core module, another CLI depends on core, another tests depends on core+CLI? But tasks doable alone with standard library in one sitting. Need avoid overlap. We can have 3 tasks:\nt1 core storage module `notes.py` exposing add_note, list_notes, delete_note over JSON path; acceptance criteria.\nt2 CLI `cli.py` with argparse subcommands add/list/delete, depends_on t1 inputs t1; wraps core.\nt3 pytest tests `test_notes.py` + `test_cli.py` covering all three operations, depends_on t1,t2 inputs t1,t2. But tests require CLI and core; one sitting.\n\nNeed perhaps include packaging? Not necessary. Need ensure inputs only among depends_on. JSON only. Rationale one paragraph.\n\nNeed consider \"separate workspaces\" input files. Need specify file names. Task t1 produces notes.py. t2 needs notes.py, imports. t3 needs both notes.py and cli.py. Test CLI can use subprocess or invoke main function. We can mention `main(argv)` for testability. Need acceptance criteria concrete.\n\nNeed JSON valid. No markdown. Let's formulate. Need \"role\": \"engineer\" all.\n\nPotential issue t2 \"list\" shadows builtin? subcommand list okay. Core functions add/list/delete? Mission says module exposes add / list / delete over JSON file. Could name `add_note`, `list_notes`, `delete_note`; but criterion says add/list/delete. Maybe module exposes functions `add`, `list_notes`, `delete`? But `list` as function shadows. To meet success, use `add_note`, `list_notes`, `delete_note`? The success says \"add / list / delete over a JSON file\", not exact names. But to be safe, expose `add`, `list`, `delete`? Python can define `def list(...)`, though shadows builtin. CLI subcommand list. Hmm.\n\nMaybe core module `notes.py` with functions `add(text, path=DEFAULT_PATH)`, `list_notes(path=DEFAULT_PATH)`, `delete(index, path=DEFAULT_PATH)`. But acceptance says \"add / list / delete\". I can name `add`, `list_notes`, `delete`. Better maybe exact `add`, `list`, `delete` to satisfy. But `list` function is odd but acceptable. We can mention functions `add(note, path)`, `list(path)`, `delete(index, path)`. Tests import `notes.add`, `notes.list`, `notes.delete`. For CLI, argparse subcommands add, list, delete call functions. Need default JSON file in working directory, e.g. `notes.json`. Use atomic? Not needed. Delete by number likely 1-based. Acceptance criteria. Core should handle missing file as empty, invalid index error. Delete by number; define 1-based index and raise `IndexError` for out of range. JSON file list of strings. Add appends.\n\nTask t2 CLI: `cli.py` with `build_parser`, `main(argv=None)`, subcommands add/list/delete. Add takes note text, maybe nargs? list prints numbered notes or \"No notes\". Delete takes integer index. Return exit codes? Acceptance. It depends on t1. Inputs [\"t1\"]. Need specify \"Import add/list/delete from notes.py\". CLI uses argparse, default notes.json current working directory. Should not duplicate storage logic.\n\nTask t3 tests: `tests/test_notes.py` and `tests/test_cli.py`, depends t1,t2 inputs. Tests cover add/list/delete core and CLI subcommands; use tmp_path and monkeypatch chdir or pass path; for CLI, call `main` with argv and capsys, or subprocess with cwd. Verify JSON persistence. Use pytest, stdlib only in production. Acceptance: pytest passes. Note pytest not stdlib but tests can require pytest as mission. \"standard library only\" production; pytest tests. Need mention no third-party runtime dependencies. Tests use pytest. Is pytest standard? No, but mission says ship with pytest. That's okay.\n\nNeed maybe task for README? Not needed. 3 tasks enough.\n\nNeed answer JSON only. Ensure no trailing. Need include \"rationale\". Let's produce.\n\nNeed use key t1 etc. depends_on empty for t1. inputs empty? Schema shows inputs. For t1 no depends. Use [].\n\nAcceptance criteria arrays with strings. Concise.\n\nNeed maybe \"description\" one sentence? rich enough. Use role engineer.\n\nNeed \"inputs must be among depends_on\" satisfied.\n\nLet's ensure JSON valid strings no newline? Can have normal.\n\nFinal answer in plain text? User specifically says answer with JSON only. So final plain text JSON. We can include no markdown. Need no tool calls. Use final."
       },
       "attempts": 1,
-      "latency_ms": 12118,
+      "latency_ms": 13876,
       "model": "deepseek-flash",
       "provider": "openai_compatible",
-      "request_id": "b2fd1ba5-ff3e-478e-a4ce-994f751b009e",
+      "request_id": "051b828a-946c-47a3-8700-542a2099d2ea",
       "stop_detail": null,
       "stop_reason": "end_turn",
       "type": "completed",
@@ -5224,7 +2736,7 @@
         "cache_read_tokens": 128,
         "cache_write_tokens": 0,
         "input_tokens": 332,
-        "output_tokens": 1991
+        "output_tokens": 1827
       }
     }
   ],
@@ -5232,7 +2744,7 @@
   "format": "eidolon.provider.fixture/1",
   "kind": "chat",
   "provider": "openai_compatible",
-  "recorded_at": "2026-11-07T11:20:58+00:00",
+  "recorded_at": "2026-11-07T12:05:22+00:00",
   "replay_key": "4aeab50a4c2556fb993fa8e54fe62ce02fc98b034c8cd18af997b7550e0a976a",
   "request": {
     "max_tokens": 2048,

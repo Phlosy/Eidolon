@@ -15,9 +15,12 @@ def default_registry() -> Registry:
     from eidolon.agent.scheduler import RunLauncher
     from eidolon.config import settings
     from eidolon.db import SessionLocal
+    from eidolon.identity import IdentityProjection
     from eidolon.work import WorkProjection
 
     registry = Registry()
+    # identity layer (R4): users / companies / persons / employments read model.
+    registry.register(IdentityProjection())
     # work layer (R3): missions / projects / tasks / artifacts read model, run launching.
     registry.register(WorkProjection())
     registry.register(RunLauncher())
@@ -42,10 +45,10 @@ def default_jobs(session_factory=None) -> list:
     provider = build_provider(settings, session_factory=factory)
     blobs = BlobStore(SERVER_ROOT / settings.transcript_dir)
     workspaces = Workspaces(SERVER_ROOT / settings.workspace_root)
-    from eidolon.agent.managers import Assigner, Deciders, MissionIntake, Planner, default_roster
+    from eidolon.agent.managers import Assigner, Deciders, IdentityRoster, MissionIntake, Planner
 
     deciders = Deciders(factory, provider, blobs)
-    roster = default_roster()
+    roster = IdentityRoster()
     return [
         MissionIntake(factory, deciders, roster),
         Planner(factory, deciders, roster),
