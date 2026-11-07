@@ -13,6 +13,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from eidolon.agent.memory import facts as M
 from eidolon.db import Base
+from eidolon.kernel.consumers import clear_tables
 from eidolon.kernel.facts import Fact
 
 SEARCH_CONFIG = "english"  # Chinese needs zhparser/pg_jieba or vectors (pgvector, later)
@@ -87,7 +88,7 @@ class MemoryProjection:
         row.last_seq = fact.seq
 
     def reset(self, db: Session) -> None:
-        db.execute(text("TRUNCATE memory_entries"))
+        clear_tables(db, "memory_entries")
 
 
 def count(db: Session) -> int:

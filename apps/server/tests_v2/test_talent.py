@@ -198,7 +198,6 @@ def test_evidence_is_derived_from_facts_and_rebuilds(db):
     db.execute(text("DELETE FROM talent_evidence WHERE kind = 'task_passed'"))
     db.commit()
     assert snapshot(db) != before
-    db.commit()  # release read locks: rebuild truncates in its own session
     assert rebuild(SessionLocal, TalentProjection()) > 0
     db.expire_all()
     assert snapshot(db) == before

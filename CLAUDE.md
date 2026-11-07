@@ -14,7 +14,7 @@
 ## 常用命令
 ```bash
 make pg-up            # PostgreSQL（compose）；或 scripts/devpg.sh start；或 .env 指向自己的 PG
-make test-v2          # v2 测试（期望全绿；当前 158 + 2 skipped）
+make test-v2          # v2 测试（期望全绿；当前 159 + 2 skipped）
 make lint             # ruff + tsc + eslint + prettier
 make test-server      # 旧应用全量 3228 条（约 4.5 分钟）；仅在触碰 apps/server/app/ 时跑
 make migrate-v2       # alembic -c alembic-v2.ini upgrade head
@@ -28,3 +28,4 @@ make migrate-v2       # alembic -c alembic-v2.ini upgrade head
 5. 一个工作包一次提交，Conventional Commits，中文正文；不写新的阶段设计文档，只更新 `kernel-plan.md` §8 与 `v2-architecture.md` §11 ADR。
 6. 密钥只在 `.env`，不进提交。
 7. 需要改已拍板裁决（V1–V6 / ADR）、新增持久表、真实模型费用 > $2、R2-e go/no-go 时，停下问人。
+8. 投影 `reset` 只用 `kernel.consumers.clear_tables`（DELETE），永远不用 TRUNCATE；原因见 `docs/v2-handoff.md` §4.1。

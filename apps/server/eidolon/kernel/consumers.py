@@ -12,13 +12,15 @@ recorded, so there is no window in which a fact exists without its consequences
 eventually following.
 """
 
+import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol, runtime_checkable
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from eidolon.kernel.facts import Fact, validate_kind
@@ -125,13 +127,50 @@ def process(
             return results
 
 
+class RebuildBlocked(RuntimeError):
+    """Another session holds a lock on the projection's tables and ``lock_timeout``
+    expired. Rebuild never waits indefinitely: a hang here would look like a dead
+    worker, not like the lock it is."""
+
+
+def clear_tables(db: Session, *tables: str) -> None:
+    """How a projection's ``reset`` empties its tables. ``DELETE`` rather than
+    ``TRUNCATE``: TRUNCATE needs ACCESS EXCLUSIVE, so any open read transaction (an
+    API request, a test's session, a psql shell) blocks the rebuild — and the
+    rebuild then blocks every new reader. DELETE takes ROW EXCLUSIVE and coexists
+    with readers under MVCC; they keep seeing the old rows until the reset commits."""
+    for table in tables:
+        if not re.fullmatch(r"[a-z_][a-z0-9_]*", table):
+            raise ValueError(f"not a table name: {table!r}")
+        db.execute(text(f"DELETE FROM {table}"))
+
+
 def rebuild(
-    factory: sessionmaker, projection: Projection, *, store: FactStore | None = None
+    factory: sessionmaker,
+    projection: Projection,
+    *,
+    store: FactStore | None = None,
+    lock_timeout: str = "10s",
 ) -> int:
-    """Throw a projection's state away and derive it again from the full log."""
+    """Throw a projection's state away and derive it again from the full log.
+
+    The reset runs under ``lock_timeout`` so a projection whose tables are locked
+    elsewhere fails fast with ``RebuildBlocked`` instead of hanging."""
     db = factory()
     try:
-        projection.reset(db)
+        if not re.fullmatch(r"\d+(ms|s|min)?", lock_timeout):
+            raise ValueError(f"lock_timeout must look like '10s' or '500ms', got {lock_timeout!r}")
+        # SET cannot take a bind parameter; set_config can (is_local=true == SET LOCAL)
+        db.execute(text("SELECT set_config('lock_timeout', :t, true)"), {"t": lock_timeout})
+        try:
+            projection.reset(db)
+        except OperationalError as exc:
+            if "lock timeout" in str(exc).lower() or "lock_timeout" in str(exc).lower():
+                raise RebuildBlocked(
+                    f"rebuild {projection.name}: its tables are locked by another session "
+                    f"(lock_timeout {lock_timeout})"
+                ) from exc
+            raise
         set_cursor(db, projection.name, 0)
         db.commit()
     except BaseException:

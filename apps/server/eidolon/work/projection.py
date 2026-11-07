@@ -5,12 +5,13 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, Index, Integer, String, Text, text
+from sqlalchemy import DateTime, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from eidolon.db import Base
+from eidolon.kernel.consumers import clear_tables
 from eidolon.kernel.facts import Fact
 from eidolon.work import facts as F
 
@@ -219,7 +220,7 @@ class WorkProjection:
                 _apply_task(row, fact)
 
     def reset(self, db: Session) -> None:
-        db.execute(text(f"TRUNCATE {', '.join(TABLES)}"))
+        clear_tables(db, *TABLES)
 
 
 def _fresh(row, fact: Fact) -> bool:

@@ -10,7 +10,7 @@ from contextlib import contextmanager
 
 from sqlalchemy import text
 
-from eidolon.kernel.consumers import Registry
+from eidolon.kernel.consumers import Registry, clear_tables
 from eidolon.kernel.facts import Actor, NewFact
 from eidolon.kernel.store import FactStore
 
@@ -64,7 +64,7 @@ class KindCounts:
             )
 
     def reset(self, db):
-        db.execute(text("TRUNCATE kind_counts, kind_counts_seen"))
+        clear_tables(db, "kind_counts", "kind_counts_seen")
 
 
 def counts(db):

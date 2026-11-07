@@ -6,11 +6,12 @@ facts the evidence source reads; nothing here is an input to any decision.
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import DateTime, Float, Index, Integer, SmallInteger, String, select, text
+from sqlalchemy import DateTime, Float, Index, Integer, SmallInteger, String, select
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from eidolon.db import Base
+from eidolon.kernel.consumers import clear_tables
 from eidolon.kernel.facts import Fact
 from eidolon.talent.competency import Competency
 from eidolon.talent.evidence import SOURCE_KINDS, Evidence, EvidenceSource
@@ -92,7 +93,7 @@ class TalentProjection:
             db.flush()
 
     def reset(self, db: Session) -> None:
-        db.execute(text(f"TRUNCATE {', '.join(TABLES)}"))
+        clear_tables(db, *TABLES)
 
 
 def _row(e: Evidence) -> EvidenceRow:

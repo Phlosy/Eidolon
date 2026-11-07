@@ -299,7 +299,6 @@ def test_ledger_verify_detects_tampering_and_rebuild_repairs(db):
     out = io.StringIO()
     assert main(["ledger-verify", "--company", str(company)], session_factory=SessionLocal, out=out)
     assert "BROKEN" in out.getvalue()
-    db.commit()  # release the read locks: rebuild truncates in its own session
     assert rebuild(SessionLocal, LedgerProjection()) == 5  # 3 accounts + 2 entries
     db.expire_all()
     assert verify(db, company).ok

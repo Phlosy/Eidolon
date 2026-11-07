@@ -493,3 +493,10 @@ bundle 不另设「账本段」：`--with-ledger` 只是把项目花费背后的
 契约 T1 用 AST 锚定「talent 之下没有模块 import 它」，于是选人、指派、判通过都不可能把分数当输入——它们仍只能是 gate 上的决定（W1/W7）。
 human 不积累证据：Owner 的行为是决定，不是被计量的劳动。`task.review` 门的签字不单独计证据，因为 verdict 事实已经记了同一件事。
 履历与档案是纯查询，形状可以随前端随时改。
+
+**v2-ADR-21（2026-11-07）重建投影不能把读者挡在门外：reset 用 DELETE，rebuild 带 lock_timeout。**
+投影是给 API 和人随时读的；重建是运维动作。TRUNCATE 的 ACCESS EXCLUSIVE 锁让两者互斥：一个开着的读事务就能让 rebuild 无限等待，
+rebuild 反过来又让所有新读者排队——这在测试里表现为整套 pytest 卡死，在生产里就是停机。于是 `reset` 一律经 `kernel.consumers.clear_tables`
+（DELETE，MVCC 下与读者共存，读者在重置提交前仍看到旧行），`rebuild` 的重置段设 `lock_timeout`，真被别的会话锁住时抛 `RebuildBlocked`
+而不是挂起：等不到锁是一种明确的失败，不该伪装成"worker 死了"。代价是大表 DELETE 比 TRUNCATE 慢且产生死元组，接受；
+投影按设计都能从事实重建，表不该大到让这点成为问题。

@@ -4,13 +4,14 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import DateTime, Index, Integer, String, select, text
+from sqlalchemy import DateTime, Index, Integer, String, select
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from eidolon.db import Base
 from eidolon.identity import facts as F
+from eidolon.kernel.consumers import clear_tables
 from eidolon.kernel.facts import Fact
 
 
@@ -147,7 +148,7 @@ class IdentityProjection:
                 )
 
     def reset(self, db: Session) -> None:
-        db.execute(text(f"TRUNCATE {', '.join(TABLES)}"))
+        clear_tables(db, *TABLES)
 
 
 def active_employments(db: Session, company_id: UUID) -> list[EmploymentRow]:

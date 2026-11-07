@@ -10,12 +10,13 @@ which consumer ran first.
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import BigInteger, DateTime, Index, Integer, String, func, select, text
+from sqlalchemy import BigInteger, DateTime, Index, Integer, String, func, select
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from eidolon.db import Base
+from eidolon.kernel.consumers import clear_tables
 from eidolon.kernel.facts import Fact
 from eidolon.money import facts as F
 from eidolon.work.projection import TaskRow
@@ -129,7 +130,7 @@ class LedgerProjection:
             db.flush()
 
     def reset(self, db: Session) -> None:
-        db.execute(text(f"TRUNCATE {', '.join(TABLES)}"))
+        clear_tables(db, *TABLES)
 
 
 # -- queries --------------------------------------------------------------------------

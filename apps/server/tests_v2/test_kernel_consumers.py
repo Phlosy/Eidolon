@@ -8,7 +8,14 @@ from support import KindCounts, counts, scratch_tables, seed, store
 
 from eidolon.db import SessionLocal
 from eidolon.kernel import consumers
-from eidolon.kernel.consumers import Registry, function_consumer, process, rebuild, replay_all
+from eidolon.kernel.consumers import (
+    RebuildBlocked,
+    Registry,
+    function_consumer,
+    process,
+    rebuild,
+    replay_all,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -118,3 +125,30 @@ def test_registry_rejects_duplicates_and_bad_kinds():
     assert registry.projections() == []
     registry.register(KindCounts())
     assert [p.name for p in registry.projections()] == ["kind_counts"]
+
+
+def test_rebuild_coexists_with_open_readers_and_never_hangs_on_locks(db):
+    """A projection is read while it is rebuilt (the API serves it; a test's session
+    has it open). ``reset`` must not take a lock readers hold off, and if something
+    really does hold the tables, rebuild gives up loudly instead of hanging."""
+    company = uuid4()
+    seed(db, company, 3)
+    projection = KindCounts()
+    process(SessionLocal, projection)
+    reader = SessionLocal()
+    try:
+        assert dict(reader.execute(text("SELECT kind, n FROM kind_counts")).all())  # tx open
+        assert rebuild(SessionLocal, projection) == 3  # completes with the reader still open
+        assert counts(db) == {"work.task.created": 3}
+    finally:
+        reader.close()
+    db.commit()  # our own read tx would otherwise keep the exclusive LOCK below waiting
+    locker = SessionLocal()
+    try:
+        locker.execute(text("LOCK TABLE kind_counts IN ACCESS EXCLUSIVE MODE"))
+        with pytest.raises(RebuildBlocked, match="locked by another session"):
+            rebuild(SessionLocal, projection, lock_timeout="500ms")
+    finally:
+        locker.rollback()
+        locker.close()
+    assert rebuild(SessionLocal, projection) == 3  # the cursor was not reset by the failed try

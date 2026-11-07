@@ -12,7 +12,7 @@
 git pull                                   # 或从你本机推上去的 dev 开始
 make install                               # conda env eidolon（Python 3.12）+ pnpm
 make pg-up                                 # 或 scripts/devpg.sh start；或用你自己的 PG（.env 已配）
-make test-v2                               # v2 内核测试：期望 158 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
+make test-v2                               # v2 内核测试：期望 159 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
 make test-server                           # 旧应用全量：期望 3228 passed（SQLite，约 4.5 分钟 -n 4）
 make lint                                  # ruff + tsc + eslint + prettier
 ```
@@ -88,7 +88,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
-**基线数字**：旧应用 pytest 3228 passed；v2 158 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(392)/build 全绿。
+**基线数字**：旧应用 pytest 3228 passed；v2 159 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(392)/build 全绿。
 
 ---
 
@@ -107,6 +107,12 @@ R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司�
 - `origin` 是 `git@github.com:Phlosy/Eidolon.git`，本地 `dev` 领先远端 80+ 提交——开工前 `git push origin dev`。
 
 ---
+
+### 4.1 已知的坑（踩过两次以上才记在这里）
+
+- **投影 `reset` 不得用 TRUNCATE。** TRUNCATE 要 ACCESS EXCLUSIVE 锁，任何一个未提交的读事务（API 请求、测试的 `db` 会话、一个开着的 psql）都会让 `rebuild` 永远等下去，而 rebuild 又挡住所有新读者——生产上等于停机，测试里表现为整套 pytest 卡死无输出。现在 `reset` 一律走 `kernel.consumers.clear_tables`（DELETE，与读者 MVCC 共存），`rebuild` 的重置段带 `lock_timeout`（默认 10s），真被锁住时抛 `RebuildBlocked` 而不是挂起。锚定测试：`test_kernel_consumers::test_rebuild_coexists_with_open_readers_and_never_hangs_on_locks`。写新投影时照抄既有 `reset`。
+- 测试里要主动拿排他锁模拟"别人锁了表"时，先把自己的 `db` 会话 `commit()`，否则你自己的读事务就是那个挡路的人。
+- `SET LOCAL x = :param` 不能带绑定参数（SQL 语法错），用 `SELECT set_config('x', :param, true)`。
 
 ## 5. 下一步工作包（按顺序）
 
@@ -181,7 +187,7 @@ R3 拆包见 `kernel-plan.md` §8（R3-a..e）；R4–R6 见 `v2-architecture.md
 4. apps/server/eidolon/kernel/*.py 与 apps/server/tests_v2/*.py
 
 然后核对环境并把结果报给我：
-- make test-v2 应为 158 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
+- make test-v2 应为 159 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
 - make lint 全绿
 - 不必每次跑旧应用全量（make test-server，3228 条，约 4.5 分钟）；只在触碰 apps/server/app/ 时跑
 
