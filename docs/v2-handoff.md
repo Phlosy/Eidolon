@@ -76,7 +76,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `b07d66d` | **R2-c**：`apps/runner/`（独立 runner 包，JSON-RPC/stdio，零密钥，路径限定，幂等账本）、`agent/runner/`（客户端 + RunnerTools）、`agent/tools/registry.py`；lint/CI 覆盖 apps/runner；tests_v2 91 条。v2-ADR-9 |
 | `caa1d0e` | **R2-d**：`agent/memory/`（facts / projection / repository / reflection / recall）、`0002_memory` 投影表、注册表接入 MemoryProjection + Reflector、loop 接 MemoryRecall、reflection fixture；tests_v2 98 条。v2-ADR-10 |
 | `afa427d` | **R2-e**：CLI `run-task` / `show-run`、`agent/prompts.py`、`tests_v2/r2e_task.md`、真实任务两次完成并录制、runner 输出可复现化（耗时/宿主路径）；tests_v2 102 条。v2-ADR-11，R2 GO |
-| （见 §8） | **R3-a**：`institution/`（schema、validate、三个内置模板、adoption 事实与折叠）；tests_v2 110 条。v2-ADR-12 |
+| `c65555d` | **R3-a**：`institution/`（schema、validate、三个内置模板、adoption 事实与折叠）；tests_v2 110 条。v2-ADR-12 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
