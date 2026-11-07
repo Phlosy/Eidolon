@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """Record the canonical provider cases against a real model into replay fixtures.
 
-    python scripts/record_provider_fixtures.py [--kind openai_compatible|anthropic] [--dir DIR]
+    python scripts/record_provider_fixtures.py [--kind openai_compatible|anthropic] [--dir DIR] [--loop]
+
+``--loop`` additionally drives the real agent loop (tests_v2/loop_support.py's
+weather scenario) through the recording provider, so the loop's own requests get
+fixtures too. That writes a genuine run into the configured v2 database (facts +
+transcripts), i.e. run it with .env loaded: `make v2-record-fixtures`.
 
 Needs the provider's API key in the environment (.env or shell); spends a few
 hundred tokens. Fixtures land in apps/server/tests_v2/fixtures/providers/ by
@@ -62,13 +67,49 @@ async def run(kind: str, directory: Path) -> int:
     return 1 if failures else 0
 
 
+async def run_loop(kind: str, directory: Path) -> int:
+    from uuid import uuid4
+
+    from eidolon.agent.blobs import BlobStore
+    from eidolon.agent.loop import AgentRunner
+    from eidolon.agent.providers import Ledgered, ModelCallLedger
+    from eidolon.db import SessionLocal
+    from loop_support import new_spec, weather_tools
+
+    live = live_provider(settings, kind=kind)
+    provider = Ledgered(
+        Recording(live, directory), ModelCallLedger(SessionLocal), mode="record"
+    )
+    blobs = BlobStore(SERVER / settings.transcript_dir)
+    keys: list[str] = []
+    runner = AgentRunner(SessionLocal, provider, blobs, weather_tools(keys))
+    spec = new_spec(uuid4())
+    outcome = await runner.start(spec)
+    close = getattr(live, "aclose", None)
+    if close:
+        await close()
+    ok = outcome.status == "completed" and "22" in (outcome.final_text or "")
+    print(
+        f"{'ok ' if ok else 'BAD'} {kind}/loop run={spec.run_id} status={outcome.status} "
+        f"steps={outcome.steps} usage={outcome.usage.as_dict()} tools={len(keys)} "
+        f"final={(outcome.final_text or '')[:80]!r}"
+    )
+    return 0 if ok else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--kind", default="openai_compatible")
     parser.add_argument("--dir", default=None)
+    parser.add_argument(
+        "--loop", action="store_true", help="also record the agent-loop scenario"
+    )
     args = parser.parse_args()
     directory = Path(args.dir) if args.dir else fixture_dir(settings)
-    return asyncio.run(run(args.kind, directory))
+    code = asyncio.run(run(args.kind, directory))
+    if args.loop:
+        code = asyncio.run(run_loop(args.kind, directory)) or code
+    return code
 
 
 if __name__ == "__main__":

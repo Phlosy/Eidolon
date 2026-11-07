@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     worker_poll_interval: float = 5.0
     worker_batch_limit: int = 200
 
+    # Content-addressed transcript store (full contexts / responses / tool results);
+    # facts carry only hashes and summaries (v2-architecture §4.2). Relative to apps/server.
+    transcript_dir: str = "data/transcripts"
+
     # -- model providers (eidolon.agent.providers) ---------------------------------
     # kind: openai_compatible | anthropic. mode: live | record | replay (v2-arch §4.6).
     provider_kind: str = "openai_compatible"

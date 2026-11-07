@@ -274,10 +274,14 @@ class FactStore:
         )
         return [row.to_fact() for row in db.scalars(query)]
 
-    def by_correlation(self, db: Session, correlation_id: UUID) -> list[Fact]:
+    def by_correlation(
+        self, db: Session, correlation_id: UUID, *, kinds: Iterable[str] | None = None
+    ) -> list[Fact]:
         query = (
             select(FactRow).where(FactRow.correlation_id == correlation_id).order_by(FactRow.seq)
         )
+        if kinds is not None:
+            query = query.where(FactRow.kind.in_(list(kinds)))
         return [row.to_fact() for row in db.scalars(query)]
 
     def verify_chain(

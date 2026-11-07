@@ -53,20 +53,12 @@
       "type": "text"
     },
     {
-      "text": " ☀",
-      "type": "text"
-    },
-    {
-      "text": "️",
-      "type": "text"
-    },
-    {
       "assistant_state": null,
       "attempts": 1,
-      "latency_ms": 638,
+      "latency_ms": 773,
       "model": "deepseek-flash",
       "provider": "openai_compatible",
-      "request_id": "7c338e77-759f-42d7-9e28-276e52c53b18",
+      "request_id": "5f19b53b-851f-4eba-9bd7-5adc50f06a6e",
       "stop_detail": null,
       "stop_reason": "end_turn",
       "type": "completed",
@@ -74,7 +66,7 @@
         "cache_read_tokens": 256,
         "cache_write_tokens": 0,
         "input_tokens": 395,
-        "output_tokens": 17
+        "output_tokens": 14
       }
     }
   ],
@@ -82,7 +74,7 @@
   "format": "eidolon.provider.fixture/1",
   "kind": "chat",
   "provider": "openai_compatible",
-  "recorded_at": "2026-11-07T08:01:57+00:00",
+  "recorded_at": "2026-11-07T08:13:11+00:00",
   "request": {
     "max_tokens": 64,
     "messages": [

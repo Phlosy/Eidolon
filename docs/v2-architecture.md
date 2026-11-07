@@ -383,3 +383,12 @@ openai_compatible 走 httpx + SSE。模型侧必须原样回传的东西（DeepS
 fixture 由 `scripts/record_provider_fixtures.py` 对真实模型录制并提交，测试因此既是真实分布又确定。重试只发生在首个事件之前：半截流不静默重启。
 (3) 估价用版本化价目表，金额为**计费币种的微单位整数**（DeepSeek CNY、Anthropic USD，DeepSeek 按峰值价作上界），未知模型不估价而非乱估；
 每次调用落 `agent.model.called`，幂等键 = provider + request_id，回放的调用标 `mode: replay` 但同样入账（成本计量在 money 层区分）。
+
+**v2-ADR-8（2026-11-07）run 的状态只是事实的折叠；transcript 进内容寻址 blob 存储。**
+`RunState.from_facts` 把一条 run 的 `agent.*` 事实按 seq 折成状态（待应答的 step、未完成的工具调用、历史引用、用量、终态），
+循环不持有任何别的状态；恢复 = 折叠 + 继续，启动与恢复走同一段 `continue_`。每条事实各自提交，`agent.step.requested` 在模型调用**之前**
+落库；幂等键是 (run_id, step_no, attempt, call_id) 的纯函数，所以重启后的进程把同样的事实再写一遍只会命中 K2 的幂等返回。
+模型应答前崩溃 → 同一步 attempt+1；工具执行中崩溃 → 把**同一个**幂等键再交给执行器，由执行器（R2-c 的 runner）决定副作用是否已发生。
+事实只存哈希、引用和 ≤200 字摘要（K4 上限 64KB，DeepSeek 一步的 reasoning 就能超）；完整上下文、assistant 回合（含 provider_state）
+与工具结果存 `BlobStore`（`sha256:<hex>`，写一次不可改、读时校验），这是 §4.2/§7 所说的"transcript 存对象存储"的本地实现。
+blob 不是第二种持久状态：它是被事实引用的不可变内容，按制度保留期清理后事实依然自洽（引用悬空只影响重放，不影响账本）。
