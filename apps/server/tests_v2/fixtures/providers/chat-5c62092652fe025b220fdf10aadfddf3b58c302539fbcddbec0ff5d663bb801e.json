@@ -1,0 +1,197 @@
+{
+  "events": [
+    {
+      "text": "I",
+      "type": "text"
+    },
+    {
+      "text": "'ll",
+      "type": "text"
+    },
+    {
+      "text": " start",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " checking",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " workspace",
+      "type": "text"
+    },
+    {
+      "text": " state",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {
+        "path": "."
+      },
+      "id": "call_00_ET_qwJyNDPwLoZPAhXcLlKD4324",
+      "name": "list_dir",
+      "type": "tool_call"
+    },
+    {
+      "arguments": {
+        "command": "python3 --version; python3 -m pytest --version 2>&1 | head -5"
+      },
+      "id": "call_01_ET_lfZOe8yCqTPRkruCMlXj6015",
+      "name": "shell",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 905,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "84915c50-b92f-4471-a75b-37aabc2a935a",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 640,
+        "cache_write_tokens": 0,
+        "input_tokens": 1152,
+        "output_tokens": 91
+      }
+    }
+  ],
+  "fingerprint": "5c62092652fe025b220fdf10aadfddf3b58c302539fbcddbec0ff5d663bb801e",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:03:53+00:00",
+  "replay_key": "5c62092652fe025b220fdf10aadfddf3b58c302539fbcddbec0ff5d663bb801e",
+  "request": {
+    "max_tokens": 8192,
+    "messages": [
+      {
+        "content": "Task: Implement JSON-backed notes core module\n\nCreate notes.py exposing add_note, list_notes, and delete_note over a JSON notes file in the working directory (default notes.json). Use only the Python standard library. Store notes as a JSON list of strings or objects; define and document a simple stable format. delete_note must accept a 1-based note number, remove it, persist, and return or raise clear outcomes for invalid numbers. Functions should accept an optional path for testability while defaulting to notes.json. Include focused pytest unit tests for add/list/delete and JSON persistence.\n\nAcceptance criteria:\n- notes.py exposes add_note, list_notes, and delete_note with optional path parameter defaulting to notes.json in the current working directory.\n- Adding a note creates or updates the JSON file and listing returns notes in insertion order.\n- Deleting by 1-based number removes the correct note, persists the change, and reports an error/exception for out-of-range numbers.\n- Core pytest tests cover add, list, delete, invalid delete, and persistence across function calls; all tests pass with python -m pytest using only the standard library.\n\nThe workspace is yours. When the work is done, reply with a short summary of the files you created or changed.",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are a software engineer employed by a small studio. You work alone in an empty workspace directory using the tools provided: write files with write_file, inspect with read_file and list_dir, run commands with shell, and run pytest with run_tests. Work incrementally: create the code, create the tests, run the tests, fix what fails, and only finish when the tests pass. Keep files small and dependency-free (standard library only). Do not ask questions; make reasonable choices and state them.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

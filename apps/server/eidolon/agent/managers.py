@@ -65,10 +65,13 @@ PM_SYSTEM = (
     "2 to 4 small, concrete engineering tasks for Python engineers working in separate "
     "workspaces. Each task must be doable alone with the standard library in one sitting. "
     "Use depends_on for ordering and inputs for tasks that need another task's files "
-    "(inputs must be among depends_on). Answer with JSON only: "
+    "(inputs must be among depends_on). Each task has a kind: build (code and tests), "
+    "document (a Markdown write-up for a named reader), design (a Markdown design decision) or "
+    "research (Markdown findings); add a document or design task only when the mission asks "
+    "for one. Answer with JSON only: "
     '{"tasks": [{"key": "t1", "title": "...", "description": "...", '
     '"acceptance_criteria": ["..."], "depends_on": ["t0"], "inputs": ["t0"], '
-    '"role": "engineer"}], "rationale": "<one paragraph>"}.'
+    '"role": "engineer", "kind": "build"}], "rationale": "<one paragraph>"}.'
 )
 TECH_LEAD_PLAN_SYSTEM = (
     "You are the tech lead of a small software studio reviewing a project plan. Approve it if "
@@ -616,6 +619,7 @@ class Planner:
                     depends_on=deps,
                     inputs=inputs,
                     role=str(t.get("role") or "engineer"),
+                    kind=str(t.get("kind") or "build").lower(),
                 )
             except (graph.DagError, ValueError) as exc:
                 log.warning(

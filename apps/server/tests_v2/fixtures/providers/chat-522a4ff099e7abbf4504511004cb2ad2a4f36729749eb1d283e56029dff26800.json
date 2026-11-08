@@ -1,0 +1,3078 @@
+{
+  "events": [
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "tasks",
+      "type": "text"
+    },
+    {
+      "text": "\":[",
+      "type": "text"
+    },
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "key",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "title",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "Implement",
+      "type": "text"
+    },
+    {
+      "text": " JSON",
+      "type": "text"
+    },
+    {
+      "text": "-backed",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": " core",
+      "type": "text"
+    },
+    {
+      "text": " module",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "description",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "Create",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " exposing",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": "_n",
+      "type": "text"
+    },
+    {
+      "text": "ote",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "notes",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": "_n",
+      "type": "text"
+    },
+    {
+      "text": "ote",
+      "type": "text"
+    },
+    {
+      "text": " over",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " JSON",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " working",
+      "type": "text"
+    },
+    {
+      "text": " directory",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "default",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".json",
+      "type": "text"
+    },
+    {
+      "text": ").",
+      "type": "text"
+    },
+    {
+      "text": " Use",
+      "type": "text"
+    },
+    {
+      "text": " only",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " Python",
+      "type": "text"
+    },
+    {
+      "text": " standard",
+      "type": "text"
+    },
+    {
+      "text": " library",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " Store",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": " as",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " JSON",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": " of",
+      "type": "text"
+    },
+    {
+      "text": " strings",
+      "type": "text"
+    },
+    {
+      "text": " or",
+      "type": "text"
+    },
+    {
+      "text": " objects",
+      "type": "text"
+    },
+    {
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " define",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " document",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " simple",
+      "type": "text"
+    },
+    {
+      "text": " stable",
+      "type": "text"
+    },
+    {
+      "text": " format",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": "_n",
+      "type": "text"
+    },
+    {
+      "text": "ote",
+      "type": "text"
+    },
+    {
+      "text": " must",
+      "type": "text"
+    },
+    {
+      "text": " accept",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "-based",
+      "type": "text"
+    },
+    {
+      "text": " note",
+      "type": "text"
+    },
+    {
+      "text": " number",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " remove",
+      "type": "text"
+    },
+    {
+      "text": " it",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " persist",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " return",
+      "type": "text"
+    },
+    {
+      "text": " or",
+      "type": "text"
+    },
+    {
+      "text": " raise",
+      "type": "text"
+    },
+    {
+      "text": " clear",
+      "type": "text"
+    },
+    {
+      "text": " outcomes",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " invalid",
+      "type": "text"
+    },
+    {
+      "text": " numbers",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " Functions",
+      "type": "text"
+    },
+    {
+      "text": " should",
+      "type": "text"
+    },
+    {
+      "text": " accept",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " optional",
+      "type": "text"
+    },
+    {
+      "text": " path",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": "ability",
+      "type": "text"
+    },
+    {
+      "text": " while",
+      "type": "text"
+    },
+    {
+      "text": " default",
+      "type": "text"
+    },
+    {
+      "text": "ing",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".json",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " Include",
+      "type": "text"
+    },
+    {
+      "text": " focused",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " unit",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": "/list",
+      "type": "text"
+    },
+    {
+      "text": "/",
+      "type": "text"
+    },
+    {
+      "text": "delete",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " JSON",
+      "type": "text"
+    },
+    {
+      "text": " persistence",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "accept",
+      "type": "text"
+    },
+    {
+      "text": "ance",
+      "type": "text"
+    },
+    {
+      "text": "_c",
+      "type": "text"
+    },
+    {
+      "text": "riteria",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": "[\"",
+      "type": "text"
+    },
+    {
+      "text": "notes",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " exposes",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": "_n",
+      "type": "text"
+    },
+    {
+      "text": "ote",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "notes",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": "_n",
+      "type": "text"
+    },
+    {
+      "text": "ote",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " optional",
+      "type": "text"
+    },
+    {
+      "text": " path",
+      "type": "text"
+    },
+    {
+      "text": " parameter",
+      "type": "text"
+    },
+    {
+      "text": " default",
+      "type": "text"
+    },
+    {
+      "text": "ing",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".json",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " current",
+      "type": "text"
+    },
+    {
+      "text": " working",
+      "type": "text"
+    },
+    {
+      "text": " directory",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "Adding",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " note",
+      "type": "text"
+    },
+    {
+      "text": " creates",
+      "type": "text"
+    },
+    {
+      "text": " or",
+      "type": "text"
+    },
+    {
+      "text": " updates",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " JSON",
+      "type": "text"
+    },
+    {
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " listing",
+      "type": "text"
+    },
+    {
+      "text": " returns",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " insertion",
+      "type": "text"
+    },
+    {
+      "text": " order",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "De",
+      "type": "text"
+    },
+    {
+      "text": "le",
+      "type": "text"
+    },
+    {
+      "text": "ting",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "-based",
+      "type": "text"
+    },
+    {
+      "text": " number",
+      "type": "text"
+    },
+    {
+      "text": " removes",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " correct",
+      "type": "text"
+    },
+    {
+      "text": " note",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " persists",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " change",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " reports",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " error",
+      "type": "text"
+    },
+    {
+      "text": "/",
+      "type": "text"
+    },
+    {
+      "text": "exception",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " out",
+      "type": "text"
+    },
+    {
+      "text": "-of",
+      "type": "text"
+    },
+    {
+      "text": "-range",
+      "type": "text"
+    },
+    {
+      "text": " numbers",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "Core",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": " cover",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " invalid",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " persistence",
+      "type": "text"
+    },
+    {
+      "text": " across",
+      "type": "text"
+    },
+    {
+      "text": " function",
+      "type": "text"
+    },
+    {
+      "text": " calls",
+      "type": "text"
+    },
+    {
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " all",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": " pass",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " python",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": "m",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " using",
+      "type": "text"
+    },
+    {
+      "text": " only",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " standard",
+      "type": "text"
+    },
+    {
+      "text": " library",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "],\"",
+      "type": "text"
+    },
+    {
+      "text": "dep",
+      "type": "text"
+    },
+    {
+      "text": "ends",
+      "type": "text"
+    },
+    {
+      "text": "_on",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": "[],",
+      "type": "text"
+    },
+    {
+      "text": "\"",
+      "type": "text"
+    },
+    {
+      "text": "inputs",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": "[],",
+      "type": "text"
+    },
+    {
+      "text": "\"",
+      "type": "text"
+    },
+    {
+      "text": "role",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "engine",
+      "type": "text"
+    },
+    {
+      "text": "er",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "kind",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "build",
+      "type": "text"
+    },
+    {
+      "text": "\"},",
+      "type": "text"
+    },
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "key",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "2",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "title",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "Build",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " wrapper",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "description",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "Create",
+      "type": "text"
+    },
+    {
+      "text": " cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " that",
+      "type": "text"
+    },
+    {
+      "text": " imports",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " core",
+      "type": "text"
+    },
+    {
+      "text": " module",
+      "type": "text"
+    },
+    {
+      "text": " from",
+      "type": "text"
+    },
+    {
+      "text": " t",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " exposes",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": " sub",
+      "type": "text"
+    },
+    {
+      "text": "commands",
+      "type": "text"
+    },
+    {
+      "text": ":",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": " <",
+      "type": "text"
+    },
+    {
+      "text": "text",
+      "type": "text"
+    },
+    {
+      "text": ">,",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": " <",
+      "type": "text"
+    },
+    {
+      "text": "number",
+      "type": "text"
+    },
+    {
+      "text": ">.",
+      "type": "text"
+    },
+    {
+      "text": " The",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " must",
+      "type": "text"
+    },
+    {
+      "text": " operate",
+      "type": "text"
+    },
+    {
+      "text": " on",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".json",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " current",
+      "type": "text"
+    },
+    {
+      "text": " working",
+      "type": "text"
+    },
+    {
+      "text": " directory",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " default",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " print",
+      "type": "text"
+    },
+    {
+      "text": " useful",
+      "type": "text"
+    },
+    {
+      "text": " output",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " exit",
+      "type": "text"
+    },
+    {
+      "text": " nonzero",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " clear",
+      "type": "text"
+    },
+    {
+      "text": " message",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " invalid",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": " numbers",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " Keep",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " implementation",
+      "type": "text"
+    },
+    {
+      "text": " standard",
+      "type": "text"
+    },
+    {
+      "text": "-library",
+      "type": "text"
+    },
+    {
+      "text": " only",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": " any",
+      "type": "text"
+    },
+    {
+      "text": " minimal",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": " or",
+      "type": "text"
+    },
+    {
+      "text": " smoke",
+      "type": "text"
+    },
+    {
+      "text": " checks",
+      "type": "text"
+    },
+    {
+      "text": " needed",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " module",
+      "type": "text"
+    },
+    {
+      "text": " itself",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "accept",
+      "type": "text"
+    },
+    {
+      "text": "ance",
+      "type": "text"
+    },
+    {
+      "text": "_c",
+      "type": "text"
+    },
+    {
+      "text": "riteria",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": "[\"",
+      "type": "text"
+    },
+    {
+      "text": "Running",
+      "type": "text"
+    },
+    {
+      "text": " python",
+      "type": "text"
+    },
+    {
+      "text": " cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": " \\\"",
+      "type": "text"
+    },
+    {
+      "text": "some",
+      "type": "text"
+    },
+    {
+      "text": " note",
+      "type": "text"
+    },
+    {
+      "text": "\\\"",
+      "type": "text"
+    },
+    {
+      "text": " stores",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " note",
+      "type": "text"
+    },
+    {
+      "text": " via",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " core",
+      "type": "text"
+    },
+    {
+      "text": " module",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "Running",
+      "type": "text"
+    },
+    {
+      "text": " python",
+      "type": "text"
+    },
+    {
+      "text": " cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": " prints",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " stored",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " numbered",
+      "type": "text"
+    },
+    {
+      "text": " order",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "Running",
+      "type": "text"
+    },
+    {
+      "text": " python",
+      "type": "text"
+    },
+    {
+      "text": " cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": " N",
+      "type": "text"
+    },
+    {
+      "text": " removes",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " selected",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "-based",
+      "type": "text"
+    },
+    {
+      "text": " note",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " persists",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "Invalid",
+      "type": "text"
+    },
+    {
+      "text": " arguments",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " such",
+      "type": "text"
+    },
+    {
+      "text": " as",
+      "type": "text"
+    },
+    {
+      "text": " deleting",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " out",
+      "type": "text"
+    },
+    {
+      "text": "-of",
+      "type": "text"
+    },
+    {
+      "text": "-range",
+      "type": "text"
+    },
+    {
+      "text": " number",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " produce",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " clear",
+      "type": "text"
+    },
+    {
+      "text": " error",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " nonzero",
+      "type": "text"
+    },
+    {
+      "text": " exit",
+      "type": "text"
+    },
+    {
+      "text": " status",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "cli",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " uses",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": " sub",
+      "type": "text"
+    },
+    {
+      "text": "commands",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " only",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " Python",
+      "type": "text"
+    },
+    {
+      "text": " standard",
+      "type": "text"
+    },
+    {
+      "text": " library",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "],\"",
+      "type": "text"
+    },
+    {
+      "text": "dep",
+      "type": "text"
+    },
+    {
+      "text": "ends",
+      "type": "text"
+    },
+    {
+      "text": "_on",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": "[\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\"],",
+      "type": "text"
+    },
+    {
+      "text": "\"",
+      "type": "text"
+    },
+    {
+      "text": "inputs",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": "[\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\"],",
+      "type": "text"
+    },
+    {
+      "text": "\"",
+      "type": "text"
+    },
+    {
+      "text": "role",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "engine",
+      "type": "text"
+    },
+    {
+      "text": "er",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "kind",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "build",
+      "type": "text"
+    },
+    {
+      "text": "\"},",
+      "type": "text"
+    },
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "key",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "3",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "title",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "Add",
+      "type": "text"
+    },
+    {
+      "text": " end",
+      "type": "text"
+    },
+    {
+      "text": "-to",
+      "type": "text"
+    },
+    {
+      "text": "-end",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " coverage",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " operations",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "description",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "Add",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": " that",
+      "type": "text"
+    },
+    {
+      "text": " exercise",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " end",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " end",
+      "type": "text"
+    },
+    {
+      "text": " using",
+      "type": "text"
+    },
+    {
+      "text": " temporary",
+      "type": "text"
+    },
+    {
+      "text": " working",
+      "type": "text"
+    },
+    {
+      "text": " directories",
+      "type": "text"
+    },
+    {
+      "text": " so",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".json",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " isolated",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " Cover",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": " across",
+      "type": "text"
+    },
+    {
+      "text": " separate",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " inv",
+      "type": "text"
+    },
+    {
+      "text": "ocations",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " including",
+      "type": "text"
+    },
+    {
+      "text": " persistence",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " invalid",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": " behavior",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " Ensure",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " full",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": " suite",
+      "type": "text"
+    },
+    {
+      "text": " from",
+      "type": "text"
+    },
+    {
+      "text": " t",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " t",
+      "type": "text"
+    },
+    {
+      "text": "2",
+      "type": "text"
+    },
+    {
+      "text": " passes",
+      "type": "text"
+    },
+    {
+      "text": " together",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "accept",
+      "type": "text"
+    },
+    {
+      "text": "ance",
+      "type": "text"
+    },
+    {
+      "text": "_c",
+      "type": "text"
+    },
+    {
+      "text": "riteria",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": "[\"",
+      "type": "text"
+    },
+    {
+      "text": "p",
+      "type": "text"
+    },
+    {
+      "text": "ytest",
+      "type": "text"
+    },
+    {
+      "text": " suite",
+      "type": "text"
+    },
+    {
+      "text": " includes",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": " using",
+      "type": "text"
+    },
+    {
+      "text": " temporary",
+      "type": "text"
+    },
+    {
+      "text": " directories",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "Tests",
+      "type": "text"
+    },
+    {
+      "text": " verify",
+      "type": "text"
+    },
+    {
+      "text": " that",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " note",
+      "type": "text"
+    },
+    {
+      "text": " added",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " one",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " invocation",
+      "type": "text"
+    },
+    {
+      "text": " appears",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " removed",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "Tests",
+      "type": "text"
+    },
+    {
+      "text": " verify",
+      "type": "text"
+    },
+    {
+      "text": " invalid",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": " exits",
+      "type": "text"
+    },
+    {
+      "text": " nonzero",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " clear",
+      "type": "text"
+    },
+    {
+      "text": " message",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " leaves",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": " intact",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "Running",
+      "type": "text"
+    },
+    {
+      "text": " python",
+      "type": "text"
+    },
+    {
+      "text": " -",
+      "type": "text"
+    },
+    {
+      "text": "m",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " from",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " project",
+      "type": "text"
+    },
+    {
+      "text": " root",
+      "type": "text"
+    },
+    {
+      "text": " passes",
+      "type": "text"
+    },
+    {
+      "text": " all",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": " using",
+      "type": "text"
+    },
+    {
+      "text": " only",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " standard",
+      "type": "text"
+    },
+    {
+      "text": " library",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " as",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": " runner",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "],\"",
+      "type": "text"
+    },
+    {
+      "text": "dep",
+      "type": "text"
+    },
+    {
+      "text": "ends",
+      "type": "text"
+    },
+    {
+      "text": "_on",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": "[\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "2",
+      "type": "text"
+    },
+    {
+      "text": "\"],",
+      "type": "text"
+    },
+    {
+      "text": "\"",
+      "type": "text"
+    },
+    {
+      "text": "inputs",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": "[\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "t",
+      "type": "text"
+    },
+    {
+      "text": "2",
+      "type": "text"
+    },
+    {
+      "text": "\"],",
+      "type": "text"
+    },
+    {
+      "text": "\"",
+      "type": "text"
+    },
+    {
+      "text": "role",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "engine",
+      "type": "text"
+    },
+    {
+      "text": "er",
+      "type": "text"
+    },
+    {
+      "text": "\",\"",
+      "type": "text"
+    },
+    {
+      "text": "kind",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "build",
+      "type": "text"
+    },
+    {
+      "text": "\"}",
+      "type": "text"
+    },
+    {
+      "text": "],\"",
+      "type": "text"
+    },
+    {
+      "text": "rational",
+      "type": "text"
+    },
+    {
+      "text": "e",
+      "type": "text"
+    },
+    {
+      "text": "\":\"",
+      "type": "text"
+    },
+    {
+      "text": "The",
+      "type": "text"
+    },
+    {
+      "text": " work",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " split",
+      "type": "text"
+    },
+    {
+      "text": " into",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " small",
+      "type": "text"
+    },
+    {
+      "text": " core",
+      "type": "text"
+    },
+    {
+      "text": " module",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " thin",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " that",
+      "type": "text"
+    },
+    {
+      "text": " depends",
+      "type": "text"
+    },
+    {
+      "text": " on",
+      "type": "text"
+    },
+    {
+      "text": " it",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " end",
+      "type": "text"
+    },
+    {
+      "text": "-to",
+      "type": "text"
+    },
+    {
+      "text": "-end",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " coverage",
+      "type": "text"
+    },
+    {
+      "text": " that",
+      "type": "text"
+    },
+    {
+      "text": " depends",
+      "type": "text"
+    },
+    {
+      "text": " on",
+      "type": "text"
+    },
+    {
+      "text": " both",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " This",
+      "type": "text"
+    },
+    {
+      "text": " keeps",
+      "type": "text"
+    },
+    {
+      "text": " each",
+      "type": "text"
+    },
+    {
+      "text": " task",
+      "type": "text"
+    },
+    {
+      "text": " independently",
+      "type": "text"
+    },
+    {
+      "text": " implement",
+      "type": "text"
+    },
+    {
+      "text": "able",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " one",
+      "type": "text"
+    },
+    {
+      "text": " sitting",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " standard",
+      "type": "text"
+    },
+    {
+      "text": " library",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " gives",
+      "type": "text"
+    },
+    {
+      "text": " clear",
+      "type": "text"
+    },
+    {
+      "text": " hand",
+      "type": "text"
+    },
+    {
+      "text": "off",
+      "type": "text"
+    },
+    {
+      "text": " points",
+      "type": "text"
+    },
+    {
+      "text": " through",
+      "type": "text"
+    },
+    {
+      "text": " depends",
+      "type": "text"
+    },
+    {
+      "text": "_on",
+      "type": "text"
+    },
+    {
+      "text": "/",
+      "type": "text"
+    },
+    {
+      "text": "inputs",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " directly",
+      "type": "text"
+    },
+    {
+      "text": " satisfies",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " mission",
+      "type": "text"
+    },
+    {
+      "text": " success",
+      "type": "text"
+    },
+    {
+      "text": " criteria",
+      "type": "text"
+    },
+    {
+      "text": " without",
+      "type": "text"
+    },
+    {
+      "text": " adding",
+      "type": "text"
+    },
+    {
+      "text": " un",
+      "type": "text"
+    },
+    {
+      "text": "request",
+      "type": "text"
+    },
+    {
+      "text": "ed",
+      "type": "text"
+    },
+    {
+      "text": " documentation",
+      "type": "text"
+    },
+    {
+      "text": " or",
+      "type": "text"
+    },
+    {
+      "text": " design",
+      "type": "text"
+    },
+    {
+      "text": " tasks",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "}",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "We need answer JSON only. Need plan 2-4 tasks for Python engineers separate workspaces, stdlib, one sitting. Mission asks pytest tests. Need tasks kind build for code/tests. No document/design asked. Need depends_on/inputs. Need roles maybe \"engineer\". Engineers available eng-1, eng-2 but schema role says engineer perhaps can assign? The example role \"engineer\". Could use role \"engineer\" only. Need tasks concrete, acceptance criteria, dependencies. Need ensure tasks doable alone. We have module exposes add/list/delete over JSON, CLI argparse, tests. Could split into:\nt1 build core notes module + tests? But tests cover CLI? Need separate workspaces; inputs for t2 maybe t1 files. We can have t1 core module and unit tests for core. t2 CLI depends on t1, inputs t1. t3 integration pytest tests for CLI depends t2 inputs t2? But tests cover all three operations maybe core unit tests + CLI tests. Need avoid overlapping? 2-4 tasks. Could do 3 tasks:\nt1 implement notes.py with add_note, list_notes, delete_note by 1-based index, JSON storage in cwd. Include its unit tests? A build task code and tests. Acceptance: functions etc, tests pass.\nt2 implement cli.py using argparse subcommands add/list/delete wrapping t1. Depends t1, inputs t1. Acceptance: CLI commands work, stdlib only, errors.\nt3 add pytest tests for CLI and ensure full suite passes, depends t2 inputs t2. But t1 already tests core. t3 test CLI all ops and test integration with temp cwd. This is fine.\n\nNeed mention no external libs, JSON file default \"notes.json\" in cwd, maybe allow path injection for tests. Acceptance precise.\n\nNeed maybe t1 and t2 can be parallel? CLI depends core. t3 depends CLI. Good.\n\nNeed JSON only no markdown. Rationale one paragraph.\n\nNeed ensure \"inputs must be among depends_on\". t2 depends_on [\"t1\"], inputs [\"t1\"]. t3 depends_on [\"t2\"], inputs [\"t2\"]; but t3 tests CLI requires core too transitively? Inputs can be t2 only; depends t2 includes t1? Not explicit. But t2 output includes CLI relying on t1. Fine.\n\nCould include t3 inputs [\"t1\",\"t2\"] and depends_on [\"t1\",\"t2\"]? But t3 needs both to run tests. Schema says inputs among depends_on. Since t1 is dependency? t3 depends t2 only transitive. Could make t3 depends [\"t1\",\"t2\"], inputs [\"t1\",\"t2\"]. Better.\n\nNeed tasks key t1 t2 t3. Title etc.\n\nPotential issue \"Each task must be doable alone with standard library in one sitting.\" t3 depends t2. Fine.\n\nNeed mention engineers separate workspaces—assuming they can receive previous task files via inputs. Fine.\n\nNeed maybe role \"engineer\" or \"eng-1\"? Schema uses role \"engineer\"; prompt says engineers available eng-1, eng-2. Could role be \"engineer\"? It says role field in example \"engineer\". Use \"engineer\". Could maybe assign role \"eng-1\" etc? The JSON schema example only role \"engineer\", not specified allowed. Better use \"engineer\" to match.\n\nNeed acceptance criteria array. Ensure no doc/design task. Rationale.\n\nLet's craft concise. Ensure valid JSON, no trailing commas.\n\nNeed answer only JSON."
+      },
+      "attempts": 1,
+      "latency_ms": 11865,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "af8893ae-e5fb-4ac7-8d3b-6224ebc1bbbe",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "input_tokens": 391,
+        "output_tokens": 1513
+      }
+    }
+  ],
+  "fingerprint": "522a4ff099e7abbf4504511004cb2ad2a4f36729749eb1d283e56029dff26800",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:03:38+00:00",
+  "replay_key": "522a4ff099e7abbf4504511004cb2ad2a4f36729749eb1d283e56029dff26800",
+  "request": {
+    "max_tokens": 2048,
+    "messages": [
+      {
+        "content": "Project: Tiny notes CLI\nBudget: 20000 units.\n\nMission goal:\nA small command-line note keeper in Python. Users can add a note, list notes and delete a note by number. Notes live in a JSON file in the working directory. Ship it with pytest tests.\n\nSuccess criteria:\n- a module exposes add / list / delete over a JSON file\n- a CLI wraps them with argparse subcommands add, list, delete\n- pytest tests cover all three operations and pass\n- standard library only\n\nEngineers available: eng-1, eng-2",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the product manager of a small software studio. Turn a mission into a plan of 2 to 4 small, concrete engineering tasks for Python engineers working in separate workspaces. Each task must be doable alone with the standard library in one sitting. Use depends_on for ordering and inputs for tasks that need another task's files (inputs must be among depends_on). Each task has a kind: build (code and tests), document (a Markdown write-up for a named reader), design (a Markdown design decision) or research (Markdown findings); add a document or design task only when the mission asks for one. Answer with JSON only: {\"tasks\": [{\"key\": \"t1\", \"title\": \"...\", \"description\": \"...\", \"acceptance_criteria\": [\"...\"], \"depends_on\": [\"t0\"], \"inputs\": [\"t0\"], \"role\": \"engineer\", \"kind\": \"build\"}], \"rationale\": \"<one paragraph>\"}.\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": []
+  }
+}

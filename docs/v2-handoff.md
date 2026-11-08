@@ -1,6 +1,6 @@
 # Eidolon v2 交接文档（终端会话入口）
 
-> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1–R4 完成（R2-e GO；R4 = 身份 + 钱 + 费用溯源），R5 已拆成 R5-a..e（见 §8），R5 全部完成（旧应用已删除，cutover 到 v2），R6 已拆成 R6-a..e（见 §8），R1–R6 完成（v2 上线范围）。用户 2026-11-07 裁决：产品的另一半是**决策者体验**——系统自主协同，关键决策带公司意见来问人，用户只判断不思考。R7 已拆成 R7-a..e（见 §8），R7-a..d 完成（带建议的决策信封、叙事报告、管理 agent 有手有眼、失败处置提案），下一个包是 **R7-e 文档/设计任务与决策节奏**。
+> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1–R4 完成（R2-e GO；R4 = 身份 + 钱 + 费用溯源），R5 已拆成 R5-a..e（见 §8），R5 全部完成（旧应用已删除，cutover 到 v2），R6 已拆成 R6-a..e（见 §8），R1–R6 完成（v2 上线范围）。用户 2026-11-07 裁决：产品的另一半是**决策者体验**——系统自主协同，关键决策带公司意见来问人，用户只判断不思考。R7 已拆成 R7-a..e（见 §8），**R7 全部完成**（R7-a 带建议的决策信封、R7-b 叙事报告、R7-c 管理 agent 有手有眼、R7-d 失败处置提案、R7-e 文档/设计任务与决策节奏）。§8 已无 TODO：下一步需要用户裁决新的阶段（候选见 §8 R7 行之后的"已知缺口"与 v2-architecture §7 上线门槛复查）。
 > 这是新会话的**唯一入口**：先读本文，再按 §1 的顺序读其余文档。
 > 文档体系：本文（入口与状态）→ `kernel-plan.md`（本质、纪律、Progress）→ `v2-architecture.md`（设计、路线、ADR）。
 
@@ -12,11 +12,11 @@
 git pull                                   # 或从你本机推上去的 dev 开始
 make install                               # conda env eidolon（Python 3.12）+ pnpm
 make pg-up                                 # 或 scripts/devpg.sh start；或用你自己的 PG（.env 已配）
-make test-v2                               # v2 内核测试：期望 202 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
+make test-v2                               # v2 内核测试：期望 205 passed + 2 skipped（真实 PostgreSQL；skipped = Anthropic 真实调用无 key、R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）
 make lint                                  # ruff + tsc + eslint + prettier
 ```
 
-然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R7-e**），按 §5 的流程做。
+然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前 §8 没有 TODO——先问用户下一阶段），按 §5 的流程做。
 
 ---
 
@@ -97,10 +97,11 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `663ff32` | **R7-b**：`api/narrative.py` 项目/使命叙事报告（六段、每行挂事实 id、zh/en、确定性、不落库；`polish` 可选润色）；API `GET /projects/{id}/report`、`GET /missions/{id}/report`；CLI `report`；前端项目页报告 tab、总览"今天需要你的 N 件事"。v2-ADR-32 |
 | `b2cf6e5` | **R7-c**：`agent/project_tools.py` 只读项目工具（status / artifacts / list_dir / read_file / run_tests），`Deciders.ask(project_id, template)` 多步 run + 角色闸门 + run_default 预算；管理角色获 `workspace.read`；公司场景重录（管理者真的在看产物、跑测试）。v2-ADR-33 |
 | `92bad33` | **R7-d**：内核闸门 `task.triage`（三套制度各有规则）；`work/triage.py` 处置校验与施行（reopen / reassign / cancel / split）；`agent/triage.py` TL 提议 + PM 批准 + 系统施行，否决两次后等人；API apply 分支；报告 stuck 段写出建议。v2-ADR-34 |
+| `R7E_HASH` | **R7-e**：任务种类 build / document / design / research（各自工作与评审提示词，PM 标 kind）；`POST /companies/{id}/decisions/follow` 一键按建议签掉收件箱，前端分组 + 两步确认；ReviewExecutor 12 步；公司场景全量重录。v2-ADR-35。**R7 完成** |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
-**基线数字**：v2 202 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(30)/build 全绿；前端 4.7k 行（R5-d 后）。
+**基线数字**：v2 205 passed + 2 skipped；ruff/alembic/tsc/eslint/prettier/vitest(30)/build 全绿；前端 4.7k 行（R5-d 后）。
 
 ---
 
@@ -199,11 +200,11 @@ R3 拆包见 `kernel-plan.md` §8（R3-a..e）；R4–R6 见 `v2-architecture.md
 4. apps/server/eidolon/kernel/*.py 与 apps/server/tests_v2/*.py
 
 然后核对环境并把结果报给我：
-- make test-v2 应为 202 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
+- make test-v2 应为 205 passed + 2 skipped（Anthropic 真实调用无 key；R2-e 真实任务需 EIDOLON_V2_LIVE_TASK=1）（需要 PostgreSQL：.env 里已指向本机 PG 18，先确认库 eidolon 与 eidolon_test 存在；否则 make pg-up）
 - make lint 全绿
 - 不必每次跑旧应用全量（
 工作方式：
-- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R7-e），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
+- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前 §8 没有 TODO，先问用户），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
 - 每个包完成的定义：代码 + 测试（真实 PostgreSQL）+ make test-v2 与 make lint 全绿 + kernel-plan.md §8 对应行改为 DONE 并填提交号 + 若有新裁决则在 v2-architecture.md §11 追加 ADR。
 - 遵守 docs/v2-handoff.md §6 的七条规则：v2 不 import 旧 app；持久状态只有 Fact、投影与 API 层的秘密；系统不做管理判断；mock 只在单测；密钥不进提交；不写新的阶段设计文档。
 - 包粒度：一个会话做完一个包；做不完就拆成更小的包并在 Progress 登记，不要留"第 N 段"。

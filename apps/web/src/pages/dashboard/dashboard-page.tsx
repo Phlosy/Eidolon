@@ -2,7 +2,8 @@ import { CircleGauge, Plus } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { work as workApi } from "../../api";
+import { decisions as decisionsApi, work as workApi } from "../../api";
+import type { Decision } from "../../api/types";
 import { DecisionCard } from "../../components/app/decision-card";
 import { ErrorNote, Section, Stat, StatusBadge } from "../../components/app/widgets";
 import { Button } from "../../components/common/button";
@@ -21,6 +22,80 @@ import {
   useProjects,
 } from "../../hooks/queries";
 import { formatMicro, formatRelativeTime } from "../../utils/format";
+
+/** Decisions arrive in a rhythm, not one modal at a time: grouped by gate, summarised
+ *  in one line each, and settled in one click when the company's recommendation is good
+ *  enough — the user judges the batch, and can still open any card. */
+function groupByGate(items: Decision[]): Array<[string, Decision[]]> {
+  const groups = new Map<string, Decision[]>();
+  for (const d of items) groups.set(d.gate, [...(groups.get(d.gate) ?? []), d]);
+  return [...groups.entries()];
+}
+
+function InboxSummary({ decisions, companyId }: { decisions: Decision[]; companyId: string }) {
+  const { t } = useTranslation("app");
+  const [confirming, setConfirming] = useState(false);
+  const follow = useCommand(() => decisionsApi.follow(companyId));
+  const withBrief = decisions.filter((d) => d.brief);
+  return (
+    <div className="command-panel mb-4 p-4" data-testid="today">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold">
+            {t("dashboard.today", { count: decisions.length })}
+          </p>
+          <p className="text-xs text-muted-foreground">{t("dashboard.todayHint")}</p>
+        </div>
+        {withBrief.length && !follow.data ? (
+          confirming ? (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span>{t("dashboard.followConfirm", { count: withBrief.length })}</span>
+              <Button
+                size="sm"
+                disabled={follow.isPending}
+                onClick={() => {
+                  follow.mutate(undefined);
+                  setConfirming(false);
+                }}
+              >
+                {t("dashboard.followYes")}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setConfirming(false)}>
+                {t("dashboard.followNo")}
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" onClick={() => setConfirming(true)}>
+              {t("dashboard.followAll")}
+            </Button>
+          )
+        ) : null}
+      </div>
+      {follow.data ? (
+        <p className="mt-2 text-xs text-success">
+          {t("dashboard.followDone", {
+            done: follow.data.filter((r) => r.verdict).length,
+            skipped: follow.data.filter((r) => !r.verdict).length,
+          })}
+        </p>
+      ) : null}
+      <ErrorNote error={follow.error} />
+      <ul className="mt-2 space-y-1 text-sm">
+        {decisions.map((d) => (
+          <li key={d.decision_id} className="flex flex-wrap gap-2">
+            <span className="font-mono text-xs text-muted-foreground">{d.gate}</span>
+            <span>
+              {d.brief?.summary ?? t("decision.briefNone")}
+              {d.brief
+                ? ` (${t(`decision.recommend.${d.brief.recommendation}`, d.brief.recommendation)})`
+                : ""}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function DashboardPage() {
   const { t } = useTranslation("app");
@@ -67,25 +142,7 @@ export function DashboardPage() {
       <div className="mt-6 grid gap-6 xl:grid-cols-[3fr_2fr]">
         <Section title={t("dashboard.decisions")}>
           {decisions.data?.length ? (
-            <div className="command-panel mb-4 p-4" data-testid="today">
-              <p className="text-sm font-semibold">
-                {t("dashboard.today", { count: decisions.data.length })}
-              </p>
-              <p className="text-xs text-muted-foreground">{t("dashboard.todayHint")}</p>
-              <ul className="mt-2 space-y-1 text-sm">
-                {decisions.data.map((d) => (
-                  <li key={d.decision_id} className="flex flex-wrap gap-2">
-                    <span className="font-mono text-xs text-muted-foreground">{d.gate}</span>
-                    <span>
-                      {d.brief?.summary ?? t("decision.briefNone")}
-                      {d.brief
-                        ? ` (${t(`decision.recommend.${d.brief.recommendation}`, d.brief.recommendation)})`
-                        : ""}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <InboxSummary decisions={decisions.data} companyId={companyId} />
           ) : null}
           {decisions.isLoading ? <Skeleton className="h-24 w-full" /> : null}
           {decisions.error ? (
@@ -94,9 +151,18 @@ export function DashboardPage() {
           {decisions.data && decisions.data.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("dashboard.noDecisions")}</p>
           ) : null}
-          <div className="space-y-3">
-            {decisions.data?.map((d) => (
-              <DecisionCard key={d.decision_id} decision={d} />
+          <div className="space-y-5">
+            {groupByGate(decisions.data ?? []).map(([gate, items]) => (
+              <div key={gate} data-testid="decision-group">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("dashboard.group", { gate, count: items.length })}
+                </h3>
+                <div className="space-y-3">
+                  {items.map((d) => (
+                    <DecisionCard key={d.decision_id} decision={d} />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </Section>

@@ -51,7 +51,13 @@
     "changes": "{{count}} 次定制",
     "today": "今天需要你的 {{count}} 件事",
     "todayNone": "今天没有需要你的事。",
-    "todayHint": "每件都带着公司的建议。你只判断，不用研究。"
+    "todayHint": "每件都带着公司的建议。你只判断，不用研究。",
+    "followAll": "全部按建议处理",
+    "followConfirm": "按公司建议签掉这 {{count}} 件？",
+    "followYes": "是，签",
+    "followNo": "先不",
+    "followDone": "已签 {{done}} 件，跳过 {{skipped}} 件",
+    "group": "{{gate}} · {{count}} 件"
   },
   "decision": {
     "gate": "闸门",

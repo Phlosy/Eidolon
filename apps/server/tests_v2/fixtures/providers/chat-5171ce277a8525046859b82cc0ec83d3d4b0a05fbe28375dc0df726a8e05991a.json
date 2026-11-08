@@ -1,0 +1,300 @@
+{
+  "events": [
+    {
+      "text": "Both",
+      "type": "text"
+    },
+    {
+      "text": " engineers",
+      "type": "text"
+    },
+    {
+      "text": " have",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "0",
+      "type": "text"
+    },
+    {
+      "text": " open",
+      "type": "text"
+    },
+    {
+      "text": " tasks",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " matching",
+      "type": "text"
+    },
+    {
+      "text": " roles",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " so",
+      "type": "text"
+    },
+    {
+      "text": " let",
+      "type": "text"
+    },
+    {
+      "text": " me",
+      "type": "text"
+    },
+    {
+      "text": " check",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " existing",
+      "type": "text"
+    },
+    {
+      "text": " work",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " inform",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " choice",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {
+        "task": "t1"
+      },
+      "id": "call_00_y6CWJSlnSb6CsiU83C7V6699",
+      "name": "list_dir",
+      "type": "tool_call"
+    },
+    {
+      "arguments": {
+        "task": "t2"
+      },
+      "id": "call_01_ldIVcZIZmH0fN3I5cYvi1769",
+      "name": "list_dir",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "Both engineers have 0 open tasks, and both tasks were done by eng-1. Role fits both. Tie-breaker facts: read the workspace to see if there's something to help decide? The task requires exactly one person; both have 0 open tasks and same role. Maybe there's a hidden differentiator, e.g., someone's work is failing, or existing tests don't pass. Let me check the workspaces of t1 and t2, run tests, maybe context matters — maybe eng-2 has context.\n\nLet's list dirs and run tests."
+      },
+      "attempts": 1,
+      "latency_ms": 2522,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "734b88c5-677a-4e04-a44f-cc35df39ff4b",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 1152,
+        "cache_write_tokens": 0,
+        "input_tokens": 2547,
+        "output_tokens": 207
+      }
+    }
+  ],
+  "fingerprint": "b30beae0b249cffc7c31b9fa5fe4a615693bb3b751622348009e0d6c68ffab99",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:07:49+00:00",
+  "replay_key": "5171ce277a8525046859b82cc0ec83d3d4b0a05fbe28375dc0df726a8e05991a",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Task: Add end-to-end pytest coverage for CLI operations\nAdd pytest tests that exercise the CLI end to end using temporary working directories so notes.json is isolated. Cover add, list, and delete across separate CLI invocations, including persistence and invalid delete behavior. Ensure the full test suite from t1 and t2 passes together.\n\nRoster:\n- eng-1 (engineer, open tasks: 0)\n- eng-2 (engineer, open tasks: 0)",
+        "role": "user"
+      },
+      {
+        "content": "I'll start by reading the project status and artifacts.",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {},
+            "id": "call_00_ET_xho2ri1OT1MbTbGq98gL4064",
+            "name": "project_status"
+          },
+          {
+            "arguments": {},
+            "id": "call_01_ET_kPPnyVG8ilRGwSENU2Ql7382",
+            "name": "list_artifacts"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "{\"project\": \"Tiny notes CLI\", \"status\": \"active\", \"budget_units\": 20000, \"manager\": \"pm-1\", \"tasks\": [{\"key\": \"t1\", \"title\": \"Implement JSON-backed notes core module\", \"status\": \"done\", \"assignee\": \"eng-1\", \"role\": \"engineer\", \"rework_count\": 0, \"depends_on\": [], \"reviews\": [{\"reviewer\": \"qa-1\", \"verdict\": \"pass\", \"reason\": \"All acceptance criteria are met. notes.py exposes add_note, list_notes and delete_note, each with an optional path parameter defaulting to the module-level DEFAULT_PATH of 'notes.json', resolved against the current working directory at call time (a test chdirs and confirms the default file is created and used). Adding appends and persists a JSON array of strings (verified both by tests and by manual inspection of the written file, written atomically with UTF-8 and a trailing newline), and list_notes returns notes in insertion order as a fresh copy. delete_note takes a 1-based number, removes the right entry, persists, and returns the removed text; out-of-range numbers raise NoteNotFoundError (an IndexError) and non-positive/non-integer values raise InvalidNoteNumber (a ValueError), with nothing written on error — I confirmed each case plus that the file is unchanged afterwards. The module imports only standard-library modules (json, os, tempfile, pathlib, typing, __future__); pytest is used solely in the test file. test_notes.py contains focused tests for add, list, delete, invalid/out-of-range delete, custom and default paths, corrupt-file handling, and persistence across function calls (including no hidden in-memory state), and 'python -m pytest' reports 30 passed with exit code 0. No stray artifacts were left in the workspace beyond normal __pycache__/.pytest_cache directories from running the suite.\"}], \"acceptance_criteria\": [\"notes.py exposes add_note, list_notes, and delete_note with optional path parameter defaulting to notes.json in the current working directory.\", \"Adding a note creates or updates the JSON file and listing returns notes in insertion order.\", \"Deleting by 1-based number removes the correct note, persists the change, and reports an error/exception for out-of-range numbers.\", \"Core pytest tests cover add, list, delete, invalid delete, and persistence across function calls; all tests pass with python -m pytest using only the standard library.\"]}, {\"key\": \"t2\", \"title\": \"Build argparse CLI wrapper\", \"status\": \"done\", \"assignee\": \"eng-1\", \"role\": \"engineer\", \"rework_count\": 0, \"depends_on\": [\"Implement JSON-backed notes core module\"], \"reviews\": [{\"reviewer\": \"qa-1\", \"verdict\": \"pass\", \"reason\": \"All acceptance criteria are met and verified by running the code. `cli.py` uses argparse with required subcommands (add/list/delete) plus an optional `--file` that defaults to `notes.DEFAULT_PATH` (\\\"notes.json\\\"), resolving relative to the CWD. Manual smoke runs in a temp directory confirmed: `add \\\"some note\\\"` stores via `notes.add_note` and writes notes.json; `list` prints numbered entries (\\\"1. some note\\\", \\\"2. buy milk\\\") and \\\"No notes yet.\\\" when empty; `delete 1` removes the 1-based note and persists the file (only \\\"buy milk\\\" remained); `delete 9`, `delete abc`, `delete 0`, and `delete -2` all print a clear `cli.py: error: ...` message on stderr and exit 1 without touching the file; missing/unknown arguments exit 2 with argparse usage messages. Imports are stdlib only (argparse, sys, collections.abc, __future__) plus the core `notes` module, and test_cli.py enforces this with an AST check. The added tests are appropriate for the CLI module itself (in-process handlers, parser wiring, and one real subprocess end-to-end smoke test), and the full suite passes (49 passed) with the workspace left unmodified.\"}], \"acceptance_criteria\": [\"Running python cli.py add \\\"some note\\\" stores the note via the core module.\", \"Running python cli.py list prints the stored notes in numbered order.\", \"Running python cli.py delete N removes the selected 1-based note and persists the file.\", \"Invalid arguments, such as deleting an out-of-range number, produce a clear error and nonzero exit status.\", \"cli.py uses argparse subcommands and only the Python standard library.\"]}, {\"key\": \"t3\", \"title\": \"Add end-to-end pytest coverage for CLI operations\", \"status\": \"todo\", \"assignee\": null, \"role\": \"engineer\", \"rework_count\": 0, \"depends_on\": [\"Implement JSON-backed notes core module\", \"Build argparse CLI wrapper\"], \"reviews\": [], \"acceptance_criteria\": [\"pytest suite includes CLI tests for add, list, and delete using temporary directories.\", \"Tests verify that a note added by one CLI invocation appears in list and is removed by delete.\", \"Tests verify invalid delete exits nonzero with a clear message and leaves notes intact.\", \"Running python -m pytest from the project root passes all tests using only the standard library and pytest as the test runner.\"]}], \"artifacts\": [\"notes.py\", \"test_notes.py\", \"cli.py\", \"test_cli.py\"]}",
+          "is_error": false,
+          "tool_call_id": "call_00_ET_xho2ri1OT1MbTbGq98gL4064"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "[{\"path\": \"notes.py\", \"task\": \"Implement JSON-backed notes core module\", \"size\": 9435, \"media_type\": \"text/x-python\"}, {\"path\": \"test_notes.py\", \"task\": \"Implement JSON-backed notes core module\", \"size\": 6497, \"media_type\": \"text/x-python\"}, {\"path\": \"cli.py\", \"task\": \"Build argparse CLI wrapper\", \"size\": 4923, \"media_type\": \"text/x-python\"}, {\"path\": \"test_cli.py\", \"task\": \"Build argparse CLI wrapper\", \"size\": 7071, \"media_type\": \"text/x-python\"}]",
+          "is_error": false,
+          "tool_call_id": "call_01_ET_kPPnyVG8ilRGwSENU2Ql7382"
+        }
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the tech lead of a small software studio assigning a task. Pick exactly one person from the roster whose role fits the task and who has the fewest open tasks. Answer with JSON only: {\"assignee\": \"<person id from the roster>\", \"reason\": \"<one sentence>\"}. You can look before you decide: the tools let you read the project's status and artifacts, list and read files in its tasks' workspaces, and run their tests. You cannot change anything. Use them when the facts matter; then give your final answer.\n\nAvailable tools:\n- project_status: The project's tasks (status, assignee, reviews, rework count) and its artifacts.\n- list_artifacts: Files the tasks produced: path, which task, size, media type.\n- read_artifact: The content of a produced file, by its path (the latest one with that path).\n- list_dir: List a directory in a task's workspace (depth 1-4).\n- read_file: Read a file in a task's workspace (optionally a line range).\n- run_tests: Run pytest in a task's workspace (sandboxed runner); returns the output.\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "The project's tasks (status, assignee, reviews, rework count) and its artifacts.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        "name": "project_status"
+      },
+      {
+        "description": "Files the tasks produced: path, which task, size, media type.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        "name": "list_artifacts"
+      },
+      {
+        "description": "The content of a produced file, by its path (the latest one with that path).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_artifact"
+      },
+      {
+        "description": "List a directory in a task's workspace (depth 1-4).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 4,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Read a file in a task's workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 400,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Run pytest in a task's workspace (sandboxed runner); returns the output.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

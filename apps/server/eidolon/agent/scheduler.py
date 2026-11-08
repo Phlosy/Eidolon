@@ -30,7 +30,7 @@ from eidolon.agent import run as R
 from eidolon.agent.blobs import BlobStore
 from eidolon.agent.loop import AgentRunner
 from eidolon.agent.memory import MemoryRecall
-from eidolon.agent.prompts import ROLES
+from eidolon.agent.prompts import WRITTEN_KINDS, reviewer_for, system_for
 from eidolon.agent.providers.base import Provider
 from eidolon.agent.runner import RunnerTools
 from eidolon.identity import IdentityError, IdentityService
@@ -323,7 +323,7 @@ class TaskRunExecutor:
                 company_id=db_state.company_id,
                 person_id=task.assignee or "unassigned",
                 model=self.model or _default_model(),
-                system=ROLES.get(role, ROLES["engineer"]),
+                system=system_for(task.kind, role),
                 prompt=task_prompt(db_state, task, self.blobs),
                 task_id=str(task.task_id),
                 budget=R.RunBudget(
@@ -422,6 +422,11 @@ def review_prompt(
     state: ProjectState, task: TaskState, blobs: BlobStore, *, limit: int | None = None
 ) -> str:
     parts = [f"Review task: {task.title}", task.description.strip()]
+    if task.kind in WRITTEN_KINDS:
+        parts.append(
+            f"This is a {task.kind} task: the deliverable is the Markdown below, judged on "
+            "content; there are no tests to run."
+        )
     if task.acceptance_criteria:
         parts.append(
             "Acceptance criteria:\n" + "\n".join(f"- {c}" for c in task.acceptance_criteria)
@@ -470,7 +475,7 @@ class ReviewExecutor:
     svc: WorkService = field(default_factory=WorkService)
     store: FactStore = field(default_factory=FactStore)
     model: str | None = None
-    max_steps: int = 8
+    max_steps: int = 12  # a thorough reviewer reads, runs, probes; 8 cut real reviews short (R7-e)
     tools_factory: Callable[[Path], Any] | None = None
     budget: BudgetGuard | None = None
     name: str = "reviews"
@@ -619,7 +624,7 @@ class ReviewExecutor:
                     company_id=state.company_id,
                     person_id=self.reviewer,
                     model=self.model or _default_model(),
-                    system=ROLES["qa"],
+                    system=reviewer_for(task.kind),
                     prompt=review_prompt(
                         state, task, self.blobs, limit=template.review_policy.rework_limit
                     ),

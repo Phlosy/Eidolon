@@ -401,6 +401,44 @@ class Commands:
         self.store.append(db, fact)
         return load(db, decision_id, store=self.store)
 
+    def follow_recommendations(
+        self,
+        db: Session,
+        who: Person,
+        *,
+        decision_ids: list[UUID] | None = None,
+    ) -> list[dict[str, Any]]:
+        """R7-e: one click for the day's inbox — sign every pending human decision that
+        carries a brief with the brief's recommendation (the bound action restated from
+        the envelope itself), applying each as it settles. Decisions without a brief are
+        left alone: there is nothing to follow. Each item reports what happened."""
+        wanted = set(decision_ids) if decision_ids else None
+        out: list[dict[str, Any]] = []
+        for d in self.pending_decisions(db, who.company_id, decider="human", status="pending"):
+            if wanted is not None and d.decision_id not in wanted:
+                continue
+            item: dict[str, Any] = {"decision_id": str(d.decision_id), "gate": d.gate}
+            if d.brief is None:
+                item.update(status="skipped", reason="no recommendation")
+                out.append(item)
+                continue
+            try:
+                state, applied = self.sign_decision(
+                    db,
+                    who,
+                    decision_id=d.decision_id,
+                    verdict=d.brief.recommendation,
+                    reason=d.brief.summary,
+                    action=d.subject.get("action"),
+                )
+                db.commit()
+                item.update(status=state.status, verdict=d.brief.recommendation, applied=applied)
+            except (Forbidden, Conflict, *DomainError) as exc:
+                db.rollback()
+                item.update(status="error", reason=str(exc))
+            out.append(item)
+        return out
+
     def pending_decisions(
         self,
         db: Session,

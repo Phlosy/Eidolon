@@ -374,6 +374,16 @@ export interface Decision {
   applied?: string | null;
 }
 
+/** R7-e: what happened to each decision when the inbox was settled by recommendation. */
+export interface FollowResult {
+  decision_id: string;
+  gate: string;
+  status: string;
+  verdict?: string;
+  applied?: string | null;
+  reason?: string;
+}
+
 export interface Brief {
   recommendation: "approve" | "reject" | "rework" | string;
   summary: string;

@@ -34,6 +34,10 @@ class OpenIn(BaseModel):
     author: str | None = None
 
 
+class FollowIn(BaseModel):
+    decision_ids: list[UUID] | None = None  # default: everything pending for a human
+
+
 class SignIn(BaseModel):
     verdict: str = Field(pattern="^(approve|reject|rework)$")
     reason: str | None = Field(default=None, max_length=2000)
@@ -90,6 +94,19 @@ def open_decision(
     except (Forbidden, Conflict, *DomainError) as exc:
         raise guard(exc) from exc
     return decision_dict(d)
+
+
+@router.post("/companies/{company_id}/decisions/follow")
+def follow_recommendations(
+    company_id: UUID,
+    body: FollowIn,
+    db: Session = Depends(get_db),
+    employment: EmploymentRow = Depends(member_of),
+):
+    """R7-e: sign the pending decisions the way the company recommended, in one go."""
+    return commands.follow_recommendations(
+        db, person_in(db, employment), decision_ids=body.decision_ids
+    )
 
 
 @router.post("/decisions/{decision_id}/sign")

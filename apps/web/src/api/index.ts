@@ -5,6 +5,7 @@ import type {
   Decision,
   Employee,
   FactView,
+  FollowResult,
   Institution,
   Ledger,
   LedgerVerify,
@@ -173,4 +174,8 @@ export const decisions = {
     id: string,
     body: { verdict: string; reason?: string | null; action?: Record<string, unknown> },
   ) => post<Decision>(`/decisions/${id}/sign`, body),
+  follow: (companyId: string, decisionIds?: string[]) =>
+    post<FollowResult[]>(`/companies/${companyId}/decisions/follow`, {
+      decision_ids: decisionIds ?? null,
+    }),
 };

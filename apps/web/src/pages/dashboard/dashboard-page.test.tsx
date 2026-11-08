@@ -56,6 +56,7 @@ const pending: Decision = {
   },
 };
 const sign = vi.fn();
+const follow = vi.fn();
 
 vi.mock("../../features/auth/auth-context", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../features/auth/auth-context")>();
@@ -104,6 +105,7 @@ vi.mock("../../api", () => ({
   decisions: {
     pending: vi.fn(() => Promise.resolve([pending])),
     sign: (...args: unknown[]) => sign(...args),
+    follow: (...args: unknown[]) => follow(...args),
   },
 }));
 
@@ -126,6 +128,21 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Details")).toBeInTheDocument();
     // R7-b: the day's summary counts what waits and repeats each brief in one line
     expect(screen.getByText("Today needs you on 1 things")).toBeInTheDocument();
+    expect(screen.getByText("project.deliver · 1")).toBeInTheDocument(); // grouped by gate
+  });
+
+  it("settles the inbox as recommended in one confirmed click", async () => {
+    follow.mockResolvedValue([
+      { decision_id: "d1", gate: "project.deliver", status: "approved", verdict: "approve" },
+    ]);
+    renderPage(<DashboardPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "Settle all as recommended" }));
+    expect(
+      screen.getByText("Sign 1 decisions the way the company recommends?"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Yes, sign them" }));
+    await waitFor(() => expect(follow).toHaveBeenCalledWith("c1"));
+    expect(await screen.findByText("1 signed, 0 skipped")).toBeInTheDocument();
     expect(screen.getByText("Notes CLI")).toBeInTheDocument();
     expect(await screen.findByText("1.50 CNY")).toBeInTheDocument();
     expect(screen.getByText("software-studio-v1 v2")).toBeInTheDocument();

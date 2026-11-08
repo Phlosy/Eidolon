@@ -51,7 +51,13 @@
     "changes": "{{count}} customizations",
     "today": "Today needs you on {{count}} things",
     "todayNone": "Nothing needs you today.",
-    "todayHint": "Each comes with the company's recommendation. Judge; do not research."
+    "todayHint": "Each comes with the company's recommendation. Judge; do not research.",
+    "followAll": "Settle all as recommended",
+    "followConfirm": "Sign {{count}} decisions the way the company recommends?",
+    "followYes": "Yes, sign them",
+    "followNo": "Not now",
+    "followDone": "{{done}} signed, {{skipped}} skipped",
+    "group": "{{gate}} · {{count}}"
   },
   "decision": {
     "gate": "Gate",

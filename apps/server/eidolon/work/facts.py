@@ -86,6 +86,8 @@ TASK_TRANSITIONS: dict[str, frozenset[str]] = {
 }
 REVIEW_VERDICTS = ("pass", "rework", "escalate")
 DISPOSITIONS = ("reopen", "reassign", "cancel", "split")  # R7-d: what to do with a failure
+# R7-e: what kind of work a task is; each kind has its own prompt and way of being judged
+TASK_KINDS = ("build", "document", "design", "research")
 TRIAGE_STANDS_FOR = {
     "task.assign": frozenset({"reopen", "reassign"}),
     "task.cancel": frozenset({"cancel", "split"}),
@@ -278,6 +280,8 @@ def task_created(
 ) -> NewFact:
     if not title.strip():
         raise WorkError("a task needs a title")
+    if kind not in TASK_KINDS:
+        raise WorkError(f"task kind must be one of {TASK_KINDS}, got {kind!r}")
     if task_id in depends_on or task_id in inputs:
         raise WorkError("a task cannot depend on itself")
     if len(set(depends_on)) != len(depends_on):
