@@ -48,7 +48,10 @@
     "spend": "累计花费",
     "proposeMission": "提出使命",
     "institution": "制度",
-    "changes": "{{count}} 次定制"
+    "changes": "{{count}} 次定制",
+    "today": "今天需要你的 {{count}} 件事",
+    "todayNone": "今天没有需要你的事。",
+    "todayHint": "每件都带着公司的建议。你只判断，不用研究。"
   },
   "decision": {
     "gate": "闸门",
@@ -110,7 +113,11 @@
     "costs": "费用",
     "management": "管理运行",
     "criteria": "验收标准",
-    "description_": "描述"
+    "description_": "描述",
+    "report": "报告",
+    "reportHint": "到目前为止的故事，由事实折叠而成。点事实 id 可追溯。",
+    "reportFacts": "{{count}} 条事实",
+    "reportEmpty": "还没有可讲的。"
   },
   "employees": {
     "title": "员工",

@@ -48,7 +48,10 @@
     "spend": "Spend so far",
     "proposeMission": "Propose a mission",
     "institution": "Institution",
-    "changes": "{{count}} customizations"
+    "changes": "{{count}} customizations",
+    "today": "Today needs you on {{count}} things",
+    "todayNone": "Nothing needs you today.",
+    "todayHint": "Each comes with the company's recommendation. Judge; do not research."
   },
   "decision": {
     "gate": "Gate",
@@ -110,7 +113,11 @@
     "costs": "Costs",
     "management": "Management runs",
     "criteria": "Acceptance criteria",
-    "description_": "Description"
+    "description_": "Description",
+    "report": "Report",
+    "reportHint": "The story so far, folded from the facts. Click a fact id to trace it.",
+    "reportFacts": "{{count}} facts",
+    "reportEmpty": "Nothing to tell yet."
   },
   "employees": {
     "title": "Employees",

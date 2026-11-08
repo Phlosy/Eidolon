@@ -22,6 +22,7 @@ export const keys = {
   costTrace: (ref: string) => ["cost-trace", ref] as const,
   trace: (id: string) => ["trace", id] as const,
   decisions: (id: string) => ["decisions", id] as const,
+  report: (kind: string, id: string, lang: string) => ["report", kind, id, lang] as const,
 };
 
 export const useCompanyQuery = (id: string) =>
@@ -56,6 +57,13 @@ export const useLedger = (id: string) =>
   useQuery({ queryKey: keys.ledger(id), queryFn: () => ledger.balances(id) });
 export const useLedgerVerify = (id: string) =>
   useQuery({ queryKey: keys.ledgerVerify(id), queryFn: () => ledger.verify(id) });
+export const useProjectReport = (id: string, lang: string, enabled = true) =>
+  useQuery({
+    queryKey: keys.report("project", id, lang),
+    queryFn: () => work.report(id, lang),
+    enabled,
+    refetchInterval: 15_000,
+  });
 export const useProjectCosts = (id: string) =>
   useQuery({ queryKey: keys.projectCosts(id), queryFn: () => ledger.projectCosts(id) });
 export const useCostTrace = (ref: string | null) =>

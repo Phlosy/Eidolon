@@ -80,7 +80,33 @@ vi.mock("../../api", () => ({
   work: {
     project: vi.fn(() => Promise.resolve(project)),
     deliver: (...a: unknown[]) => deliver(...a),
+    report: vi.fn(() =>
+      Promise.resolve({
+        kind: "project",
+        id: "p1",
+        company_id: "c1",
+        title: "Notes CLI",
+        status: "active",
+        lang: "en",
+        as_of_fact_id: "f9",
+        sections: [
+          {
+            key: "done",
+            title: "What was done",
+            lines: [
+              {
+                text: "Task “Storage module” done by eng-1, review passed by qa-1",
+                facts: ["f1234567-0000-0000-0000-000000000000"],
+                link: { kind: "task", id: "t1" },
+              },
+            ],
+          },
+        ],
+        needs_you: [],
+      }),
+    ),
   },
+  provenance: { trace: vi.fn(() => Promise.resolve({ fact: {}, edges: [], facts: [] })) },
   ledger: {
     projectCosts: vi.fn(() =>
       Promise.resolve({
@@ -115,5 +141,17 @@ describe("ProjectPage", () => {
     fireEvent.change(screen.getByLabelText("Note (optional)"), { target: { value: "ship it" } });
     fireEvent.click(screen.getByRole("button", { name: "Accept delivery" }));
     await waitFor(() => expect(deliver).toHaveBeenCalledWith("p1", "ship it"));
+  });
+
+  it("tells the story on the report tab, each line with its facts", async () => {
+    renderPage(<ProjectPage />, { path: "/projects/:id", route: "/projects/p1" });
+    await screen.findByRole("heading", { name: "Notes CLI" });
+    fireEvent.click(screen.getByRole("tab", { name: "Report" }));
+    expect(
+      await screen.findByText("Task “Storage module” done by eng-1, review passed by qa-1"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("What was done")).toBeInTheDocument();
+    expect(screen.getByText(/1 facts/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /trace f1234567/ })).toBeInTheDocument();
   });
 });

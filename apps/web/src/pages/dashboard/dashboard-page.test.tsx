@@ -116,7 +116,7 @@ describe("DashboardPage", () => {
   it("shows what waits for the owner, the missions and the spend", async () => {
     renderPage(<DashboardPage />);
     expect(await screen.findByRole("heading", { name: "Tiny Studio" })).toBeInTheDocument();
-    expect(await screen.findByText("project.deliver")).toBeInTheDocument();
+    expect((await screen.findAllByText("project.deliver")).length).toBe(2); // summary + card
     // the brief comes first, in plain words; the bound action folds under Details
     expect(
       screen.getByText("The notes CLI does what was asked and its tests pass; accept it."),
@@ -124,6 +124,8 @@ describe("DashboardPage", () => {
     expect(screen.getByText("pm-1 (pm) recommends")).toBeInTheDocument();
     expect(screen.getByText("No manual run of the delete command")).toBeInTheDocument();
     expect(screen.getByText("Details")).toBeInTheDocument();
+    // R7-b: the day's summary counts what waits and repeats each brief in one line
+    expect(screen.getByText("Today needs you on 1 things")).toBeInTheDocument();
     expect(screen.getByText("Notes CLI")).toBeInTheDocument();
     expect(await screen.findByText("1.50 CNY")).toBeInTheDocument();
     expect(screen.getByText("software-studio-v1 v2")).toBeInTheDocument();

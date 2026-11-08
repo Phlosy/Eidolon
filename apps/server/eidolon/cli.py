@@ -331,6 +331,38 @@ def cmd_project_costs(args, registry, factory, out) -> int:
     return EXIT_OK
 
 
+def cmd_report(args, registry, factory, out) -> int:
+    """R7-b: a project's or mission's story from its facts; --polish adds one model call."""
+    import asyncio
+
+    from eidolon.api.narrative import mission_report, polish, project_report
+
+    with factory() as db:
+        if args.project is not None:
+            report = project_report(db, args.project, lang=args.lang)
+        else:
+            report = mission_report(db, args.mission, lang=args.lang)
+    if args.json:
+        print(json.dumps(report.as_dict(), ensure_ascii=False, indent=2), file=out)
+        return EXIT_OK
+    print(report.to_text(), file=out, end="")
+    if args.facts:
+        for s in report.sections:
+            for ln in s.lines:
+                if ln.facts:
+                    print(
+                        f"  [{s.key}] {ln.text[:60]!r} <- {', '.join(map(str, ln.facts))}", file=out
+                    )
+    if args.polish:
+        from eidolon.agent.providers import build_provider, default_model
+
+        provider = build_provider(settings, session_factory=factory)
+        text = asyncio.run(polish(report, provider, model=default_model(settings)))
+        print("\n## polished (model, not source of truth)", file=out)
+        print(text or "(the model returned no text)", file=out)
+    return EXIT_OK
+
+
 def cmd_restore_check(args, registry, factory, out) -> int:
     """After restoring a backup: the chain verifies, the ledger verifies, and every
     projection rebuilt from the facts is what the dump contained (row counts)."""
@@ -671,6 +703,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--project", type=UUID, required=True)
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_project_costs)
+
+    p = sub.add_parser("report", help="a project's or mission's story, folded from its facts")
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--project", type=UUID)
+    g.add_argument("--mission", type=UUID)
+    p.add_argument("--lang", choices=("zh", "en"), default="zh")
+    p.add_argument("--json", action="store_true")
+    p.add_argument("--facts", action="store_true", help="list the fact ids behind each line")
+    p.add_argument("--polish", action="store_true", help="add a model rewrite (one call, booked)")
+    p.set_defaults(fn=cmd_report)
 
     sub.add_parser(
         "restore-check",

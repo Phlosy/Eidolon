@@ -21,6 +21,7 @@ from eidolon.agent.blobs import BlobStore
 from eidolon.agent.managers import parse_json
 from eidolon.agent.providers import fixture_dir
 from eidolon.agent.providers.accounting import KIND as MODEL_CALLED
+from eidolon.api.narrative import SECTIONS, mission_report, project_report
 from eidolon.config import settings
 from eidolon.db import SessionLocal
 from eidolon.institution import BRIEF_SUMMARY_MAX, SIGNED, load
@@ -198,6 +199,27 @@ def test_three_roles_deliver_a_project_from_replayed_fixtures(db, tmp_path):
     assert store.verify_chain(db, company).ok
     bundle = provenance.bundle(db, company, correlation_id=pid)
     assert bundle["facts"] and bundle["facts"][0]["kind"] == F.PROJECT_CREATED
+    # R7-b: the whole story, in plain words, every line pointing at facts of this company
+    report = project_report(db, pid, lang="zh")
+    story = report.to_text()
+    assert [s.key for s in report.sections] == list(SECTIONS) and report.status == "delivered"
+    assert f"提出使命《{MISSION_TITLE}》" in story and "ceo-1 接受了使命" in story
+    assert all(
+        f"任务《{t.title}》由 {t.assignee} 完成，qa-1 评审通过" in story
+        for t in state.tasks.values()
+    )
+    assert "project.deliver：已批准" in story and "pm-1 建议批准：" in story
+    assert "到目前花了 " in story and "占预算 200.00 CNY 的 " in story
+    assert "项目交付，owner-" in story and "没有了" in story and not report.needs_you
+    bundle_ids = {f["id"] for f in bundle["facts"]}
+    assert report.fact_ids() and all(
+        str(i) in bundle_ids or store.get(db, i).company_id == company for i in report.fact_ids()
+    )
+    assert "What it cost" in project_report(db, pid, lang="en").to_text()
+    mission_story = mission_report(db, mission_id, lang="zh").to_text()
+    assert (
+        "mission.accept：已批准" in mission_story and f"{state.title} · 做了什么" in mission_story
+    )
     # Another cycle does nothing.
     assert (
         drive_company(SessionLocal, db, mission_id, jobs, max_cycles=1)[-1]["project"]

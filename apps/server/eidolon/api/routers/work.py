@@ -20,6 +20,7 @@ from eidolon.api.commands import (
     person_in,
 )
 from eidolon.api.deps import CurrentUser, current_user, get_db, member_of, memberships
+from eidolon.api.narrative import LANGS, mission_report, project_report
 from eidolon.api.routers.manage import guard
 from eidolon.identity import EmploymentRow
 from eidolon.money.projection import project_spend_micro, task_spend_micro
@@ -167,6 +168,42 @@ def project(
     out["artifacts"] = [_artifact(a) for a in artifacts]
     out["spend_micro"] = project_spend_micro(db, project_id)
     return out
+
+
+@router.get("/projects/{project_id}/report")
+def project_report_route(
+    project_id: UUID,
+    lang: str = "zh",
+    db: Session = Depends(get_db),
+    me: CurrentUser = Depends(current_user),
+):
+    """R7-b: the project's story, folded from its facts, every line with its fact ids."""
+    row = db.get(ProjectRow, project_id)
+    if row is None:
+        raise HTTPException(404, "no such project")
+    _readable(db, me, row.company_id)
+    return project_report(db, project_id, lang=_lang(lang)).as_dict()
+
+
+@router.get("/missions/{mission_id}/report")
+def mission_report_route(
+    mission_id: UUID,
+    lang: str = "zh",
+    db: Session = Depends(get_db),
+    me: CurrentUser = Depends(current_user),
+):
+    row = db.get(MissionRow, mission_id)
+    if row is None:
+        raise HTTPException(404, "no such mission")
+    _readable(db, me, row.company_id)
+    return mission_report(db, mission_id, lang=_lang(lang)).as_dict()
+
+
+def _lang(lang: str) -> str:
+    short = (lang or "zh").split("-")[0].lower()
+    if short not in LANGS:
+        raise HTTPException(422, f"lang must be one of {LANGS}")
+    return short
 
 
 @router.get("/tasks/{task_id}")

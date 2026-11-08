@@ -4,22 +4,31 @@ import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router-dom";
 import { work as workApi } from "../../api";
 import type { Task } from "../../api/types";
+import { ReportView } from "../../components/app/report-view";
 import { ErrorNote, IdChip, KeyValue, Section, StatusBadge } from "../../components/app/widgets";
 import { Button } from "../../components/common/button";
 import { Input } from "../../components/common/input";
 import { ErrorState, PageHeader } from "../../components/common/states";
 import { Skeleton } from "../../components/common/skeleton";
 import { useCurrentCompany } from "../../features/company/company-context";
-import { useCommand, useCompanyQuery, useProject, useProjectCosts } from "../../hooks/queries";
+import {
+  useCommand,
+  useCompanyQuery,
+  useProject,
+  useProjectCosts,
+  useProjectReport,
+} from "../../hooks/queries";
 import { formatBytes, formatDateTime, formatMicro, formatUnits } from "../../utils/format";
 
 export function ProjectPage() {
-  const { t } = useTranslation("app");
+  const { t, i18n } = useTranslation("app");
   const { id = "" } = useParams();
   const me = useCurrentCompany();
   const company = useCompanyQuery(me.company_id);
   const project = useProject(id);
   const costs = useProjectCosts(id);
+  const [tab, setTab] = useState<"tasks" | "report">("tasks");
+  const report = useProjectReport(id, i18n.language, tab === "report");
   const [note, setNote] = useState("");
   const deliver = useCommand(() => workApi.deliver(id, note || null));
   if (project.isLoading) return <Skeleton className="h-64 w-full" />;
@@ -58,13 +67,43 @@ export function ProjectPage() {
         </section>
       ) : null}
       <div className="grid gap-6 xl:grid-cols-[3fr_2fr]">
-        <Section title={`${t("projects.tasks")} (${p.tasks.length})`}>
-          <ol className="space-y-3">
-            {p.tasks.map((task) => (
-              <TaskCard key={task.task_id} task={task} titles={titles} />
+        <div>
+          <div role="tablist" className="mb-3 flex gap-2">
+            {(["tasks", "report"] as const).map((key) => (
+              <Button
+                key={key}
+                role="tab"
+                aria-selected={tab === key}
+                size="sm"
+                variant={tab === key ? "default" : "outline"}
+                onClick={() => setTab(key)}
+              >
+                {key === "tasks"
+                  ? `${t("projects.tasks")} (${p.tasks.length})`
+                  : t("projects.report")}
+              </Button>
             ))}
-          </ol>
-        </Section>
+          </div>
+          {tab === "tasks" ? (
+            <Section title={`${t("projects.tasks")} (${p.tasks.length})`}>
+              <ol className="space-y-3">
+                {p.tasks.map((task) => (
+                  <TaskCard key={task.task_id} task={task} titles={titles} />
+                ))}
+              </ol>
+            </Section>
+          ) : (
+            <Section title={t("projects.report")}>
+              {report.data ? (
+                <ReportView report={report.data} />
+              ) : report.error ? (
+                <ErrorState error={report.error} onRetry={() => void report.refetch()} />
+              ) : (
+                <Skeleton className="h-40 w-full" />
+              )}
+            </Section>
+          )}
+        </div>
         <div className="space-y-6">
           <Section title={`${t("projects.artifacts")} (${p.artifacts.length})`}>
             <ul className="space-y-2 text-xs">

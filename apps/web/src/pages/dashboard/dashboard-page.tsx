@@ -66,6 +66,27 @@ export function DashboardPage() {
       </div>
       <div className="mt-6 grid gap-6 xl:grid-cols-[3fr_2fr]">
         <Section title={t("dashboard.decisions")}>
+          {decisions.data?.length ? (
+            <div className="command-panel mb-4 p-4" data-testid="today">
+              <p className="text-sm font-semibold">
+                {t("dashboard.today", { count: decisions.data.length })}
+              </p>
+              <p className="text-xs text-muted-foreground">{t("dashboard.todayHint")}</p>
+              <ul className="mt-2 space-y-1 text-sm">
+                {decisions.data.map((d) => (
+                  <li key={d.decision_id} className="flex flex-wrap gap-2">
+                    <span className="font-mono text-xs text-muted-foreground">{d.gate}</span>
+                    <span>
+                      {d.brief?.summary ?? t("decision.briefNone")}
+                      {d.brief
+                        ? ` (${t(`decision.recommend.${d.brief.recommendation}`, d.brief.recommendation)})`
+                        : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           {decisions.isLoading ? <Skeleton className="h-24 w-full" /> : null}
           {decisions.error ? (
             <ErrorState error={decisions.error} onRetry={() => void decisions.refetch()} />

@@ -176,6 +176,36 @@ export interface Artifact {
   created_at: string;
 }
 
+/** R7-b: a story folded from the facts; every line names the facts behind it. */
+export interface ReportLine {
+  text: string;
+  facts: string[];
+  link: { kind: string; id: string } | null;
+}
+export interface ReportSection {
+  key: string;
+  title: string;
+  lines: ReportLine[];
+}
+export interface Report {
+  kind: "project" | "mission";
+  id: string;
+  company_id: string;
+  title: string;
+  status: string;
+  lang: string;
+  as_of_fact_id: string | null;
+  sections: ReportSection[];
+  needs_you: Array<{
+    decision_id: string;
+    gate: string;
+    requested_at: string | null;
+    recommendation: string | null;
+    summary: string | null;
+    advisor: string | null;
+  }>;
+}
+
 export interface ProjectDetail extends Project {
   tasks: Task[];
   artifacts: Artifact[];

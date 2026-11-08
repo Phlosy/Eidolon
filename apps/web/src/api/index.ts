@@ -14,8 +14,9 @@ import type {
   PersonProfile,
   Project,
   ProjectCosts,
-  ProviderCredential,
   ProjectDetail,
+  ProviderCredential,
+  Report,
   RunDetail,
   RunSummary,
   SessionInfo,
@@ -113,6 +114,10 @@ export const work = {
   ) => post<{ mission_id: string; fact_id: string }>(`/companies/${companyId}/missions`, body, key),
   deliver: (projectId: string, reason: string | null) =>
     post<Decision>(`/projects/${projectId}/deliver`, { reason }),
+  report: (projectId: string, lang: string) =>
+    get<Report>(`/projects/${projectId}/report?lang=${encodeURIComponent(lang)}`),
+  missionReport: (missionId: string, lang: string) =>
+    get<Report>(`/missions/${missionId}/report?lang=${encodeURIComponent(lang)}`),
 };
 
 // -- runs ----------------------------------------------------------------------------
