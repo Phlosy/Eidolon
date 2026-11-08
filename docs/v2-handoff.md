@@ -1,6 +1,6 @@
 # Eidolon v2 交接文档（终端会话入口）
 
-> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1–R4 完成（R2-e GO；R4 = 身份 + 钱 + 费用溯源），R5 已拆成 R5-a..e（见 §8），R5 全部完成（旧应用已删除，cutover 到 v2），R6 已拆成 R6-a..e（见 §8），R1–R6 完成（v2 上线范围）。用户 2026-11-07 裁决：产品的另一半是**决策者体验**——系统自主协同，关键决策带公司意见来问人，用户只判断不思考。R7 已拆成 R7-a..e（见 §8），**R7 全部完成**（R7-a 带建议的决策信封、R7-b 叙事报告、R7-c 管理 agent 有手有眼、R7-d 失败处置提案、R7-e 文档/设计任务与决策节奏）。§8 已无 TODO：下一步需要用户裁决新的阶段（候选见 §8 R7 行之后的"已知缺口"与 v2-architecture §7 上线门槛复查）。
+> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1–R4 完成（R2-e GO；R4 = 身份 + 钱 + 费用溯源），R5 已拆成 R5-a..e（见 §8），R5 全部完成（旧应用已删除，cutover 到 v2），R6 已拆成 R6-a..e（见 §8），R1–R6 完成（v2 上线范围）。用户 2026-11-07 裁决：产品的另一半是**决策者体验**——系统自主协同，关键决策带公司意见来问人，用户只判断不思考。R7 已拆成 R7-a..e（见 §8），**R7 全部完成**（R7-a 带建议的决策信封、R7-b 叙事报告、R7-c 管理 agent 有手有眼、R7-d 失败处置提案、R7-e 文档/设计任务与决策节奏）。用户 2026-11-08 裁决开 **R8 场景验收**（拆为 R8-a 文档+代码使命的真实场景、R8-b 场景暴露的缺口），下一个包是 **R8-a**。
 > 这是新会话的**唯一入口**：先读本文，再按 §1 的顺序读其余文档。
 > 文档体系：本文（入口与状态）→ `kernel-plan.md`（本质、纪律、Progress）→ `v2-architecture.md`（设计、路线、ADR）。
 
@@ -16,7 +16,7 @@ make test-v2                               # v2 内核测试：期望 205 passed
 make lint                                  # ruff + tsc + eslint + prettier
 ```
 
-然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前 §8 没有 TODO——先问用户下一阶段），按 §5 的流程做。
+然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R8-a**），按 §5 的流程做。
 
 ---
 
@@ -204,7 +204,7 @@ R3 拆包见 `kernel-plan.md` §8（R3-a..e）；R4–R6 见 `v2-architecture.md
 - make lint 全绿
 - 不必每次跑旧应用全量（
 工作方式：
-- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前 §8 没有 TODO，先问用户），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
+- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R8-a），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
 - 每个包完成的定义：代码 + 测试（真实 PostgreSQL）+ make test-v2 与 make lint 全绿 + kernel-plan.md §8 对应行改为 DONE 并填提交号 + 若有新裁决则在 v2-architecture.md §11 追加 ADR。
 - 遵守 docs/v2-handoff.md §6 的七条规则：v2 不 import 旧 app；持久状态只有 Fact、投影与 API 层的秘密；系统不做管理判断；mock 只在单测；密钥不进提交；不写新的阶段设计文档。
 - 包粒度：一个会话做完一个包；做不完就拆成更小的包并在 Progress 登记，不要留"第 N 段"。
