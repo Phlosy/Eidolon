@@ -94,7 +94,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `dbfa107` | **R6-d**：`0008_secrets`（provider_credentials / auth_passkeys / auth_webauthn_challenges）、`RoutedProvider` 按公司路由、Passkey 路由与前端、登录限流、设置页 Provider 分区。v2-ADR-29 |
 | `37cb18e` | **R6-e**：`agent/retention.py` 按制度清 transcript、`scripts/backup.sh` / `scripts/restore-check.sh`、CLI `restore-check`（链 + 账 + 投影重建自证）；真实备份→恢复→自证实测通过。v2-ADR-30。**R6 完成** |
 | `44423f2` | **R7-a**：`institution.decision.advised` + `DecisionState.brief` + `GateRule.advisor`；`agent/briefing.py`（`Advisor` / `DeliveryProposer`）；API 决定带 brief；前端决定卡先显示建议；契约 B1。公司场景改为 PM 提出交付、Owner 判断。v2-ADR-31 |
-| `R7B_HASH` | **R7-b**：`api/narrative.py` 项目/使命叙事报告（六段、每行挂事实 id、zh/en、确定性、不落库；`polish` 可选润色）；API `GET /projects/{id}/report`、`GET /missions/{id}/report`；CLI `report`；前端项目页报告 tab、总览"今天需要你的 N 件事"。v2-ADR-32 |
+| `663ff32` | **R7-b**：`api/narrative.py` 项目/使命叙事报告（六段、每行挂事实 id、zh/en、确定性、不落库；`polish` 可选润色）；API `GET /projects/{id}/report`、`GET /missions/{id}/report`；CLI `report`；前端项目页报告 tab、总览"今天需要你的 N 件事"。v2-ADR-32 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
