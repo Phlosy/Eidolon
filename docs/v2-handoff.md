@@ -96,7 +96,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `44423f2` | **R7-a**：`institution.decision.advised` + `DecisionState.brief` + `GateRule.advisor`；`agent/briefing.py`（`Advisor` / `DeliveryProposer`）；API 决定带 brief；前端决定卡先显示建议；契约 B1。公司场景改为 PM 提出交付、Owner 判断。v2-ADR-31 |
 | `663ff32` | **R7-b**：`api/narrative.py` 项目/使命叙事报告（六段、每行挂事实 id、zh/en、确定性、不落库；`polish` 可选润色）；API `GET /projects/{id}/report`、`GET /missions/{id}/report`；CLI `report`；前端项目页报告 tab、总览"今天需要你的 N 件事"。v2-ADR-32 |
 | `b2cf6e5` | **R7-c**：`agent/project_tools.py` 只读项目工具（status / artifacts / list_dir / read_file / run_tests），`Deciders.ask(project_id, template)` 多步 run + 角色闸门 + run_default 预算；管理角色获 `workspace.read`；公司场景重录（管理者真的在看产物、跑测试）。v2-ADR-33 |
-| `R7D_HASH` | **R7-d**：内核闸门 `task.triage`（三套制度各有规则）；`work/triage.py` 处置校验与施行（reopen / reassign / cancel / split）；`agent/triage.py` TL 提议 + PM 批准 + 系统施行，否决两次后等人；API apply 分支；报告 stuck 段写出建议。v2-ADR-34 |
+| `92bad33` | **R7-d**：内核闸门 `task.triage`（三套制度各有规则）；`work/triage.py` 处置校验与施行（reopen / reassign / cancel / split）；`agent/triage.py` TL 提议 + PM 批准 + 系统施行，否决两次后等人；API apply 分支；报告 stuck 段写出建议。v2-ADR-34 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
