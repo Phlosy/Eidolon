@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from company_support import (
+    DOCS,
     MISSION_TITLE,
     company_project_id,
     drive_company,
@@ -251,6 +252,10 @@ def test_fixture_prompts_for_managers_carry_no_ids():
         if first.startswith(("Mission: ", "Project: ", "Task: ")):
             head = first.splitlines()[0]
             assert (
-                "-" not in head.replace(MISSION_TITLE, "").replace("Tiny notes", "")
+                "-"
+                not in head.replace(DOCS.title, "")
+                .replace(MISSION_TITLE, "")
+                .replace("Tiny notes", "")
+                .replace("non-programmers", "")
                 or "Task:" in head
             ), head

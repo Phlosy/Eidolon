@@ -1,0 +1,238 @@
+{
+  "events": [
+    {
+      "text": "I",
+      "type": "text"
+    },
+    {
+      "text": "'ll",
+      "type": "text"
+    },
+    {
+      "text": " start",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " reading",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " actual",
+      "type": "text"
+    },
+    {
+      "text": " source",
+      "type": "text"
+    },
+    {
+      "text": " files",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " make",
+      "type": "text"
+    },
+    {
+      "text": " sure",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " READ",
+      "type": "text"
+    },
+    {
+      "text": "ME",
+      "type": "text"
+    },
+    {
+      "text": " matches",
+      "type": "text"
+    },
+    {
+      "text": " real",
+      "type": "text"
+    },
+    {
+      "text": " behavior",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {
+        "depth": 3,
+        "path": "."
+      },
+      "id": "call_00_ET_i5D90AlhxJ0RBvEdDYZ71213",
+      "name": "list_dir",
+      "type": "tool_call"
+    },
+    {
+      "arguments": {
+        "path": "cli.py"
+      },
+      "id": "call_01_ET_8OVs2bAjuRF0SrIOQUvL1830",
+      "name": "read_file",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 1237,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "2db0b1dd-9288-4e41-936d-ffdcf2c4d185",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "input_tokens": 2110,
+        "output_tokens": 100
+      }
+    }
+  ],
+  "fingerprint": "6dd8efc9cd3406cb28494a3cfa3f4f5400606b9c16cf0b5e7df1e92294bccb7d",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:26:02+00:00",
+  "replay_key": "6dd8efc9cd3406cb28494a3cfa3f4f5400606b9c16cf0b5e7df1e92294bccb7d",
+  "request": {
+    "max_tokens": 8192,
+    "messages": [
+      {
+        "content": "Task: Write end-user README.md guide\n\nWrite README.md for non-programmers explaining installation, setup, and each command: add, list and delete. Include a realistic example session using the exact CLI command names and matching the real output format from cli.py. Mention that notes are stored in notes.json in the working directory and that no third-party packages are required.\n\nAcceptance criteria:\n- README.md explains installation and how to run the CLI\n- README.md documents add, list and delete commands with examples\n- README.md includes an example session whose commands and output match the CLI behavior\n- README.md is written for end users with minimal programming jargon\n- README.md states that notes are stored in notes.json in the working directory\n\nInputs from earlier tasks:\n--- cli.py (from task 'Add argparse CLI with integration tests') ---\n\"\"\"Command line interface for the JSON-backed notes store.\n\nUsage\n-----\n    python cli.py add \"buy milk\"\n    python cli.py list\n    python cli.py delete 1\n\nSubcommands\n-----------\nadd TEXT...    append a note (multiple words are joined with single spaces)\nlist           print every note, numbered from 1\ndelete N       delete the note with the 1-based number N\n\nNotes are stored in ``notes.json`` in the current working directory; pass\n``--file PATH`` before the subcommand to use a different file.  Only the Python\nstandard library is used.\n\nExit status: ``0`` on success, ``1`` for notes-level errors (empty note,\nmalformed store, bad note number), ``2`` for argparse usage errors.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport argparse\nimport sys\n\nimport notes\n\n__all__ = [\"build_parser\", \"main\", \"format_note_line\", \"PROG\"]\n\nPROG = \"cli.py\"\n\n\ndef format_note_line(index, note):\n    \"\"\"Return the stable display form of a single numbered note.\"\"\"\n    return f\"{index}. {note}\"\n\n\ndef build_parser():\n    \"\"\"Build and return the argparse parser for the CLI.\"\"\"\n    parser = argparse.ArgumentParser(\n        prog=PROG,\n        description=\"Manage a simple JSON-backed list of notes.\",\n    )\n    parser.add_argument(\n        \"--file\",\n        \"-f\",\n        default=None,\n        metavar=\"PATH\",\n        help=\"notes file to use (default: notes.json in the current directory)\",\n    )\n\n    subparsers = parser.add_subparsers(dest=\"command\")\n    subparsers.required = True\n\n    add_parser = subparsers.add_parser(\"add\", help=\"add a note\")\n    add_parser.add_argument(\n        \"text\",\n        nargs=\"+\",\n        metavar=\"TEXT\",\n        help=\"note text (multiple words are joined with single spaces)\",\n    )\n\n    subparsers.add_parser(\"list\", help=\"list all notes, numbered from 1\")\n\n    delete_parser = subparsers.add_parser(\"delete\", help=\"delete a note by number\")\n    delete_parser.add_argument(\n        \"number\",\n        type=int,\n        metavar=\"N\",\n        help=\"1-based number of the note to del\n--- tests/test_cli.py (from task 'Add argparse CLI with integration tests') ---\n\"\"\"End-to-end tests for ``cli.py``.\n\nEvery test drives the CLI the way a user does: a real ``subprocess`` invocation\nof ``python cli.py ...`` inside a temporary working directory, then assertions\non stdout / stderr / exit status and on the resulting ``notes.json``.\n\nNote on isolation: the program files (``cli.py`` and ``notes.py``) are copied\ninto the temporary directory first and executed from there with a relative\nscript path.  That keeps each test hermetic -- the CLI only ever resolves\n``notes.json`` against its own (temporary) working directory -- and it also\nworks in sandboxes where the checkout itself is not addressable by absolute\npath from a child process.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport argparse\nimport ast\nimport json\nimport os\nimport shutil\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nimport pytest\n\nREPO_CANDIDATES = [\n    Path(__file__).resolve().parents[1],  # tests/ -> repository root\n    Path.cwd(),\n    Path(\".\"),\n    Path(\"..\"),\n]\n\nPROGRAM_FILES = (\"cli.py\", \"notes.py\")\n\n\ndef _find_repo_root() -> Path:\n    \"\"\"Return the directory holding ``cli.py`` and ``notes.py``.\"\"\"\n    for candidate in REPO_CANDIDATES:\n        try:\n            if all((candidate / name).is_file() for name in PROGRAM_FILES):\n                return candidate\n        except OSError:  # pragma: no cover - defensive\n            continue\n    raise RuntimeError(f\"could not locate {PROGRAM_FILES} in {REPO_CANDIDATES}\")\n\n\ndef _install_program(dest: Path) -> None:\n    \"\"\"Copy the CLI and its module into ``dest`` so it can be run there.\"\"\"\n    root = _find_repo_root()\n    for name in PROGRAM_FILES:\n        try:\n            shutil.copyfile(root / name, dest / name)\n        except OSError:  # pragma: no cover - fall back to cwd-relative source\n            (dest / name).write_text(Path(name).read_text(encoding=\"utf-8\"), encoding=\"utf-8\")\n\n\n@pytest.fixture()\ndef workdir(tmp_path):\n    \"\"\"A temporary working directory containing a runnable copy of the CLI.\"\"\"\n    _install\n\nThe workspace is yours. When the work is done, reply with a short summary of the files you created or changed.",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are a technical writer employed by a small software studio. Your deliverable is a Markdown document in the workspace (write_file; name it as the task says, else README.md or docs/<topic>.md). Read any input files first (read_file, list_dir) so the document describes what actually exists. Write for the reader named in the task: clear headings, short paragraphs, concrete examples, no filler. Do not write code beyond illustrative snippets and do not run tests. Finish when the document covers every acceptance criterion.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

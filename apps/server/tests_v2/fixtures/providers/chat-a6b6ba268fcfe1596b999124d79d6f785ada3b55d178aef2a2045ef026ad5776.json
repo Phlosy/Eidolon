@@ -1,0 +1,443 @@
+{
+  "events": [
+    {
+      "arguments": {
+        "command": "mkdir -p /tmp/probe2 && cat > /tmp/probe2/test_p2.py <<'EOF'\nimport os, subprocess, sys\nfrom pathlib import Path\n\ndef test_probe(tmp_path):\n    here = Path(__file__).resolve()\n    print(\"\\n__file__:\", here)\n    print(\"cwd:\", os.getcwd(), \"realpath:\", os.path.realpath(\".\"))\n    print(\"parents[1]:\", here.parents[1], here.parents[1].exists())\n    try:\n        print(\"read:\", here.parents[1].joinpath(\"notes.py\").read_text()[:20])\n    except Exception as e:\n        print(\"read fail:\", e)\n    r = subprocess.run([sys.executable, \"-c\", \"import os;print(os.getcwd(), os.listdir('.'))\"], cwd=tmp_path, capture_output=True, text=True)\n    print(\"sub:\", r.returncode, r.stdout, r.stderr)\nEOF\npython -m pytest /tmp/probe2/test_p2.py -q -s 2>&1 | head -20"
+      },
+      "id": "call_00_kgvdGsVj20c6NFjyYMSl8635",
+      "name": "shell",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "So the reported cwd string \"/workspace\" is fictitious; actual cwd is some real directory (likely /Users/ponk/... something). `os.getcwd()` returns \"/workspace\" but stat fails — so it's a chroot-like virtualization where cwd is remapped.\n\nSolution for tests: use `Path.cwd()` at test time? That returns \"/workspace\" which isn't accessible from a subprocess with a different cwd. Hmm.\n\nOptions:\n1. Copy cli.py and notes.py into tmp_path and run `python cli.py ...` with cwd=tmp_path. Then absolute paths resolve within the real fs (tmp_path is real). This works robustly in this sandbox and in normal environments. Downside: tests run copies rather than repo files. But we copy from `Path(__file__).resolve().parents[1]` — reading those files works from the pytest process (cwd-based relative access works? `Path.cwd()` = \"/workspace\" fictional... reading \"/workspace/cli.py\" from within the pytest process may also fail!).\n\nLet's test: in pytest, does `Path(__file__).resolve().parents[1]` give a working path? Earlier probe: repo.exists() printed inside test — output showed \"repo exists: ...\" but truncated in tail. Let me re-probe printing that. Actually print output was captured... the -s should show. It showed only traceback lines. Let me run a probe checking os.getcwd / __file__ resolution and reading notes.py.\n\n2. Alternative: run CLI subprocess with cwd=tmp_path but pass `-c` code that inserts repo dir into sys.path — needs repo path accessible.\n\n3. Alternative: use `os.getcwd()`-relative approach: run subprocess with cwd=tmp_path but the script given as relative? no.\n\nLet me probe what paths work inside the pytest process."
+      },
+      "attempts": 1,
+      "latency_ms": 4496,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "74887464-881f-4bfb-b641-43d1674e2f67",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 10112,
+        "cache_write_tokens": 0,
+        "input_tokens": 11059,
+        "output_tokens": 677
+      }
+    }
+  ],
+  "fingerprint": "99aef2a2b8a799d0d4cfa329d18f6028891e5e91cf509f9fc60cbc0bef1e577f",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:23:47+00:00",
+  "replay_key": "a6b6ba268fcfe1596b999124d79d6f785ada3b55d178aef2a2045ef026ad5776",
+  "request": {
+    "max_tokens": 8192,
+    "messages": [
+      {
+        "content": "Task: Add argparse CLI with integration tests\n\nCreate cli.py that wraps the notes module with argparse subcommands named add, list and delete. add should accept the note text, list should print numbered notes, and delete should accept a 1-based note number. Add tests/test_cli.py that runs the CLI via subprocess in a temporary working directory and verifies add, list and delete end to end, including JSON persistence and user-facing output.\n\nAcceptance criteria:\n- cli.py provides argparse subcommands exactly named add, list and delete\n- python cli.py add \"...\" creates a note in notes.json\n- python cli.py list prints numbered notes in a stable format\n- python cli.py delete N removes the correct 1-based note number\n- pytest tests cover all three CLI operations and pass\n- CLI uses only the Python standard library\n\nInputs from earlier tasks:\n--- notes.py (from task 'Implement JSON-backed notes module with pytest tests') ---\n\"\"\"Simple JSON-backed notes store.\n\nNotes live in ``notes.json`` in the current working directory.  The file holds a\nJSON list of strings, e.g. ``[\"buy milk\", \"call bob\"]``; a missing file simply\nmeans \"no notes yet\".\n\nPublic API\n----------\nadd(text)      -> int          add a note, return its 1-based number\nlist()         -> list[str]    return all notes, oldest first\ndelete(number) -> str          delete a note by 1-based number, return it\n\nEvery function accepts an optional ``path`` argument, which defaults to\n``notes.json`` resolved against the *current* working directory at call time.\nOnly the Python standard library is used.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport builtins\nimport json\nimport os\nimport tempfile\nfrom pathlib import Path\n\n__all__ = [\"add\", \"list\", \"delete\", \"NOTES_FILENAME\"]\n\n#: Name of the JSON file used when no explicit path is given.\nNOTES_FILENAME = \"notes.json\"\n\n\ndef _resolve(path=None):\n    \"\"\"Return the :class:`pathlib.Path` to operate on.\n\n    ``None`` means ``./notes.json`` relative to the current working directory.\n    The lookup happens per call so that changing directory (or tests using a\n    temporary directory) behaves as expected.\n    \"\"\"\n    if path is None:\n        return Path.cwd() / NOTES_FILENAME\n    return Path(path)\n\n\ndef _load(path):\n    \"\"\"Load the list of notes from ``path``.\n\n    A missing or empty file yields an empty list.  Malformed content raises\n    ``ValueError`` with a message naming the offending file.\n    \"\"\"\n    try:\n        raw = path.read_text(encoding=\"utf-8\")\n    except FileNotFoundError:\n        return []\n    except OSError as exc:  # pragma: no cover - unusual filesystem error\n        raise ValueError(f\"could not read {path}: {exc}\") from exc\n\n    if not raw.strip():\n        return []\n\n    try:\n        data = json.loads(raw)\n    except json.JSONDecodeError as exc:\n        raise ValueError(f\"{path} does not contain valid JSON: {exc}\") from exc\n\n    if not isinstance(data, builtins.list):\n        ra\n--- tests/test_notes.py (from task 'Implement JSON-backed notes module with pytest tests') ---\n\"\"\"Tests for the JSON-backed notes module.\"\"\"\n\nimport json\nimport sys\nfrom pathlib import Path\n\nimport pytest\n\nsys.path.insert(0, str(Path(__file__).resolve().parents[1]))\n\nimport notes  # noqa: E402\n\n\n@pytest.fixture(autouse=True)\ndef workdir(tmp_path, monkeypatch):\n    \"\"\"Run every test inside an isolated working directory.\"\"\"\n    monkeypatch.chdir(tmp_path)\n    return tmp_path\n\n\ndef test_add_returns_one_based_number_and_writes_json(workdir):\n    assert notes.add(\"buy milk\") == 1\n    assert notes.add(\"call bob\") == 2\n\n    stored = json.loads((workdir / \"notes.json\").read_text(encoding=\"utf-8\"))\n    assert stored == [\"buy milk\", \"call bob\"]\n\n\ndef test_add_strips_whitespace_and_rejects_empty(workdir):\n    assert notes.add(\"  padded  \") == 1\n    assert notes.list() == [\"padded\"]\n\n    with pytest.raises(ValueError):\n        notes.add(\"   \")\n    with pytest.raises(TypeError):\n        notes.add(42)\n    assert notes.list() == [\"padded\"]\n\n\ndef test_list_returns_notes_in_order(workdir):\n    assert notes.list() == []  # no file yet\n    notes.add(\"first\")\n    notes.add(\"second\")\n    notes.add(\"third\")\n    assert notes.list() == [\"first\", \"second\", \"third\"]\n\n\ndef test_list_returns_a_copy(workdir):\n    notes.add(\"only\")\n    snapshot = notes.list()\n    snapshot.append(\"tampered\")\n    assert notes.list() == [\"only\"]\n\n\ndef test_delete_by_one_based_number(workdir):\n    notes.add(\"first\")\n    notes.add(\"second\")\n    notes.add(\"third\")\n\n    assert notes.delete(2) == \"second\"\n    assert notes.list() == [\"first\", \"third\"]\n\n    assert notes.delete(1) == \"first\"\n    assert notes.list() == [\"third\"]\n\n    assert notes.delete(1) == \"third\"\n    assert notes.list() == []\n    assert json.loads((workdir / \"notes.json\").read_text(encoding=\"utf-8\")) == []\n\n\n@pytest.mark.parametrize(\"number\", [0, -1, 4, 99])\ndef test_delete_rejects_invalid_numbers(workdir, number):\n    notes.add(\"first\")\n    notes.add(\"second\")\n    notes.add(\"third\")\n\n    with pytest.raises(IndexError) as excinfo:\n        notes.d\n\nThe workspace is yours. When the work is done, reply with a short summary of the files you created or changed.",
+        "role": "user"
+      },
+      {
+        "content": "I'll start by inspecting the workspace and the existing notes module.",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "depth": 3,
+              "path": "."
+            },
+            "id": "call_00_ET_Q6pqqwbqNX7WdHgFHr3N9899",
+            "name": "list_dir"
+          },
+          {
+            "arguments": {
+              "path": "notes.py"
+            },
+            "id": "call_01_ET_b2XtDsWhs5V9qcE67zi38688",
+            "name": "read_file"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "tests/\ntests/test_notes.py  (4457 bytes)\nnotes.py  (5025 bytes)",
+          "is_error": false,
+          "tool_call_id": "call_00_ET_Q6pqqwbqNX7WdHgFHr3N9899"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "\"\"\"Simple JSON-backed notes store.\n\nNotes live in ``notes.json`` in the current working directory.  The file holds a\nJSON list of strings, e.g. ``[\"buy milk\", \"call bob\"]``; a missing file simply\nmeans \"no notes yet\".\n\nPublic API\n----------\nadd(text)      -> int          add a note, return its 1-based number\nlist()         -> list[str]    return all notes, oldest first\ndelete(number) -> str          delete a note by 1-based number, return it\n\nEvery function accepts an optional ``path`` argument, which defaults to\n``notes.json`` resolved against the *current* working directory at call time.\nOnly the Python standard library is used.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport builtins\nimport json\nimport os\nimport tempfile\nfrom pathlib import Path\n\n__all__ = [\"add\", \"list\", \"delete\", \"NOTES_FILENAME\"]\n\n#: Name of the JSON file used when no explicit path is given.\nNOTES_FILENAME = \"notes.json\"\n\n\ndef _resolve(path=None):\n    \"\"\"Return the :class:`pathlib.Path` to operate on.\n\n    ``None`` means ``./notes.json`` relative to the current working directory.\n    The lookup happens per call so that changing directory (or tests using a\n    temporary directory) behaves as expected.\n    \"\"\"\n    if path is None:\n        return Path.cwd() / NOTES_FILENAME\n    return Path(path)\n\n\ndef _load(path):\n    \"\"\"Load the list of notes from ``path``.\n\n    A missing or empty file yields an empty list.  Malformed content raises\n    ``ValueError`` with a message naming the offending file.\n    \"\"\"\n    try:\n        raw = path.read_text(encoding=\"utf-8\")\n    except FileNotFoundError:\n        return []\n    except OSError as exc:  # pragma: no cover - unusual filesystem error\n        raise ValueError(f\"could not read {path}: {exc}\") from exc\n\n    if not raw.strip():\n        return []\n\n    try:\n        data = json.loads(raw)\n    except json.JSONDecodeError as exc:\n        raise ValueError(f\"{path} does not contain valid JSON: {exc}\") from exc\n\n    if not isinstance(data, builtins.list):\n        raise ValueError(f\"{path} must contain a JSON list of notes, not {type(data).__name__}\")\n\n    notes = []\n    for item in data:\n        if not isinstance(item, str):\n            raise ValueError(f\"{path} contains a non-string note: {item!r}\")\n        notes.append(item)\n    return notes\n\n\ndef _save(path, notes):\n    \"\"\"Write ``notes`` to ``path`` atomically (temp file + rename).\"\"\"\n    path.parent.mkdir(parents=True, exist_ok=True)\n    payload = json.dumps(notes, indent=2, ensure_ascii=False) + \"\\n\"\n    handle = tempfile.NamedTemporaryFile(\n        \"w\", encoding=\"utf-8\", dir=str(path.parent), prefix=\".notes-\", suffix=\".tmp\", delete=False\n    )\n    try:\n        with handle:\n            handle.write(payload)\n        os.replace(handle.name, path)\n    except BaseException:  # pragma: no cover - cleanup on failure\n        try:\n            os.unlink(handle.name)\n        except OSError:\n            pass\n        raise\n\n\ndef add(text, path=None):\n    \"\"\"Append ``text`` as a new note and return its 1-based number.\"\"\"\n    if not isinstance(text, str):\n        raise TypeError(f\"note must be a string, not {type(text).__name__}\")\n    note = text.strip()\n    if not note:\n        raise ValueError(\"note must not be empty\")\n\n    target = _resolve(path)\n    notes = _load(target)\n    notes.append(note)\n    _save(target, notes)\n    return len(notes)\n\n\ndef list(path=None):\n    \"\"\"Return every note, oldest first, as a new list.\"\"\"\n    return _load(_resolve(path))\n\n\ndef delete(number, path=None):\n    \"\"\"Delete the note with the given 1-based ``number`` and return it.\"\"\"\n    if isinstance(number, bool) or not isinstance(number, int):\n        raise TypeError(f\"note number must be an integer, not {type(number).__name__}\")\n\n    target = _resolve(path)\n    notes = _load(target)\n    if number < 1 or number > len(notes):\n        raise IndexError(\n            f\"invalid note number {number}: expected 1-{len(notes)}\"\n            if notes\n            else f\"invalid note number {number}: there are no notes to delete\"\n        )\n\n    removed = notes.pop(number - 1)\n    _save(target, notes)\n    return removed\n\n\ndef main(argv=None):  # pragma: no cover - thin convenience CLI\n    \"\"\"Tiny CLI: ``python notes.py [list | add TEXT | delete N]``.\"\"\"\n    import sys\n\n    args = (sys.argv[1:] if argv is None else argv)[:]\n    command = args[0] if args else \"list\"\n\n    if command == \"list\":\n        for index, note in enumerate(list(), start=1):\n            print(f\"{index}. {note}\")\n    elif command == \"add\" and len(args) > 1:\n        print(f\"added note {add(' '.join(args[1:]))}\")\n    elif command == \"delete\" and len(args) == 2:\n        try:\n            print(f\"deleted: {delete(int(args[1]))}\")\n        except (IndexError, TypeError, ValueError) as exc:\n            print(f\"error: {exc}\", file=sys.stderr)\n            return 1\n    else:\n        print(\"usage: python notes.py [list | add TEXT | delete N]\", file=sys.stderr)\n        return 2\n    return 0\n\n\nif __name__ == \"__main__\":  # pragma: no cover\n    raise SystemExit(main())\n",
+          "is_error": false,
+          "tool_call_id": "call_01_ET_b2XtDsWhs5V9qcE67zi38688"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "Let me look at the existing tests to match style.\n\nDesign cli.py:\n- argparse with subcommands add, list, delete. Note: `list` subcommand — argparse dest will be \"list\" which is fine, but calling notes.list() inside module where `list` might be shadowed... We import notes module, so notes.list() is fine.\n- Stable output format for list: `1. note text` (matching notes.main).\n- Empty list: print something like \"no notes\" to stdout. Hmm, acceptance criteria: \"python cli.py list prints numbered notes in a stable format\". For empty, maybe print \"no notes yet\". Let's decide: if no notes, print \"no notes yet\" to stdout and exit 0.\n- add: prints `added note N: text`? Let's use `added note {n}: {text}` maybe. Simpler: `added note 1: buy milk`. Tests will verify. Let me pick a stable format consistent with notes.main: `added note {n}`. Hmm, tests are ours so any format fine. I'll do \"added note {n}: {text}\".\n- delete: prints `deleted note {n}: {text}`.\n- Errors: invalid number (0, negative, too large) → exit code 1 with message to stderr; empty text → error exit 1; non-integer number → argparse type=int error exit 2.\n- Also support `--file`/`-f` optional path? Nice extra but keep simple; maybe allow optional `--file` global arg defaulting to notes.json. That adds complexity but useful. I'll keep it minimal but add optional `--file` since notes supports path. Actually keep tests simple; adding --file is harmless and lets tests check JSON persistence explicitly. I'll add it.\n\nCareful: argparse subcommand named \"list\" and prefix matching. Also add `add` accepts text as multiple words? Task says add should accept the note text. Use nargs=\"+\" and join with spaces? The example `python cli.py add \"...\"` passes single arg. Using nargs=\"+\" supports unquoted multiword too. But joining changes text if multiple args. I'll use nargs=\"+\" joined by single spaces — note notes.add strips whitespace. Hmm, but then a note like \"buy  milk\" (double space) in single quoted arg preserved. Fine.\n\nActually simpler and more predictable: single positional `text`. But then `python cli.py add buy milk` errors. I'll use nargs=\"+\" and document it joins words.\n\nAlso add top-level `--version`? not needed.\n\nHandle errors from notes module: ValueError (corrupt json, empty note), IndexError, TypeError → print \"error: ...\" to stderr, return 1.\n\nAlso main(argv=None) → returns int exit code; `if __name__ == \"__main__\": raise SystemExit(main())`.\n\nNeed to ensure sys.path so cli.py can import notes when run from another cwd — running `python /path/to/cli.py` puts script dir on sys.path, so import notes works. Good. But when run as `python cli.py` in temp cwd via subprocess with cwd=tmp_path and path to cli.py absolute, sys.path[0] is the script dir. Good.\n\nLet's write cli.py.\n\nOutput formats:\n- add: `added note {n}: {text}`\n- list: header? no header for empty. For empty: `no notes yet`.\n- list lines: `{i}. {note}`\n- delete: `deleted note {n}: {text}`\n\nLet me write it."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "offset": 60,
+              "path": "tests/test_notes.py"
+            },
+            "id": "call_00_r6RBMX2DEa9eQ4rFzejv1564",
+            "name": "read_file"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "    assert notes.list() == [\"first\", \"third\"]\n\n    assert notes.delete(1) == \"first\"\n    assert notes.list() == [\"third\"]\n\n    assert notes.delete(1) == \"third\"\n    assert notes.list() == []\n    assert json.loads((workdir / \"notes.json\").read_text(encoding=\"utf-8\")) == []\n\n\n@pytest.mark.parametrize(\"number\", [0, -1, 4, 99])\ndef test_delete_rejects_invalid_numbers(workdir, number):\n    notes.add(\"first\")\n    notes.add(\"second\")\n    notes.add(\"third\")\n\n    with pytest.raises(IndexError) as excinfo:\n        notes.delete(number)\n\n    message = str(excinfo.value)\n    assert str(number) in message\n    assert \"1-3\" in message  # states the valid range\n    assert notes.list() == [\"first\", \"second\", \"third\"]  # nothing removed\n\n\ndef test_delete_from_empty_store_has_clear_error(workdir):\n    with pytest.raises(IndexError) as excinfo:\n        notes.delete(1)\n    assert \"no notes\" in str(excinfo.value)\n    assert not (workdir / \"notes.json\").exists()\n\n\n@pytest.mark.parametrize(\"number\", [\"1\", 1.0, None, True])\ndef test_delete_rejects_non_integer_numbers(workdir, number):\n    notes.add(\"first\")\n    with pytest.raises(TypeError):\n        notes.delete(number)\n    assert notes.list() == [\"first\"]\n\n\ndef test_persistence_across_reload(workdir):\n    notes.add(\"survives\")\n    notes.add(\"reloads\")\n\n    # Re-import a fresh copy of the module: state must come from disk, not memory.\n    import importlib\n\n    reloaded = importlib.reload(notes)\n    assert reloaded.list() == [\"survives\", \"reloads\"]\n    assert reloaded.delete(1) == \"survives\"\n\n    importlib.reload(notes)\n    assert notes.list() == [\"reloads\"]\n    assert json.loads((workdir / \"notes.json\").read_text(encoding=\"utf-8\")) == [\"reloads\"]\n\n\ndef test_missing_json_file_is_treated_as_empty(workdir):\n    assert not (workdir / \"notes.json\").exists()\n    assert notes.list() == []\n    assert notes.list() == []  # reading never creates the file\n    assert not (workdir / \"notes.json\").exists()\n\n    # Adding after the empty state starts numbering at 1.\n    assert notes.add(\"first ever\") == 1\n\n\ndef test_empty_and_malformed_files(workdir):\n    (workdir / \"notes.json\").write_text(\"   \\n\", encoding=\"utf-8\")\n    assert notes.list() == []\n\n    (workdir / \"notes.json\").write_text(\"{not json\", encoding=\"utf-8\")\n    with pytest.raises(ValueError):\n        notes.list()\n\n    (workdir / \"notes.json\").write_text('{\"a\": 1}', encoding=\"utf-8\")\n    with pytest.raises(ValueError):\n        notes.list()\n\n\ndef test_module_uses_notes_json_in_cwd(workdir):\n    notes.add(\"where am I\")\n    assert (workdir / \"notes.json\").exists()\n\n    subdir = workdir / \"sub\"\n    subdir.mkdir()\n    import os\n\n    os.chdir(subdir)\n    assert notes.list() == []  # different cwd -> different file\n    notes.add(\"elsewhere\")\n    assert (subdir / \"notes.json\").exists()\n    assert (workdir / \"notes.json\").exists()\n\n\ndef test_public_api_is_callable(workdir):\n    for name in (\"add\", \"list\", \"delete\"):\n        assert callable(getattr(notes, name))\n",
+          "is_error": false,
+          "tool_call_id": "call_00_r6RBMX2DEa9eQ4rFzejv1564"
+        }
+      },
+      {
+        "content": "Now I'll create `cli.py`.",
+        "provider_state": {
+          "reasoning_content": "Now write cli.py."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "content": "\"\"\"Command line interface for the JSON-backed notes store.\n\nUsage\n-----\n    python cli.py add \"buy milk\"\n    python cli.py list\n    python cli.py delete 1\n\nSubcommands\n-----------\nadd TEXT...    append a note (multiple words are joined with single spaces)\nlist           print every note, numbered from 1\ndelete N       delete the note with the 1-based number N\n\nNotes are stored in ``notes.json`` in the current working directory; pass\n``--file PATH`` before the subcommand to use a different file.  Only the Python\nstandard library is used.\n\nExit status: ``0`` on success, ``1`` for notes-level errors (empty note,\nmalformed store, bad note number), ``2`` for argparse usage errors.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport argparse\nimport sys\n\nimport notes\n\n__all__ = [\"build_parser\", \"main\", \"format_note_line\", \"PROG\"]\n\nPROG = \"cli.py\"\n\n\ndef format_note_line(index, note):\n    \"\"\"Return the stable display form of a single numbered note.\"\"\"\n    return f\"{index}. {note}\"\n\n\ndef build_parser():\n    \"\"\"Build and return the argparse parser for the CLI.\"\"\"\n    parser = argparse.ArgumentParser(\n        prog=PROG,\n        description=\"Manage a simple JSON-backed list of notes.\",\n    )\n    parser.add_argument(\n        \"--file\",\n        \"-f\",\n        default=None,\n        metavar=\"PATH\",\n        help=\"notes file to use (default: notes.json in the current directory)\",\n    )\n\n    subparsers = parser.add_subparsers(dest=\"command\", metavar=\"{add,list,delete}\")\n    subparsers.required = True\n\n    add_parser = subparsers.add_parser(\"add\", help=\"add a note\")\n    add_parser.add_argument(\n        \"text\",\n        nargs=\"+\",\n        metavar=\"TEXT\",\n        help=\"note text (multiple words are joined with single spaces)\",\n    )\n\n    subparsers.add_parser(\"list\", help=\"list all notes, numbered from 1\")\n\n    delete_parser = subparsers.add_parser(\"delete\", help=\"delete a note by number\")\n    delete_parser.add_argument(\n        \"number\",\n        type=int,\n        metavar=\"N\",\n        help=\"1-based number of the note to delete\",\n    )\n\n    return parser\n\n\ndef _cmd_add(args):\n    text = \" \".join(args.text)\n    number = notes.add(text, path=args.file)\n    stored = notes.list(path=args.file)[number - 1]\n    print(f\"added note {number}: {stored}\")\n    return 0\n\n\ndef _cmd_list(args):\n    items = notes.list(path=args.file)\n    if not items:\n        print(\"no notes yet\")\n        return 0\n    for index, note in enumerate(items, start=1):\n        print(format_note_line(index, note))\n    return 0\n\n\ndef _cmd_delete(args):\n    removed = notes.delete(args.number, path=args.file)\n    print(f\"deleted note {args.number}: {removed}\")\n    return 0\n\n\nCOMMANDS = {\"add\": _cmd_add, \"list\": _cmd_list, \"delete\": _cmd_delete}\n\n\ndef main(argv=None):\n    \"\"\"Run the CLI, returning the process exit status.\"\"\"\n    parser = build_parser()\n    args = parser.parse_args(sys.argv[1:] if argv is None else argv)\n\n    handler = COMMANDS[args.command]\n    try:\n        return handler(args)\n    except (IndexError, TypeError, ValueError) as exc:\n        print(f\"error: {exc}\", file=sys.stderr)\n        return 1\n\n\nif __name__ == \"__main__\":  # pragma: no cover\n    raise SystemExit(main())\n",
+              "path": "cli.py"
+            },
+            "id": "call_00_QkHNCaOsN5W4MxR86dkA3636",
+            "name": "write_file"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "wrote 3173 bytes to cli.py",
+          "is_error": false,
+          "tool_call_id": "call_00_QkHNCaOsN5W4MxR86dkA3636"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "Wait: `subparsers = parser.add_subparsers(dest=\"command\", metavar=\"{add,list,delete}\")` — setting metavar hides the subcommand names in usage but they exist. Actually metavar overrides the displayed choices list, which is slightly less informative. Let me remove metavar to keep standard display. But `subparsers.required = True` works in py3.7+. Also `dest=\"command\"` with `required=True` fine.\n\nAlso note: `parser.add_argument(\"--file\", ...)` before subcommand means `python cli.py add --file x \"t\"` would fail; but `python cli.py --file x add \"t\"` works. Also subparsers don't inherit --file. Acceptable; but let me also add --file to subparsers? Simpler to just document. Actually argparse allows adding the same arg to each subparser with a different dest. To be friendly, I could add `--file` to each subparser too with default=None and dest=\"file\", but then top-level value gets overwritten by subparser default None. Workaround: set default=argparse.SUPPRESS on subparser args so top-level value survives when not given. That's a nice touch but adds complexity. Keep top-level only, documented.\n\nRemove metavar from add_subparsers. Let me edit.\n\nAlso `_cmd_add` calls notes.list twice; fine but let's simplify: notes.add returns number; stored text = stripped joined text. Better to just use the stripped text for display? notes.add strips. Use `text.strip()` for display to avoid second disk read.\n\nNow write tests."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "cd \"$(pwd)\" && python - <<'EOF'\nimport re, pathlib\np = pathlib.Path(\"cli.py\")\ns = p.read_text()\ns = s.replace('    subparsers = parser.add_subparsers(dest=\"command\", metavar=\"{add,list,delete}\")',\n              '    subparsers = parser.add_subparsers(dest=\"command\")')\ns = s.replace('''    text = \" \".join(args.text)\n    number = notes.add(text, path=args.file)\n    stored = notes.list(path=args.file)[number - 1]\n    print(f\"added note {number}: {stored}\")''',\n              '''    text = \" \".join(args.text)\n    number = notes.add(text, path=args.file)\n    print(f\"added note {number}: {text.strip()}\")''')\np.write_text(s)\nEOF\npython cli.py --help; echo \"---\"; cd /tmp && rm -rf clidemo && mkdir clidemo && cd clidemo && python /workspace/cli.py list 2>/dev/null || true"
+            },
+            "id": "call_00_G2fbpbLPur1RE3FcTw1M5341",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "usage: cli.py [-h] [--file PATH] {add,list,delete} ...\n\nManage a simple JSON-backed list of notes.\n\npositional arguments:\n  {add,list,delete}\n    add                 add a note\n    list                list all notes, numbered from 1\n    delete              delete a note by number\n\noptions:\n  -h, --help            show this help message and exit\n  --file PATH, -f PATH  notes file to use (default: notes.json in the current\n                        directory)\n---\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_G2fbpbLPur1RE3FcTw1M5341"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "Interesting: the last command printed nothing? `python /workspace/cli.py list` in /tmp/clidemo — the workspace path may not be /workspace. Let's check pwd and actually run the demo."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "pwd; rm -rf /tmp/clidemo && mkdir -p /tmp/clidemo && cd /tmp/clidemo && W=$(cd - >/dev/null; pwd); CLI=\"$(pwd)/cli.py\"; echo \"CLI=$CLI\"; cd /tmp/clidemo && python \"$CLI\" list; python \"$CLI\" add \"buy milk\"; python \"$CLI\" add call bob; python \"$CLI\" list; cat notes.json; python \"$CLI\" delete 1; python \"$CLI\" list; python \"$CLI\" delete 5; echo \"exit=$?\"; python \"$CLI\" delete abc; echo \"exit=$?\"; python \"$CLI\" add \"   \"; echo \"exit=$?\""
+            },
+            "id": "call_00_NFbIeEdeOSzEOjLMLE836838",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "/workspace\nCLI=/tmp/clidemo/cli.py\nexit=2\nexit=2\nexit=2\n[stderr]\npython: can't open file '/tmp/clidemo/cli.py': [Errno 2] No such file or directory\npython: can't open file '/tmp/clidemo/cli.py': [Errno 2] No such file or directory\npython: can't open file '/tmp/clidemo/cli.py': [Errno 2] No such file or directory\npython: can't open file '/tmp/clidemo/cli.py': [Errno 2] No such file or directory\ncat: notes.json: No such file or directory\npython: can't open file '/tmp/clidemo/cli.py': [Errno 2] No such file or directory\npython: can't open file '/tmp/clidemo/cli.py': [Errno 2] No such file or directory\npython: can't open file '/tmp/clidemo/cli.py': [Errno 2] No such file or directory\npython: can't open file '/tmp/clidemo/cli.py': [Errno 2] No such file or directory\npython: can't open file '/tmp/clidemo/cli.py': [Errno 2] No such file or directory\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_NFbIeEdeOSzEOjLMLE836838"
+        }
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "cd /workspace && CLI=/workspace/cli.py && rm -rf /tmp/clidemo && mkdir -p /tmp/clidemo && cd /tmp/clidemo && python \"$CLI\" list; echo \"exit=$?\"; python \"$CLI\" add \"buy milk\"; python \"$CLI\" add call bob; python \"$CLI\" list; cat notes.json; python \"$CLI\" delete 1; python \"$CLI\" list; python \"$CLI\" delete 5; echo \"exit=$?\"; python \"$CLI\" delete abc; echo \"exit=$?\"; python \"$CLI\" add \"   \"; echo \"exit=$?\"; python \"$CLI\" --file other.json add hi; python \"$CLI\" -f other.json list"
+            },
+            "id": "call_00_ET_zvxryc1EYSabJyzcAjvp3800",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "exit=1\nexit=1\nexit=1\nexit=1\n[stderr]\n/bin/sh: line 0: cd: /workspace: No such file or directory\n/Users/ponk/miniconda3/envs/eidolon/bin/python: can't find '__main__' module in '/workspace'\n/Users/ponk/miniconda3/envs/eidolon/bin/python: can't find '__main__' module in '/workspace'\n/Users/ponk/miniconda3/envs/eidolon/bin/python: can't find '__main__' module in '/workspace'\ncat: notes.json: No such file or directory\n/Users/ponk/miniconda3/envs/eidolon/bin/python: can't find '__main__' module in '/workspace'\n/Users/ponk/miniconda3/envs/eidolon/bin/python: can't find '__main__' module in '/workspace'\n/Users/ponk/miniconda3/envs/eidolon/bin/python: can't find '__main__' module in '/workspace'\n/Users/ponk/miniconda3/envs/eidolon/bin/python: can't find '__main__' module in '/workspace'\n/Users/ponk/miniconda3/envs/eidolon/bin/python: can't find '__main__' module in '/workspace'\n/Users/ponk/miniconda3/envs/eidolon/bin/python: can't find '__main__' module in '/workspace'\n/Users/ponk/miniconda3/envs/eidolon/bin/python: can't find '__main__' module in '/workspace'\n[exit 1]",
+          "is_error": true,
+          "tool_call_id": "call_00_ET_zvxryc1EYSabJyzcAjvp3800"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "The workspace path is `/workspace` per pwd earlier but cd fails? Weird — earlier `pwd` printed /workspace, but each shell call may start in a different dir. Actually the first command's `pwd` printed /workspace. Now cd /workspace fails... maybe the shell resets to the workspace dir which has some symlink path like /Users/... Let's just use relative paths: the shell starts in the workspace."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "pwd; ls"
+            },
+            "id": "call_00_lthWClJBwV9ePUwrbXxj2129",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "/workspace\n__pycache__\ncli.py\nnotes.py\ntests\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_lthWClJBwV9ePUwrbXxj2129"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "pwd is /workspace but `cd /tmp/clidemo && ... && cd /workspace` failed? Perhaps the shell is a restricted sandbox where /workspace is a virtualized path only valid as cwd. Use relative ./cli.py with absolute resolution via python -c? Simpler: run demo in a temp dir using `$PWD` saved before cd... but $PWD is /workspace which can't be cd'd into. Use `realpath cli.py`? Let's check."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "python -c \"import os;print(os.getcwd(), os.path.realpath('cli.py'))\""
+            },
+            "id": "call_00_vGHXAb5ZkTnfyzOlyCk45758",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "/workspace /workspace/cli.py\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_vGHXAb5ZkTnfyzOlyCk45758"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "realpath is /workspace/cli.py but cd /workspace fails? Strange. Maybe cd worked but a later part failed — no, error said `cd: /workspace: No such file or directory`. Hmm, maybe cd is restricted. Let's test `cd /workspace && pwd`.\n\nAnyway, for demo purposes I'll copy cli.py and notes.py into a temp dir? Instead, use a subshell: `(cd /tmp/clidemo && python /workspace/cli.py ...)`. But cd /tmp/clidemo worked earlier (it ran python from there with wrong path). So the issue is cd /workspace. Odd but fine — I'll not cd back into /workspace; each shell call starts there.\n\nLet me demo using subshells."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "rm -rf /tmp/clidemo && mkdir -p /tmp/clidemo && cd /tmp/clidemo && python /workspace/cli.py list; echo \"exit=$?\"; python /workspace/cli.py add \"buy milk\"; python /workspace/cli.py add call bob; python /workspace/cli.py list; cat notes.json; python /workspace/cli.py delete 1; python /workspace/cli.py list; python /workspace/cli.py delete 5; echo \"exit=$?\"; python /workspace/cli.py delete abc; echo \"exit=$?\"; python /workspace/cli.py add \"   \"; echo \"exit=$?\"; python /workspace/cli.py --file other.json add hi; python /workspace/cli.py -f other.json list"
+            },
+            "id": "call_00_ZPL6Hz4dNUfrURStfcI41102",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "exit=2\nexit=2\nexit=2\nexit=2\n[stderr]\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\ncat: notes.json: No such file or directory\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\npython: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\n[exit 2]",
+          "is_error": true,
+          "tool_call_id": "call_00_ZPL6Hz4dNUfrURStfcI41102"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "The workspace is a virtualized fs visible only at cwd. So to test from a different cwd, I need to copy cli.py and notes.py to the temp dir. That's fine for demo; the real tests will run from the workspace where cwd is the workspace, using tmp_path for the subprocess cwd — but then cli.py at workspace path... In pytest, the workspace is real, so tmp_path based subprocess with cwd=tmp_path and script path = Path(__file__).parents[1]/\"cli.py\" resolves fine (pytest runs in the real fs presumably). Hmm, but the shell here says /workspace doesn't exist when accessed via cd; maybe the sandbox only mounts at cwd. Tests run via run_tests tool might have the same sandbox. Risky: subprocess with cwd=tmp_path and absolute script path may work if tmp_path is inside the workspace (pytest tmp_path is usually /tmp/pytest-*, often outside). Let me check by running a quick pytest that does this.\n\nAlternative robust approach: tests copy cli.py and notes.py into tmp_path and run `python cli.py` there with cwd=tmp_path. This satisfies \"runs the CLI via subprocess in a temporary working directory\" and is sandbox-robust. But copying notes.py is a bit unnatural... still acceptable and makes tests hermetic. Hmm, but it wouldn't test the actual workspace files directly (they'd be copies — identical).\n\nBetter: run with cwd=tmp_path and script path pointing to the repo's cli.py, with PYTHONPATH set to repo root. Let me first check whether that works in this sandbox. Quick experiment."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "mkdir -p /tmp/probe && cat > /tmp/probe/test_probe.py <<'EOF'\nimport subprocess, sys\nfrom pathlib import Path\n\ndef test_probe(tmp_path):\n    repo = Path(\"/workspace\")\n    print(\"repo exists:\", repo.exists(), list(repo.iterdir()) if repo.exists() else None)\n    r = subprocess.run([sys.executable, str(repo / \"cli.py\"), \"list\"], cwd=tmp_path, capture_output=True, text=True)\n    print(\"rc\", r.returncode, r.stdout, r.stderr)\n    assert r.returncode == 0\nEOF\npython -m pytest /tmp/probe/test_probe.py -q -s 2>&1 | tail -20"
+            },
+            "id": "call_00_4ShB7EH2S6DwRBPw3qRZ9653",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "\nF\n=================================== FAILURES ===================================\n__________________________________ test_probe __________________________________\n\ntmp_path = PosixPath('/private/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/pytest-of-ponk/pytest-1284/test_probe0')\n\n    def test_probe(tmp_path):\n        repo = Path(\"/workspace\")\n        print(\"repo exists:\", repo.exists(), list(repo.iterdir()) if repo.exists() else None)\n        r = subprocess.run([sys.executable, str(repo / \"cli.py\"), \"list\"], cwd=tmp_path, capture_output=True, text=True)\n        print(\"rc\", r.returncode, r.stdout, r.stderr)\n>       assert r.returncode == 0\nE       assert 2 == 0\nE        +  where 2 = CompletedProcess(args=['/Users/ponk/miniconda3/envs/eidolon/bin/python', '/workspace/cli.py', 'list'], returncode=2, s...s/ponk/miniconda3/envs/eidolon/bin/python: can't open file '/workspace/cli.py': [Errno 2] No such file or directory\\n\").returncode\n\n/tmp/probe/test_probe.py:9: AssertionError\n=========================== short test summary info ============================\nFAILED ../../../../../../../../../../tmp/probe/test_probe.py::test_probe - as...\n1 failed in Xs\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_4ShB7EH2S6DwRBPw3qRZ9653"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "The path /workspace is unavailable to subprocesses / non-cwd access. So the sandbox virtualizes only the current working dir. That means anywhere accessing absolute /workspace fails.\n\nSo tests must be robust: the CLI tests should copy cli.py + notes.py into tmp_path and run there. Alternatively, run the subprocess with cwd=tmp_path and the script path derived from `Path(cli.__file__)` — but that's also /workspace/cli.py which fails.\n\nHmm wait — is /workspace failing because of the sandbox, or is the actual cwd something else? `pwd` printed /workspace and `python -c \"os.getcwd()\"` printed /workspace. But `cd /workspace` fails. Weird: maybe the shell sandbox intercepts. Let's probe more: try `ls /workspace`, `cat /workspace/notes.py`, and check if cwd is a symlink."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "ls -la / | head -30; echo ---; ls /workspace; echo ---; python -c \"import os;print(os.stat('/workspace'))\"; echo ---; mount | grep -i worksp; echo ---; ls -la ."
+            },
+            "id": "call_00_QlKS4FRy3BANzB7968728517",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "total 10\ndrwxr-xr-x  22 root  wheel   704 May 21 01:57 .\ndrwxr-xr-x  22 root  wheel   704 May 21 01:57 ..\nlrwxr-xr-x   1 root  admin    36 May 21 01:57 .VolumeIcon.icns -> System/Volumes/Data/.VolumeIcon.icns\n----------   1 root  admin     0 May 21 01:57 .file\ndrwxr-xr-x   2 root  wheel    64 May 21 01:57 .nofollow\ndrwxr-xr-x   2 root  wheel    64 May 21 01:57 .resolve\ndrwxr-xr-x   2 root  wheel    64 May 21 01:57 .vol\ndrwxrwxr-x  46 root  admin  1472 Nov  6 23:22 Applications\ndrwxr-xr-x  68 root  wheel  2176 Aug 19 21:43 Library\ndrwxr-xr-x@ 10 root  wheel   320 May 21 01:57 System\ndrwxr-xr-x   5 root  admin   160 Jul 22 20:47 Users\ndrwxr-xr-x   3 root  wheel    96 Nov  7 21:40 Volumes\ndrwxr-xr-x@ 39 root  wheel  1248 May 21 01:57 bin\ndrwxr-xr-x   2 root  wheel    64 May 21 00:57 cores\ndr-xr-xr-x   4 root  wheel  4844 Nov  2 15:20 dev\nlrwxr-xr-x@  1 root  wheel    11 May 21 01:57 etc -> private/etc\nlrwxr-xr-x   1 root  wheel    25 Nov  2 15:22 home -> /System/Volumes/Data/home\ndrwxr-xr-x   3 root  wheel    96 Jul 22 21:10 opt\ndrwxr-xr-x   6 root  wheel   192 Nov  2 15:22 private\ndrwxr-xr-x@ 76 root  wheel  2432 May 21 01:57 sbin\nlrwxr-xr-x@  1 root  wheel    11 May 21 01:57 tmp -> private/tmp\ndrwxr-xr-x@ 11 root  wheel   352 May 21 01:57 usr\nlrwxr-xr-x@  1 root  wheel    11 May 21 01:57 var -> private/var\n---\n---\n---\n---\ntotal 24\ndrwxr-xr-x@ 7 ponk  staff   224 Nov  8 06:23 .\ndrwxr-xr-x@ 5 ponk  staff   160 Nov  8 06:22 ..\ndrwxr-xr-x@ 3 ponk  staff    96 Nov  8 06:23 .eidolon\ndrwxr-xr-x@ 3 ponk  staff    96 Nov  8 06:23 __pycache__\n-rw-r--r--@ 1 ponk  staff  3098 Nov  8 06:23 cli.py\n-rw-r--r--@ 1 ponk  staff  5025 Nov  8 06:23 notes.py\ndrwxr-xr-x@ 3 ponk  staff    96 Nov  8 06:23 tests\n[stderr]\nls: /workspace: No such file or directory\nTraceback (most recent call last):\n  File \"<string>\", line 1, in <module>\nFileNotFoundError: [Errno 2] No such file or directory: '/workspace'\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_QlKS4FRy3BANzB7968728517"
+        }
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are a software engineer employed by a small studio. You work alone in an empty workspace directory using the tools provided: write files with write_file, inspect with read_file and list_dir, run commands with shell, and run pytest with run_tests. Work incrementally: create the code, create the tests, run the tests, fix what fails, and only finish when the tests pass. Keep files small and dependency-free (standard library only). Do not ask questions; make reasonable choices and state them.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

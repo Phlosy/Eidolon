@@ -1,0 +1,233 @@
+{
+  "events": [
+    {
+      "text": "I",
+      "type": "text"
+    },
+    {
+      "text": "'ll",
+      "type": "text"
+    },
+    {
+      "text": " start",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " reading",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " submitted",
+      "type": "text"
+    },
+    {
+      "text": " READ",
+      "type": "text"
+    },
+    {
+      "text": "ME",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " actual",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " code",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " verify",
+      "type": "text"
+    },
+    {
+      "text": " accuracy",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {
+        "path": "."
+      },
+      "id": "call_00_ET_9gYQK6berDQ7gVaF8AzD7671",
+      "name": "list_dir",
+      "type": "tool_call"
+    },
+    {
+      "arguments": {
+        "path": "README.md"
+      },
+      "id": "call_01_ET_V29vqYdp5FOYjOKsJQsn5243",
+      "name": "read_file",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 1229,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "16629cfa-69f3-4288-a80d-46682b474f0d",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "input_tokens": 1654,
+        "output_tokens": 83
+      }
+    }
+  ],
+  "fingerprint": "fbe4d3d3c565337381cac754d9c867787d5bc2ed041581347745e7f4ad0ecc23",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:27:09+00:00",
+  "replay_key": "fbe4d3d3c565337381cac754d9c867787d5bc2ed041581347745e7f4ad0ecc23",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Review task: Write end-user README.md guide\n\nWrite README.md for non-programmers explaining installation, setup, and each command: add, list and delete. Include a realistic example session using the exact CLI command names and matching the real output format from cli.py. Mention that notes are stored in notes.json in the working directory and that no third-party packages are required.\n\nThis is a document task: the deliverable is the Markdown below, judged on content; there are no tests to run.\n\nAcceptance criteria:\n- README.md explains installation and how to run the CLI\n- README.md documents add, list and delete commands with examples\n- README.md includes an example session whose commands and output match the CLI behavior\n- README.md is written for end users with minimal programming jargon\n- README.md states that notes are stored in notes.json in the working directory\n\nSubmitted files (also present in the workspace):\n--- README.md ---\n# Notes — a simple command-line notebook\n\nNotes is a small program that keeps a list of notes for you. You type short\ncommands in a terminal window to add a note, see all your notes, or delete one.\n\nEverything you write is saved in a single file called `notes.json` in your\n**working directory** — that is, the folder you are sitting in when you run the\ncommand. Notes are saved immediately, so you can close the terminal and your\nnotes will still be there next time.\n\nThere is nothing to install beyond Python itself: **no third-party packages are\nrequired**, and you never need to run `pip`.\n\n---\n\n## What you need\n\n- **Python 3.8 or newer.** To check, open a terminal and type:\n\n  ```\n  python3 --version\n  ```\n\n  You should see something like `Python 3.12.1`. If you see an error, install\n  Python from [python.org](https://www.python.org/downloads/) first.\n\nThat's it. No accounts, no downloads, no extra packages.\n\n## Installation\n\n1. Create a folder for the program, for example a folder called `notebook`.\n2. Put the two program files in it, side by side:\n   - `cli.py` — the program you run\n   - `notes.py` — a helper file that `cli.py` uses\n\n   These two files must stay in the same folder.\n3. Open a terminal and move into that folder, for example:\n\n   ```\n   cd notebook\n   ```\n\n   (On Windows: `cd C:\\Users\\YourName\\notebook`.)\n4. Check that it runs:\n\n   ```\n   python cli.py --help\n   ```\n\n   You should see a short summary of the available commands.\n\nThere is no setup step and nothing to configure. Your notes file is created for\nyou the first time you add a note.\n\n### `python` or `python3`?\n\nThis guide uses `python cli.py`. On macOS and most Linux systems the command is\noften named `python3`, so use `python3 cli.py` instead. On Windows, `py cli.py`\nalso works. Whichever one your system accepts, use it for every command below.\n\n---\n\n## Your notes file\n\n- Your notes live in **`notes.json`**, in the folder you are in when you run the\n  command. If you run the program from a dif\n\nCheck the work against the criteria (run the tests with run_tests if any), then answer with the JSON verdict only.",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the reviewer of a small software studio judging a written deliverable (a document, design or research write-up) against its acceptance criteria. Read the submitted Markdown with the tools; you must not modify anything and there are no tests to run. Judge completeness against each criterion, correctness against the input files, and clarity for the stated reader. Your final answer must be JSON only, exactly: {\"verdict\": \"pass\" | \"rework\" | \"escalate\", \"reason\": \"<one paragraph>\"}. Use pass when every criterion is met, rework when the author can fix it, escalate when the task itself is unclear or beyond the author's authority.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

@@ -1,0 +1,212 @@
+{
+  "events": [
+    {
+      "text": "I",
+      "type": "text"
+    },
+    {
+      "text": "'ll",
+      "type": "text"
+    },
+    {
+      "text": " start",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " reviewing",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " project",
+      "type": "text"
+    },
+    {
+      "text": " status",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " artifacts",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {},
+      "id": "call_00_ET_fKj3nMJcdvryAMI46xoS0837",
+      "name": "project_status",
+      "type": "tool_call"
+    },
+    {
+      "arguments": {},
+      "id": "call_01_ET_2MPZGLwVNoUwD4uDA1lc7081",
+      "name": "list_artifacts",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 1114,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "1a52840b-274c-4769-bc06-75e4c1b6e0dd",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 896,
+        "cache_write_tokens": 0,
+        "input_tokens": 1564,
+        "output_tokens": 47
+      }
+    }
+  ],
+  "fingerprint": "ae90704fb7b8b0fad5ba8c4862f2a07e96293515bfeba88982e28219473279d8",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:21:50+00:00",
+  "replay_key": "ae90704fb7b8b0fad5ba8c4862f2a07e96293515bfeba88982e28219473279d8",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Project: Tiny notes CLI with a user guide\n\nProposed tasks:\n- Implement JSON-backed notes module with pytest tests: Create notes.py in the workspace exposing add, list and delete operations over a notes.json file in the current working directory. Use only the Python standard library. Include tests/test_notes.py with pytest coverage for adding notes, listing notes, deleting by 1-based number, persistence across calls, and handling a missing JSON file or invalid delete number. | criteria: notes.py exposes callable add, list and delete operations; Notes are stored in and read from notes.json in the working directory; Deleting uses a 1-based note number and rejects invalid numbers with a clear error; pytest tests in tests/test_notes.py cover add, list and delete and pass; Implementation uses only the Python standard library | depends on: -\n- Add argparse CLI with integration tests: Create cli.py that wraps the notes module with argparse subcommands named add, list and delete. add should accept the note text, list should print numbered notes, and delete should accept a 1-based note number. Add tests/test_cli.py that runs the CLI via subprocess in a temporary working directory and verifies add, list and delete end to end, including JSON persistence and user-facing output. | criteria: cli.py provides argparse subcommands exactly named add, list and delete; python cli.py add \"...\" creates a note in notes.json; python cli.py list prints numbered notes in a stable format; python cli.py delete N removes the correct 1-based note number; pytest tests cover all three CLI operations and pass; CLI uses only the Python standard library | depends on: Implement JSON-backed notes module with pytest tests\n- Write end-user README.md guide: Write README.md for non-programmers explaining installation, setup, and each command: add, list and delete. Include a realistic example session using the exact CLI command names and matching the real output format from cli.py. Mention that notes are stored in notes.json in the working directory and that no third-party packages are required. | criteria: README.md explains installation and how to run the CLI; README.md documents add, list and delete commands with examples; README.md includes an example session whose commands and output match the CLI behavior; README.md is written for end users with minimal programming jargon; README.md states that notes are stored in notes.json in the working directory | depends on: Add argparse CLI with integration tests",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the tech lead of a small software studio reviewing a project plan. Approve it if the tasks are concrete, ordered sensibly and each is doable alone; otherwise ask for rework with specific objections. Answer with JSON only: {\"verdict\": \"approve\" | \"rework\", \"reason\": \"<one paragraph>\"}. You can look before you decide: the tools let you read the project's status and artifacts, list and read files in its tasks' workspaces, and run their tests. You cannot change anything. Use them when the facts matter; then give your final answer.\n\nAvailable tools:\n- project_status: The project's tasks (status, assignee, reviews, rework count) and its artifacts.\n- list_artifacts: Files the tasks produced: path, which task, size, media type.\n- read_artifact: The content of a produced file, by its path (the latest one with that path).\n- list_dir: List a directory in a task's workspace (depth 1-4).\n- read_file: Read a file in a task's workspace (optionally a line range).\n- run_tests: Run pytest in a task's workspace (sandboxed runner); returns the output.\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "The project's tasks (status, assignee, reviews, rework count) and its artifacts.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        "name": "project_status"
+      },
+      {
+        "description": "Files the tasks produced: path, which task, size, media type.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        "name": "list_artifacts"
+      },
+      {
+        "description": "The content of a produced file, by its path (the latest one with that path).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_artifact"
+      },
+      {
+        "description": "List a directory in a task's workspace (depth 1-4).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 4,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Read a file in a task's workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 400,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Run pytest in a task's workspace (sandboxed runner); returns the output.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

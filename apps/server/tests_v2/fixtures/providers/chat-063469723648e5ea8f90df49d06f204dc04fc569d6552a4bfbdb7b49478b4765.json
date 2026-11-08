@@ -1,0 +1,269 @@
+{
+  "events": [
+    {
+      "text": "Now",
+      "type": "text"
+    },
+    {
+      "text": " let",
+      "type": "text"
+    },
+    {
+      "text": " me",
+      "type": "text"
+    },
+    {
+      "text": " read",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " actual",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " source",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " verify",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " claimed",
+      "type": "text"
+    },
+    {
+      "text": " behavior",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " output",
+      "type": "text"
+    },
+    {
+      "text": " formats",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {
+        "path": "cli.py"
+      },
+      "id": "call_00_x9wY6mT0UlVScVVwyva97462",
+      "name": "read_file",
+      "type": "tool_call"
+    },
+    {
+      "arguments": {
+        "path": "tests/test_cli.py"
+      },
+      "id": "call_01_GFGO7OmenlVD5CbQIQiQ1994",
+      "name": "read_file",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "Now read cli.py to verify behavior. Note: README mentions notes.py but list_dir only shows cli.py and tests. Let's read cli.py."
+      },
+      "attempts": 1,
+      "latency_ms": 1005,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "378f23eb-d26c-464d-a3fe-33f68b7610a5",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 1664,
+        "cache_write_tokens": 0,
+        "input_tokens": 4261,
+        "output_tokens": 121
+      }
+    }
+  ],
+  "fingerprint": "a66ca8c8b29b4eedab1f074c88d91cb8364a4cd22fa302c578563183bb32eadf",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:27:10+00:00",
+  "replay_key": "063469723648e5ea8f90df49d06f204dc04fc569d6552a4bfbdb7b49478b4765",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Review task: Write end-user README.md guide\n\nWrite README.md for non-programmers explaining installation, setup, and each command: add, list and delete. Include a realistic example session using the exact CLI command names and matching the real output format from cli.py. Mention that notes are stored in notes.json in the working directory and that no third-party packages are required.\n\nThis is a document task: the deliverable is the Markdown below, judged on content; there are no tests to run.\n\nAcceptance criteria:\n- README.md explains installation and how to run the CLI\n- README.md documents add, list and delete commands with examples\n- README.md includes an example session whose commands and output match the CLI behavior\n- README.md is written for end users with minimal programming jargon\n- README.md states that notes are stored in notes.json in the working directory\n\nSubmitted files (also present in the workspace):\n--- README.md ---\n# Notes — a simple command-line notebook\n\nNotes is a small program that keeps a list of notes for you. You type short\ncommands in a terminal window to add a note, see all your notes, or delete one.\n\nEverything you write is saved in a single file called `notes.json` in your\n**working directory** — that is, the folder you are sitting in when you run the\ncommand. Notes are saved immediately, so you can close the terminal and your\nnotes will still be there next time.\n\nThere is nothing to install beyond Python itself: **no third-party packages are\nrequired**, and you never need to run `pip`.\n\n---\n\n## What you need\n\n- **Python 3.8 or newer.** To check, open a terminal and type:\n\n  ```\n  python3 --version\n  ```\n\n  You should see something like `Python 3.12.1`. If you see an error, install\n  Python from [python.org](https://www.python.org/downloads/) first.\n\nThat's it. No accounts, no downloads, no extra packages.\n\n## Installation\n\n1. Create a folder for the program, for example a folder called `notebook`.\n2. Put the two program files in it, side by side:\n   - `cli.py` — the program you run\n   - `notes.py` — a helper file that `cli.py` uses\n\n   These two files must stay in the same folder.\n3. Open a terminal and move into that folder, for example:\n\n   ```\n   cd notebook\n   ```\n\n   (On Windows: `cd C:\\Users\\YourName\\notebook`.)\n4. Check that it runs:\n\n   ```\n   python cli.py --help\n   ```\n\n   You should see a short summary of the available commands.\n\nThere is no setup step and nothing to configure. Your notes file is created for\nyou the first time you add a note.\n\n### `python` or `python3`?\n\nThis guide uses `python cli.py`. On macOS and most Linux systems the command is\noften named `python3`, so use `python3 cli.py` instead. On Windows, `py cli.py`\nalso works. Whichever one your system accepts, use it for every command below.\n\n---\n\n## Your notes file\n\n- Your notes live in **`notes.json`**, in the folder you are in when you run the\n  command. If you run the program from a dif\n\nCheck the work against the criteria (run the tests with run_tests if any), then answer with the JSON verdict only.",
+        "role": "user"
+      },
+      {
+        "content": "I'll start by reading the submitted README and the actual CLI code to verify accuracy.",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "path": "."
+            },
+            "id": "call_00_ET_9gYQK6berDQ7gVaF8AzD7671",
+            "name": "list_dir"
+          },
+          {
+            "arguments": {
+              "path": "README.md"
+            },
+            "id": "call_01_ET_V29vqYdp5FOYjOKsJQsn5243",
+            "name": "read_file"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "tests/\ntests/test_cli.py  (11281 bytes)\nREADME.md  (9500 bytes)\ncli.py  (3098 bytes)",
+          "is_error": false,
+          "tool_call_id": "call_00_ET_9gYQK6berDQ7gVaF8AzD7671"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "# Notes — a simple command-line notebook\n\nNotes is a small program that keeps a list of notes for you. You type short\ncommands in a terminal window to add a note, see all your notes, or delete one.\n\nEverything you write is saved in a single file called `notes.json` in your\n**working directory** — that is, the folder you are sitting in when you run the\ncommand. Notes are saved immediately, so you can close the terminal and your\nnotes will still be there next time.\n\nThere is nothing to install beyond Python itself: **no third-party packages are\nrequired**, and you never need to run `pip`.\n\n---\n\n## What you need\n\n- **Python 3.8 or newer.** To check, open a terminal and type:\n\n  ```\n  python3 --version\n  ```\n\n  You should see something like `Python 3.12.1`. If you see an error, install\n  Python from [python.org](https://www.python.org/downloads/) first.\n\nThat's it. No accounts, no downloads, no extra packages.\n\n## Installation\n\n1. Create a folder for the program, for example a folder called `notebook`.\n2. Put the two program files in it, side by side:\n   - `cli.py` — the program you run\n   - `notes.py` — a helper file that `cli.py` uses\n\n   These two files must stay in the same folder.\n3. Open a terminal and move into that folder, for example:\n\n   ```\n   cd notebook\n   ```\n\n   (On Windows: `cd C:\\Users\\YourName\\notebook`.)\n4. Check that it runs:\n\n   ```\n   python cli.py --help\n   ```\n\n   You should see a short summary of the available commands.\n\nThere is no setup step and nothing to configure. Your notes file is created for\nyou the first time you add a note.\n\n### `python` or `python3`?\n\nThis guide uses `python cli.py`. On macOS and most Linux systems the command is\noften named `python3`, so use `python3 cli.py` instead. On Windows, `py cli.py`\nalso works. Whichever one your system accepts, use it for every command below.\n\n---\n\n## Your notes file\n\n- Your notes live in **`notes.json`**, in the folder you are in when you run the\n  command. If you run the program from a different folder, it will look for\n  `notes.json` in *that* folder.\n- `notes.json` is created the first time you add a note. Just looking at your\n  notes (`list`) does not create it.\n- You never need to open or edit it by hand. It is a plain text file that holds\n  your notes in a format called JSON — a list of your notes, in the order you\n  added them, looking roughly like this:\n\n  ```\n  [\n    \"buy milk\",\n    \"book dentist\"\n  ]\n  ```\n\n  The exact spacing doesn't matter; the program rewrites the file for you.\n- Ordinary text is fine, including accents and emoji (`café ☕`).\n- **To wipe everything**, delete `notes.json`. With no file, the program starts\n  from scratch with an empty notebook.\n- **To keep several notebooks**, use the `--file` option described below.\n\n---\n\n## Commands at a glance\n\n| Command | What it does |\n| --- | --- |\n| `python cli.py add \"buy milk\"` | Adds a note to the end of your list |\n| `python cli.py list` | Shows all your notes, numbered from 1 |\n| `python cli.py delete 2` | Deletes note number 2 |\n| `python cli.py --help` | Shows a reminder of these commands |\n\nOptional extras:\n\n- `--file PATH` (or `-f PATH`) before the command uses a different notes file.\n- `--help` after any command, e.g. `python cli.py add --help`, explains that one\n  command.\n\n---\n\n## `add` — write a new note\n\n```\npython cli.py add \"buy milk\"\n```\n\n```\nadded note 1: buy milk\n```\n\nThe number in the reply tells you where the note landed in your list. Add a\nsecond note and it becomes number 2:\n\n```\npython cli.py add \"call the plumber\"\nadded note 2: call the plumber\n```\n\n**Good to know:**\n\n- **Quotes are optional.** Unquoted words are joined together with single\n  spaces, so this:\n\n  ```\n  python cli.py add call bob tomorrow\n  added note 3: call bob tomorrow\n  ```\n\n  saves the same note as `python cli.py add \"call bob tomorrow\"`. Use quotes\n  whenever your note contains punctuation your terminal cares about, such as\n  `!`, `&`, `$` or `'`.\n- **Extra spaces are trimmed.** `python cli.py add \"   book dentist   \"` saves a\n  neat `book dentist`.\n- **Notes are added at the end of the list.** Existing notes keep their order,\n  but their numbers do not change when you add, so note 1 stays note 1.\n- **An empty note is refused.** `python cli.py add \"   \"` prints a message\n  starting with `error:` and saves nothing.\n- **Forgot the text?** `python cli.py add` on its own shows a short usage\n  message instead of adding anything.\n\n---\n\n## `list` — see all your notes\n\n```\npython cli.py list\n```\n\n```\n1. buy milk\n2. call the plumber\n3. book dentist\n```\n\nEach note is shown as its number, a full stop, a space, then the text.\n\nNumbers start at 1 and always match the current order of your list. If you have\nno notes yet, you get a friendly message instead of a blank screen:\n\n```\npython cli.py list\nno notes yet\n```\n\n---\n\n## `delete` — remove a note\n\nPass the number shown by `list`:\n\n```\npython cli.py delete 2\n```\n\n```\ndeleted note 2: call the plumber\n```\n\nThe reply repeats the text of the note that was removed, so you can see at a\nglance that you deleted the right one. Listing again shows the gap closed up:\n\n```\npython cli.py list\n1. buy milk\n2. book dentist\n```\n\n**Good to know:**\n\n- **Numbers are positions, not fixed labels.** After deleting note 2, the old\n  note 3 becomes the new number 2. Always run `list` first if you are unsure —\n  what used to be \"note 3\" may now be \"note 2\".\n- **Numbers start at 1.** `delete 1` removes the first note; `delete 0` is not a\n  valid number.\n- **You can't delete a note that isn't there.** A number past the end of the\n  list, a zero, or a minus number prints a message starting with `error:` and\n  leaves your notes untouched.\n- **Deleting the last note is fine.** Your notebook simply becomes empty, and\n  `list` says `no notes yet` again.\n- **It must be a number.** `python cli.py delete two` is rejected with a usage\n  message; nothing is deleted.\n\n---\n\n## Example session\n\nHere is a complete run from an empty notebook. Lines starting with `$` are what\nyou type; the lines underneath are what the program replies.\n\n```\n$ python cli.py list\nno notes yet\n\n$ python cli.py add \"buy milk\"\nadded note 1: buy milk\n\n$ python cli.py add call bob tomorrow\nadded note 2: call bob tomorrow\n\n$ python cli.py add \"  book dentist  \"\nadded note 3: book dentist\n\n$ python cli.py list\n1. buy milk\n2. call bob tomorrow\n3. book dentist\n\n$ python cli.py delete 2\ndeleted note 2: call bob tomorrow\n\n$ python cli.py list\n1. buy milk\n2. book dentist\n```\n\nNotice that the unquoted words in the second `add` became one note, the stray\nspaces in the third were trimmed, and after the delete the remaining notes were\nrenumbered 1 and 2.\n\nAt this point `notes.json` in your folder contains your two remaining notes.\n\n---\n\n## Using a different notes file\n\nBy default every command uses `notes.json` in the current folder. To keep a\nseparate set of notes — say a work list — point the program at another file:\n\n```\npython cli.py --file work.json add \"finish the report\"\nadded note 1: finish the report\n\npython cli.py --file work.json list\n1. finish the report\n```\n\nTwo things to remember:\n\n- The `--file` option goes **before** the command name (`--file work.json add`,\n  not `add --file work.json`).\n- `-f` is a short form: `python cli.py -f work.json list` does the same thing.\n\n---\n\n## If something goes wrong\n\nMessages about problems are printed on a separate channel from normal output\nand always begin with `error:`, for example:\n\n```\n$ python cli.py delete 9\nerror: ...\n```\n\nThe wording after `error:` explains what happened — most often that the number\nyou asked for isn't in the list, or that the note text was empty. Nothing is\nchanged when an error is reported.\n\nThe program also reports a **status code** (a number the terminal records after\neach run):\n\n| Code | Meaning |\n| --- | --- |\n| `0` | It worked. |\n| `1` | A problem with the notes: empty note text, a note number that doesn't exist, or an unreadable `notes.json`. |\n| `2` | The command itself was typed incorrectly — a missing word, an unknown command, or `delete` given something that isn't a number. |\n\nCommon fixes:\n\n- **`usage:` appears instead of a result.** Something is missing or misspelled in\n  the command. Run `python cli.py --help` and compare.\n- **`invalid choice`** — the command name is wrong. The only commands are `add`,\n  `list` and `delete`.\n- **`ModuleNotFoundError: No module named 'notes'`** — `cli.py` and `notes.py`\n  are not in the same folder, or you are running the wrong copy. Keep both files\n  together.\n- **Your notes \"disappeared\".** You are probably in a different folder, so the\n  program is reading a different `notes.json`. Run `cd` into the folder you\n  originally used, or pass the full path with `--file`.\n- **`notes.json` was edited by hand and is no longer valid.** The program reports\n  an error instead of guessing. Fix the file, or delete it to start over with an\n  empty notebook.\n\n---\n\n## Quick reference\n\n```\npython cli.py add \"some text\"      # add a note\npython cli.py add some text        # same thing, without quotes\npython cli.py list                 # show all notes, numbered from 1\npython cli.py delete 1             # delete note number 1\npython cli.py --file other.json list\npython cli.py --help               # list the commands\npython cli.py add --help           # help for one command\n```\n\nYour notes are kept in `notes.json` in the working directory, and nothing needs\nto be installed to use them.\n",
+          "is_error": false,
+          "tool_call_id": "call_01_ET_V29vqYdp5FOYjOKsJQsn5243"
+        }
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the reviewer of a small software studio judging a written deliverable (a document, design or research write-up) against its acceptance criteria. Read the submitted Markdown with the tools; you must not modify anything and there are no tests to run. Judge completeness against each criterion, correctness against the input files, and clarity for the stated reader. Your final answer must be JSON only, exactly: {\"verdict\": \"pass\" | \"rework\" | \"escalate\", \"reason\": \"<one paragraph>\"}. Use pass when every criterion is met, rework when the author can fix it, escalate when the task itself is unclear or beyond the author's authority.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

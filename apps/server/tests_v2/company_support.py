@@ -3,6 +3,7 @@ CEO intake → PM plan → Tech Lead approval and assignment → engineers → Q
 delivery, every manager decision made by an agent on the same loop. Shared by the
 fixture recorder and the tests; change any text the models see and re-record."""
 
+from dataclasses import dataclass
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -23,19 +24,61 @@ from eidolon.work import WorkProjection
 from eidolon.work.dispatch import request_runs
 
 OWNER = Actor(ActorKind.human, "owner-1")
-MISSION_TITLE = "Tiny notes CLI"
-MISSION_GOAL = (
-    "A small command-line note keeper in Python. Users can add a note, list notes and delete "
-    "a note by number. Notes live in a JSON file in the working directory. Ship it with pytest "
-    "tests."
+
+
+@dataclass(frozen=True)
+class Scenario:
+    """One mission the studio is asked to take on. Change any text the models see and
+    re-record that scenario's fixtures."""
+
+    key: str
+    title: str
+    goal: str
+    criteria: tuple[str, ...]
+    budget: int
+
+
+NOTES = Scenario(
+    key="company",
+    title="Tiny notes CLI",
+    goal=(
+        "A small command-line note keeper in Python. Users can add a note, list notes and "
+        "delete a note by number. Notes live in a JSON file in the working directory. Ship it "
+        "with pytest tests."
+    ),
+    criteria=(
+        "a module exposes add / list / delete over a JSON file",
+        "a CLI wraps them with argparse subcommands add, list, delete",
+        "pytest tests cover all three operations and pass",
+        "standard library only",
+    ),
+    budget=20_000,
 )
-CRITERIA = [
-    "a module exposes add / list / delete over a JSON file",
-    "a CLI wraps them with argparse subcommands add, list, delete",
-    "pytest tests cover all three operations and pass",
-    "standard library only",
-]
-BUDGET = 20_000
+# R8-a: the same product, but the mission explicitly asks for a written deliverable too
+DOCS = Scenario(
+    key="company-docs",
+    title="Tiny notes CLI with a user guide",
+    goal=(
+        "A small command-line note keeper in Python for non-programmers. Users can add a "
+        "note, list notes and delete a note by number; notes live in a JSON file in the working "
+        "directory. Ship it with pytest tests AND a user guide: a Markdown README for end users "
+        "that explains installation, each command and what they will see."
+    ),
+    criteria=(
+        "a module exposes add / list / delete over a JSON file",
+        "a CLI wraps them with argparse subcommands add, list, delete",
+        "pytest tests cover all three operations and pass",
+        "a Markdown user guide (README.md) written for end users covers add, list and delete "
+        "with an example session, and matches the real command names and output",
+        "standard library only",
+    ),
+    budget=25_000,
+)
+SCENARIOS = {s.key: s for s in (NOTES, DOCS)}
+MISSION_TITLE = NOTES.title
+MISSION_GOAL = NOTES.goal
+CRITERIA = list(NOTES.criteria)
+BUDGET = NOTES.budget
 
 
 STAFF = [
@@ -87,15 +130,15 @@ def set_up_company(db: Session) -> UUID:
     return company
 
 
-def propose_mission(db: Session, company: UUID) -> UUID:
+def propose_mission(db: Session, company: UUID, scenario: Scenario = NOTES) -> UUID:
     fact = svc.create_mission(
         db,
         company,
         OWNER,
-        title=MISSION_TITLE,
-        goal=MISSION_GOAL,
-        success_criteria=CRITERIA,
-        budget=BUDGET,
+        title=scenario.title,
+        goal=scenario.goal,
+        success_criteria=list(scenario.criteria),
+        budget=scenario.budget,
     )
     db.commit()
     return UUID(fact.payload["mission_id"])

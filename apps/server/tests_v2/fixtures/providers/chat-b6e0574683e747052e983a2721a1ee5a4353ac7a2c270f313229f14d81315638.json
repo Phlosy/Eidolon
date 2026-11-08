@@ -1,0 +1,442 @@
+{
+  "events": [
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "assign",
+      "type": "text"
+    },
+    {
+      "text": "ee",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "eng",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "reason",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "Both",
+      "type": "text"
+    },
+    {
+      "text": " engineers",
+      "type": "text"
+    },
+    {
+      "text": " are",
+      "type": "text"
+    },
+    {
+      "text": " equally",
+      "type": "text"
+    },
+    {
+      "text": " qualified",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "0",
+      "type": "text"
+    },
+    {
+      "text": " open",
+      "type": "text"
+    },
+    {
+      "text": " tasks",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " so",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " tie",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " broken",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " lowest",
+      "type": "text"
+    },
+    {
+      "text": " roster",
+      "type": "text"
+    },
+    {
+      "text": " id",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " eng",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": " has",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " empty",
+      "type": "text"
+    },
+    {
+      "text": " workspace",
+      "type": "text"
+    },
+    {
+      "text": " ready",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": " module",
+      "type": "text"
+    },
+    {
+      "text": " plus",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " suite",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "}",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "Empty workspaces. Both engineers tied on open tasks (0). No tiebreaker data. Both roles fit. We must pick one — the instruction says pick the one with fewest open tasks; tie broken arbitrarily. Perhaps pick eng-1 to favor earlier id, or perhaps check if there is any historical data (reviews) — none. So pick eng-1, mentioning tie-break by lowest id.\n\nActually maybe there's some hidden fairness consideration: no data. Go with eng-1."
+      },
+      "attempts": 1,
+      "latency_ms": 1988,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "e4bddcce-62f1-45ea-b74d-0db127f31b2f",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 1664,
+        "cache_write_tokens": 0,
+        "input_tokens": 1962,
+        "output_tokens": 153
+      }
+    }
+  ],
+  "fingerprint": "85dfa288af50a705b158794b7ae946b99274e8aad67d8beafa43dfa67eb3986f",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:22:03+00:00",
+  "replay_key": "b6e0574683e747052e983a2721a1ee5a4353ac7a2c270f313229f14d81315638",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Task: Implement JSON-backed notes module with pytest tests\nCreate notes.py in the workspace exposing add, list and delete operations over a notes.json file in the current working directory. Use only the Python standard library. Include tests/test_notes.py with pytest coverage for adding notes, listing notes, deleting by 1-based number, persistence across calls, and handling a missing JSON file or invalid delete number.\n\nRoster:\n- eng-1 (engineer, open tasks: 0)\n- eng-2 (engineer, open tasks: 0)",
+        "role": "user"
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "The task: pick exactly one person from roster whose role fits the task and who has fewest open tasks. Both eng-1 and eng-2 are engineers with 0 open tasks. Tie. Maybe I should look at the project status to break ties — perhaps one has reviews/rework count or current assignee. Let's check project status."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {},
+            "id": "call_00_helNTZ5TJVERwHL0kLvy6025",
+            "name": "project_status"
+          },
+          {
+            "arguments": {},
+            "id": "call_01_NS3AhO49WT6VKzLXpuqV6969",
+            "name": "list_artifacts"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "{\"project\": \"Tiny notes CLI with a user guide\", \"status\": \"active\", \"budget_units\": 25000, \"manager\": \"pm-1\", \"tasks\": [{\"key\": \"t1\", \"title\": \"Implement JSON-backed notes module with pytest tests\", \"status\": \"todo\", \"assignee\": null, \"role\": \"engineer\", \"rework_count\": 0, \"depends_on\": [], \"reviews\": [], \"acceptance_criteria\": [\"notes.py exposes callable add, list and delete operations\", \"Notes are stored in and read from notes.json in the working directory\", \"Deleting uses a 1-based note number and rejects invalid numbers with a clear error\", \"pytest tests in tests/test_notes.py cover add, list and delete and pass\", \"Implementation uses only the Python standard library\"]}, {\"key\": \"t2\", \"title\": \"Add argparse CLI with integration tests\", \"status\": \"todo\", \"assignee\": null, \"role\": \"engineer\", \"rework_count\": 0, \"depends_on\": [\"Implement JSON-backed notes module with pytest tests\"], \"reviews\": [], \"acceptance_criteria\": [\"cli.py provides argparse subcommands exactly named add, list and delete\", \"python cli.py add \\\"...\\\" creates a note in notes.json\", \"python cli.py list prints numbered notes in a stable format\", \"python cli.py delete N removes the correct 1-based note number\", \"pytest tests cover all three CLI operations and pass\", \"CLI uses only the Python standard library\"]}, {\"key\": \"t3\", \"title\": \"Write end-user README.md guide\", \"status\": \"todo\", \"assignee\": null, \"role\": \"engineer\", \"rework_count\": 0, \"depends_on\": [\"Add argparse CLI with integration tests\"], \"reviews\": [], \"acceptance_criteria\": [\"README.md explains installation and how to run the CLI\", \"README.md documents add, list and delete commands with examples\", \"README.md includes an example session whose commands and output match the CLI behavior\", \"README.md is written for end users with minimal programming jargon\", \"README.md states that notes are stored in notes.json in the working directory\"]}], \"artifacts\": []}",
+          "is_error": false,
+          "tool_call_id": "call_00_helNTZ5TJVERwHL0kLvy6025"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "[]",
+          "is_error": false,
+          "tool_call_id": "call_01_NS3AhO49WT6VKzLXpuqV6969"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "Both engineers have 0 open tasks. Tie. Need a tiebreaker. Maybe check task workspaces for existing state (t1 workspace) to see who has less work in progress? The roster says both 0 open tasks. Perhaps check whether any workspace has partial work by one engineer. Let's list dirs for t1."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "depth": 4,
+              "task": "t1"
+            },
+            "id": "call_00_tgZM8yfoyJizu7GGJGIb5071",
+            "name": "list_dir"
+          },
+          {
+            "arguments": {
+              "depth": 2,
+              "task": "t2"
+            },
+            "id": "call_01_HnfKPgDlWdcuUAKdU6mo6071",
+            "name": "list_dir"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "(empty)",
+          "is_error": false,
+          "tool_call_id": "call_00_tgZM8yfoyJizu7GGJGIb5071"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "(empty)",
+          "is_error": false,
+          "tool_call_id": "call_01_HnfKPgDlWdcuUAKdU6mo6071"
+        }
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the tech lead of a small software studio assigning a task. Pick exactly one person from the roster whose role fits the task and who has the fewest open tasks. Answer with JSON only: {\"assignee\": \"<person id from the roster>\", \"reason\": \"<one sentence>\"}. You can look before you decide: the tools let you read the project's status and artifacts, list and read files in its tasks' workspaces, and run their tests. You cannot change anything. Use them when the facts matter; then give your final answer.\n\nAvailable tools:\n- project_status: The project's tasks (status, assignee, reviews, rework count) and its artifacts.\n- list_artifacts: Files the tasks produced: path, which task, size, media type.\n- read_artifact: The content of a produced file, by its path (the latest one with that path).\n- list_dir: List a directory in a task's workspace (depth 1-4).\n- read_file: Read a file in a task's workspace (optionally a line range).\n- run_tests: Run pytest in a task's workspace (sandboxed runner); returns the output.\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "The project's tasks (status, assignee, reviews, rework count) and its artifacts.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        "name": "project_status"
+      },
+      {
+        "description": "Files the tasks produced: path, which task, size, media type.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        "name": "list_artifacts"
+      },
+      {
+        "description": "The content of a produced file, by its path (the latest one with that path).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_artifact"
+      },
+      {
+        "description": "List a directory in a task's workspace (depth 1-4).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 4,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Read a file in a task's workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 400,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Run pytest in a task's workspace (sandboxed runner); returns the output.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

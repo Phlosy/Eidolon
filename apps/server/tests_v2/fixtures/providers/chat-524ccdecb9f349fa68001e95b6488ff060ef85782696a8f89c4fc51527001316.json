@@ -1,0 +1,378 @@
+{
+  "events": [
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "ver",
+      "type": "text"
+    },
+    {
+      "text": "dict",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "appro",
+      "type": "text"
+    },
+    {
+      "text": "ve",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "reason",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "This",
+      "type": "text"
+    },
+    {
+      "text": " mission",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " well",
+      "type": "text"
+    },
+    {
+      "text": "-sc",
+      "type": "text"
+    },
+    {
+      "text": "oped",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " clearly",
+      "type": "text"
+    },
+    {
+      "text": " defined",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " technically",
+      "type": "text"
+    },
+    {
+      "text": " straightforward",
+      "type": "text"
+    },
+    {
+      "text": ":",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " standard",
+      "type": "text"
+    },
+    {
+      "text": "-library",
+      "type": "text"
+    },
+    {
+      "text": " Python",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " JSON",
+      "type": "text"
+    },
+    {
+      "text": " persistence",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": " sub",
+      "type": "text"
+    },
+    {
+      "text": "commands",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " pytest",
+      "type": "text"
+    },
+    {
+      "text": " coverage",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " end",
+      "type": "text"
+    },
+    {
+      "text": "-user",
+      "type": "text"
+    },
+    {
+      "text": " READ",
+      "type": "text"
+    },
+    {
+      "text": "ME",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " The",
+      "type": "text"
+    },
+    {
+      "text": " success",
+      "type": "text"
+    },
+    {
+      "text": " criteria",
+      "type": "text"
+    },
+    {
+      "text": " are",
+      "type": "text"
+    },
+    {
+      "text": " concrete",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": "able",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " deliverables",
+      "type": "text"
+    },
+    {
+      "text": " are",
+      "type": "text"
+    },
+    {
+      "text": " small",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "250",
+      "type": "text"
+    },
+    {
+      "text": "00",
+      "type": "text"
+    },
+    {
+      "text": "-unit",
+      "type": "text"
+    },
+    {
+      "text": " budget",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " comfortably",
+      "type": "text"
+    },
+    {
+      "text": " sufficient",
+      "type": "text"
+    },
+    {
+      "text": " for",
+      "type": "text"
+    },
+    {
+      "text": " implementation",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " documentation",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " low",
+      "type": "text"
+    },
+    {
+      "text": " delivery",
+      "type": "text"
+    },
+    {
+      "text": " risk",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "}",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "We need decide approve/reject. Need judge feasibility clarity value against budget. We can inspect environment? Mission is software task. We are CEO deciding whether studio takes on mission. Need JSON only final. Use tools if help. We need assess feasibility. Budget 25000 units likely enough for tiny notes CLI. Clarity high. Value reasonable. Need maybe check no ambiguity? Success criteria explicit. Standard library only. Tests. README user guide. Feasible. Approve.\n\nNeed answer JSON only. One paragraph reason. No tool needed? But prompt says use tools when they help. Not necessary. Need final plain text JSON. Ensure verdict approve. Reason mention scoped, clear, attainable within budget, good value, low risk."
+      },
+      "attempts": 1,
+      "latency_ms": 2864,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "d02c763e-065e-4c7f-9c8c-bac3e7b59963",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 128,
+        "cache_write_tokens": 0,
+        "input_tokens": 299,
+        "output_tokens": 234
+      }
+    }
+  ],
+  "fingerprint": "524ccdecb9f349fa68001e95b6488ff060ef85782696a8f89c4fc51527001316",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:18:52+00:00",
+  "replay_key": "524ccdecb9f349fa68001e95b6488ff060ef85782696a8f89c4fc51527001316",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Mission: Tiny notes CLI with a user guide\n\nGoal:\nA small command-line note keeper in Python for non-programmers. Users can add a note, list notes and delete a note by number; notes live in a JSON file in the working directory. Ship it with pytest tests AND a user guide: a Markdown README for end users that explains installation, each command and what they will see.\n\nSuccess criteria:\n- a module exposes add / list / delete over a JSON file\n- a CLI wraps them with argparse subcommands add, list, delete\n- pytest tests cover all three operations and pass\n- a Markdown user guide (README.md) written for end users covers add, list and delete with an example session, and matches the real command names and output\n- standard library only\n\nBudget: 25000 units.",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the CEO of a small software studio. You decide whether the studio takes on a mission. Judge feasibility, clarity and value against the budget. Answer with JSON only: {\"verdict\": \"approve\" | \"reject\", \"reason\": \"<one paragraph>\"}.\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": []
+  }
+}

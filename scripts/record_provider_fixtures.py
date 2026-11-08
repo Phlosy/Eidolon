@@ -133,7 +133,9 @@ def main() -> int:
         help="also record the dispatch/review project scenario",
     )
     parser.add_argument(
-        "--only", default=None, help="run only this scenario: loop | project | company"
+        "--only",
+        default=None,
+        help="run only this scenario: loop | project | company | company-docs",
     )
     parser.add_argument(
         "--company",
@@ -151,14 +153,18 @@ def main() -> int:
         code = run_project(args.kind, directory) or code
     if args.company and args.only in (None, "company"):
         code = run_company(args.kind, directory) or code
+    if (args.company and args.only is None) or args.only == "company-docs":
+        code = run_company(args.kind, directory, scenario="company-docs") or code
     return code
 
 
-def run_company(kind: str, directory: Path) -> int:
-    """R3-e: CEO → PM → Tech Lead → engineers → QA on one mission, recording every run."""
+def run_company(kind: str, directory: Path, scenario: str = "company") -> int:
+    """R3-e: CEO → PM → Tech Lead → engineers → QA on one mission, recording every run.
+    ``scenario`` picks the mission (R8-a adds ``company-docs``: code plus a user guide)."""
     import tempfile
 
     from company_support import (
+        SCENARIOS,
         company_project_id,
         drive_company,
         owner_signs_delivery,
@@ -180,7 +186,7 @@ def run_company(kind: str, directory: Path) -> int:
     blobs = BlobStore(SERVER / settings.transcript_dir)
     with tempfile.TemporaryDirectory(prefix="eidolon-r3e-") as ws, SessionLocal() as db:
         company = set_up_company(db)
-        mission_id = propose_mission(db, company)
+        mission_id = propose_mission(db, company, SCENARIOS[scenario])
         jobs = studio_jobs(SessionLocal, provider, blobs, Path(ws))
         trail = drive_company(SessionLocal, db, mission_id, jobs)
         pid = company_project_id(db, mission_id)
@@ -191,7 +197,7 @@ def run_company(kind: str, directory: Path) -> int:
             owner_signs_delivery(db, company, pid)
         state = svc.project(db, pid) if pid else None
         print(
-            f"{'ok ' if ok else 'BAD'} {kind}/company company={company} mission={mission_id} "
+            f"{'ok ' if ok else 'BAD'} {kind}/{scenario} company={company} mission={mission_id} "
             f"project={pid} cycles={len(trail)} final={trail[-1]} "
             f"status={state.status if state else None}"
         )

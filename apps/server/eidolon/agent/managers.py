@@ -54,6 +54,7 @@ from eidolon.work.state import ProjectState
 
 log = get_logger("eidolon.agent.managers")
 _JSON = re.compile(r"\{.*\}", re.DOTALL)
+MAX_TOKENS_CAP = 16_384
 
 CEO_SYSTEM = (
     "You are the CEO of a small software studio. You decide whether the studio takes on a "
@@ -234,7 +235,9 @@ class Deciders:
                     prompt=prompt,
                     task_id=task_id,
                     budget=budget,
-                    max_tokens_per_step=max_tokens,
+                    # a thinking model that ran out of room on attempt n gets twice the
+                    # room on attempt n+1 (R8-b): identical retries only replay the cut-off
+                    max_tokens_per_step=min(max_tokens * 2 ** (attempt - 1), MAX_TOKENS_CAP),
                     temperature=0.0,
                     causation_id=causation_id,
                 )

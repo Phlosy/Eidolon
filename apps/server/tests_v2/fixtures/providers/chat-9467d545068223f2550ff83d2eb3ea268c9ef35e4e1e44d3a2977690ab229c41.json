@@ -1,0 +1,2387 @@
+{
+  "events": [
+    {
+      "text": "{\"",
+      "type": "text"
+    },
+    {
+      "text": "ver",
+      "type": "text"
+    },
+    {
+      "text": "dict",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "pass",
+      "type": "text"
+    },
+    {
+      "text": "\",",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "reason",
+      "type": "text"
+    },
+    {
+      "text": "\":",
+      "type": "text"
+    },
+    {
+      "text": " \"",
+      "type": "text"
+    },
+    {
+      "text": "All",
+      "type": "text"
+    },
+    {
+      "text": " acceptance",
+      "type": "text"
+    },
+    {
+      "text": " criteria",
+      "type": "text"
+    },
+    {
+      "text": " are",
+      "type": "text"
+    },
+    {
+      "text": " met",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " verified",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " builds",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " single",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": " parser",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " sub",
+      "type": "text"
+    },
+    {
+      "text": "par",
+      "type": "text"
+    },
+    {
+      "text": "sers",
+      "type": "text"
+    },
+    {
+      "text": " whose",
+      "type": "text"
+    },
+    {
+      "text": " choices",
+      "type": "text"
+    },
+    {
+      "text": " are",
+      "type": "text"
+    },
+    {
+      "text": " exactly",
+      "type": "text"
+    },
+    {
+      "text": " {",
+      "type": "text"
+    },
+    {
+      "text": "add",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": "}",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "confirmed",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": "/test",
+      "type": "text"
+    },
+    {
+      "text": "_cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": "::",
+      "type": "text"
+    },
+    {
+      "text": "test",
+      "type": "text"
+    },
+    {
+      "text": "_b",
+      "type": "text"
+    },
+    {
+      "text": "uild",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "parser",
+      "type": "text"
+    },
+    {
+      "text": "_ex",
+      "type": "text"
+    },
+    {
+      "text": "poses",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "expected",
+      "type": "text"
+    },
+    {
+      "text": "_sub",
+      "type": "text"
+    },
+    {
+      "text": "commands",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " --",
+      "type": "text"
+    },
+    {
+      "text": "help",
+      "type": "text"
+    },
+    {
+      "text": " output",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " keeps",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".json",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " current",
+      "type": "text"
+    },
+    {
+      "text": " working",
+      "type": "text"
+    },
+    {
+      "text": " directory",
+      "type": "text"
+    },
+    {
+      "text": " via",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " imports",
+      "type": "text"
+    },
+    {
+      "text": " only",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": "/s",
+      "type": "text"
+    },
+    {
+      "text": "ys",
+      "type": "text"
+    },
+    {
+      "text": " plus",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " local",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": " module",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "no",
+      "type": "text"
+    },
+    {
+      "text": " third",
+      "type": "text"
+    },
+    {
+      "text": "-party",
+      "type": "text"
+    },
+    {
+      "text": " dependencies",
+      "type": "text"
+    },
+    {
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": "_cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "uses",
+      "type": "text"
+    },
+    {
+      "text": "_only",
+      "type": "text"
+    },
+    {
+      "text": "_the",
+      "type": "text"
+    },
+    {
+      "text": "_",
+      "type": "text"
+    },
+    {
+      "text": "standard",
+      "type": "text"
+    },
+    {
+      "text": "_l",
+      "type": "text"
+    },
+    {
+      "text": "ibrary",
+      "type": "text"
+    },
+    {
+      "text": " asserts",
+      "type": "text"
+    },
+    {
+      "text": " this",
+      "type": "text"
+    },
+    {
+      "text": " against",
+      "type": "text"
+    },
+    {
+      "text": " sys",
+      "type": "text"
+    },
+    {
+      "text": ".std",
+      "type": "text"
+    },
+    {
+      "text": "lib",
+      "type": "text"
+    },
+    {
+      "text": "_module",
+      "type": "text"
+    },
+    {
+      "text": "_names",
+      "type": "text"
+    },
+    {
+      "text": ").",
+      "type": "text"
+    },
+    {
+      "text": " I",
+      "type": "text"
+    },
+    {
+      "text": " ran",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " CLI",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " hand",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " throw",
+      "type": "text"
+    },
+    {
+      "text": "away",
+      "type": "text"
+    },
+    {
+      "text": " directory",
+      "type": "text"
+    },
+    {
+      "text": ":",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "python",
+      "type": "text"
+    },
+    {
+      "text": " cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": " \\\"",
+      "type": "text"
+    },
+    {
+      "text": "buy",
+      "type": "text"
+    },
+    {
+      "text": " milk",
+      "type": "text"
+    },
+    {
+      "text": "\\\"",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " /",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "add",
+      "type": "text"
+    },
+    {
+      "text": " \\\"",
+      "type": "text"
+    },
+    {
+      "text": "call",
+      "type": "text"
+    },
+    {
+      "text": " bob",
+      "type": "text"
+    },
+    {
+      "text": "\\\"",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " created",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".json",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " [",
+      "type": "text"
+    },
+    {
+      "text": "\\\"",
+      "type": "text"
+    },
+    {
+      "text": "buy",
+      "type": "text"
+    },
+    {
+      "text": " milk",
+      "type": "text"
+    },
+    {
+      "text": "\\\",",
+      "type": "text"
+    },
+    {
+      "text": " \\\"",
+      "type": "text"
+    },
+    {
+      "text": "call",
+      "type": "text"
+    },
+    {
+      "text": " bob",
+      "type": "text"
+    },
+    {
+      "text": "\\\"",
+      "type": "text"
+    },
+    {
+      "text": "],",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "list",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " printed",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " stable",
+      "type": "text"
+    },
+    {
+      "text": " numbered",
+      "type": "text"
+    },
+    {
+      "text": " format",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " buy",
+      "type": "text"
+    },
+    {
+      "text": " milk",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " /",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "2",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " call",
+      "type": "text"
+    },
+    {
+      "text": " bob",
+      "type": "text"
+    },
+    {
+      "text": "`,",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "delete",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " removed",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " first",
+      "type": "text"
+    },
+    {
+      "text": " note",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "exit",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "0",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " output",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "de",
+      "type": "text"
+    },
+    {
+      "text": "leted",
+      "type": "text"
+    },
+    {
+      "text": " note",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": ":",
+      "type": "text"
+    },
+    {
+      "text": " buy",
+      "type": "text"
+    },
+    {
+      "text": " milk",
+      "type": "text"
+    },
+    {
+      "text": "`)",
+      "type": "text"
+    },
+    {
+      "text": " leaving",
+      "type": "text"
+    },
+    {
+      "text": " [",
+      "type": "text"
+    },
+    {
+      "text": "\\\"",
+      "type": "text"
+    },
+    {
+      "text": "call",
+      "type": "text"
+    },
+    {
+      "text": " bob",
+      "type": "text"
+    },
+    {
+      "text": "\\\"",
+      "type": "text"
+    },
+    {
+      "text": "],",
+      "type": "text"
+    },
+    {
+      "text": " out",
+      "type": "text"
+    },
+    {
+      "text": "-of",
+      "type": "text"
+    },
+    {
+      "text": "-range",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": " exited",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " error",
+      "type": "text"
+    },
+    {
+      "text": " on",
+      "type": "text"
+    },
+    {
+      "text": " st",
+      "type": "text"
+    },
+    {
+      "text": "derr",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " no",
+      "type": "text"
+    },
+    {
+      "text": " file",
+      "type": "text"
+    },
+    {
+      "text": " change",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "delete",
+      "type": "text"
+    },
+    {
+      "text": " abc",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " correctly",
+      "type": "text"
+    },
+    {
+      "text": " exited",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "2",
+      "type": "text"
+    },
+    {
+      "text": " as",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " argparse",
+      "type": "text"
+    },
+    {
+      "text": " usage",
+      "type": "text"
+    },
+    {
+      "text": " error",
+      "type": "text"
+    },
+    {
+      "text": ";",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": " also",
+      "type": "text"
+    },
+    {
+      "text": " strips",
+      "type": "text"
+    },
+    {
+      "text": " whites",
+      "type": "text"
+    },
+    {
+      "text": "pace",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " rejects",
+      "type": "text"
+    },
+    {
+      "text": " blank",
+      "type": "text"
+    },
+    {
+      "text": " text",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " exit",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " The",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": " suite",
+      "type": "text"
+    },
+    {
+      "text": " is",
+      "type": "text"
+    },
+    {
+      "text": " genuine",
+      "type": "text"
+    },
+    {
+      "text": " end",
+      "type": "text"
+    },
+    {
+      "text": "-to",
+      "type": "text"
+    },
+    {
+      "text": "-end",
+      "type": "text"
+    },
+    {
+      "text": " coverage",
+      "type": "text"
+    },
+    {
+      "text": ":",
+      "type": "text"
+    },
+    {
+      "text": " every",
+      "type": "text"
+    },
+    {
+      "text": " test",
+      "type": "text"
+    },
+    {
+      "text": " spawn",
+      "type": "text"
+    },
+    {
+      "text": "s",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " real",
+      "type": "text"
+    },
+    {
+      "text": " sub",
+      "type": "text"
+    },
+    {
+      "text": "process",
+      "type": "text"
+    },
+    {
+      "text": " of",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "python",
+      "type": "text"
+    },
+    {
+      "text": " cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " ...",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " c",
+      "type": "text"
+    },
+    {
+      "text": "wd",
+      "type": "text"
+    },
+    {
+      "text": " set",
+      "type": "text"
+    },
+    {
+      "text": " to",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " per",
+      "type": "text"
+    },
+    {
+      "text": "-test",
+      "type": "text"
+    },
+    {
+      "text": " tmp",
+      "type": "text"
+    },
+    {
+      "text": "_path",
+      "type": "text"
+    },
+    {
+      "text": " containing",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " copy",
+      "type": "text"
+    },
+    {
+      "text": " of",
+      "type": "text"
+    },
+    {
+      "text": " cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": "/",
+      "type": "text"
+    },
+    {
+      "text": "notes",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " then",
+      "type": "text"
+    },
+    {
+      "text": " asserts",
+      "type": "text"
+    },
+    {
+      "text": " on",
+      "type": "text"
+    },
+    {
+      "text": " stdout",
+      "type": "text"
+    },
+    {
+      "text": "/st",
+      "type": "text"
+    },
+    {
+      "text": "derr",
+      "type": "text"
+    },
+    {
+      "text": "/",
+      "type": "text"
+    },
+    {
+      "text": "exit",
+      "type": "text"
+    },
+    {
+      "text": " codes",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " parsed",
+      "type": "text"
+    },
+    {
+      "text": " notes",
+      "type": "text"
+    },
+    {
+      "text": ".json",
+      "type": "text"
+    },
+    {
+      "text": " contents",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " covering",
+      "type": "text"
+    },
+    {
+      "text": " add",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "creation",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " app",
+      "type": "text"
+    },
+    {
+      "text": "ending",
+      "type": "text"
+    },
+    {
+      "text": "/n",
+      "type": "text"
+    },
+    {
+      "text": "umber",
+      "type": "text"
+    },
+    {
+      "text": "ing",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " word",
+      "type": "text"
+    },
+    {
+      "text": " joining",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " un",
+      "type": "text"
+    },
+    {
+      "text": "icode",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " blank",
+      "type": "text"
+    },
+    {
+      "text": " rejection",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " missing",
+      "type": "text"
+    },
+    {
+      "text": " arg",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " list",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "empty",
+      "type": "text"
+    },
+    {
+      "text": " message",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " exact",
+      "type": "text"
+    },
+    {
+      "text": " lines",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " cross",
+      "type": "text"
+    },
+    {
+      "text": "-process",
+      "type": "text"
+    },
+    {
+      "text": " persistence",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " corrupt",
+      "type": "text"
+    },
+    {
+      "text": "/n",
+      "type": "text"
+    },
+    {
+      "text": "on",
+      "type": "text"
+    },
+    {
+      "text": "-list",
+      "type": "text"
+    },
+    {
+      "text": " JSON",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " delete",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "1",
+      "type": "text"
+    },
+    {
+      "text": "-based",
+      "type": "text"
+    },
+    {
+      "text": " correctness",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " out",
+      "type": "text"
+    },
+    {
+      "text": "-of",
+      "type": "text"
+    },
+    {
+      "text": "-range",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " empty",
+      "type": "text"
+    },
+    {
+      "text": " store",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " non",
+      "type": "text"
+    },
+    {
+      "text": "-in",
+      "type": "text"
+    },
+    {
+      "text": "teger",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " missing",
+      "type": "text"
+    },
+    {
+      "text": " arg",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " plus",
+      "type": "text"
+    },
+    {
+      "text": " optional",
+      "type": "text"
+    },
+    {
+      "text": " --",
+      "type": "text"
+    },
+    {
+      "text": "file",
+      "type": "text"
+    },
+    {
+      "text": " targeting",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " `",
+      "type": "text"
+    },
+    {
+      "text": "run",
+      "type": "text"
+    },
+    {
+      "text": "_t",
+      "type": "text"
+    },
+    {
+      "text": "ests",
+      "type": "text"
+    },
+    {
+      "text": "`",
+      "type": "text"
+    },
+    {
+      "text": " on",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " workspace",
+      "type": "text"
+    },
+    {
+      "text": " reported",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "49",
+      "type": "text"
+    },
+    {
+      "text": " passed",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " on",
+      "type": "text"
+    },
+    {
+      "text": " tests",
+      "type": "text"
+    },
+    {
+      "text": "/test",
+      "type": "text"
+    },
+    {
+      "text": "_cl",
+      "type": "text"
+    },
+    {
+      "text": "i",
+      "type": "text"
+    },
+    {
+      "text": ".py",
+      "type": "text"
+    },
+    {
+      "text": " alone",
+      "type": "text"
+    },
+    {
+      "text": " reported",
+      "type": "text"
+    },
+    {
+      "text": " ",
+      "type": "text"
+    },
+    {
+      "text": "30",
+      "type": "text"
+    },
+    {
+      "text": " passed",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " with",
+      "type": "text"
+    },
+    {
+      "text": " no",
+      "type": "text"
+    },
+    {
+      "text": " failures",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " sk",
+      "type": "text"
+    },
+    {
+      "text": "ips",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " or",
+      "type": "text"
+    },
+    {
+      "text": " x",
+      "type": "text"
+    },
+    {
+      "text": "f",
+      "type": "text"
+    },
+    {
+      "text": "ails",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "text": " Only",
+      "type": "text"
+    },
+    {
+      "text": " a",
+      "type": "text"
+    },
+    {
+      "text": " very",
+      "type": "text"
+    },
+    {
+      "text": " minor",
+      "type": "text"
+    },
+    {
+      "text": " nit",
+      "type": "text"
+    },
+    {
+      "text": " exists",
+      "type": "text"
+    },
+    {
+      "text": " (",
+      "type": "text"
+    },
+    {
+      "text": "the",
+      "type": "text"
+    },
+    {
+      "text": " program",
+      "type": "text"
+    },
+    {
+      "text": " files",
+      "type": "text"
+    },
+    {
+      "text": " are",
+      "type": "text"
+    },
+    {
+      "text": " copied",
+      "type": "text"
+    },
+    {
+      "text": " into",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " temp",
+      "type": "text"
+    },
+    {
+      "text": " dir",
+      "type": "text"
+    },
+    {
+      "text": " rather",
+      "type": "text"
+    },
+    {
+      "text": " than",
+      "type": "text"
+    },
+    {
+      "text": " executed",
+      "type": "text"
+    },
+    {
+      "text": " in",
+      "type": "text"
+    },
+    {
+      "text": " place",
+      "type": "text"
+    },
+    {
+      "text": ",",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " _",
+      "type": "text"
+    },
+    {
+      "text": "install",
+      "type": "text"
+    },
+    {
+      "text": "_pro",
+      "type": "text"
+    },
+    {
+      "text": "gram",
+      "type": "text"
+    },
+    {
+      "text": " has",
+      "type": "text"
+    },
+    {
+      "text": " an",
+      "type": "text"
+    },
+    {
+      "text": " O",
+      "type": "text"
+    },
+    {
+      "text": "SE",
+      "type": "text"
+    },
+    {
+      "text": "rror",
+      "type": "text"
+    },
+    {
+      "text": " fall",
+      "type": "text"
+    },
+    {
+      "text": "back",
+      "type": "text"
+    },
+    {
+      "text": " that",
+      "type": "text"
+    },
+    {
+      "text": " would",
+      "type": "text"
+    },
+    {
+      "text": " read",
+      "type": "text"
+    },
+    {
+      "text": " c",
+      "type": "text"
+    },
+    {
+      "text": "wd",
+      "type": "text"
+    },
+    {
+      "text": "-",
+      "type": "text"
+    },
+    {
+      "text": "relative",
+      "type": "text"
+    },
+    {
+      "text": " paths",
+      "type": "text"
+    },
+    {
+      "text": "),",
+      "type": "text"
+    },
+    {
+      "text": " which",
+      "type": "text"
+    },
+    {
+      "text": " does",
+      "type": "text"
+    },
+    {
+      "text": " not",
+      "type": "text"
+    },
+    {
+      "text": " weaken",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " criteria",
+      "type": "text"
+    },
+    {
+      "text": " being",
+      "type": "text"
+    },
+    {
+      "text": " met",
+      "type": "text"
+    },
+    {
+      "text": ".\"",
+      "type": "text"
+    },
+    {
+      "text": "}",
+      "type": "text"
+    },
+    {
+      "assistant_state": {
+        "reasoning_content": "Everything checks out. Verdict: pass.\n\nWrite one-paragraph reason citing concrete evidence."
+      },
+      "attempts": 1,
+      "latency_ms": 4223,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "8b871c2f-bb7f-4c64-a8f3-2b908d65020a",
+      "stop_detail": null,
+      "stop_reason": "end_turn",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 9984,
+        "cache_write_tokens": 0,
+        "input_tokens": 10213,
+        "output_tokens": 502
+      }
+    }
+  ],
+  "fingerprint": "15acd3935e163c6323a94d2829e9b0cd8ff90dfc8109a472023f029d87448177",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T14:25:42+00:00",
+  "replay_key": "9467d545068223f2550ff83d2eb3ea268c9ef35e4e1e44d3a2977690ab229c41",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Review task: Add argparse CLI with integration tests\n\nCreate cli.py that wraps the notes module with argparse subcommands named add, list and delete. add should accept the note text, list should print numbered notes, and delete should accept a 1-based note number. Add tests/test_cli.py that runs the CLI via subprocess in a temporary working directory and verifies add, list and delete end to end, including JSON persistence and user-facing output.\n\nAcceptance criteria:\n- cli.py provides argparse subcommands exactly named add, list and delete\n- python cli.py add \"...\" creates a note in notes.json\n- python cli.py list prints numbered notes in a stable format\n- python cli.py delete N removes the correct 1-based note number\n- pytest tests cover all three CLI operations and pass\n- CLI uses only the Python standard library\n\nSubmitted files (also present in the workspace):\n--- cli.py ---\n\"\"\"Command line interface for the JSON-backed notes store.\n\nUsage\n-----\n    python cli.py add \"buy milk\"\n    python cli.py list\n    python cli.py delete 1\n\nSubcommands\n-----------\nadd TEXT...    append a note (multiple words are joined with single spaces)\nlist           print every note, numbered from 1\ndelete N       delete the note with the 1-based number N\n\nNotes are stored in ``notes.json`` in the current working directory; pass\n``--file PATH`` before the subcommand to use a different file.  Only the Python\nstandard library is used.\n\nExit status: ``0`` on success, ``1`` for notes-level errors (empty note,\nmalformed store, bad note number), ``2`` for argparse usage errors.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport argparse\nimport sys\n\nimport notes\n\n__all__ = [\"build_parser\", \"main\", \"format_note_line\", \"PROG\"]\n\nPROG = \"cli.py\"\n\n\ndef format_note_line(index, note):\n    \"\"\"Return the stable display form of a single numbered note.\"\"\"\n    return f\"{index}. {note}\"\n\n\ndef build_parser():\n    \"\"\"Build and return the argparse parser for the CLI.\"\"\"\n    parser = argparse.ArgumentParser(\n        prog=PROG,\n        description=\"Manage a simple JSON-backed list of notes.\",\n    )\n    parser.add_argument(\n        \"--file\",\n        \"-f\",\n        default=None,\n        metavar=\"PATH\",\n        help=\"notes file to use (default: notes.json in the current directory)\",\n    )\n\n    subparsers = parser.add_subparsers(dest=\"command\")\n    subparsers.required = True\n\n    add_parser = subparsers.add_parser(\"add\", help=\"add a note\")\n    add_parser.add_argument(\n        \"text\",\n        nargs=\"+\",\n        metavar=\"TEXT\",\n        help=\"note text (multiple words are joined with single spaces)\",\n    )\n\n    subparsers.add_parser(\"list\", help=\"list all notes, numbered from 1\")\n\n    delete_parser = subparsers.add_parser(\"delete\", help=\"delete a note by number\")\n    delete_parser.add_argument(\n        \"number\",\n        type=int,\n        metavar=\"N\",\n        help=\"1-based number of the note to del\n--- tests/test_cli.py ---\n\"\"\"End-to-end tests for ``cli.py``.\n\nEvery test drives the CLI the way a user does: a real ``subprocess`` invocation\nof ``python cli.py ...`` inside a temporary working directory, then assertions\non stdout / stderr / exit status and on the resulting ``notes.json``.\n\nNote on isolation: the program files (``cli.py`` and ``notes.py``) are copied\ninto the temporary directory first and executed from there with a relative\nscript path.  That keeps each test hermetic -- the CLI only ever resolves\n``notes.json`` against its own (temporary) working directory -- and it also\nworks in sandboxes where the checkout itself is not addressable by absolute\npath from a child process.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport argparse\nimport ast\nimport json\nimport os\nimport shutil\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nimport pytest\n\nREPO_CANDIDATES = [\n    Path(__file__).resolve().parents[1],  # tests/ -> repository root\n    Path.cwd(),\n    Path(\".\"),\n    Path(\"..\"),\n]\n\nPROGRAM_FILES = (\"cli.py\", \"notes.py\")\n\n\ndef _find_repo_root() -> Path:\n    \"\"\"Return the directory holding ``cli.py`` and ``notes.py``.\"\"\"\n    for candidate in REPO_CANDIDATES:\n        try:\n            if all((candidate / name).is_file() for name in PROGRAM_FILES):\n                return candidate\n        except OSError:  # pragma: no cover - defensive\n            continue\n    raise RuntimeError(f\"could not locate {PROGRAM_FILES} in {REPO_CANDIDATES}\")\n\n\ndef _install_program(dest: Path) -> None:\n    \"\"\"Copy the CLI and its module into ``dest`` so it can be run there.\"\"\"\n    root = _find_repo_root()\n    for name in PROGRAM_FILES:\n        try:\n            shutil.copyfile(root / name, dest / name)\n        except OSError:  # pragma: no cover - fall back to cwd-relative source\n            (dest / name).write_text(Path(name).read_text(encoding=\"utf-8\"), encoding=\"utf-8\")\n\n\n@pytest.fixture()\ndef workdir(tmp_path):\n    \"\"\"A temporary working directory containing a runnable copy of the CLI.\"\"\"\n    _install\n\nCheck the work against the criteria (run the tests with run_tests if any), then answer with the JSON verdict only.",
+        "role": "user"
+      },
+      {
+        "content": "I'll start by exploring the workspace to see the full files.",
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "depth": 2,
+              "path": "."
+            },
+            "id": "call_00_ET_28bgLxCCVS2SrxvLZo365445",
+            "name": "list_dir"
+          },
+          {
+            "arguments": {
+              "command": "ls -la; echo ---; wc -l cli.py tests/test_cli.py notes.py 2>&1"
+            },
+            "id": "call_01_ET_mxdfe80RlOH0PvwPTkfq6332",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "tests/\ntests/test_cli.py  (11281 bytes)\ntests/test_notes.py  (4457 bytes)\ncli.py  (3098 bytes)\nnotes.py  (5025 bytes)",
+          "is_error": false,
+          "tool_call_id": "call_00_ET_28bgLxCCVS2SrxvLZo365445"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "total 24\ndrwxr-xr-x@ 8 ponk  staff   256 Nov  8 06:25 .\ndrwxr-xr-x@ 5 ponk  staff   160 Nov  8 06:22 ..\ndrwxr-xr-x@ 3 ponk  staff    96 Nov  8 06:23 .eidolon\ndrwxr-xr-x@ 6 ponk  staff   192 Nov  8 06:25 .pytest_cache\ndrwxr-xr-x@ 4 ponk  staff   128 Nov  8 06:25 __pycache__\n-rw-r--r--@ 1 ponk  staff  3098 Nov  8 06:24 cli.py\n-rw-r--r--@ 1 ponk  staff  5025 Nov  8 06:23 notes.py\ndrwxr-xr-x@ 5 ponk  staff   160 Nov  8 06:25 tests\n---\n     118 cli.py\n     354 tests/test_cli.py\n     159 notes.py\n     631 total\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_01_ET_mxdfe80RlOH0PvwPTkfq6332"
+        }
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "path": "cli.py"
+            },
+            "id": "call_00_ET_bKhD899Mn8vbxuhozZpj5978",
+            "name": "read_file"
+          },
+          {
+            "arguments": {
+              "path": "notes.py"
+            },
+            "id": "call_01_ET_RCTFEYDNkxlPzJjINMHe0080",
+            "name": "read_file"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "\"\"\"Command line interface for the JSON-backed notes store.\n\nUsage\n-----\n    python cli.py add \"buy milk\"\n    python cli.py list\n    python cli.py delete 1\n\nSubcommands\n-----------\nadd TEXT...    append a note (multiple words are joined with single spaces)\nlist           print every note, numbered from 1\ndelete N       delete the note with the 1-based number N\n\nNotes are stored in ``notes.json`` in the current working directory; pass\n``--file PATH`` before the subcommand to use a different file.  Only the Python\nstandard library is used.\n\nExit status: ``0`` on success, ``1`` for notes-level errors (empty note,\nmalformed store, bad note number), ``2`` for argparse usage errors.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport argparse\nimport sys\n\nimport notes\n\n__all__ = [\"build_parser\", \"main\", \"format_note_line\", \"PROG\"]\n\nPROG = \"cli.py\"\n\n\ndef format_note_line(index, note):\n    \"\"\"Return the stable display form of a single numbered note.\"\"\"\n    return f\"{index}. {note}\"\n\n\ndef build_parser():\n    \"\"\"Build and return the argparse parser for the CLI.\"\"\"\n    parser = argparse.ArgumentParser(\n        prog=PROG,\n        description=\"Manage a simple JSON-backed list of notes.\",\n    )\n    parser.add_argument(\n        \"--file\",\n        \"-f\",\n        default=None,\n        metavar=\"PATH\",\n        help=\"notes file to use (default: notes.json in the current directory)\",\n    )\n\n    subparsers = parser.add_subparsers(dest=\"command\")\n    subparsers.required = True\n\n    add_parser = subparsers.add_parser(\"add\", help=\"add a note\")\n    add_parser.add_argument(\n        \"text\",\n        nargs=\"+\",\n        metavar=\"TEXT\",\n        help=\"note text (multiple words are joined with single spaces)\",\n    )\n\n    subparsers.add_parser(\"list\", help=\"list all notes, numbered from 1\")\n\n    delete_parser = subparsers.add_parser(\"delete\", help=\"delete a note by number\")\n    delete_parser.add_argument(\n        \"number\",\n        type=int,\n        metavar=\"N\",\n        help=\"1-based number of the note to delete\",\n    )\n\n    return parser\n\n\ndef _cmd_add(args):\n    text = \" \".join(args.text)\n    number = notes.add(text, path=args.file)\n    print(f\"added note {number}: {text.strip()}\")\n    return 0\n\n\ndef _cmd_list(args):\n    items = notes.list(path=args.file)\n    if not items:\n        print(\"no notes yet\")\n        return 0\n    for index, note in enumerate(items, start=1):\n        print(format_note_line(index, note))\n    return 0\n\n\ndef _cmd_delete(args):\n    removed = notes.delete(args.number, path=args.file)\n    print(f\"deleted note {args.number}: {removed}\")\n    return 0\n\n\nCOMMANDS = {\"add\": _cmd_add, \"list\": _cmd_list, \"delete\": _cmd_delete}\n\n\ndef main(argv=None):\n    \"\"\"Run the CLI, returning the process exit status.\"\"\"\n    parser = build_parser()\n    args = parser.parse_args(sys.argv[1:] if argv is None else argv)\n\n    handler = COMMANDS[args.command]\n    try:\n        return handler(args)\n    except (IndexError, TypeError, ValueError) as exc:\n        print(f\"error: {exc}\", file=sys.stderr)\n        return 1\n\n\nif __name__ == \"__main__\":  # pragma: no cover\n    raise SystemExit(main())\n",
+          "is_error": false,
+          "tool_call_id": "call_00_ET_bKhD899Mn8vbxuhozZpj5978"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "\"\"\"Simple JSON-backed notes store.\n\nNotes live in ``notes.json`` in the current working directory.  The file holds a\nJSON list of strings, e.g. ``[\"buy milk\", \"call bob\"]``; a missing file simply\nmeans \"no notes yet\".\n\nPublic API\n----------\nadd(text)      -> int          add a note, return its 1-based number\nlist()         -> list[str]    return all notes, oldest first\ndelete(number) -> str          delete a note by 1-based number, return it\n\nEvery function accepts an optional ``path`` argument, which defaults to\n``notes.json`` resolved against the *current* working directory at call time.\nOnly the Python standard library is used.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport builtins\nimport json\nimport os\nimport tempfile\nfrom pathlib import Path\n\n__all__ = [\"add\", \"list\", \"delete\", \"NOTES_FILENAME\"]\n\n#: Name of the JSON file used when no explicit path is given.\nNOTES_FILENAME = \"notes.json\"\n\n\ndef _resolve(path=None):\n    \"\"\"Return the :class:`pathlib.Path` to operate on.\n\n    ``None`` means ``./notes.json`` relative to the current working directory.\n    The lookup happens per call so that changing directory (or tests using a\n    temporary directory) behaves as expected.\n    \"\"\"\n    if path is None:\n        return Path.cwd() / NOTES_FILENAME\n    return Path(path)\n\n\ndef _load(path):\n    \"\"\"Load the list of notes from ``path``.\n\n    A missing or empty file yields an empty list.  Malformed content raises\n    ``ValueError`` with a message naming the offending file.\n    \"\"\"\n    try:\n        raw = path.read_text(encoding=\"utf-8\")\n    except FileNotFoundError:\n        return []\n    except OSError as exc:  # pragma: no cover - unusual filesystem error\n        raise ValueError(f\"could not read {path}: {exc}\") from exc\n\n    if not raw.strip():\n        return []\n\n    try:\n        data = json.loads(raw)\n    except json.JSONDecodeError as exc:\n        raise ValueError(f\"{path} does not contain valid JSON: {exc}\") from exc\n\n    if not isinstance(data, builtins.list):\n        raise ValueError(f\"{path} must contain a JSON list of notes, not {type(data).__name__}\")\n\n    notes = []\n    for item in data:\n        if not isinstance(item, str):\n            raise ValueError(f\"{path} contains a non-string note: {item!r}\")\n        notes.append(item)\n    return notes\n\n\ndef _save(path, notes):\n    \"\"\"Write ``notes`` to ``path`` atomically (temp file + rename).\"\"\"\n    path.parent.mkdir(parents=True, exist_ok=True)\n    payload = json.dumps(notes, indent=2, ensure_ascii=False) + \"\\n\"\n    handle = tempfile.NamedTemporaryFile(\n        \"w\", encoding=\"utf-8\", dir=str(path.parent), prefix=\".notes-\", suffix=\".tmp\", delete=False\n    )\n    try:\n        with handle:\n            handle.write(payload)\n        os.replace(handle.name, path)\n    except BaseException:  # pragma: no cover - cleanup on failure\n        try:\n            os.unlink(handle.name)\n        except OSError:\n            pass\n        raise\n\n\ndef add(text, path=None):\n    \"\"\"Append ``text`` as a new note and return its 1-based number.\"\"\"\n    if not isinstance(text, str):\n        raise TypeError(f\"note must be a string, not {type(text).__name__}\")\n    note = text.strip()\n    if not note:\n        raise ValueError(\"note must not be empty\")\n\n    target = _resolve(path)\n    notes = _load(target)\n    notes.append(note)\n    _save(target, notes)\n    return len(notes)\n\n\ndef list(path=None):\n    \"\"\"Return every note, oldest first, as a new list.\"\"\"\n    return _load(_resolve(path))\n\n\ndef delete(number, path=None):\n    \"\"\"Delete the note with the given 1-based ``number`` and return it.\"\"\"\n    if isinstance(number, bool) or not isinstance(number, int):\n        raise TypeError(f\"note number must be an integer, not {type(number).__name__}\")\n\n    target = _resolve(path)\n    notes = _load(target)\n    if number < 1 or number > len(notes):\n        raise IndexError(\n            f\"invalid note number {number}: expected 1-{len(notes)}\"\n            if notes\n            else f\"invalid note number {number}: there are no notes to delete\"\n        )\n\n    removed = notes.pop(number - 1)\n    _save(target, notes)\n    return removed\n\n\ndef main(argv=None):  # pragma: no cover - thin convenience CLI\n    \"\"\"Tiny CLI: ``python notes.py [list | add TEXT | delete N]``.\"\"\"\n    import sys\n\n    args = (sys.argv[1:] if argv is None else argv)[:]\n    command = args[0] if args else \"list\"\n\n    if command == \"list\":\n        for index, note in enumerate(list(), start=1):\n            print(f\"{index}. {note}\")\n    elif command == \"add\" and len(args) > 1:\n        print(f\"added note {add(' '.join(args[1:]))}\")\n    elif command == \"delete\" and len(args) == 2:\n        try:\n            print(f\"deleted: {delete(int(args[1]))}\")\n        except (IndexError, TypeError, ValueError) as exc:\n            print(f\"error: {exc}\", file=sys.stderr)\n            return 1\n    else:\n        print(\"usage: python notes.py [list | add TEXT | delete N]\", file=sys.stderr)\n        return 2\n    return 0\n\n\nif __name__ == \"__main__\":  # pragma: no cover\n    raise SystemExit(main())\n",
+          "is_error": false,
+          "tool_call_id": "call_01_ET_RCTFEYDNkxlPzJjINMHe0080"
+        }
+      },
+      {
+        "content": null,
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "path": "tests/test_cli.py"
+            },
+            "id": "call_00_ET_mua5T85EzKEFlPyvUAe34655",
+            "name": "read_file"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "\"\"\"End-to-end tests for ``cli.py``.\n\nEvery test drives the CLI the way a user does: a real ``subprocess`` invocation\nof ``python cli.py ...`` inside a temporary working directory, then assertions\non stdout / stderr / exit status and on the resulting ``notes.json``.\n\nNote on isolation: the program files (``cli.py`` and ``notes.py``) are copied\ninto the temporary directory first and executed from there with a relative\nscript path.  That keeps each test hermetic -- the CLI only ever resolves\n``notes.json`` against its own (temporary) working directory -- and it also\nworks in sandboxes where the checkout itself is not addressable by absolute\npath from a child process.\n\"\"\"\n\nfrom __future__ import annotations\n\nimport argparse\nimport ast\nimport json\nimport os\nimport shutil\nimport subprocess\nimport sys\nfrom pathlib import Path\n\nimport pytest\n\nREPO_CANDIDATES = [\n    Path(__file__).resolve().parents[1],  # tests/ -> repository root\n    Path.cwd(),\n    Path(\".\"),\n    Path(\"..\"),\n]\n\nPROGRAM_FILES = (\"cli.py\", \"notes.py\")\n\n\ndef _find_repo_root() -> Path:\n    \"\"\"Return the directory holding ``cli.py`` and ``notes.py``.\"\"\"\n    for candidate in REPO_CANDIDATES:\n        try:\n            if all((candidate / name).is_file() for name in PROGRAM_FILES):\n                return candidate\n        except OSError:  # pragma: no cover - defensive\n            continue\n    raise RuntimeError(f\"could not locate {PROGRAM_FILES} in {REPO_CANDIDATES}\")\n\n\ndef _install_program(dest: Path) -> None:\n    \"\"\"Copy the CLI and its module into ``dest`` so it can be run there.\"\"\"\n    root = _find_repo_root()\n    for name in PROGRAM_FILES:\n        try:\n            shutil.copyfile(root / name, dest / name)\n        except OSError:  # pragma: no cover - fall back to cwd-relative source\n            (dest / name).write_text(Path(name).read_text(encoding=\"utf-8\"), encoding=\"utf-8\")\n\n\n@pytest.fixture()\ndef workdir(tmp_path):\n    \"\"\"A temporary working directory containing a runnable copy of the CLI.\"\"\"\n    _install_program(tmp_path)\n    return tmp_path\n\n\ndef run_cli(workdir, *args, expect=0):\n    \"\"\"Run ``python cli.py <args>`` in ``workdir`` and return the result.\"\"\"\n    env = dict(os.environ)\n    env.pop(\"PYTHONPATH\", None)\n    env[\"PYTHONDONTWRITEBYTECODE\"] = \"1\"\n    env[\"PYTHONIOENCODING\"] = \"utf-8\"  # deterministic text output for assertions\n\n    result = subprocess.run(\n        [sys.executable, \"cli.py\", *args],\n        cwd=str(workdir),\n        env=env,\n        capture_output=True,\n        text=True,\n    )\n    if expect is not None:\n        assert result.returncode == expect, (\n            f\"expected exit {expect}, got {result.returncode}\\n\"\n            f\"args: {args}\\nstdout: {result.stdout!r}\\nstderr: {result.stderr!r}\"\n        )\n    return result\n\n\ndef read_store(workdir):\n    \"\"\"Return the parsed contents of ``workdir/notes.json``.\"\"\"\n    return json.loads((workdir / \"notes.json\").read_text(encoding=\"utf-8\"))\n\n\ndef stdout_lines(result):\n    return result.stdout.splitlines()\n\n\n# --------------------------------------------------------------------------\n# add\n# --------------------------------------------------------------------------\n\n\ndef test_add_creates_notes_json_in_cwd(workdir):\n    assert not (workdir / \"notes.json\").exists()\n\n    result = run_cli(workdir, \"add\", \"buy milk\")\n\n    assert result.stdout.strip() == \"added note 1: buy milk\"\n    assert read_store(workdir) == [\"buy milk\"]\n\n\ndef test_add_appends_and_numbers_notes(workdir):\n    assert \"added note 1:\" in run_cli(workdir, \"add\", \"first\").stdout\n    assert \"added note 2:\" in run_cli(workdir, \"add\", \"second\").stdout\n    assert \"added note 3:\" in run_cli(workdir, \"add\", \"third\").stdout\n\n    assert read_store(workdir) == [\"first\", \"second\", \"third\"]\n\n\ndef test_add_joins_unquoted_words(workdir):\n    run_cli(workdir, \"add\", \"call\", \"bob\", \"tomorrow\")\n    assert read_store(workdir) == [\"call bob tomorrow\"]\n\n\ndef test_add_strips_surrounding_whitespace(workdir):\n    result = run_cli(workdir, \"add\", \"  padded  \")\n    assert result.stdout.strip() == \"added note 1: padded\"\n    assert read_store(workdir) == [\"padded\"]\n\n\ndef test_add_keeps_unicode_and_json_is_utf8(workdir):\n    note = \"café ☕ naïve\"\n    run_cli(workdir, \"add\", note)\n\n    assert read_store(workdir) == [note]\n    # ensure_ascii=False: the file is human readable UTF-8, not \\u escapes.\n    assert \"café\" in (workdir / \"notes.json\").read_text(encoding=\"utf-8\")\n\n\ndef test_add_rejects_blank_text(workdir):\n    result = run_cli(workdir, \"add\", \"   \", expect=1)\n\n    assert result.stdout == \"\"\n    assert \"error\" in result.stderr.lower()\n    assert not (workdir / \"notes.json\").exists()\n\n\ndef test_add_requires_text_argument(workdir):\n    result = run_cli(workdir, \"add\", expect=2)\n    assert \"usage\" in result.stderr.lower()\n\n\n# --------------------------------------------------------------------------\n# list\n# --------------------------------------------------------------------------\n\n\ndef test_list_empty_store_says_so(workdir):\n    result = run_cli(workdir, \"list\")\n\n    assert result.stdout.strip() == \"no notes yet\"\n    assert result.stderr == \"\"\n    assert not (workdir / \"notes.json\").exists()  # listing never creates the file\n\n\ndef test_list_prints_numbered_notes_in_stable_format(workdir):\n    for text in (\"first\", \"second\", \"third\"):\n        run_cli(workdir, \"add\", text)\n\n    result = run_cli(workdir, \"list\")\n\n    assert stdout_lines(result) == [\"1. first\", \"2. second\", \"3. third\"]\n    assert result.stdout == \"1. first\\n2. second\\n3. third\\n\"  # exact, stable format\n\n\ndef test_list_persists_across_separate_processes(workdir):\n    run_cli(workdir, \"add\", \"written by another process\")\n\n    result = run_cli(workdir, \"list\")\n\n    assert stdout_lines(result) == [\"1. written by another process\"]\n    assert read_store(workdir) == [\"written by another process\"]\n\n\ndef test_list_reports_corrupt_store(workdir):\n    (workdir / \"notes.json\").write_text(\"{not json\", encoding=\"utf-8\")\n\n    result = run_cli(workdir, \"list\", expect=1)\n\n    assert result.stdout == \"\"\n    assert \"notes.json\" in result.stderr or \"json\" in result.stderr.lower()\n\n\ndef test_list_rejects_wrong_json_type(workdir):\n    (workdir / \"notes.json\").write_text('{\"a\": 1}', encoding=\"utf-8\")\n\n    result = run_cli(workdir, \"list\", expect=1)\n    assert \"error\" in result.stderr.lower()\n\n\n# --------------------------------------------------------------------------\n# delete\n# --------------------------------------------------------------------------\n\n\ndef test_delete_removes_the_correct_one_based_note(workdir):\n    for text in (\"first\", \"second\", \"third\"):\n        run_cli(workdir, \"add\", text)\n\n    result = run_cli(workdir, \"delete\", \"2\")\n\n    assert result.stdout.strip() == \"deleted note 2: second\"\n    assert read_store(workdir) == [\"first\", \"third\"]\n    assert stdout_lines(run_cli(workdir, \"list\")) == [\"1. first\", \"2. third\"]\n\n\ndef test_delete_one_based_numbering_is_not_zero_based(workdir):\n    for text in (\"a\", \"b\", \"c\"):\n        run_cli(workdir, \"add\", text)\n\n    run_cli(workdir, \"delete\", \"1\")\n    assert read_store(workdir) == [\"b\", \"c\"]  # note 1 was \"a\", not \"b\"\n\n    run_cli(workdir, \"delete\", \"1\")\n    assert read_store(workdir) == [\"c\"]\n\n\ndef test_delete_last_note_leaves_empty_json_list(workdir):\n    run_cli(workdir, \"add\", \"only\")\n    run_cli(workdir, \"delete\", \"1\")\n\n    assert read_store(workdir) == []\n    assert stdout_lines(run_cli(workdir, \"list\")) == [\"no notes yet\"]\n\n\n@pytest.mark.parametrize(\"number\", [\"0\", \"-1\", \"4\", \"99\"])\ndef test_delete_out_of_range_number_fails_without_changes(workdir, number):\n    for text in (\"first\", \"second\", \"third\"):\n        run_cli(workdir, \"add\", text)\n\n    result = run_cli(workdir, \"delete\", number, expect=1)\n\n    assert result.stdout == \"\"\n    assert \"error\" in result.stderr.lower()\n    assert read_store(workdir) == [\"first\", \"second\", \"third\"]  # nothing removed\n\n\ndef test_delete_from_empty_store_fails(workdir):\n    result = run_cli(workdir, \"delete\", \"1\", expect=1)\n\n    assert \"no notes\" in result.stderr.lower()\n    assert not (workdir / \"notes.json\").exists()\n\n\ndef test_delete_non_integer_is_a_usage_error(workdir):\n    run_cli(workdir, \"add\", \"first\")\n\n    result = run_cli(workdir, \"delete\", \"abc\", expect=2)\n\n    assert \"usage\" in result.stderr.lower()\n    assert read_store(workdir) == [\"first\"]\n\n\ndef test_delete_requires_number_argument(workdir):\n    result = run_cli(workdir, \"delete\", expect=2)\n    assert \"usage\" in result.stderr.lower()\n\n\n# --------------------------------------------------------------------------\n# General CLI shape\n# --------------------------------------------------------------------------\n\n\ndef test_subcommands_are_exactly_add_list_delete(workdir):\n    result = run_cli(workdir, \"--help\")\n    stdout = result.stdout\n\n    for name in (\"add\", \"list\", \"delete\"):\n        assert name in stdout\n    assert \"usage\" in stdout.lower()\n\n\ndef test_no_command_is_a_usage_error(workdir):\n    result = run_cli(workdir, expect=2)\n    assert \"usage\" in result.stderr.lower()\n\n\ndef test_unknown_command_is_a_usage_error(workdir):\n    result = run_cli(workdir, \"frobnicate\", expect=2)\n    assert \"invalid choice\" in result.stderr.lower()\n\n\ndef test_per_subcommand_help_works(workdir):\n    for name in (\"add\", \"list\", \"delete\"):\n        result = run_cli(workdir, name, \"--help\")\n        assert result.returncode == 0\n        assert name in result.stdout\n\n\ndef test_optional_file_flag_targets_another_store(workdir):\n    run_cli(workdir, \"--file\", \"other.json\", \"add\", \"elsewhere\")\n\n    other = json.loads((workdir / \"other.json\").read_text(encoding=\"utf-8\"))\n    assert other == [\"elsewhere\"]\n    assert not (workdir / \"notes.json\").exists()\n\n\n# --------------------------------------------------------------------------\n# In-process checks of the parser definition\n# --------------------------------------------------------------------------\n\n\ndef _import_cli():\n    root = _find_repo_root()\n    if str(root) not in sys.path:\n        sys.path.insert(0, str(root))\n    import cli  # noqa: PLC0415\n\n    return cli\n\n\ndef test_build_parser_exposes_expected_subcommands():\n    cli = _import_cli()\n    parser = cli.build_parser()\n\n    subparsers = [a for a in parser._actions if isinstance(a, argparse._SubParsersAction)]\n    assert len(subparsers) == 1\n    assert set(subparsers[0].choices) == {\"add\", \"list\", \"delete\"}\n\n\ndef test_main_returns_zero_for_list_in_empty_dir(workdir, monkeypatch, capsys):\n    cli = _import_cli()\n    monkeypatch.chdir(workdir)\n\n    assert cli.main([\"list\"]) == 0\n    assert capsys.readouterr().out.strip() == \"no notes yet\"\n\n\ndef test_cli_uses_only_the_standard_library():\n    root = _find_repo_root()\n    tree = ast.parse((root / \"cli.py\").read_text(encoding=\"utf-8\"))\n\n    imported = set()\n    for node in ast.walk(tree):\n        if isinstance(node, ast.Import):\n            imported.update(alias.name.split(\".\")[0] for alias in node.names)\n        elif isinstance(node, ast.ImportFrom):\n            if node.level == 0 and node.module:\n                imported.add(node.module.split(\".\")[0])\n\n    stdlib = getattr(sys, \"stdlib_module_names\", None)\n    if stdlib is None:  # pragma: no cover - Python < 3.10\n        pytest.skip(\"sys.stdlib_module_names is unavailable\")\n\n    assert imported <= set(stdlib) | {\"notes\"}\n",
+          "is_error": false,
+          "tool_call_id": "call_00_ET_mua5T85EzKEFlPyvUAe34655"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "Now run the tests.\n\nNote the `_cmd_add` prints `text.strip()` where text is joined already; fine.\n\nOne potential issue: `notes.delete` with number validation — `delete 0` raises IndexError → exit 1. Good.\n\nAnother potential issue: `main` catches IndexError, TypeError, ValueError. `notes._load` raises ValueError for malformed; good.\n\nLet's run the tests."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "path": ".",
+              "timeout_s": 300
+            },
+            "id": "call_00_Vr3tsVJwqzhQc8wNiQX84251",
+            "name": "run_tests"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": ".................................................                        [100%]\n49 passed in Xs\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_Vr3tsVJwqzhQc8wNiQX84251"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "All 49 tests pass. Let's also manually verify CLI behaviors in a temp dir, especially the specific acceptance criteria, and check no external deps.\n\nAlso check tests actually test CLI via subprocess (yes). Check that tests pass in isolation from the checkout — e.g., are tests perhaps too permissive? Let's verify manually the required behaviors: add creates notes.json, list numbering, delete 1-based.\n\nAlso check whether there's a conftest.py. There's tests/ dir; let's list."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "ls -la tests; echo ---; cd \"$(mktemp -d)\" && cp /Users/ponk/*/cli.py . 2>/dev/null; true"
+            },
+            "id": "call_00_gfsuPgZ02V8qUGfx8dFG2922",
+            "name": "shell"
+          },
+          {
+            "arguments": {
+              "command": "cd $(mktemp -d) && pwd && cp \"$OLDPWD/cli.py\" \"$OLDPWD/notes.py\" . && python cli.py add \"buy milk\" && python cli.py add \"call bob\" && python cli.py list && cat notes.json && python cli.py delete 1 && python cli.py list && echo \"--- errors ---\" && python cli.py delete 5; echo \"exit=$?\"; python cli.py delete abc; echo \"exit=$?\"; python cli.py --help | head -20"
+            },
+            "id": "call_01_hZjqH2d2HuEdoA4uEQAf9819",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "total 40\ndrwxr-xr-x@ 5 ponk  staff    160 Nov  8 06:25 .\ndrwxr-xr-x@ 8 ponk  staff    256 Nov  8 06:25 ..\ndrwxr-xr-x@ 4 ponk  staff    128 Nov  8 06:25 __pycache__\n-rw-r--r--@ 1 ponk  staff  11281 Nov  8 06:24 test_cli.py\n-rw-r--r--@ 1 ponk  staff   4457 Nov  8 06:23 test_notes.py\n---\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_gfsuPgZ02V8qUGfx8dFG2922"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "/var/folders/qb/xn8nq_t53rz276g17td9yts40000gn/T/tmp.AIvMVS8frW\nadded note 1: buy milk\nadded note 2: call bob\n1. buy milk\n2. call bob\n[\n  \"buy milk\",\n  \"call bob\"\n]\ndeleted note 1: buy milk\n1. call bob\n--- errors ---\nexit=1\nexit=2\nusage: cli.py [-h] [--file PATH] {add,list,delete} ...\n\nManage a simple JSON-backed list of notes.\n\npositional arguments:\n  {add,list,delete}\n    add                 add a note\n    list                list all notes, numbered from 1\n    delete              delete a note by number\n\noptions:\n  -h, --help            show this help message and exit\n  --file PATH, -f PATH  notes file to use (default: notes.json in the current\n                        directory)\n[stderr]\nerror: invalid note number 5: expected 1-1\nusage: cli.py delete [-h] N\ncli.py delete: error: argument N: invalid int value: 'abc'\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_01_hZjqH2d2HuEdoA4uEQAf9819"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "All works. Check stdlib-only: cli.py imports argparse, sys, notes. Yes.\n\nCheck that tests actually would fail if CLI behavior were wrong — they're substantive. Also check tests isolate to temp cwd — they copy cli.py/notes.py into tmp_path and run there; that's a bit unusual but acceptable (runs real subprocess in a temp working directory). It's slightly weaker than running the actual repo files (a copy could diverge), but it does run the actual source via shutil.copyfile from repo root, so it tests the real files. The fallback on OSError uses Path(name).read_text which reads cwd-relative — minor fallback, fine.\n\nPotential concern: does `_find_repo_root` with Path.cwd() candidate risk picking up wrong dir? Only used as fallback; parents[1] should exist.\n\nOne thing to check: `format_note_line` stability — fine.\n\nAlso check test flakiness: tests that assert `not (workdir/\"notes.json\").exists()` after failed delete from empty store — notes._load raises IndexError before saving; fine.\n\nAnother: test_add_rejects_blank_text asserts stdout == \"\" — fine since print happens after add.\n\nCheck pycache: not relevant.\n\nAlso verify test_cli tests pass when run individually/random order? Fixture is per-test tmp_path, so fine.\n\nLet me also verify the \"delete non-integer is usage error\" - exit 2 from argparse. Criterion says delete accepts 1-based number; fine.\n\nOne more: criterion \"pytest tests cover all three CLI operations and pass\" — yes, 49 tests pass including test_notes.py.\n\nLet me double-check there's no hidden issue: does `cli.py add \"\"` produce error exit 1? Let's test edge cases quickly and also confirm test suite passes when run from a different cwd (e.g., running pytest from repo root vs elsewhere). Also run just tests/test_cli.py."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "cd $(mktemp -d) && cp /Users/ponk/cli.py /Users/ponk/notes.py . 2>/dev/null || cp \"$OLDPWD/cli.py\" \"$OLDPWD/notes.py\" .; python cli.py add \"\"; echo \"exit=$?\"; python cli.py list; echo \"exit=$?\"; python cli.py add \"  spaced  \"; cat notes.json"
+            },
+            "id": "call_00_5pr1cw3mk4boeA5VnluT7385",
+            "name": "shell"
+          },
+          {
+            "arguments": {
+              "command": "cd /Users/ponk 2>/dev/null; pwd; python -m pytest tests/test_cli.py -q 2>&1 | tail -5"
+            },
+            "id": "call_01_hoYQIleHWVXOs5X8XnKx1052",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "exit=1\nno notes yet\nexit=0\nadded note 1: spaced\n[\n  \"spaced\"\n]\n[stderr]\nerror: note must not be empty\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_5pr1cw3mk4boeA5VnluT7385"
+        }
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "/Users/ponk\n\nno tests ran in Xs\nERROR: file or directory not found: tests/test_cli.py\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_01_hoYQIleHWVXOs5X8XnKx1052"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "The workspace root isn't /Users/ponk. Let me find the actual root."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "pwd; ls"
+            },
+            "id": "call_00_D3bpytnCCptDsB7Pt96D2633",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "/workspace\n__pycache__\ncli.py\nnotes.py\ntests\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_D3bpytnCCptDsB7Pt96D2633"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "Workspace root is /workspace. My earlier test copies used `$OLDPWD` which was /workspace presumably (in the first invocation it was valid since command succeeded — actually it printed the temp dir and worked, so OLDPWD pointed to /workspace). Fine.\n\nNow run tests/test_cli.py alone with -v to confirm all 40ish tests pass and count."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "cd /workspace && python -m pytest tests/test_cli.py -q 2>&1 | tail -3; python -m pytest -q 2>&1 | tail -3"
+            },
+            "id": "call_00_rwhp7dR2Ru72JEkrIVpe4092",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": ".................................................                        [100%]\n49 passed in Xs\n[stderr]\n/bin/sh: line 0: cd: /workspace: No such file or directory\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_rwhp7dR2Ru72JEkrIVpe4092"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "Interesting — /workspace doesn't exist? But `pwd` said /workspace and `ls` worked. The shell maybe runs each command in a fresh sandbox with different mapping? Weird: first command in that block had `cd /workspace` failing, yet `ls` earlier worked. Perhaps the shell environment differs per call. Anyway, run_tests already showed 49 passed whole workspace (489 bytes test_notes + test_cli). Let's run run_tests on tests/test_cli.py specifically to count."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "path": "tests/test_cli.py",
+              "timeout_s": 300
+            },
+            "id": "call_00_XyL418eFQcPosPBz9wKF4298",
+            "name": "run_tests"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "..............................                                           [100%]\n30 passed in Xs\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_XyL418eFQcPosPBz9wKF4298"
+        }
+      },
+      {
+        "content": null,
+        "provider_state": {
+          "reasoning_content": "30 tests in test_cli.py, all pass; plus 19 in test_notes.py = 49.\n\nNow check that the CLI implementation isn't just passing tests trivially — it works, verified manually.\n\nCheck criteria \"CLI uses only the Python standard library\": cli.py imports argparse, sys, notes. notes.py imports builtins, json, os, tempfile, pathlib. Fine.\n\nOne possible critique: tests copy the program files into tmp dirs, so the tests don't execute the repo files in-place; but they copy from the repo root, so it's genuine. The fallback in `_install_program` reads `Path(name)` relative to cwd, which could silently copy a wrong file if the repo root files were unreadable — minor, guarded by pragma no cover.\n\nAnother critique: test `test_subcommands_are_exactly_add_list_delete` checks names present in help but doesn't verify exact set; but `test_build_parser_exposes_expected_subcommands` checks exact set via argparse internals. Acceptable.\n\nEverything satisfies criteria. Verdict: pass.\n\nLet me double check there's nothing that modifies anything questionable, e.g., the tests rely on `sys.stdlib_module_names` skip — on Python >=3.10 fine. Check python version."
+        },
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "arguments": {
+              "command": "python -V; python -c \"import sys; print(sys.version_info)\""
+            },
+            "id": "call_00_c0KwKPEkBrcMAceZrfDU5733",
+            "name": "shell"
+          }
+        ]
+      },
+      {
+        "content": null,
+        "role": "tool",
+        "tool_result": {
+          "content": "Python 3.12.14\nsys.version_info(major=3, minor=12, micro=14, releaselevel='final', serial=0)\n[exit 0]",
+          "is_error": false,
+          "tool_call_id": "call_00_c0KwKPEkBrcMAceZrfDU5733"
+        }
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the QA reviewer of a small software studio. You review a colleague's finished task against its acceptance criteria. You may read files and run the tests with the tools, but you must not modify anything. Be concrete and fair: judge what is there. Your final answer must be JSON only, exactly: {\"verdict\": \"pass\" | \"rework\" | \"escalate\", \"reason\": \"<one paragraph>\"}. Use pass when the criteria are met, rework when the author can fix it, escalate when the task itself is unclear or beyond the author's authority.\n\nAvailable tools:\n- read_file: Read a text file in the workspace (optionally a line range).\n- write_file: Create or overwrite a text file in the workspace (parents are created).\n- list_dir: List files and directories under a workspace path.\n- shell: Run a shell command in the workspace; returns stdout, stderr, exit code.\n- run_tests: Run pytest on a workspace path (default: the whole workspace).\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "Read a text file in the workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "description": "max lines",
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "description": "first line, 0-based",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Create or overwrite a text file in the workspace (parents are created).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        },
+        "name": "write_file"
+      },
+      {
+        "description": "List files and directories under a workspace path.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 6,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Run a shell command in the workspace; returns stdout, stderr, exit code.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        },
+        "name": "shell"
+      },
+      {
+        "description": "Run pytest on a workspace path (default: the whole workspace).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "timeout_s": {
+              "minimum": 1,
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}
