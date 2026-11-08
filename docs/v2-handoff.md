@@ -1,6 +1,6 @@
 # Eidolon v2 交接文档（终端会话入口）
 
-> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1–R4 完成（R2-e GO；R4 = 身份 + 钱 + 费用溯源），R5 已拆成 R5-a..e（见 §8），R5 全部完成（旧应用已删除，cutover 到 v2），R6 已拆成 R6-a..e（见 §8），**R1–R6 全部完成**：v2 上线范围（v2-architecture §8 R0–R6）已交付。§8 里没有 TODO 了；下一步由用户决定——R7 扩展（可选，从 `extensions/` 归档点重写）、或先 push `dev` 并做一次真实浏览器验收（Passkey ceremony、make dev 全流程）。
+> 更新：2026-11-07　分支 `dev`（本地领先 `origin/dev` 80+ 提交，**先 push**）。R1–R4 完成（R2-e GO；R4 = 身份 + 钱 + 费用溯源），R5 已拆成 R5-a..e（见 §8），R5 全部完成（旧应用已删除，cutover 到 v2），R6 已拆成 R6-a..e（见 §8），R1–R6 完成（v2 上线范围）。用户 2026-11-07 裁决：产品的另一半是**决策者体验**——系统自主协同，关键决策带公司意见来问人，用户只判断不思考。R7 已拆成 R7-a..e（见 §8），下一个包是 **R7-a 带建议的决策信封**。
 > 这是新会话的**唯一入口**：先读本文，再按 §1 的顺序读其余文档。
 > 文档体系：本文（入口与状态）→ `kernel-plan.md`（本质、纪律、Progress）→ `v2-architecture.md`（设计、路线、ADR）。
 
@@ -16,7 +16,7 @@ make test-v2                               # v2 内核测试：期望 185 passed
 make lint                                  # ruff + tsc + eslint + prettier
 ```
 
-然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前**没有**：R1–R6 已全部 DONE，先问用户下一步），按 §5 的流程做。
+然后打开 `docs/kernel-plan.md` §8 Progress，领取第一个 TODO（当前是 **R7-a**），按 §5 的流程做。
 
 ---
 
@@ -199,7 +199,7 @@ R3 拆包见 `kernel-plan.md` §8（R3-a..e）；R4–R6 见 `v2-architecture.md
 - make lint 全绿
 - 不必每次跑旧应用全量（
 工作方式：
-- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前没有 TODO：R1–R6 全部完成，先问用户），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
+- 从 docs/kernel-plan.md §8 Progress 领取第一个状态为 TODO 的工作包（当前应是 R7-a），按 docs/v2-handoff.md §5 的规格实现。一个包一个提交，Conventional Commits，中文正文。
 - 每个包完成的定义：代码 + 测试（真实 PostgreSQL）+ make test-v2 与 make lint 全绿 + kernel-plan.md §8 对应行改为 DONE 并填提交号 + 若有新裁决则在 v2-architecture.md §11 追加 ADR。
 - 遵守 docs/v2-handoff.md §6 的七条规则：v2 不 import 旧 app；持久状态只有 Fact、投影与 API 层的秘密；系统不做管理判断；mock 只在单测；密钥不进提交；不写新的阶段设计文档。
 - 包粒度：一个会话做完一个包；做不完就拆成更小的包并在 Progress 登记，不要留"第 N 段"。
