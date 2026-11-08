@@ -1,0 +1,216 @@
+{
+  "events": [
+    {
+      "text": "I",
+      "type": "text"
+    },
+    {
+      "text": "'ll",
+      "type": "text"
+    },
+    {
+      "text": " start",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " checking",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " project",
+      "type": "text"
+    },
+    {
+      "text": " status",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " roster",
+      "type": "text"
+    },
+    {
+      "text": " context",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {},
+      "id": "call_00_ET_lXYBnESAsC7KRjD3UHud3671",
+      "name": "project_status",
+      "type": "tool_call"
+    },
+    {
+      "arguments": {},
+      "id": "call_01_ET_lgVuAqo5bUr6DfHISnon5300",
+      "name": "list_artifacts",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 1026,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "1f058251-846f-47ee-91c5-43794e26bec1",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 1024,
+        "cache_write_tokens": 0,
+        "input_tokens": 1177,
+        "output_tokens": 48
+      }
+    }
+  ],
+  "fingerprint": "65153986e3a9f02811b0e7c9a43d4380b0d9e8effd15d97babc82aa5155d451e",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T13:41:52+00:00",
+  "replay_key": "65153986e3a9f02811b0e7c9a43d4380b0d9e8effd15d97babc82aa5155d451e",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Task: Implement JSON notes storage module\nCreate notes.py with a small standard-library-only API for storing notes in a JSON file in the working directory, defaulting to notes.json. Expose add(note, path='notes.json'), list(path='notes.json'), and delete(index, path='notes.json'). Store notes as a JSON array of strings; treat a missing file as an empty list; make delete use 1-based numbering and raise IndexError for out-of-range indexes.\n\nRoster:\n- eng-1 (engineer, open tasks: 0)\n- eng-2 (engineer, open tasks: 0)",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the tech lead of a small software studio assigning a task. Pick exactly one person from the roster whose role fits the task and who has the fewest open tasks. Answer with JSON only: {\"assignee\": \"<person id from the roster>\", \"reason\": \"<one sentence>\"}. You can look before you decide: the tools let you read the project's status and artifacts, list and read files in its tasks' workspaces, and run their tests. You cannot change anything. Use them when the facts matter; then give your final answer.\n\nAvailable tools:\n- project_status: The project's tasks (status, assignee, reviews, rework count) and its artifacts.\n- list_artifacts: Files the tasks produced: path, which task, size, media type.\n- read_artifact: The content of a produced file, by its path (the latest one with that path).\n- list_dir: List a directory in a task's workspace (depth 1-4).\n- read_file: Read a file in a task's workspace (optionally a line range).\n- run_tests: Run pytest in a task's workspace (sandboxed runner); returns the output.\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "The project's tasks (status, assignee, reviews, rework count) and its artifacts.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        "name": "project_status"
+      },
+      {
+        "description": "Files the tasks produced: path, which task, size, media type.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        "name": "list_artifacts"
+      },
+      {
+        "description": "The content of a produced file, by its path (the latest one with that path).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_artifact"
+      },
+      {
+        "description": "List a directory in a task's workspace (depth 1-4).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 4,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Read a file in a task's workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 400,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Run pytest in a task's workspace (sandboxed runner); returns the output.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

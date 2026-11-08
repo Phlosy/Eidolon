@@ -22,7 +22,13 @@ from uuid import UUID
 
 from sqlalchemy.orm import sessionmaker
 
-from eidolon.agent.managers import Deciders, RosterSource, _template, describe_decision
+from eidolon.agent.managers import (
+    Deciders,
+    RosterSource,
+    _template,
+    decision_project,
+    describe_decision,
+)
 from eidolon.institution import REQUESTED, VERDICTS, escalate, load
 from eidolon.kernel.store import FactStore
 from eidolon.logging import get_logger
@@ -135,6 +141,8 @@ class EscalatedDecider:
                 prompt=prompt,
                 run_key=f"decision:{decision_id}:escalated:{d.escalations}",
                 causation_id=d.last_fact_id,
+                project_id=decision_project(db, d),
+                template=template,
             )
             verdict = (answer or {}).get("verdict")
             if verdict not in VERDICTS:

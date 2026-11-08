@@ -101,9 +101,9 @@ def propose_mission(db: Session, company: UUID) -> UUID:
 
 
 def studio_jobs(session_factory, provider, blobs: BlobStore, workspace_root: Path, **kw):
-    deciders = Deciders(session_factory, provider, blobs)
-    roster = IdentityRoster(IdentityService(store))
     workspaces = Workspaces(workspace_root)
+    deciders = Deciders(session_factory, provider, blobs, workspaces=workspaces, svc=svc)
+    roster = IdentityRoster(IdentityService(store))
     return [
         MissionIntake(session_factory, deciders, roster, svc=svc),
         Planner(session_factory, deciders, roster, svc=svc),

@@ -355,7 +355,8 @@ def test_grants_snapshot_and_tool_gate():
         ]
     )
     assert [d.name for d in authorized_tools(T, "qa", registry)] == ["get_weather"]
-    assert [d.name for d in authorized_tools(T, "ceo", registry)] == ["hire"]
+    # R7-c: managers hold workspace.read, so the CEO may also use read tools
+    assert [d.name for d in authorized_tools(T, "ceo", registry)] == ["get_weather", "hire"]
     assert len(authorized_tools(T, "owner", registry)) == 3
     gate = tool_gate(T, "qa", registry)
     assert gate(ToolCall("1", "get_weather", {})) is None

@@ -109,6 +109,7 @@ INSTITUTIONAL = InstitutionTemplate(
             "task.review",
             "spend.approve",
             "knowledge.promote",
+            "workspace.read",
         ),
         "committee": ("mission.accept", "spend.approve", "purchase"),
         "staff": ("workspace.read", "workspace.write", "workspace.execute", "task.complete"),

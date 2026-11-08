@@ -2,6 +2,7 @@
 approves and assigns, engineers build with handoff, QA reviews, the Owner delivers."""
 
 import json
+import re
 from pathlib import Path
 
 from company_support import (
@@ -19,6 +20,8 @@ from project_support import store, svc
 from eidolon.agent import run as R
 from eidolon.agent.blobs import BlobStore
 from eidolon.agent.managers import parse_json
+from eidolon.agent.project_tools import NAMES as PROJECT_TOOL_NAMES
+from eidolon.agent.project_tools import TOOLS_HINT
 from eidolon.agent.providers import fixture_dir
 from eidolon.agent.providers.accounting import KIND as MODEL_CALLED
 from eidolon.api.narrative import SECTIONS, mission_report, project_report
@@ -199,6 +202,13 @@ def test_three_roles_deliver_a_project_from_replayed_fixtures(db, tmp_path):
     assert store.verify_chain(db, company).ok
     bundle = provenance.bundle(db, company, correlation_id=pid)
     assert bundle["facts"] and bundle["facts"][0]["kind"] == F.PROJECT_CREATED
+    # R7-c: the managers looked before deciding — read-only, through the project tools
+    looked = {}
+    for f in store.stream(db, kinds=[R.TOOL_REQUESTED], company_id=company, limit=10_000):
+        if f.actor.id in ("tl-1", "pm-1", "ceo-1"):
+            looked.setdefault(f.actor.id, set()).add(f.payload["name"])
+    assert looked.get("tl-1") and looked.get("pm-1"), looked
+    assert set().union(*looked.values()) <= set(PROJECT_TOOL_NAMES)
     # R7-b: the whole story, in plain words, every line pointing at facts of this company
     report = project_report(db, pid, lang="zh")
     story = report.to_text()
@@ -228,8 +238,16 @@ def test_three_roles_deliver_a_project_from_replayed_fixtures(db, tmp_path):
 
 
 def test_fixture_prompts_for_managers_carry_no_ids():
+    uuid_like = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
     for p in Path(fixture_dir(settings)).glob("chat-*.json"):
-        first = json.loads(p.read_text())["request"]["messages"][0]["content"]
+        request = json.loads(p.read_text())["request"]
+        first = request["messages"][0]["content"]
+        # R7-c: a manager's tool calls are part of the replay key, so nothing the model
+        # echoes back (task handles, paths) may be an id that differs run to run
+        if TOOLS_HINT in (request.get("system") or ""):
+            for m in request["messages"]:
+                for call in m.get("tool_calls") or ():
+                    assert not uuid_like.search(json.dumps(call.get("arguments"))), (p.name, call)
         if first.startswith(("Mission: ", "Project: ", "Task: ")):
             head = first.splitlines()[0]
             assert (

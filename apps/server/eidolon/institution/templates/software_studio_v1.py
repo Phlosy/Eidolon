@@ -131,13 +131,15 @@ SOFTWARE_STUDIO_V1 = InstitutionTemplate(
             "purchase.propose",
             "spend.approve",
             "knowledge.promote",
+            "workspace.read",  # R7-c: managers look before they decide
         ),
-        "pm": ("plan.propose", "task.assign", "task.cancel", "spend.approve"),
+        "pm": ("plan.propose", "task.assign", "task.cancel", "spend.approve", "workspace.read"),
         "tech_lead": (
             "plan.approve",
             "task.assign",
             "task.review",
             "knowledge.promote",
+            "workspace.read",
             "workspace.execute",
         ),
         "engineer": ("workspace.read", "workspace.write", "workspace.execute", "task.complete"),

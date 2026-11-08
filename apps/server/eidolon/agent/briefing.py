@@ -19,7 +19,13 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 from sqlalchemy import select
 from sqlalchemy.orm import sessionmaker
 
-from eidolon.agent.managers import Deciders, RosterSource, _template, describe_decision
+from eidolon.agent.managers import (
+    Deciders,
+    RosterSource,
+    _template,
+    decision_project,
+    describe_decision,
+)
 from eidolon.institution import (
     REQUESTED,
     DecisionError,
@@ -104,6 +110,8 @@ class Advisor:
                 prompt=describe_decision(db, self.svc, d),
                 run_key=f"decision:{decision_id}:advice:{d.escalations}",
                 causation_id=d.last_fact_id,
+                project_id=decision_project(db, d),
+                template=template,
             )
             if not answer:
                 return False
@@ -191,6 +199,8 @@ class DeliveryProposer:
                 prompt=prompt,
                 run_key=f"project:{project_id}:deliver-proposal:{attempt}",
                 causation_id=state.last_fact_id,
+                project_id=project_id,
+                template=template,
             )
             if not answer:
                 return False

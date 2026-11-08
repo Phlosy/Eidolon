@@ -1,0 +1,212 @@
+{
+  "events": [
+    {
+      "text": "I",
+      "type": "text"
+    },
+    {
+      "text": "'ll",
+      "type": "text"
+    },
+    {
+      "text": " start",
+      "type": "text"
+    },
+    {
+      "text": " by",
+      "type": "text"
+    },
+    {
+      "text": " reviewing",
+      "type": "text"
+    },
+    {
+      "text": " the",
+      "type": "text"
+    },
+    {
+      "text": " project",
+      "type": "text"
+    },
+    {
+      "text": " status",
+      "type": "text"
+    },
+    {
+      "text": " and",
+      "type": "text"
+    },
+    {
+      "text": " artifacts",
+      "type": "text"
+    },
+    {
+      "text": ".",
+      "type": "text"
+    },
+    {
+      "arguments": {},
+      "id": "call_00_ET_9z6OfTk7rk5Yi0dDfGzY8025",
+      "name": "project_status",
+      "type": "tool_call"
+    },
+    {
+      "arguments": {},
+      "id": "call_01_ET_1MpqvwyFB9YsL2sgWl8j8028",
+      "name": "list_artifacts",
+      "type": "tool_call"
+    },
+    {
+      "assistant_state": null,
+      "attempts": 1,
+      "latency_ms": 828,
+      "model": "deepseek-flash",
+      "provider": "openai_compatible",
+      "request_id": "ff387fc4-9828-4209-ab29-1f700996559a",
+      "stop_detail": null,
+      "stop_reason": "tool_use",
+      "type": "completed",
+      "usage": {
+        "cache_read_tokens": 1152,
+        "cache_write_tokens": 0,
+        "input_tokens": 1327,
+        "output_tokens": 47
+      }
+    }
+  ],
+  "fingerprint": "212f4f440ced2efff3b6d6256b343c640f15bdfcbd3cb1a0701528ebe1997744",
+  "format": "eidolon.provider.fixture/1",
+  "kind": "chat",
+  "provider": "openai_compatible",
+  "recorded_at": "2026-11-08T13:42:34+00:00",
+  "replay_key": "212f4f440ced2efff3b6d6256b343c640f15bdfcbd3cb1a0701528ebe1997744",
+  "request": {
+    "max_tokens": 4096,
+    "messages": [
+      {
+        "content": "Project: Tiny notes CLI\nBudget: 20000 units.\n\nTasks:\n- Implement JSON notes storage module: Create notes.py with a small standard-library-only API for storing notes in a JSON file in the working directory, defaulting to notes.json. Expose add(note, path='notes.json'), list(path='notes.json') | reviews: qa-1 pass\n- Build argparse CLI wrapper: Create cli.py that imports the storage functions from notes.py and exposes argparse subcommands: add, list, and delete. Provide a main(argv=None) entry point for testability. add takes one note string | reviews: qa-1 pass\n- Add pytest coverage for storage and CLI: Create pytest tests under tests/ that verify the core storage module and the argparse CLI. Use tmp_path for isolated JSON files and invoke cli.main(argv) directly where practical so tests do not depen | reviews: qa-1 pass\n\nArtifacts: cli.py, notes.py, test_cli.py, test_notes.py, tests/__init__.py, tests/test_cli.py, tests/test_notes.py",
+        "role": "user"
+      }
+    ],
+    "model": "deepseek-flash",
+    "system": "You are the project manager of a small software studio. Every task of your project is done and reviewed. Propose the delivery to the owner: in plain language, what was built, how it was verified, what the owner should look at, and what is not included. Answer with JSON only: {\"recommendation\": \"approve\", \"summary\": \"<= 2 sentences\", \"rationale\": \"<what was built and how it was checked>\", \"risks\": [\"...\"], \"alternatives\": [\"...\"]}. You can look before you decide: the tools let you read the project's status and artifacts, list and read files in its tasks' workspaces, and run their tests. You cannot change anything. Use them when the facts matter; then give your final answer.\n\nAvailable tools:\n- project_status: The project's tasks (status, assignee, reviews, rework count) and its artifacts.\n- list_artifacts: Files the tasks produced: path, which task, size, media type.\n- read_artifact: The content of a produced file, by its path (the latest one with that path).\n- list_dir: List a directory in a task's workspace (depth 1-4).\n- read_file: Read a file in a task's workspace (optionally a line range).\n- run_tests: Run pytest in a task's workspace (sandboxed runner); returns the output.\n\nWork on the task using the tools when they help. When the task is done, reply with the final answer in plain text and stop calling tools. Never claim a tool ran unless you called it and saw its result.",
+    "temperature": 0.0,
+    "tools": [
+      {
+        "description": "The project's tasks (status, assignee, reviews, rework count) and its artifacts.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        "name": "project_status"
+      },
+      {
+        "description": "Files the tasks produced: path, which task, size, media type.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {},
+          "required": [],
+          "type": "object"
+        },
+        "name": "list_artifacts"
+      },
+      {
+        "description": "The content of a produced file, by its path (the latest one with that path).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_artifact"
+      },
+      {
+        "description": "List a directory in a task's workspace (depth 1-4).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "default": 2,
+              "maximum": 4,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "object"
+        },
+        "name": "list_dir"
+      },
+      {
+        "description": "Read a file in a task's workspace (optionally a line range).",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 400,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "offset": {
+              "default": 0,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "path"
+          ],
+          "type": "object"
+        },
+        "name": "read_file"
+      },
+      {
+        "description": "Run pytest in a task's workspace (sandboxed runner); returns the output.",
+        "input_schema": {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "default": ".",
+              "type": "string"
+            },
+            "task": {
+              "description": "task key (t1, t2, …) or exact title",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task"
+          ],
+          "type": "object"
+        },
+        "name": "run_tests"
+      }
+    ]
+  }
+}

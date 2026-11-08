@@ -27,6 +27,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from eidolon.agent import run as R
 from eidolon.agent.blobs import BlobStore
 from eidolon.agent.loop import AgentRunner
+from eidolon.agent.project_tools import TOOLS_HINT, ProjectTools
 from eidolon.agent.providers.base import Provider
 from eidolon.agent.tools import FunctionTools
 from eidolon.institution import (
@@ -41,6 +42,8 @@ from eidolon.institution import (
     sign,
 )
 from eidolon.institution.adoption import current as current_institution
+from eidolon.institution.authority import tool_gate
+from eidolon.institution.schema import MICRO_PER_UNIT
 from eidolon.kernel.facts import Actor, ActorKind
 from eidolon.kernel.store import FactStore
 from eidolon.logging import get_logger
@@ -151,12 +154,17 @@ def parse_json(text: str) -> dict[str, Any] | None:
 
 @dataclass
 class Deciders:
-    """Runs a role's agent for one structured answer and signs decisions."""
+    """Runs a role's agent for one structured answer and signs decisions. With
+    ``workspaces`` set (R7-c) a decision about a project gets read-only eyes on it:
+    status, artifacts, workspace files, tests — gated by the role's authority."""
 
     session_factory: sessionmaker
     provider: Provider
     blobs: BlobStore
     model: str | None = None
+    workspaces: Any | None = None  # WorkspaceSource; None = decide from the prompt alone
+    svc: WorkService = field(default_factory=WorkService)
+    max_steps_with_tools: int = 8
 
     def ask(
         self,
@@ -170,11 +178,25 @@ class Deciders:
         max_tokens: int = 4096,  # thinking-mode models spend output tokens before the JSON
         max_attempts: int = 3,
         causation_id: UUID | None = None,  # what called for the decision (R4-c cost trace)
+        project_id: UUID | None = None,  # R7-c: the project the agent may look at
+        template: InstitutionTemplate | None = None,  # gates the tools; caps the run's money
     ) -> dict[str, Any] | None:
         """One structured answer from ``person``'s agent. The run id derives from
         ``run_key`` and an attempt number: a completed run is reused (replay/resume),
         a failed one gets a fresh attempt, up to ``max_attempts``."""
         store = FactStore()
+        tools, gate = self._eyes(project_id, template, person)
+        if tools is not None:
+            system = system + TOOLS_HINT
+        budget = R.RunBudget(max_steps=self.max_steps_with_tools if tools else 2)
+        if template is not None:
+            with self.session_factory() as db:
+                currency = _company_currency(db, company_id)
+            budget = R.RunBudget(
+                max_steps=budget.max_steps,
+                max_cost_micro=template.budget_policy.run_default * MICRO_PER_UNIT,
+                cost_currency=currency,
+            )
 
         def existing(run_id: UUID) -> str | None:
             with self.session_factory() as db:
@@ -190,23 +212,33 @@ class Deciders:
             run_id = uuid5(NAMESPACE_URL, f"eidolon:decision-run:{run_key}:{attempt}")
 
         async def go():
-            runner = AgentRunner(self.session_factory, self.provider, self.blobs, FunctionTools())
-            if existing(run_id) is not None:
-                return await runner.resume(run_id)
-            spec = R.RunSpec(
-                run_id=run_id,
-                company_id=company_id,
-                person_id=person.person_id,
-                model=self.model or _default_model(),
-                system=system,
-                prompt=prompt,
-                task_id=task_id,
-                budget=R.RunBudget(max_steps=2),
-                max_tokens_per_step=max_tokens,
-                temperature=0.0,
-                causation_id=causation_id,
+            runner = AgentRunner(
+                self.session_factory,
+                self.provider,
+                self.blobs,
+                tools if tools is not None else FunctionTools(),
+                tool_gate=gate,
             )
-            return await runner.start(spec)
+            try:
+                if existing(run_id) is not None:
+                    return await runner.resume(run_id)
+                spec = R.RunSpec(
+                    run_id=run_id,
+                    company_id=company_id,
+                    person_id=person.person_id,
+                    model=self.model or _default_model(),
+                    system=system,
+                    prompt=prompt,
+                    task_id=task_id,
+                    budget=budget,
+                    max_tokens_per_step=max_tokens,
+                    temperature=0.0,
+                    causation_id=causation_id,
+                )
+                return await runner.start(spec)
+            finally:
+                if tools is not None:
+                    await tools.close()
 
         outcome = asyncio.run(go())
         if outcome.status != "completed" or not outcome.final_text:
@@ -221,6 +253,17 @@ class Deciders:
                 extra={"person": person.person_id, "text": outcome.final_text[:200]},
             )
         return data
+
+    def _eyes(self, project_id: UUID | None, template: InstitutionTemplate | None, person: Person):
+        """Read-only project tools plus the role's gate — or (None, None) when there is
+        no project to look at or no workspace root configured."""
+        if project_id is None or self.workspaces is None:
+            return None, None
+        tools = ProjectTools(
+            self.session_factory, self.svc, self.blobs, self.workspaces, project_id
+        )
+        gate = tool_gate(template, person.role, tools.registry) if template is not None else None
+        return tools, gate
 
     def sign_and_conclude(
         self,
@@ -251,6 +294,15 @@ class Deciders:
             db.commit()
             decision = load(db, decision.decision_id, store=store)
         return decision
+
+
+def _company_currency(db: Session, company_id: UUID) -> str | None:
+    from eidolon.identity import IdentityError, IdentityService
+
+    try:
+        return IdentityService().company(db, company_id).currency
+    except IdentityError:
+        return None
 
 
 def _template(db: Session, company_id: UUID) -> InstitutionTemplate | None:
@@ -516,6 +568,8 @@ class Planner:
                     prompt=prompt,
                     run_key=f"project:{project_id}:plan-review:{len(state.tasks)}",
                     causation_id=state.last_fact_id,
+                    project_id=project_id,
+                    template=template,
                 )
                 if not answer or answer.get("verdict") not in ("approve", "rework"):
                     return False
@@ -628,6 +682,8 @@ class Assigner:
                     run_key=f"task:{ts.task_id}:assign:{ts.last_fact_id}",
                     task_id=str(ts.task_id),
                     causation_id=ts.last_fact_id,
+                    project_id=state.project_id,
+                    template=template,
                 )
                 assignee = (answer or {}).get("assignee")
                 if not assignee or roster.role_of(str(assignee)) is None:
@@ -705,6 +761,24 @@ __all__ = [
 
 
 # -- describing a decision to an agent (R6-b / R7-a) ------------------------------------------
+
+
+def decision_project(db: Session, d: DecisionState) -> UUID | None:
+    """The project a decision is about, from its subject (project_id, or the task's)."""
+    from eidolon.work.projection import TaskRow
+
+    if d.subject.get("project_id"):
+        try:
+            return UUID(str(d.subject["project_id"]))
+        except ValueError:
+            return None
+    if d.subject.get("task_id"):
+        try:
+            row = db.get(TaskRow, UUID(str(d.subject["task_id"])))
+        except ValueError:
+            return None
+        return row.project_id if row else None
+    return None
 
 
 def describe_decision(db: Session, svc: WorkService, d: DecisionState) -> str:
@@ -825,6 +899,8 @@ class SpendApprover:
                 prompt=prompt,
                 run_key=f"decision:{decision_id}:spend",
                 causation_id=decision.last_fact_id,
+                project_id=project_id,
+                template=template,
             )
             if not answer or answer.get("verdict") not in ("approve", "reject"):
                 return False

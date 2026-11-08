@@ -62,6 +62,7 @@ STARTUP_FLAT = InstitutionTemplate(
             "task.cancel",
             "knowledge.promote",
             "workspace.execute",
+            "workspace.read",
         ),
         "builder": ("workspace.read", "workspace.write", "workspace.execute", "task.complete"),
     },

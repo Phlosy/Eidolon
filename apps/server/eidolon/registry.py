@@ -67,7 +67,7 @@ def default_jobs(session_factory=None) -> list:
     from eidolon.agent.retention import TranscriptRetention
     from eidolon.money.guard import BudgetGuard
 
-    deciders = Deciders(factory, provider, blobs)
+    deciders = Deciders(factory, provider, blobs, workspaces=workspaces)  # R7-c: eyes
     roster = IdentityRoster()
     guard = BudgetGuard()  # money layer, injected: agent never imports money (R6-a)
     return [
