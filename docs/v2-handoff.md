@@ -98,7 +98,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `b2cf6e5` | **R7-c**：`agent/project_tools.py` 只读项目工具（status / artifacts / list_dir / read_file / run_tests），`Deciders.ask(project_id, template)` 多步 run + 角色闸门 + run_default 预算；管理角色获 `workspace.read`；公司场景重录（管理者真的在看产物、跑测试）。v2-ADR-33 |
 | `92bad33` | **R7-d**：内核闸门 `task.triage`（三套制度各有规则）；`work/triage.py` 处置校验与施行（reopen / reassign / cancel / split）；`agent/triage.py` TL 提议 + PM 批准 + 系统施行，否决两次后等人；API apply 分支；报告 stuck 段写出建议。v2-ADR-34 |
 | `929aa74` | **R7-e**：任务种类 build / document / design / research（各自工作与评审提示词，PM 标 kind）；`POST /companies/{id}/decisions/follow` 一键按建议签掉收件箱，前端分组 + 两步确认；ReviewExecutor 12 步；公司场景全量重录。v2-ADR-35。**R7 完成** |
-| `R8A_HASH` | **R8-a + R8-b**：`company-docs` 场景（代码 + 用户指南）真实录制与回放验收 A1–A6；`Deciders.ask` 被掐断的尝试翻倍 max_tokens。**R8 完成** |
+| `fb25c2e` | **R8-a + R8-b**：`company-docs` 场景（代码 + 用户指南）真实录制与回放验收 A1–A6；`Deciders.ask` 被掐断的尝试翻倍 max_tokens。**R8 完成** |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
