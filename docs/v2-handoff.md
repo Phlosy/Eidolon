@@ -95,7 +95,7 @@ make lint                                  # ruff + tsc + eslint + prettier
 | `37cb18e` | **R6-e**：`agent/retention.py` 按制度清 transcript、`scripts/backup.sh` / `scripts/restore-check.sh`、CLI `restore-check`（链 + 账 + 投影重建自证）；真实备份→恢复→自证实测通过。v2-ADR-30。**R6 完成** |
 | `44423f2` | **R7-a**：`institution.decision.advised` + `DecisionState.brief` + `GateRule.advisor`；`agent/briefing.py`（`Advisor` / `DeliveryProposer`）；API 决定带 brief；前端决定卡先显示建议；契约 B1。公司场景改为 PM 提出交付、Owner 判断。v2-ADR-31 |
 | `663ff32` | **R7-b**：`api/narrative.py` 项目/使命叙事报告（六段、每行挂事实 id、zh/en、确定性、不落库；`polish` 可选润色）；API `GET /projects/{id}/report`、`GET /missions/{id}/report`；CLI `report`；前端项目页报告 tab、总览"今天需要你的 N 件事"。v2-ADR-32 |
-| `R7C_HASH` | **R7-c**：`agent/project_tools.py` 只读项目工具（status / artifacts / list_dir / read_file / run_tests），`Deciders.ask(project_id, template)` 多步 run + 角色闸门 + run_default 预算；管理角色获 `workspace.read`；公司场景重录（管理者真的在看产物、跑测试）。v2-ADR-33 |
+| `b2cf6e5` | **R7-c**：`agent/project_tools.py` 只读项目工具（status / artifacts / list_dir / read_file / run_tests），`Deciders.ask(project_id, template)` 多步 run + 角色闸门 + run_default 预算；管理角色获 `workspace.read`；公司场景重录（管理者真的在看产物、跑测试）。v2-ADR-33 |
 
 R1-a 内核已验证的性质（都有测试）：8 线程并发追加同公司链不分叉；触发器拒绝 UPDATE/DELETE；绕过触发器篡改/删除一行后 `verify_chain` 定位断点；消费者处理到一半"进程死掉"后重放不重复计数；`rebuild` 从零重建投影与原结果一致；NOTIFY 只在提交后送达；`alembic check` 无漂移、downgrade/upgrade 往返。
 
