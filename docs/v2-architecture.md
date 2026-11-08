@@ -246,7 +246,7 @@ InstitutionTemplate
 
 ### 5.2 内核 gate 清单（固定，模板只能改"谁决定"）
 
-`mission.accept` · `plan.approve` · `task.assign` · `task.review` · `task.rework` · `task.cancel` · `project.deliver` · `spend.approve` · `hire` · `fire` · `purchase` · `knowledge.promote` · `escalation.resolve`
+`mission.accept` · `plan.approve` · `task.assign` · `task.review` · `task.rework` · `task.cancel` · `task.triage`（R7-d）· `project.deliver` · `spend.approve` · `hire` · `fire` · `purchase` · `knowledge.promote` · `escalation.resolve`
 
 ### 5.3 默认制度 `software-studio-v1`（可上线的那一个）
 
@@ -587,3 +587,11 @@ human 角色进收件箱），答案仍然走同一个信封校验。于是所�
 `workspace.execute`，PM 没有，TL 有；一家公司可以在制度里把眼睛收回去，代码不用改。预算不例外：管理 run 和任务 run 一样受
 `run_default` 约束。还有一条由回放逼出来的纪律：模型会把工具输出里看到的东西原样回填进下一次调用，而调用参数是回放键的一部分，
 所以工具输出只能给稳定句柄（t1、路径、标题），不能给 id——否则录制时的对话在回放里就对不上了。
+
+**v2-ADR-34（2026-11-08）失败的处置是一个决定，不是一个状态；闸门清单只在出现新的决定种类时才增长。**
+任务失败、被卡、超预算，对用户来说不该是一个红点加一个问号。它是公司里一个有名字的问题——"这件事接下来怎么办"——
+所以它进入决定边界：负责的管理者看过现场后提出处置（重开、改派、取消、拆分）并说明理由，制度指定的人批或否，批了系统照办，
+每一步都在同一个信封里。为此内核闸门清单第一次增长：`task.triage` 不是某个模板的私货，而是所有制度都要回答的问题（谁提、谁批、
+多久没人管就往上送）；模板仍然只决定"谁"。一个批准的处置代行它所施行的闸门（改派即指派、拆分即取消）的授权，而不是绕过它——
+`WorkService.decision()` 按 disposition 检查这种代行，错配就拒绝。否决有上限：建议两次都被否，就不再让 agent 自说自话，任务
+等人来定；叙事报告把这一切写成一句"谁建议怎么办、因为什么、现在到哪一步"。

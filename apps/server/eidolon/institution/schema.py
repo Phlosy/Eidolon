@@ -24,6 +24,7 @@ GATES: tuple[str, ...] = (
     "task.review",
     "task.rework",
     "task.cancel",
+    "task.triage",  # R7-d: what to do with a failed / blocked task
     "project.deliver",
     "spend.approve",
     "hire",

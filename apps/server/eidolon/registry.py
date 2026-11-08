@@ -65,6 +65,7 @@ def default_jobs(session_factory=None) -> list:
         SpendApprover,
     )
     from eidolon.agent.retention import TranscriptRetention
+    from eidolon.agent.triage import Triage
     from eidolon.money.guard import BudgetGuard
 
     deciders = Deciders(factory, provider, blobs, workspaces=workspaces)  # R7-c: eyes
@@ -79,6 +80,7 @@ def default_jobs(session_factory=None) -> list:
         EscalatedDecider(factory, deciders, roster),
         Advisor(factory, deciders, roster),
         DeliveryProposer(factory, deciders, roster),
+        Triage(factory, deciders, roster),
         TranscriptRetention(factory, blobs),
         TaskRunExecutor(
             factory,

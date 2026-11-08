@@ -92,6 +92,12 @@ _T: dict[str, dict[str, str]] = {
         "stuck.escalated": "{gate} 没人按时决定，已升级到 {role}",
         "stuck.waiting_agent": "{gate} 还在等 {role} 决定",
         "stuck.none": "没有卡住的地方",
+        "stuck.triage": "{who} 建议{what}：{summary}（{status}）",
+        "disposition.reopen": "重开",
+        "disposition.reassign": "改派给 {assignee}",
+        "disposition.cancel": "取消",
+        "disposition.split": "拆成 {n} 个小任务",
+        "status.exhausted": "建议均被否，等人处理",
         "next.decision": "{gate} 等你决定{brief}",
         "next.brief": "——{advisor} 建议{rec}：{summary}",
         "next.deliver_wait": "所有任务已完成，等项目经理提出交付",
@@ -161,6 +167,12 @@ _T: dict[str, dict[str, str]] = {
         "stuck.escalated": "{gate} was not decided in time and went up to {role}",
         "stuck.waiting_agent": "{gate} still waits for {role}",
         "stuck.none": "Nothing is stuck",
+        "stuck.triage": "{who} proposes to {what}: {summary} ({status})",
+        "disposition.reopen": "reopen it",
+        "disposition.reassign": "hand it to {assignee}",
+        "disposition.cancel": "cancel it",
+        "disposition.split": "split it into {n} smaller tasks",
+        "status.exhausted": "every proposal rejected; waiting for a person",
         "next.decision": "{gate} waits for your decision{brief}",
         "next.brief": " — {advisor} recommends {rec}: {summary}",
         "next.deliver_wait": "Every task is done; waiting for the manager to propose delivery",
@@ -731,6 +743,33 @@ def _stuck(
                     link,
                 )
             )
+        if t.status in ("failed", "blocked"):
+            proposals = [
+                d
+                for d in decisions
+                if d.gate == "task.triage" and d.subject.get("task_id") == str(t.task_id)
+            ]
+            for d in sorted(proposals, key=lambda d: d.requested_at or datetime.min)[-1:]:
+                what = _t(
+                    lang,
+                    "disposition." + str(d.subject.get("disposition")),
+                    assignee=d.subject.get("assignee") or "?",
+                    n=len(d.subject.get("new_tasks") or ()),
+                )
+                sec.lines.append(
+                    Line(
+                        _t(
+                            lang,
+                            "stuck.triage",
+                            who=d.proposer or "?",
+                            what=what,
+                            summary=d.brief.summary if d.brief else d.subject.get("reason", ""),
+                            status=_t(lang, "status." + d.status),
+                        ),
+                        [d.last_fact_id] if d.last_fact_id else [],
+                        {"kind": "decision", "id": str(d.decision_id)},
+                    )
+                )
     for d in decisions:
         if d.status != "pending":
             continue

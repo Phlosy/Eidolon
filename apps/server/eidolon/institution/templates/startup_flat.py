@@ -41,6 +41,9 @@ STARTUP_FLAT = InstitutionTemplate(
         "task.cancel": GateRule(
             "agent", "lead", require_reason=True, escalate_to="owner", timeout_s=24 * 3600
         ),
+        "task.triage": GateRule(
+            "human", "owner", require_reason=True, conditions={"proposer": "lead"}
+        ),
         "project.deliver": GateRule("human", "owner"),
         "spend.approve": GateRule(
             "system",

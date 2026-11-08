@@ -38,7 +38,14 @@ class WorkService:
     def decision(self, db: Session, decision_id: UUID, *, gate: str, **subject) -> D.DecisionState:
         """An approved decision at ``gate`` whose subject carries ``subject``."""
         state = D.load(db, decision_id, store=self.store)
-        if state.gate != gate:
+        if state.gate == "task.triage" and gate in F.TRIAGE_STANDS_FOR:
+            # R7-d: an approved disposition carries the authority of the gate it enacts
+            disposition = state.subject.get("disposition")
+            if disposition not in F.TRIAGE_STANDS_FOR[gate]:
+                raise F.WorkError(
+                    f"triage decision {decision_id} ({disposition}) does not authorize {gate}"
+                )
+        elif state.gate != gate:
             raise F.WorkError(f"decision {decision_id} is for gate {state.gate}, not {gate}")
         if state.status != "approved":
             raise F.WorkError(f"decision {decision_id} is {state.status}, not approved")

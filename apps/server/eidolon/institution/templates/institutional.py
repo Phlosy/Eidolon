@@ -68,6 +68,9 @@ INSTITUTIONAL = InstitutionTemplate(
             "agent", "auditor", require_reason=True, escalate_to="dept_head", timeout_s=48 * 3600
         ),
         "task.cancel": GateRule("human", "deputy", require_reason=True),
+        "task.triage": GateRule(
+            "human", "deputy", require_reason=True, conditions={"proposer": "dept_head"}
+        ),
         "project.deliver": GateRule("human", "director", require_reason=True),
         "spend.approve": GateRule(
             "agent",

@@ -310,6 +310,10 @@ class Commands:
                     db, UUID(s["project_id"]), actor, decision_id=d.decision_id, reason=reason
                 )
                 return "project.cancelled"
+        if d.gate == "task.triage" and approved and "task_id" in s:
+            from eidolon.work.triage import apply_triage
+
+            return apply_triage(db, self.work, d, actor)
         if d.gate == "hire" and approved and "person_id" in s and "role" in s:
             if self.identity.person(db, s["person_id"]) is None:
                 self.identity.create_person(

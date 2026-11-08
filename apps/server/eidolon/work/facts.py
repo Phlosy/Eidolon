@@ -85,6 +85,11 @@ TASK_TRANSITIONS: dict[str, frozenset[str]] = {
     TASK_ASSIGNED: frozenset({"todo", "blocked", "failed"}),
 }
 REVIEW_VERDICTS = ("pass", "rework", "escalate")
+DISPOSITIONS = ("reopen", "reassign", "cancel", "split")  # R7-d: what to do with a failure
+TRIAGE_STANDS_FOR = {
+    "task.assign": frozenset({"reopen", "reassign"}),
+    "task.cancel": frozenset({"cancel", "split"}),
+}
 VERDICT_STATUS = {"pass": "done", "rework": "todo", "escalate": "blocked"}
 
 

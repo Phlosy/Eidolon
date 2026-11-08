@@ -88,6 +88,17 @@ SOFTWARE_STUDIO_V1 = InstitutionTemplate(
         "task.cancel": GateRule(
             "agent", "pm", require_reason=True, escalate_to="ceo", timeout_s=24 * 3600
         ),
+        # R7-d: the Tech Lead proposes what to do with a failed task; the PM approves;
+        # silence for a shift goes to the Owner.
+        "task.triage": GateRule(
+            "agent",
+            "pm",
+            separation=("proposer!=approver",),
+            require_reason=True,
+            escalate_to="owner",
+            timeout_s=8 * 3600,
+            conditions={"proposer": "tech_lead"},
+        ),
         # V6: the Owner accepts deliveries at launch; customisable to the CEO.
         "project.deliver": GateRule("human", "owner", require_reason=False),
         # Money: ≤ run default → system; ≤ 80% of project budget → PM; above → Owner.

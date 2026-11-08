@@ -13,6 +13,7 @@ from eidolon.agent.blobs import BlobStore
 from eidolon.agent.briefing import Advisor, DeliveryProposer, delivery_decision_id
 from eidolon.agent.managers import Assigner, Deciders, IdentityRoster, MissionIntake, Planner
 from eidolon.agent.scheduler import ReviewExecutor, RunLauncher, TaskRunExecutor, Workspaces
+from eidolon.agent.triage import Triage
 from eidolon.identity import IdentityService
 from eidolon.institution import adopt, conclude, customize, load, sign, staffing
 from eidolon.institution.templates import SOFTWARE_STUDIO_V1 as T
@@ -123,6 +124,7 @@ def studio_jobs(session_factory, provider, blobs: BlobStore, workspace_root: Pat
         # delivery (last, so it sees the tasks QA just passed in this very cycle)
         Advisor(session_factory, deciders, roster, svc=svc, store=store),
         DeliveryProposer(session_factory, deciders, roster, svc=svc, store=store),
+        Triage(session_factory, deciders, roster, svc=svc, store=store),
     ]
 
 
