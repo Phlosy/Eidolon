@@ -8,7 +8,7 @@ from company_support import (
     MISSION_TITLE,
     company_project_id,
     drive_company,
-    owner_delivers,
+    owner_signs_delivery,
     propose_mission,
     set_up_company,
     studio_jobs,
@@ -23,8 +23,8 @@ from eidolon.agent.providers import fixture_dir
 from eidolon.agent.providers.accounting import KIND as MODEL_CALLED
 from eidolon.config import settings
 from eidolon.db import SessionLocal
+from eidolon.institution import BRIEF_SUMMARY_MAX, SIGNED, load
 from eidolon.institution import RECORDED as DECISION_RECORDED
-from eidolon.institution import SIGNED
 from eidolon.kernel import provenance
 from eidolon.kernel.consumers import process
 from eidolon.money import (
@@ -184,8 +184,12 @@ def test_three_roles_deliver_a_project_from_replayed_fixtures(db, tmp_path):
         c.positive > 0 for p in ("eng-1", "eng-2") if p in evidence for c in competencies_of(db, p)
     )
 
-    # The Owner delivers; provenance holds.
-    owner_delivers(db, company, pid)
+    # R7-a: the PM proposed delivery with a plain-language brief; the Owner only judges it.
+    did = owner_signs_delivery(db, company, pid)
+    delivered = load(db, did)
+    assert delivered.status == "approved" and delivered.brief.recommendation == "approve"
+    assert 0 < len(delivered.brief.summary) <= BRIEF_SUMMARY_MAX and delivered.brief.rationale
+    assert delivered.signatures[-1].person_id.startswith("owner-")
     assert svc.project(db, pid).status == "delivered"
     process(SessionLocal, TalentProjection())
     assert ("project_delivered", "pm") in {

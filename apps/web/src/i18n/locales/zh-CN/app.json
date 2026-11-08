@@ -62,7 +62,20 @@
     "signatures": "签字",
     "action": "绑定的动作",
     "applied": "已施行：{{what}}",
-    "signed": "已签字"
+    "signed": "已签字",
+    "brief": "公司建议",
+    "briefBy": "{{who}}（{{role}}）建议",
+    "briefNone": "还没有建议——顾问尚未回答。",
+    "briefWhy": "为什么",
+    "briefRisks": "风险",
+    "briefAlternatives": "其他选择",
+    "briefCost": "花费",
+    "details": "详情",
+    "recommend": {
+      "approve": "批准",
+      "reject": "拒绝",
+      "rework": "返工"
+    }
   },
   "mission": {
     "title": "使命",

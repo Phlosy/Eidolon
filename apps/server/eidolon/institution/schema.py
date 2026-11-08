@@ -76,6 +76,7 @@ class GateRule:
     escalate_to: str | None = None  # a gate name or a role code
     require_reason: bool = False
     conditions: Mapping[str, Any] = field(default_factory=dict)  # template-specific knobs
+    advisor: str | None = None  # role that briefs a human decider (default: their direct report)
 
     def __post_init__(self) -> None:
         if self.decider not in DECIDERS:
@@ -132,6 +133,19 @@ class InstitutionTemplate:
     def role(self, code: str) -> Role | None:
         return next((r for r in self.roles if r.code == code), None)
 
+    def advisor_for(self, gate: str, decider_role: str | None) -> str | None:
+        """Who briefs a human decider at ``gate``: the rule's ``advisor``, else the
+        first agent role reporting to the decider, else the CEO-like root agent role."""
+        rule = self.gates.get(gate)
+        if rule is not None and rule.advisor:
+            return rule.advisor
+        reports = [r for r in self.roles if r.kind == "agent" and r.reports_to == decider_role]
+        if reports:
+            return reports[0].code
+        root_humans = {r.code for r in self.roles if r.kind == "human"}
+        tops = [r for r in self.roles if r.kind == "agent" and r.reports_to in root_humans]
+        return tops[0].code if tops else None
+
     def owner(self) -> Role | None:
         """The root human role: human kind, reports to nobody."""
         roots = [r for r in self.roles if r.kind == "human" and r.reports_to is None]
@@ -179,6 +193,7 @@ class InstitutionTemplate:
                     "escalate_to": g.escalate_to,
                     "require_reason": g.require_reason,
                     "conditions": dict(g.conditions),
+                    "advisor": g.advisor,
                 }
                 for name, g in self.gates.items()
             },
@@ -233,6 +248,7 @@ class InstitutionTemplate:
                         escalate_to=g.get("escalate_to"),
                         require_reason=bool(g.get("require_reason", False)),
                         conditions=dict(g.get("conditions", {})),
+                        advisor=g.get("advisor"),
                     )
                     for name, g in data["gates"].items()
                 },

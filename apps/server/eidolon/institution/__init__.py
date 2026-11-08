@@ -27,13 +27,17 @@ from eidolon.institution.authority import (
 )
 from eidolon.institution.confirmation import action_hash, bind
 from eidolon.institution.decisions import (
+    ADVISED,
+    BRIEF_SUMMARY_MAX,
     ESCALATED,
     RECORDED,
     REQUESTED,
     SIGNED,
     VERDICTS,
+    Brief,
     DecisionError,
     DecisionState,
+    advise,
     conclude,
     escalate,
     load,
@@ -60,11 +64,14 @@ from eidolon.institution.validate import assert_valid, validate
 
 __all__ = [
     "ADOPTED",
+    "ADVISED",
+    "BRIEF_SUMMARY_MAX",
     "ESCALATED",
     "RECORDED",
     "REQUESTED",
     "SIGNED",
     "VERDICTS",
+    "Brief",
     "AuthorityError",
     "AuthoritySnapshot",
     "DecisionError",
@@ -75,6 +82,7 @@ __all__ = [
     "action_hash",
     "authorized_tools",
     "bind",
+    "advise",
     "conclude",
     "escalate",
     "escalation_of",

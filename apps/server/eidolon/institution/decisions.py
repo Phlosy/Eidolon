@@ -10,6 +10,7 @@ is their fold. The system never signs an agent/human gate; a system resolution i
 recorded in one step with the check it ran as the reason.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -28,8 +29,11 @@ REQUESTED = "institution.decision.requested"
 SIGNED = "institution.decision.signed"
 RECORDED = "institution.decision.recorded"
 ESCALATED = "institution.decision.escalated"
-KINDS = frozenset({REQUESTED, SIGNED, RECORDED, ESCALATED})
+ADVISED = "institution.decision.advised"
+KINDS = frozenset({REQUESTED, SIGNED, RECORDED, ESCALATED, ADVISED})
 VERDICTS = ("approve", "reject", "rework")
+RECOMMENDATIONS = VERDICTS
+BRIEF_SUMMARY_MAX = 300
 
 
 class DecisionError(ValueError):
@@ -48,6 +52,69 @@ class Signature:
     fact_id: UUID
 
 
+@dataclass(frozen=True, slots=True)
+class Brief:
+    """The company's own opinion on a decision a human is asked to make (R7-a): what
+    it recommends and why, in plain words, with the risks and the alternatives. Written
+    by the advising agent; the human judges it instead of researching the facts."""
+
+    recommendation: str  # approve | reject | rework
+    summary: str  # plain language, <= BRIEF_SUMMARY_MAX chars
+    rationale: str
+    risks: tuple[str, ...]
+    alternatives: tuple[str, ...]
+    advisor: str | None  # person id
+    advisor_role: str | None
+    cost: str | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "recommendation": self.recommendation,
+            "summary": self.summary,
+            "rationale": self.rationale,
+            "risks": list(self.risks),
+            "alternatives": list(self.alternatives),
+            "advisor": self.advisor,
+            "advisor_role": self.advisor_role,
+            "cost": self.cost,
+        }
+
+    @classmethod
+    def from_dict(cls, d: Mapping[str, Any]) -> "Brief":
+        return cls(
+            recommendation=str(d.get("recommendation") or ""),
+            summary=str(d.get("summary") or ""),
+            rationale=str(d.get("rationale") or ""),
+            risks=tuple(str(r) for r in (d.get("risks") or ())),
+            alternatives=tuple(str(a) for a in (d.get("alternatives") or ())),
+            advisor=d.get("advisor"),
+            advisor_role=d.get("advisor_role"),
+            cost=d.get("cost"),
+        )
+
+
+def validate_brief(brief: Mapping[str, Any]) -> dict[str, Any]:
+    """Coerce a model's answer into a brief or refuse it."""
+    rec = str(brief.get("recommendation") or "").strip().lower()
+    if rec not in RECOMMENDATIONS:
+        raise DecisionError(f"brief.recommendation must be one of {RECOMMENDATIONS}")
+    summary = " ".join(str(brief.get("summary") or "").split())
+    if not summary:
+        raise DecisionError("brief.summary is required")
+    if len(summary) > BRIEF_SUMMARY_MAX:
+        summary = summary[: BRIEF_SUMMARY_MAX - 1] + "…"
+    risks = [" ".join(str(r).split()) for r in (brief.get("risks") or ()) if str(r).strip()]
+    alts = [" ".join(str(a).split()) for a in (brief.get("alternatives") or ()) if str(a).strip()]
+    return {
+        "recommendation": rec,
+        "summary": summary,
+        "rationale": " ".join(str(brief.get("rationale") or "").split())[:2000],
+        "risks": risks[:5],
+        "alternatives": alts[:5],
+        "cost": (str(brief["cost"]).strip()[:200] if brief.get("cost") else None),
+    }
+
+
 @dataclass
 class DecisionState:
     decision_id: UUID
@@ -64,6 +131,7 @@ class DecisionState:
     escalations: int = 0
     last_fact_id: UUID | None = None
     recorded_fact_id: UUID | None = None
+    brief: Brief | None = None
 
     @property
     def decided(self) -> bool:
@@ -91,6 +159,8 @@ class DecisionState:
                     amount=p.get("amount"),
                     requested_at=fact.created_at,
                 )
+                if p.get("brief"):
+                    state.brief = Brief.from_dict(p["brief"])
             elif state is None:
                 raise DecisionError(f"decision {decision_id}: {fact.kind} before {REQUESTED}")
             elif fact.kind == SIGNED:
@@ -104,6 +174,8 @@ class DecisionState:
                 state.resolution = Resolution.from_dict(p["resolution"])
                 state.escalations += 1
                 state.requested_at = fact.created_at
+            elif fact.kind == ADVISED:
+                state.brief = Brief.from_dict(p["brief"])
             state.last_fact_id = fact.id
         if state is None:
             raise DecisionError(f"decision {decision_id}: no {REQUESTED} fact")
@@ -125,9 +197,11 @@ def request(
     *,
     decision_id: UUID | None = None,
     causation_id: UUID | None = None,
+    brief: Mapping[str, Any] | None = None,
 ) -> tuple[NewFact, Resolution]:
     """Open a decision at ``ctx.gate``. For a human decider the subject must be a
-    bound action (``confirmation.bind``), so the eventual yes applies to exactly it."""
+    bound action (``confirmation.bind``), so the eventual yes applies to exactly it.
+    ``brief`` (R7-a) is the proposer's own recommendation, validated."""
     resolution = resolve(template, ctx)
     decision_id = decision_id or uuid4()
     subject = dict(ctx.subject)
@@ -150,6 +224,15 @@ def request(
             "author": ctx.author,
             "amount": ctx.amount,
             "facts": dict(ctx.facts),
+            "brief": (
+                {
+                    **validate_brief(brief),
+                    "advisor": actor.id,
+                    "advisor_role": ctx.proposer_role,
+                }
+                if brief
+                else None
+            ),
         },
         idempotency_key=f"decision:{decision_id}:requested",
         causation_id=causation_id,
@@ -251,6 +334,31 @@ def sign(
             "signature_no": len(state.signatures) + 1,
         },
         idempotency_key=f"decision:{state.decision_id}:signed:{person}",
+        causation_id=state.last_fact_id,
+        correlation_id=state.decision_id,
+    )
+
+
+def advise(
+    state: DecisionState,
+    actor: Actor,
+    *,
+    role: str | None,
+    brief: Mapping[str, Any],
+) -> NewFact:
+    """The company's opinion on an open decision, as a fact. One per advisor; a
+    later one replaces the earlier in the fold (the human sees the latest)."""
+    if state.decided:
+        raise DecisionError(f"decision {state.decision_id} is already {state.status}")
+    if actor.kind is ActorKind.system:
+        raise DecisionError("the system holds no opinion; an agent or a person advises")
+    body = {**validate_brief(brief), "advisor": actor.id, "advisor_role": role}
+    return NewFact(
+        company_id=state.company_id,
+        actor=actor,
+        kind=ADVISED,
+        payload={"decision_id": str(state.decision_id), "gate": state.gate, "brief": body},
+        idempotency_key=f"decision:{state.decision_id}:advised:{actor.id}:{state.escalations}",
         causation_id=state.last_fact_id,
         correlation_id=state.decision_id,
     )

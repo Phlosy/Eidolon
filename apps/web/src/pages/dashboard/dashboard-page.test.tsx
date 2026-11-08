@@ -44,6 +44,16 @@ const pending: Decision = {
   requested_at: "2026-11-07T10:00:00Z",
   signatures: [],
   escalations: 0,
+  brief: {
+    recommendation: "approve",
+    summary: "The notes CLI does what was asked and its tests pass; accept it.",
+    rationale: "Three tasks, each reviewed by QA.",
+    risks: ["No manual run of the delete command"],
+    alternatives: ["Ask for a short demo first"],
+    advisor: "pm-1",
+    advisor_role: "pm",
+    cost: null,
+  },
 };
 const sign = vi.fn();
 
@@ -107,6 +117,13 @@ describe("DashboardPage", () => {
     renderPage(<DashboardPage />);
     expect(await screen.findByRole("heading", { name: "Tiny Studio" })).toBeInTheDocument();
     expect(await screen.findByText("project.deliver")).toBeInTheDocument();
+    // the brief comes first, in plain words; the bound action folds under Details
+    expect(
+      screen.getByText("The notes CLI does what was asked and its tests pass; accept it."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("pm-1 (pm) recommends")).toBeInTheDocument();
+    expect(screen.getByText("No manual run of the delete command")).toBeInTheDocument();
+    expect(screen.getByText("Details")).toBeInTheDocument();
     expect(screen.getByText("Notes CLI")).toBeInTheDocument();
     expect(await screen.findByText("1.50 CNY")).toBeInTheDocument();
     expect(screen.getByText("software-studio-v1 v2")).toBeInTheDocument();

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { decisions as decisionsApi } from "../../api";
-import type { Decision } from "../../api/types";
+import type { Brief, Decision } from "../../api/types";
 import { useCommand } from "../../hooks/queries";
 import { formatDateTime } from "../../utils/format";
 import { Button } from "../common/button";
@@ -9,8 +9,10 @@ import { Input } from "../common/input";
 import { ErrorNote, KeyValue, Mono, StatusBadge } from "./widgets";
 
 /**
- * One decision waiting for a human. Signing restates the bound action the server
- * recorded, so what you approve is exactly what will happen.
+ * One decision waiting for a human. The company's own recommendation comes first, in
+ * plain words (R7-a); the mechanics — bound action, ids — fold under "Details". Signing
+ * restates the bound action the server recorded, so what you approve is exactly what
+ * will happen.
  */
 export function DecisionCard({ decision }: { decision: Decision }) {
   const { t } = useTranslation("app");
@@ -32,18 +34,22 @@ export function DecisionCard({ decision }: { decision: Decision }) {
         <h3 className="text-sm font-semibold">{decision.gate}</h3>
         <StatusBadge status={decision.status} />
       </div>
-      <div className="mt-3">
-        <KeyValue
-          items={[
-            [t("decision.requested"), formatDateTime(decision.requested_at)],
-            [t("decision.proposer"), decision.proposer ?? "—"],
-            [
-              t("decision.action"),
-              <Mono key="a">{JSON.stringify(decision.subject.action ?? subject)}</Mono>,
-            ],
-          ]}
-        />
-      </div>
+      <BriefPanel brief={decision.brief ?? null} />
+      <details className="mt-3 text-xs">
+        <summary className="cursor-pointer text-muted-foreground">{t("decision.details")}</summary>
+        <div className="mt-2">
+          <KeyValue
+            items={[
+              [t("decision.requested"), formatDateTime(decision.requested_at)],
+              [t("decision.proposer"), decision.proposer ?? "—"],
+              [
+                t("decision.action"),
+                <Mono key="a">{JSON.stringify(decision.subject.action ?? subject)}</Mono>,
+              ],
+            ]}
+          />
+        </div>
+      </details>
       {decision.signatures.length ? (
         <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
           {decision.signatures.map((s) => (
@@ -103,5 +109,60 @@ export function DecisionCard({ decision }: { decision: Decision }) {
         </p>
       ) : null}
     </article>
+  );
+}
+
+const TONE: Record<string, string> = {
+  approve: "border-success/40 bg-success/10 text-success",
+  reject: "border-destructive/40 bg-destructive/10 text-destructive",
+  rework: "border-warning/40 bg-warning/10 text-warning",
+};
+
+function BriefPanel({ brief }: { brief: Brief | null }) {
+  const { t } = useTranslation("app");
+  if (!brief) {
+    return <p className="mt-3 text-xs text-muted-foreground">{t("decision.briefNone")}</p>;
+  }
+  const tone = TONE[brief.recommendation] ?? "border-border text-foreground";
+  return (
+    <section className="mt-3 space-y-2" data-testid="decision-brief">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+        <span>
+          {t("decision.briefBy", { who: brief.advisor ?? "—", role: brief.advisor_role ?? "—" })}
+        </span>
+        <span className={`rounded border px-2 py-0.5 text-[11px] font-semibold ${tone}`}>
+          {t(`decision.recommend.${brief.recommendation}`, brief.recommendation)}
+        </span>
+      </div>
+      <p className="text-sm">{brief.summary}</p>
+      {brief.rationale ? (
+        <p className="text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{t("decision.briefWhy")}: </span>
+          {brief.rationale}
+        </p>
+      ) : null}
+      <BriefList label={t("decision.briefRisks")} items={brief.risks} />
+      <BriefList label={t("decision.briefAlternatives")} items={brief.alternatives} />
+      {brief.cost ? (
+        <p className="text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">{t("decision.briefCost")}: </span>
+          {brief.cost}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function BriefList({ label, items }: { label: string; items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div className="text-xs text-muted-foreground">
+      <span className="font-medium text-foreground">{label}: </span>
+      <ul className="ml-4 list-disc">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
   );
 }

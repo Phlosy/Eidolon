@@ -161,7 +161,7 @@ def run_company(kind: str, directory: Path) -> int:
     from company_support import (
         company_project_id,
         drive_company,
-        owner_delivers,
+        owner_signs_delivery,
         propose_mission,
         set_up_company,
         studio_jobs,
@@ -188,7 +188,7 @@ def run_company(kind: str, directory: Path) -> int:
             s == "done" for s in trail[-1]["tasks"].values()
         )
         if ok:
-            owner_delivers(db, company, pid)
+            owner_signs_delivery(db, company, pid)
         state = svc.project(db, pid) if pid else None
         print(
             f"{'ok ' if ok else 'BAD'} {kind}/company company={company} mission={mission_id} "

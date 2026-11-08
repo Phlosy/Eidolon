@@ -54,6 +54,7 @@ def default_jobs(session_factory=None) -> list:
     provider = routed_provider(factory)
     blobs = BlobStore(SERVER_ROOT / settings.transcript_dir)
     workspaces = Workspaces(SERVER_ROOT / settings.workspace_root)
+    from eidolon.agent.briefing import Advisor, DeliveryProposer
     from eidolon.agent.escalation import EscalatedDecider, Escalator
     from eidolon.agent.managers import (
         Assigner,
@@ -76,6 +77,8 @@ def default_jobs(session_factory=None) -> list:
         SpendApprover(factory, deciders, roster),
         Escalator(factory),
         EscalatedDecider(factory, deciders, roster),
+        Advisor(factory, deciders, roster),
+        DeliveryProposer(factory, deciders, roster),
         TranscriptRetention(factory, blobs),
         TaskRunExecutor(
             factory,

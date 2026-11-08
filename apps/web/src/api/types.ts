@@ -339,7 +339,20 @@ export interface Decision {
   requested_at: string;
   signatures: Signature[];
   escalations: number;
+  /** R7-a: the company's own opinion, written by the advising agent. */
+  brief?: Brief | null;
   applied?: string | null;
+}
+
+export interface Brief {
+  recommendation: "approve" | "reject" | "rework" | string;
+  summary: string;
+  rationale: string;
+  risks: string[];
+  alternatives: string[];
+  advisor: string | null;
+  advisor_role: string | null;
+  cost: string | null;
 }
 
 export interface Passkey {

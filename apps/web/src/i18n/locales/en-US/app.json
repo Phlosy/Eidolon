@@ -62,7 +62,20 @@
     "signatures": "Signatures",
     "action": "Bound action",
     "applied": "Applied: {{what}}",
-    "signed": "Signed"
+    "signed": "Signed",
+    "brief": "Our recommendation",
+    "briefBy": "{{who}} ({{role}}) recommends",
+    "briefNone": "No recommendation yet — the advisor has not answered.",
+    "briefWhy": "Why",
+    "briefRisks": "Risks",
+    "briefAlternatives": "Alternatives",
+    "briefCost": "Cost",
+    "details": "Details",
+    "recommend": {
+      "approve": "Approve",
+      "reject": "Reject",
+      "rework": "Rework"
+    }
   },
   "mission": {
     "title": "Mission",

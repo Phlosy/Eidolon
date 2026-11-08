@@ -704,6 +704,57 @@ __all__ = [
 ]
 
 
+# -- describing a decision to an agent (R6-b / R7-a) ------------------------------------------
+
+
+def describe_decision(db: Session, svc: WorkService, d: DecisionState) -> str:
+    """The gate, the subject, and what we know about the work it names — the prompt
+    both the escalated decider and the advisor read."""
+    import json as _json
+
+    from eidolon.work.facts import WorkError
+    from eidolon.work.projection import TaskRow
+
+    plain = {k: v for k, v in dict(d.subject).items() if k != "action_hash"}
+    lines = [
+        f"Gate: {d.gate}" + (f" (escalated {d.escalations}×)" if d.escalations else ""),
+        f"Subject: {_json.dumps(plain, ensure_ascii=False)}",
+    ]
+    if d.proposer:
+        lines.append(f"Proposed by: {d.proposer}")
+    if d.amount is not None:
+        lines.append(f"Amount: {d.amount} units")
+    project_id = d.subject.get("project_id")
+    task_id = d.subject.get("task_id")
+    try:
+        if project_id is None and task_id is not None:
+            row = db.get(TaskRow, UUID(str(task_id)))
+            project_id = row.project_id if row else None
+        if project_id is not None:
+            state = svc.project(db, UUID(str(project_id)))
+            lines.append(f"Project: {state.title} ({state.status}), budget {state.budget} units")
+            for t in state.tasks.values():
+                mark = " <- this one" if str(t.task_id) == str(task_id) else ""
+                lines.append(f"- {t.title} [{t.status}] assignee={t.assignee}{mark}")
+                if str(t.task_id) == str(task_id):
+                    lines.append(f"  {t.description}")
+                    if t.acceptance_criteria:
+                        lines.append("  criteria: " + "; ".join(t.acceptance_criteria))
+                    for r in t.reviews:
+                        lines.append(f"  review by {r.get('reviewer')}: {r.get('verdict')}")
+            if state.artifacts:
+                lines.append(
+                    "Artifacts: " + ", ".join(sorted({a.path for a in state.artifacts.values()}))
+                )
+        mission_id = d.subject.get("mission_id")
+        if mission_id:
+            m = svc.mission(db, UUID(str(mission_id)))
+            lines.append(f"Mission: {m.title} — {m.goal}")
+    except (WorkError, ValueError):
+        pass
+    return "\n".join(lines)
+
+
 # -- spend approval (R6-a) ----------------------------------------------------------------------
 
 SPEND_SYSTEM = (

@@ -2,6 +2,7 @@
 decides nothing. A human acts within their grants; management acts go through the
 institution's decision envelope; a concluded decision is applied mechanically."""
 
+import tempfile
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
@@ -11,6 +12,7 @@ from test_cost_trace import run_facts
 from test_work import actor, run_through
 
 from eidolon.agent import run as R
+from eidolon.agent.providers import TextDelta
 from eidolon.api.app import create_app
 from eidolon.db import SessionLocal
 from eidolon.identity import IdentityProjection, IdentityService
@@ -248,8 +250,30 @@ def test_decisions_are_signed_by_humans_within_the_envelope(db):
     db.commit()
     run_through(db, company, pid2, task2, "eng-1")
     project_everything()
+    # R7-a: the PM has already proposed delivery with a brief; the Owner's click signs
+    # that very envelope and the brief travels with it
+    from test_agent_loop import ScriptedLoop
+    from test_briefing import GOOD
+
+    from eidolon.agent.blobs import BlobStore
+    from eidolon.agent.briefing import DeliveryProposer, delivery_decision_id
+    from eidolon.agent.managers import Deciders, Roster, StaticRoster
+    from eidolon.agent.managers import Person as Agent
+
+    proposer = DeliveryProposer(
+        SessionLocal,
+        Deciders(SessionLocal, ScriptedLoop([[TextDelta(GOOD)]]), BlobStore(tempfile.mkdtemp())),
+        StaticRoster(Roster([Agent("pm-1", "pm")])),
+    )
+    assert proposer.tick() == 1
+    pending = client.get(f"{PREFIX}/companies/{company}/decisions").json()
+    assert [d["decision_id"] for d in pending] == [str(delivery_decision_id(pid2))]
+    assert pending[0]["brief"]["recommendation"] == "approve"
+    assert pending[0]["brief"]["advisor"] == "pm-1" and pending[0]["brief"]["summary"]
     r = post(client, f"/projects/{pid2}/deliver", {"reason": "great"})
     assert r.status_code == 200 and r.json()["applied"] == "project.delivered"
+    assert r.json()["decision_id"] == str(delivery_decision_id(pid2))
+    assert r.json()["brief"]["advisor"] == "pm-1"
     assert post(client, f"/projects/{pid2}/deliver", {}).status_code == 409  # already decided
     assert post(client, f"/projects/{uuid4()}/deliver", {}).status_code == 404
 

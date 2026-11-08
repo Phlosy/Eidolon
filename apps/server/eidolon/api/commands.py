@@ -353,12 +353,22 @@ class Commands:
         if project.status != "active":
             raise Conflict(f"project {project_id} is {project.status}, not active")
         action = {"kind": "project.deliver", "project_id": str(project_id)}
-        decision_id = uuid5(
-            NAMESPACE_URL, f"eidolon:project:{project_id}:deliver:{project.last_fact_id}"
-        )
-        try:
-            state = load(db, decision_id, store=self.store)
-        except DecisionError:
+        # the same id the DeliveryProposer uses, so the Owner's click signs the PM's
+        # proposal (with its brief) instead of opening a second envelope
+        from eidolon.agent.briefing import delivery_decision_id
+
+        attempt = 0
+        while True:
+            decision_id = delivery_decision_id(project_id, attempt)
+            try:
+                state = load(db, decision_id, store=self.store)
+            except DecisionError:
+                state = None
+                break
+            if state.status in ("pending", "approved"):
+                break
+            attempt += 1
+        if state is None:
             state = self.open_decision(
                 db,
                 who,
@@ -458,4 +468,5 @@ def decision_dict(d: DecisionState) -> dict[str, Any]:
             for s in d.signatures
         ],
         "escalations": d.escalations,
+        "brief": d.brief.as_dict() if d.brief else None,
     }

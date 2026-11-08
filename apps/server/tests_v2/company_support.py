@@ -10,20 +10,11 @@ from project_support import store, svc
 from sqlalchemy.orm import Session
 
 from eidolon.agent.blobs import BlobStore
+from eidolon.agent.briefing import Advisor, DeliveryProposer, delivery_decision_id
 from eidolon.agent.managers import Assigner, Deciders, IdentityRoster, MissionIntake, Planner
 from eidolon.agent.scheduler import ReviewExecutor, RunLauncher, TaskRunExecutor, Workspaces
 from eidolon.identity import IdentityService
-from eidolon.institution import (
-    GateContext,
-    adopt,
-    bind,
-    conclude,
-    customize,
-    load,
-    request,
-    sign,
-    staffing,
-)
+from eidolon.institution import adopt, conclude, customize, load, sign, staffing
 from eidolon.institution.templates import SOFTWARE_STUDIO_V1 as T
 from eidolon.kernel.consumers import process
 from eidolon.kernel.facts import Actor, ActorKind
@@ -128,6 +119,10 @@ def studio_jobs(session_factory, provider, blobs: BlobStore, workspace_root: Pat
             svc=svc,
             store=store,
         ),
+        # R7-a: the CEO briefs the Owner on anything left to a human; the PM proposes
+        # delivery (last, so it sees the tasks QA just passed in this very cycle)
+        Advisor(session_factory, deciders, roster, svc=svc, store=store),
+        DeliveryProposer(session_factory, deciders, roster, svc=svc, store=store),
     ]
 
 
@@ -174,28 +169,22 @@ def drive_company(
     return trail
 
 
-def owner_delivers(db: Session, company: UUID, pid: UUID) -> None:
-    """V6: the Owner accepts the delivery — a human decision bound to the action."""
+def owner_signs_delivery(db: Session, company: UUID, pid: UUID) -> UUID:
+    """V6 + R7-a: the PM has proposed delivery with a brief; the Owner reads it and
+    signs the bound action. Returns the decision id."""
+    did = delivery_decision_id(pid)
+    proposal = load(db, did)
+    assert proposal.status == "pending" and proposal.brief is not None, proposal
+    assert proposal.proposer == "pm-1" and proposal.brief.advisor == "pm-1"
     action = {"kind": "project.deliver", "project_id": str(pid)}
-    req, _ = request(
-        T,
-        GateContext("project.deliver", company, subject={**bind(action), "project_id": str(pid)}),
-        Actor(ActorKind.agent, "pm-1"),
-    )
-    did = store.append(db, req).correlation_id
     store.append(
         db,
         sign(
-            T,
-            load(db, did),
-            OWNER,
-            role="owner",
-            verdict="approve",
-            reason="looks good",
-            action=action,
+            T, proposal, OWNER, role="owner", verdict="approve", reason="looks good", action=action
         ),
     )
     store.append(db, conclude(load(db, did)))
     db.commit()
     svc.deliver_project(db, pid, OWNER, decision_id=did)
     db.commit()
+    return did

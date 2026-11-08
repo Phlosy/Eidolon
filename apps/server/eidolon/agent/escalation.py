@@ -15,20 +15,17 @@ Neither job decides anything: one moves the question, the other asks the person
 the institution says to ask.
 """
 
-import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
 from uuid import UUID
 
 from sqlalchemy.orm import sessionmaker
 
-from eidolon.agent.managers import Deciders, RosterSource, _template
-from eidolon.institution import REQUESTED, VERDICTS, DecisionState, escalate, load
+from eidolon.agent.managers import Deciders, RosterSource, _template, describe_decision
+from eidolon.institution import REQUESTED, VERDICTS, escalate, load
 from eidolon.kernel.store import FactStore
 from eidolon.logging import get_logger
-from eidolon.work.facts import WorkError
 from eidolon.work.service import WorkService
 
 log = get_logger("eidolon.agent.escalation")
@@ -130,7 +127,7 @@ class EscalatedDecider:
             )
             if signer is None:
                 return False
-            prompt = self._prompt(db, d)
+            prompt = describe_decision(db, self.svc, d)
             answer = self.deciders.ask(
                 company_id=company_id,
                 person=signer,
@@ -152,50 +149,3 @@ class EscalatedDecider:
                 extra={"decision_id": str(decision_id), "gate": d.gate, "status": d.status},
             )
             return True
-
-    def _prompt(self, db, d: DecisionState) -> str:
-        """The gate, the subject, and what we know about the work it names."""
-        lines = [
-            f"Gate: {d.gate} (escalated {d.escalations}×; originally for {d.resolution.gate})",
-            f"Subject: {json.dumps(_plain(d.subject), ensure_ascii=False)}",
-        ]
-        if d.proposer:
-            lines.append(f"Proposed by: {d.proposer}")
-        if d.amount is not None:
-            lines.append(f"Amount: {d.amount} units")
-        project_id = d.subject.get("project_id")
-        task_id = d.subject.get("task_id")
-        try:
-            if project_id is None and task_id is not None:
-                project_id = self._project_of(db, UUID(str(task_id)))
-            if project_id is not None:
-                state = self.svc.project(db, UUID(str(project_id)))
-                lines.append(
-                    f"Project: {state.title} ({state.status}), budget {state.budget} units"
-                )
-                for t in state.tasks.values():
-                    mark = " <- this one" if str(t.task_id) == str(task_id) else ""
-                    lines.append(f"- {t.title} [{t.status}] assignee={t.assignee}{mark}")
-                    if str(t.task_id) == str(task_id):
-                        lines.append(f"  {t.description}")
-                        if t.acceptance_criteria:
-                            lines.append("  criteria: " + "; ".join(t.acceptance_criteria))
-                        for r in t.reviews:
-                            lines.append(f"  review by {r.get('reviewer')}: {r.get('verdict')}")
-            mission_id = d.subject.get("mission_id")
-            if mission_id:
-                m = self.svc.mission(db, UUID(str(mission_id)))
-                lines.append(f"Mission: {m.title} — {m.goal}")
-        except (WorkError, ValueError):
-            pass
-        return "\n".join(lines)
-
-    def _project_of(self, db, task_id: UUID) -> UUID | None:
-        from eidolon.work.projection import TaskRow
-
-        row = db.get(TaskRow, task_id)
-        return row.project_id if row else None
-
-
-def _plain(subject: Any) -> Any:
-    return {k: v for k, v in dict(subject).items() if k not in ("action_hash",)}
